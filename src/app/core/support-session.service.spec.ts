@@ -242,4 +242,42 @@ describe('SupportSessionService', () => {
       expect(h.service.denial()).toBeNull();
     });
   });
+  describe('ensureRestored (route guard)', () => {
+    it('restores the session of the selected despacho and shares the request with the context effect', async () => {
+      const h = setup(roleA);
+      h.despacho.select({ id: 'd1', name: 'Fincas García' });
+      const restored = h.service.ensureRestored();
+      TestBed.tick();
+      h.http.expectOne(`${API}/support-sessions/active`).flush([makeSession()]);
+      await restored;
+      expect(h.service.active()?.id).toBe('s1');
+      h.http.verify();
+    });
+
+    it('resolves at once without a despacho, for other roles or with the session already active', async () => {
+      const b = setup(roleB);
+      await b.service.ensureRestored();
+      b.http.verify();
+    });
+  });
+
+  describe('lost', () => {
+    it('is bumped when the session is ended, rejected by the API or expires, not when the despacho changes', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      const h = setup(roleA);
+      h.despacho.select({ id: 'd1', name: 'Fincas García' });
+      TestBed.tick();
+      h.http.expectOne(`${API}/support-sessions/active`).flush([makeSession({ expiresAt: new Date(Date.now() + 1000).toISOString() })]);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(h.service.active()).not.toBeNull();
+      const before = h.service.lost();
+
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(h.service.active()).toBeNull();
+      expect(h.service.lost()).toBe(before + 1);
+
+      expect(h.service.handleForbidden(SUPPORT_MESSAGES.invalidSession)).toBe(true);
+      expect(h.service.lost()).toBe(before + 1);
+    });
+  });
 });

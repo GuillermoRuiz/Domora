@@ -12,14 +12,14 @@ import type { AppRole, AuthenticatedUser } from '../auth/auth.types';
 import { DespachoResolverService, isUuid, type DespachoTarget } from './despacho-resolver.service';
 import { StaffAuditService, type StaffAuditEntry } from './staff-audit.service';
 import { SupportSessionsService } from './support-sessions.service';
-import { classifyRoute, isReadOnlyRequest, routeTemplate } from './route-scope';
+import { classifyRoute, isDespachoListRead, isReadOnlyRequest, routeTemplate } from './route-scope';
 
 /** Header carrying the id of the caller's active support session. */
 export const SUPPORT_SESSION_HEADER = 'x-support-session';
 
 export const SUPPORT_MESSAGES = {
   noSession:
-    'Estás en modo consulta. Para modificar datos de un despacho inicia una sesión de soporte.',
+    'Para ver o modificar datos de un despacho inicia una sesión de soporte.',
   invalidSession:
     'La sesión de soporte no es válida, ha terminado o ha caducado. Inicia una nueva.',
   otherDespacho:
@@ -40,9 +40,13 @@ interface GuardedRequest {
 
 /**
  * Global guard, registered right after RolesGuard (odd/tasks/role-a-panel.md
- * S5): role A is read-only on tenant routes unless it works inside an
+ * S5): role A only reaches tenant routes, to read or to write, inside an
  * explicit support session of the target despacho, and every role A request
- * to a tenant route is audited (reads, writes and denials).
+ * to a tenant route is audited (reads, writes and denials). A read whose
+ * despacho cannot be resolved (no record in the path, no `?administratorId=`)
+ * is allowed inside any valid session and audited without a despacho, except
+ * the estate listings, which must name the despacho; a write in that
+ * situation is denied.
  *
  * Roles B and C, anonymous requests and role A on platform or self routes
  * pass straight through: no lookup, no audit row.
@@ -74,34 +78,34 @@ export class SupportAccessGuard implements CanActivate {
     const method = req.method.toUpperCase();
     const target = await this.resolver.resolve(route, req.params ?? {});
     const base = { staffUserId: user.id, method, route };
-
-    if (isReadOnlyRequest(method, route)) {
-      const queried = req.query?.administratorId;
-      await this.recordOrFail({
-        ...base,
-        administratorId: target?.administratorId ?? (isUuid(queried) ? queried : null),
-        estateId: target?.estateId ?? null,
-        supportSessionId: null,
-        action: 'read',
-      });
-      return true;
-    }
+    const readOnly = isReadOnlyRequest(method, route);
+    const queried = req.query?.administratorId;
+    // Reads scoped by `?administratorId=` (estate lists) name their despacho in the query.
+    const administratorId =
+      target?.administratorId ?? (readOnly && isUuid(queried) ? queried : null);
 
     const header = req.headers[SUPPORT_SESSION_HEADER];
     const sessionId = Array.isArray(header) ? header[0] : header;
     if (!sessionId) return this.deny(base, target, null, SUPPORT_MESSAGES.noSession);
     const session = isUuid(sessionId) ? await this.sessions.findValid(sessionId, user.id) : null;
     if (!session) return this.deny(base, target, null, SUPPORT_MESSAGES.invalidSession);
-    if (!target) return this.deny(base, target, session.id, SUPPORT_MESSAGES.unresolved);
-    if (target.administratorId !== session.administratorId) {
+    if (!readOnly && !target) {
+      return this.deny(base, target, session.id, SUPPORT_MESSAGES.unresolved);
+    }
+    // Estate listings without `?administratorId=` would return every despacho (a malformed one is the
+    // controller's 400).
+    if (readOnly && isDespachoListRead(route) && queried === undefined) {
+      return this.deny(base, target, session.id, SUPPORT_MESSAGES.unresolved);
+    }
+    if (administratorId && administratorId !== session.administratorId) {
       return this.deny(base, target, session.id, SUPPORT_MESSAGES.otherDespacho);
     }
     await this.recordOrFail({
       ...base,
-      administratorId: target.administratorId,
-      estateId: target.estateId,
+      administratorId,
+      estateId: target?.estateId ?? null,
       supportSessionId: session.id,
-      action: 'write',
+      action: readOnly ? 'read' : 'write',
     });
     return true;
   }

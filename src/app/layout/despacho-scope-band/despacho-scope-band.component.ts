@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { DespachoContextService } from '../../core/despacho-context.service';
@@ -7,8 +7,10 @@ import { SupportSessionDialogComponent } from '../support-session-dialog/support
 
 /**
  * Fixed band of role A while it looks at one despacho (odd/tasks/role-a-panel.md S1, S5):
- * «Viendo: <despacho> · Salir» in read-only mode, and a warning style while a support session is
+ * «Viendo: <despacho> · Salir» on the role A screens, and a warning style while a support session is
  * open. Also surfaces the support denials (403) of the API with the offer to start support mode.
+ * Role B screens are only reachable inside a session: when it ends, expires or the API rejects it,
+ * the user goes back to the despacho ficha.
  */
 @Component({
   selector: 'app-despacho-scope-band',
@@ -29,6 +31,20 @@ export class DespachoScopeBandComponent {
   readonly dialogOpen = signal(false);
   readonly ending = signal(false);
   readonly endError = signal<string | null>(null);
+
+  constructor() {
+    let seen = this.support.lost();
+    effect(() => {
+      const lost = this.support.lost();
+      if (lost === seen) return;
+      seen = lost;
+      untracked(() => {
+        const despacho = this.despacho();
+        if (!this.router.url.startsWith('/b/')) return;
+        void this.router.navigate(despacho ? ['/a/admins', despacho.id] : ['/a/admins']);
+      });
+    });
+  }
 
   /** «Reiniciar» when the user already had a session that the API no longer accepts. */
   readonly startLabel = computed(() =>

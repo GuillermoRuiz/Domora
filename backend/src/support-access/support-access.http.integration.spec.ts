@@ -54,6 +54,10 @@ function auditRows(staffUserId: string) {
   return prisma.staffAuditLog.findMany({ where: { staffUserId }, orderBy: { occurredAt: 'asc' } });
 }
 
+async function readRows(staffUserId: string) {
+  return (await auditRows(staffUserId)).filter((r) => r.action === 'read');
+}
+
 async function startSession(token: string, administratorId: string): Promise<string> {
   const res = await request(app.getHttpServer())
     .post(`${API}/support-sessions`)
@@ -123,12 +127,25 @@ afterAll(async () => {
 });
 
 describe('role A on tenant routes', () => {
-  it('reads (200) and the read is audited with the route template and despacho', async () => {
+  it('cannot read without a support session (403) and the denial is audited', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`${API}/estates/${estateX}/cost-centres`)
+      .set(auth(tokenA))
+      .expect(403);
+    expect(res.body.message).toBe(SUPPORT_MESSAGES.noSession);
+    const rows = await auditRows(staffId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ action: 'denied', method: 'GET', route: 'estates/:estateId/cost-centres', administratorId: X.administratorId });
+  });
+
+  it('reads (200) inside a support session of the despacho and the read is audited with the route template, despacho and session', async () => {
+    const sessionId = await startSession(tokenA, X.administratorId);
     await request(app.getHttpServer())
       .get(`${API}/estates/${estateX}/cost-centres?foo=bar`)
       .set(auth(tokenA))
+      .set('X-Support-Session', sessionId)
       .expect(200);
-    const rows = await auditRows(staffId);
+    const rows = await readRows(staffId);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       action: 'read',
@@ -136,8 +153,18 @@ describe('role A on tenant routes', () => {
       route: 'estates/:estateId/cost-centres',
       administratorId: X.administratorId,
       estateId: estateX,
-      supportSessionId: null,
+      supportSessionId: sessionId,
     });
+  });
+
+  it('cannot read another despacho with the session of this one (403)', async () => {
+    const sessionId = await startSession(tokenA, X.administratorId);
+    const res = await request(app.getHttpServer())
+      .get(`${API}/estates/${estateY}/cost-centres`)
+      .set(auth(tokenA))
+      .set('X-Support-Session', sessionId)
+      .expect(403);
+    expect(res.body.message).toBe(SUPPORT_MESSAGES.otherDespacho);
   });
 
   it('cannot write without a support session (403) and the denial is audited', async () => {
@@ -283,14 +310,20 @@ describe('Domora relation with its clients (self routes, no support session)', (
 });
 
 describe('read-only POST routes', () => {
-  it('role A previews coefficients by area without a session, audited as read', async () => {
+  it('role A previews coefficients by area inside a support session, audited as read', async () => {
     await createProperty(prisma, estateX, { builtAreaM2: '80.00' });
+    await request(app.getHttpServer())
+      .post(`${API}/estates/${estateX}/properties/coefficients/preview-by-area`)
+      .set(auth(tokenA))
+      .expect(403);
+    const sessionId = await startSession(tokenA, X.administratorId);
     const res = await request(app.getHttpServer())
       .post(`${API}/estates/${estateX}/properties/coefficients/preview-by-area`)
       .set(auth(tokenA))
+      .set('X-Support-Session', sessionId)
       .expect(201);
     expect(res.body.rows).toHaveLength(1);
-    const rows = await auditRows(staffId);
+    const rows = await readRows(staffId);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       action: 'read',
@@ -298,7 +331,7 @@ describe('read-only POST routes', () => {
       route: 'estates/:estateId/properties/coefficients/preview-by-area',
       administratorId: X.administratorId,
       estateId: estateX,
-      supportSessionId: null,
+      supportSessionId: sessionId,
     });
   });
 
@@ -365,14 +398,17 @@ describe('support sessions and audit endpoints', () => {
   });
 
   it('pages and filters the audit log by despacho and staff', async () => {
-    await request(app.getHttpServer()).get(`${API}/estates/${estateX}/cost-centres`).set(auth(tokenA)).expect(200);
-    await request(app.getHttpServer()).get(`${API}/estates/${estateY}/cost-centres`).set(auth(tokenA)).expect(200);
+    const sessionX = await startSession(tokenA, X.administratorId);
+    const sessionY = await startSession(tokenA, Y.administratorId);
+    await request(app.getHttpServer()).get(`${API}/estates/${estateX}/cost-centres`).set(auth(tokenA)).set('X-Support-Session', sessionX).expect(200);
+    await request(app.getHttpServer()).get(`${API}/estates/${estateY}/cost-centres`).set(auth(tokenA)).set('X-Support-Session', sessionY).expect(200);
     const res = await request(app.getHttpServer())
       .get(`${API}/staff-audit?administratorId=${X.administratorId}&staffUserId=${staffId}&pageSize=10`)
       .set(auth(tokenA))
       .expect(200);
-    expect(res.body.total).toBe(1);
-    expect(res.body.items[0]).toMatchObject({ estateId: estateX, action: 'read' });
+    // The start of the session of X and the read of X.
+    expect(res.body.total).toBe(2);
+    expect(res.body.items).toEqual(expect.arrayContaining([expect.objectContaining({ estateId: estateX, action: 'read' })]));
     await request(app.getHttpServer()).get(`${API}/staff-audit?administratorId=nope`).set(auth(tokenA)).expect(400);
   });
 });
@@ -408,32 +444,49 @@ describe('roles B and C are unaffected', () => {
 
 describe('despacho filter on estate listings', () => {
   it('role A lists only the estates of ?administratorId=', async () => {
+    const sessionX = await startSession(tokenA, X.administratorId);
+    const sessionY = await startSession(tokenA, Y.administratorId);
     const res = await request(app.getHttpServer())
       .get(`${API}/estates?administratorId=${X.administratorId}`)
       .set(auth(tokenA))
+      .set('X-Support-Session', sessionX)
       .expect(200);
     expect(res.body.map((e: { id: string }) => e.id)).toEqual([estateX]);
     const overview = await request(app.getHttpServer())
       .get(`${API}/estates/overview?administratorId=${Y.administratorId}&pageSize=60`)
       .set(auth(tokenA))
+      .set('X-Support-Session', sessionY)
       .expect(200);
     expect(overview.body.items.map((e: { id: string }) => e.id)).toEqual([estateY]);
-    const reads = await auditRows(staffId);
+    const reads = await readRows(staffId);
     expect(reads.map((r) => [r.route, r.administratorId])).toEqual([
       ['estates', X.administratorId],
       ['estates/overview', Y.administratorId],
     ]);
   });
 
-  it('role A without the filter still sees every despacho', async () => {
-    const res = await request(app.getHttpServer()).get(`${API}/estates`).set(auth(tokenA)).expect(200);
-    const ids = res.body.map((e: { id: string }) => e.id);
-    expect(ids).toEqual(expect.arrayContaining([estateX, estateY]));
+  it('role A cannot list estates without the filter, even inside a session (it would cross despachos)', async () => {
+    const sessionX = await startSession(tokenA, X.administratorId);
+    await request(app.getHttpServer()).get(`${API}/estates`).set(auth(tokenA)).expect(403);
+    for (const path of ['estates', 'estates/overview']) {
+      const res = await request(app.getHttpServer()).get(`${API}/${path}`).set(auth(tokenA)).set('X-Support-Session', sessionX).expect(403);
+      expect(res.body.message).toBe(SUPPORT_MESSAGES.unresolved);
+    }
+  });
+
+  it('cannot list another despacho with the session of this one', async () => {
+    const sessionX = await startSession(tokenA, X.administratorId);
+    await request(app.getHttpServer())
+      .get(`${API}/estates?administratorId=${Y.administratorId}`)
+      .set(auth(tokenA))
+      .set('X-Support-Session', sessionX)
+      .expect(403);
   });
 
   it('rejects a filter that is not a UUID', async () => {
-    await request(app.getHttpServer()).get(`${API}/estates?administratorId=nope`).set(auth(tokenA)).expect(400);
-    await request(app.getHttpServer()).get(`${API}/estates/overview?administratorId=nope`).set(auth(tokenA)).expect(400);
+    const sessionX = await startSession(tokenA, X.administratorId);
+    await request(app.getHttpServer()).get(`${API}/estates?administratorId=nope`).set(auth(tokenA)).set('X-Support-Session', sessionX).expect(400);
+    await request(app.getHttpServer()).get(`${API}/estates/overview?administratorId=nope`).set(auth(tokenA)).set('X-Support-Session', sessionX).expect(400);
   });
 
   it('keeps ignoring a malformed filter for role B, as before the despacho filter existed', async () => {
@@ -445,15 +498,17 @@ describe('despacho filter on estate listings', () => {
   });
 
   it('setup summary: role A gets the selected despacho (audited as read), nothing without it, 400 when malformed', async () => {
+    const sessionY = await startSession(tokenA, Y.administratorId);
     const res = await request(app.getHttpServer())
       .get(`${API}/estates/setup-summary?administratorId=${Y.administratorId}`)
       .set(auth(tokenA))
+      .set('X-Support-Session', sessionY)
       .expect(200);
     expect(res.body.map((s: { estateId: string }) => s.estateId)).toEqual([estateY]);
-    const empty = await request(app.getHttpServer()).get(`${API}/estates/setup-summary`).set(auth(tokenA)).expect(200);
+    const empty = await request(app.getHttpServer()).get(`${API}/estates/setup-summary`).set(auth(tokenA)).set('X-Support-Session', sessionY).expect(200);
     expect(empty.body).toEqual([]);
-    await request(app.getHttpServer()).get(`${API}/estates/setup-summary?administratorId=nope`).set(auth(tokenA)).expect(400);
-    const reads = await auditRows(staffId);
+    await request(app.getHttpServer()).get(`${API}/estates/setup-summary?administratorId=nope`).set(auth(tokenA)).set('X-Support-Session', sessionY).expect(400);
+    const reads = await readRows(staffId);
     expect(reads[0]).toMatchObject({ action: 'read', method: 'GET', route: 'estates/setup-summary', administratorId: Y.administratorId });
   });
 

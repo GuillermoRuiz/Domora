@@ -468,12 +468,32 @@ describe('common · quién la ve (miembro ACTIVO, en la base de datos)', () => {
     }
   });
 
-  it('la gestión de la finca y la plataforma la ven; la gestión de OTRA finca, no', async () => {
-    for (const who of ['manager', 'platform'] as const) {
+  it('la gestión de la finca y la plataforma (en modo soporte) la ven; la gestión de OTRA finca, no', async () => {
+    expect(
+      (await http().get(`${API}/issues/${common}`).set(auth(tokens.manager)))
+        .status,
+    ).toBe(200);
+    // La plataforma solo entra en datos de un despacho con una sesión de soporte suya.
+    expect(
+      (await http().get(`${API}/issues/${common}`).set(auth(tokens.platform)))
+        .status,
+    ).toBe(403);
+    const session = await prisma.supportSession.create({
+      data: {
+        staffUserId: platformId,
+        administratorId: adminId,
+        reason: 'Revisar una incidencia',
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
+    });
+    try {
       expect(
-        (await http().get(`${API}/issues/${common}`).set(auth(tokens[who])))
+        (await http().get(`${API}/issues/${common}`).set(auth(tokens.platform)).set('X-Support-Session', session.id))
           .status,
       ).toBe(200);
+    } finally {
+      await prisma.staffAuditLog.deleteMany({ where: { staffUserId: platformId } });
+      await prisma.supportSession.delete({ where: { id: session.id } });
     }
     const foreign = await http()
       .get(`${API}/issues/${common}`)
