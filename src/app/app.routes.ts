@@ -218,6 +218,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/incidencias-c/incidencias-c.component').then(m => m.IncidenciasCComponent)
       },
       {
+        path: 'c/juntas',
+        loadComponent: () => import('./features/juntas-c/juntas-c.component').then(m => m.JuntasCComponent)
+      },
+      {
+        path: 'c/recibos',
+        loadComponent: () => import('./features/recibos-c/recibos-c.component').then(m => m.RecibosCComponent)
+      },
+      {
         path: 'c/documentacion',
         loadComponent: () => import('./features/documentacion-c/documentacion-c.component').then(m => m.DocumentacionCComponent)
       },

@@ -62,18 +62,19 @@ describe('SidebarComponent', () => {
     http.expectNone(() => true);
   });
 
-  it('rol C abre las pestañas de la propiedad elegida y vuelve a Mi comunidad si no hay ninguna', () => {
+  it('rol C abre Juntas y Recibos y pagos en sus módulos, con o sin propiedad elegida', () => {
     const { fixture, el } = setupComponent(SidebarComponent, { user: makeUser({ role: 'C' }) });
     const scope = TestBed.inject(OwnerScopeService);
     fixture.detectChanges();
     const hrefOf = (label: string) =>
       Array.from(el.querySelectorAll<HTMLAnchorElement>('a.sidebar__item')).find(a => a.textContent?.includes(label))?.getAttribute('href');
-    expect(hrefOf('Juntas')).toBe('/c/community');
+    expect(hrefOf('Juntas')).toBe('/c/juntas');
+    expect(hrefOf('Recibos y pagos')).toBe('/c/recibos');
 
     scope.items.set([{ id: 'p1', nickname: '1ºA', estateId: 'e1', estateName: 'Residencial Plaza' } as never]);
     fixture.detectChanges();
-    expect(hrefOf('Juntas')).toBe('/c/properties/p1?tab=juntas');
-    expect(hrefOf('Recibos y pagos')).toBe('/c/properties/p1?tab=receipts');
+    expect(hrefOf('Juntas')).toBe('/c/juntas');
+    expect(hrefOf('Recibos y pagos')).toBe('/c/recibos');
   });
 
   it('rol C abre Incidencias en su página propia, con o sin propiedad elegida, y la marca activa', async () => {

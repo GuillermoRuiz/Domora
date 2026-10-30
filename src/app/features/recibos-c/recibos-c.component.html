@@ -1,0 +1,125 @@
+<app-topbar title="Recibos y pagos" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="receipts__topbar-scope">
+    @if (scope.items().length > 0) {
+      <app-community-scope-selector [groups]="scope.groups()" [selectedId]="scope.selected()?.id ?? null" [showAll]="scope.showAll()"
+        (choose)="scope.select($event)" (addProperty)="openAddProperty()"></app-community-scope-selector>
+    }
+  </div>
+</app-topbar>
+
+<div class="page-content">
+  <header class="receipts__header">
+    <h1 class="receipts__title">Recibos y pagos</h1>
+    <p class="receipts__sub">Consulta tus recibos, paga los pendientes por transferencia y adjunta el justificante.</p>
+    @if (scope.items().length > 0) {
+      <span class="receipts__chip" data-scope-chip>
+        <app-icon name="home" [size]="14"></app-icon>
+        Ámbito actual: <strong>{{ scopeName() }}</strong>
+      </span>
+    }
+  </header>
+
+  @if (scope.failed() || failed()) {
+    <app-empty-state icon="exclamation" title="No se pudieron cargar los recibos" description="Vuelve a intentarlo en unos minutos."></app-empty-state>
+  } @else if (scope.loaded() && scope.items().length === 0) {
+    <app-empty-state icon="home" title="Aún no tienes propiedades" description="Añade tu propiedad para ver sus recibos."></app-empty-state>
+  } @else {
+    <div class="receipts__summary">
+      <div class="summary-card" [class.summary-card--error]="pendingTotal() > 0" data-pending-total>
+        <div class="summary-card__label">Pendiente de pago</div>
+        <div class="summary-card__value">{{ pendingTotal() | currency:'EUR':'symbol':'1.2-2':'es' }}</div>
+        <div class="summary-card__hint">{{ pendingCount() === 0 ? 'Al día' : pendingCount() === 1 ? '1 recibo pendiente' : pendingCount() + ' recibos pendientes' }}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      @if (loading()) {
+        <p class="receipts__loading">Cargando recibos…</p>
+      } @else if (rows().length === 0) {
+        <app-empty-state icon="receipt" title="No hay recibos" description="Cuando la comunidad emita un recibo, aparecerá aquí."></app-empty-state>
+      } @else {
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Período</th>
+              @if (scope.isAll()) { <th>Propiedad</th> }
+              <th>Importe</th>
+              <th>Vencimiento</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (receipt of rows(); track receipt.id) {
+              <tr [class.row--highlight]="highlightedId() === receipt.id" [attr.data-receipt]="receipt.id">
+                <td class="td--name">{{ receipt.period }}</td>
+                @if (scope.isAll()) { <td class="td--muted">{{ propertyOf(receipt)?.nickname ?? '—' }}</td> }
+                <td>{{ receipt.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="td--muted">{{ receipt.dueDate ?? receipt.date }}</td>
+                <td><app-badge [text]="receipt.status" [variant]="receiptStatusVariant(receipt.status)"></app-badge></td>
+                <td class="receipt-actions">
+                  @if (receipt.status === 'Pagada') {
+                    @if (receipt.proofFileName) {
+                      <button type="button" class="action-btn" (click)="downloadProof(receipt)">Descargar</button>
+                    }
+                  } @else if (receipt.status !== 'Anulado') {
+                    <button type="button" class="action-btn action-btn--outline" (click)="openPay(receipt)">Pagar</button>
+                    @if (receipt.proofFileName) {
+                      <button type="button" class="action-btn action-btn--outline" (click)="downloadProof(receipt)">
+                        <app-icon name="check" [size]="12"></app-icon>
+                        Ver justificante
+                      </button>
+                    } @else {
+                      <button type="button" class="action-btn action-btn--outline" [disabled]="attachingProofId() === receipt.id" (click)="triggerAttachProof(receipt.id, proofFileInput)">
+                        Adjuntar justificante
+                      </button>
+                    }
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    @if (!scope.isAll() && scope.selected()) {
+      <div class="card reports-card">
+        <h2 class="card__title">Informes contables</h2>
+        <div class="kv-row">
+          <span>Extracto de cuenta</span>
+          <span class="actions">
+            <app-btn variant="outline" size="sm" class="statement-pdf" [disabled]="downloadingReport() === 'statement'" (clicked)="downloadStatement('pdf')">
+              <app-icon name="download" [size]="13"></app-icon>
+              PDF
+            </app-btn>
+            <app-btn variant="outline" size="sm" class="statement-xlsx" [disabled]="downloadingReport() === 'statement'" (clicked)="downloadStatement('xlsx')">
+              <app-icon name="download" [size]="13"></app-icon>
+              Excel
+            </app-btn>
+          </span>
+        </div>
+        <div class="kv-row">
+          <span>Certificado de deuda</span>
+          <span class="actions">
+            <app-btn variant="outline" size="sm" class="certificate-pdf" [disabled]="downloadingReport() === 'certificate'" (clicked)="downloadDebtCertificate()">
+              <app-icon name="download" [size]="13"></app-icon>
+              PDF
+            </app-btn>
+          </span>
+        </div>
+      </div>
+    }
+  }
+
+  <input #proofFileInput type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onProofFileChange($event)" />
+</div>
+
+@if (payTarget(); as target) {
+  <app-transfer-instructions-modal [iban]="target.iban" [estateName]="target.estateName" [amount]="target.amount" [concept]="target.concept" (closed)="closePay()">
+  </app-transfer-instructions-modal>
+}
+
+@if (toastMessage()) {
+  <div class="toast" role="status">{{ toastMessage() }}</div>
+}

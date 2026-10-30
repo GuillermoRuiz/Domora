@@ -6,6 +6,7 @@ import { MeetingsService } from '../../core/meetings.service';
 import { ResourceReadsService } from '../../core/resource-reads.service';
 import { OwnerScopeService } from '../../core/owner-scope.service';
 import { OWNER_DOCUMENTS_ROUTE, OWNER_ISSUES_ROUTE, ownerDocumentQueryParams, ownerIssueQueryParams } from '../../core/legacy-owner-tab-redirect';
+import { OWNER_ACTIVITY_ROUTE, OWNER_MEETINGS_ROUTE, OWNER_MESSAGES_ROUTE, OWNER_RECEIPTS_ROUTE, ownerPropertyCommands } from '../../core/owner-routes';
 import { StateService } from '../../core/state.service';
 import { TopbarComponent } from '../../layout/topbar/topbar.component';
 import { BtnComponent } from '../../shared/components/btn/btn.component';
@@ -92,11 +93,16 @@ export class CommunityCComponent {
   }
 
   /**
-   * Cada ficha lleva a su sección de la propiedad que se está viendo. En «Todas»,
-   * si la sección no es de una propiedad concreta, se abre el selector para elegirla.
+   * Recibos y juntas tienen su propio módulo (en la propiedad dada, o en el ámbito que haya); las reservas son una
+   * pestaña de la propiedad que se está viendo y, en «Todas», sin una propiedad concreta, se abre el selector.
    */
   openSection(section: KpiTarget | EventSection, propertyId = this.scope.selected()?.id ?? null): void {
-    if (propertyId) void this.router.navigate(['/c/properties', propertyId], { queryParams: { tab: section } });
+    if (section === 'receipts' || section === 'juntas') {
+      const route = section === 'receipts' ? OWNER_RECEIPTS_ROUTE : OWNER_MEETINGS_ROUTE;
+      void this.router.navigate([route], { queryParams: propertyId ? { propertyId } : {} });
+      return;
+    }
+    if (propertyId) void this.router.navigate(ownerPropertyCommands(propertyId), { queryParams: { tab: section } });
     else if (this.scope.isAll()) this.selector()?.openPanel();
   }
 
@@ -106,19 +112,12 @@ export class CommunityCComponent {
     return this.scope.isAll() || !estateId ? {} : { estateId };
   }
 
-  /** En «Todas», el próximo recibo y la próxima junta saben de qué propiedad (o finca) son. */
+  /** Cada indicador abre su módulo, en el mismo ámbito («Todas» incluida). */
   openKpi(target: KpiTarget): void {
-    // Incidencias y documentos tienen su propio módulo: no hace falta ninguna propiedad. Las incidencias se
-    // acotan a la comunidad en la que se está.
+    // Las incidencias se acotan a la comunidad en la que se está.
     if (target === 'issues') return void this.router.navigate([OWNER_ISSUES_ROUTE], { queryParams: this.issuesScope() });
     if (target === 'documents') return void this.router.navigate([OWNER_DOCUMENTS_ROUTE], { queryParams: { onlyNew: '1' } });
-    const overview = this.vm.overview();
-    if (this.scope.isAll() && target === 'receipts') return this.openSection(target, overview?.nextReceipt?.propertyId ?? null);
-    if (this.scope.isAll() && target === 'juntas') {
-      const estateId = overview?.nextMeeting?.estateId;
-      return this.openSection(target, this.scope.items().find(p => !!estateId && p.estateId === estateId)?.id ?? null);
-    }
-    this.openSection(target);
+    this.openSection(target, this.scope.isAll() ? null : this.scope.selected()?.id ?? null);
   }
 
   /** Un evento lleva a su sección de la propiedad; las revisiones de instalaciones no tienen pantalla propia. */
@@ -128,10 +127,10 @@ export class CommunityCComponent {
 
   /** «Ver todas» de la actividad. */
   openActivityFeed(): void {
-    void this.router.navigate(['/c/activity']);
+    void this.router.navigate([OWNER_ACTIVITY_ROUTE]);
   }
 
-  /** Una incidencia o un documento se abren en su página; un recibo, en la pestaña de la propiedad. */
+  /** Una incidencia, un documento o un recibo se abren en su módulo. */
   openActivityItem(item: ActivityItem): void {
     if (item.type === 'incidencia') {
       void this.router.navigate([OWNER_ISSUES_ROUTE], { queryParams: ownerIssueQueryParams(item.id) });
@@ -141,7 +140,7 @@ export class CommunityCComponent {
       void this.router.navigate([OWNER_DOCUMENTS_ROUTE], { queryParams: ownerDocumentQueryParams(item.id) });
       return;
     }
-    void this.router.navigate(['/c/properties', item.propertyId], { queryParams: { tab: 'receipts' } });
+    void this.router.navigate([OWNER_RECEIPTS_ROUTE], { queryParams: item.propertyId ? { propertyId: item.propertyId } : {} });
   }
 
   /** Aviso de una descarga que ha fallado (se quita al cambiar de propiedad o al volver a intentarlo). */
@@ -165,7 +164,7 @@ export class CommunityCComponent {
         void this.router.navigate([OWNER_ISSUES_ROUTE], { queryParams: { new: '1', ...this.issuesScope() } });
         break;
       case 'message':
-        void this.router.navigate(['/c/messages']);
+        void this.router.navigate([OWNER_MESSAGES_ROUTE]);
         break;
       case 'receipts':
         this.openSection('receipts');
@@ -198,7 +197,7 @@ export class CommunityCComponent {
   /** «Ver detalles»: la ficha completa de la propiedad elegida. */
   openPropertyDetails(): void {
     const propertyId = this.scope.selected()?.id;
-    if (propertyId) void this.router.navigate(['/c/properties', propertyId]);
+    if (propertyId) void this.router.navigate(ownerPropertyCommands(propertyId));
   }
 
   /** Pago en curso: el modal de instrucciones de transferencia. */

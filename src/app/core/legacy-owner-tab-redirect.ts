@@ -1,19 +1,24 @@
 import { inject } from '@angular/core';
 import { Router, type CanActivateFn } from '@angular/router';
 
-/** The owner issues page. */
-export const OWNER_ISSUES_ROUTE = '/c/incidencias';
-/** The owner documents page. */
-export const OWNER_DOCUMENTS_ROUTE = '/c/documentacion';
+import { OWNER_DOCUMENTS_ROUTE, OWNER_ISSUES_ROUTE, OWNER_MEETINGS_ROUTE, OWNER_RECEIPTS_ROUTE } from './owner-routes';
+
+export { OWNER_DOCUMENTS_ROUTE, OWNER_ISSUES_ROUTE };
 
 /**
- * The owner's property detail no longer has issues or documents tabs: old links land on their own pages.
+ * The owner's property detail no longer has issues, documents, receipts or meetings tabs: old links land on their own pages.
  * - `?tab=issues` (with `&action=new` or `&issue=<id>`) → the issues page, opening the creation modal or that issue.
  * - `?tab=documents` (with `&doc=<id>`) → the documents page, opening that document.
+ * - `?tab=receipts` → the receipts page, on that property.
+ * - `?tab=juntas` → the meetings page, on that property.
  */
 export const legacyOwnerTabRedirect: CanActivateFn = (route) => {
   const params = route.queryParamMap;
   const tab = params.get('tab');
+  const propertyId = route.paramMap.get('id');
+  if ((tab === 'receipts' || tab === 'juntas') && propertyId) {
+    return inject(Router).createUrlTree([tab === 'receipts' ? OWNER_RECEIPTS_ROUTE : OWNER_MEETINGS_ROUTE], { queryParams: { propertyId } });
+  }
   if (tab === 'issues') {
     const issueId = params.get('issue');
     const queryParams = issueId ? { issue: issueId } : params.get('action') === 'new' ? { new: '1' } : {};

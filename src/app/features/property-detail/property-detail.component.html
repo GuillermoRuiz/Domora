@@ -129,34 +129,6 @@
             </div>
           </div>
 
-          <div class="card datos-card reports-card">
-            <h4 class="card__title">Informes contables</h4>
-            <div class="kv-table">
-              <div class="kv-row">
-                <span>Extracto de cuenta</span>
-                <span class="actions">
-                  <app-btn variant="outline" size="sm" class="statement-pdf" [disabled]="downloadingReport() === 'statement'" (clicked)="downloadStatement('pdf')">
-                    <app-icon name="download" [size]="13"></app-icon>
-                    PDF
-                  </app-btn>
-                  <app-btn variant="outline" size="sm" class="statement-xlsx" [disabled]="downloadingReport() === 'statement'" (clicked)="downloadStatement('xlsx')">
-                    <app-icon name="download" [size]="13"></app-icon>
-                    Excel
-                  </app-btn>
-                </span>
-              </div>
-              <div class="kv-row">
-                <span>Certificado de deuda</span>
-                <span class="actions">
-                  <app-btn variant="outline" size="sm" class="certificate-pdf" [disabled]="downloadingReport() === 'certificate'" (clicked)="downloadDebtCertificate()">
-                    <app-icon name="download" [size]="13"></app-icon>
-                    PDF
-                  </app-btn>
-                </span>
-              </div>
-            </div>
-          </div>
-
           <div class="card comms-card">
             <div class="card__header-row">
               <h4 class="card__title">Últimas comunicaciones</h4>
@@ -180,6 +152,7 @@
               <h4 class="card__title">Pago pendiente</h4>
               <div class="sidebar-card__amount">{{ property?.balance | currency:'EUR':'symbol':'1.2-2':'es' }}</div>
               <button class="action-btn action-btn--outline" (click)="openPayBalance()">Pagar ahora</button>
+              <button class="link-btn" data-action="open-receipts" (click)="openReceipts()">Ver recibos y pagos</button>
             </div>
           }
           @if (property?.nextEvent) {
@@ -238,54 +211,6 @@
         </div>
       </div>
     }
-
-    <!-- Receipts -->
-    @if (activeTab() === 'receipts') {
-      <div class="card">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Período</th>
-              <th>Importe</th>
-              <th>Vencimiento</th>
-              <th>Estado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (receipt of receipts(); track receipt.id) {
-              <tr>
-                <td class="td--name">{{ receipt.period }}</td>
-                <td>{{ receipt.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                <td class="td--muted">{{ receipt.dueDate ?? receipt.date }}</td>
-                <td><span class="status-dot" [class.status-dot--green]="receipt.status === 'Pagada'" [class.status-dot--warning]="receipt.status === 'Pendiente'" [class.status-dot--error]="receipt.status === 'Devuelto'"></span><app-badge [text]="receipt.status" [variant]="receiptStatusVariant(receipt.status)"></app-badge></td>
-                <td class="receipt-actions">
-                  @if (receipt.status === 'Pagada') {
-                    @if (receipt.proofFileName) {
-                      <button class="action-btn" (click)="downloadProof(receipt)">Descargar</button>
-                    }
-                  } @else {
-                    <button class="action-btn action-btn--outline" (click)="openPayReceipt(receipt)">Pagar</button>
-                    @if (receipt.proofFileName) {
-                      <button class="action-btn action-btn--outline" (click)="downloadProof(receipt)">
-                        <app-icon name="check" [size]="12"></app-icon>
-                        Ver justificante
-                      </button>
-                    } @else {
-                      <button class="action-btn action-btn--outline" [disabled]="attachingProofId() === receipt.id" (click)="triggerAttachProof(receipt.id, proofFileInput)">
-                        Adjuntar justificante
-                      </button>
-                    }
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-
-    <input #proofFileInput type="file" style="display: none;" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onProofFileChange($event)" />
 
     <!-- Communications -->
     @if (activeTab() === 'communications') {
@@ -474,18 +399,6 @@
       }
     }
 
-    <!-- Juntas -->
-    @if (activeTab() === 'juntas') {
-      @if (property?.estateId; as estateId) {
-        <app-juntas-section [estateId]="estateId" [propertyId]="property!.id"></app-juntas-section>
-      } @else {
-        <div class="empty-state">
-          <app-icon name="users" [size]="28"></app-icon>
-          <h3>Sin finca vinculada</h3>
-          <p>Esta propiedad no está vinculada a ninguna finca, así que no tiene juntas de propietarios.</p>
-        </div>
-      }
-    }
   </div>
 </div>
 

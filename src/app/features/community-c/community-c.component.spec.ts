@@ -203,7 +203,7 @@ describe('CommunityCComponent: fichas de la propiedad elegida', () => {
     expect(h.el.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('cada ficha lleva a su sección: «Solicitudes abiertas» a la página de incidencias, el recibo a la ficha de la propiedad elegida', async () => {
+  it('cada ficha lleva a su módulo: «Solicitudes abiertas» a Incidencias, el recibo a Recibos y pagos en la propiedad elegida', async () => {
     const scope = fakeScope([P1, P2], { selectedId: 'p2' });
     mount(scope);
     await flush('p2', overview('p2'));
@@ -211,7 +211,7 @@ describe('CommunityCComponent: fichas de la propiedad elegida', () => {
     (h.el.querySelector('[data-kpi="requests"]') as HTMLElement).click();
     (h.el.querySelector('[data-kpi="receipt"]') as HTMLElement).click();
     expect(navigate).toHaveBeenNthCalledWith(1, ['/c/incidencias'], { queryParams: { estateId: 'e2' } });
-    expect(navigate).toHaveBeenNthCalledWith(2, ['/c/properties', 'p2'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenNthCalledWith(2, ['/c/recibos'], { queryParams: { propertyId: 'p2' } });
   });
 
   it('sin propiedades no pide nada ni enseña fichas', async () => {
@@ -370,12 +370,12 @@ describe('CommunityCComponent: recibos y pagos', () => {
     expect(h.el.querySelector('app-transfer-instructions-modal')).not.toBeNull();
   });
 
-  it('«Ver todos» abre la pestaña de recibos de la propiedad elegida', async () => {
+  it('«Ver todos» abre Recibos y pagos en la propiedad elegida', async () => {
     mount(fakeScope([P1], { selectedId: 'p1' }));
     await flushReceipts([raw('r1')]);
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('app-community-receipts .section-card__action') as HTMLButtonElement).click();
-    expect(navigate).toHaveBeenCalledWith(['/c/properties', 'p1'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenCalledWith(['/c/recibos'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('si falla la carga de recibos lo dice sin romper el resto', async () => {
@@ -453,7 +453,7 @@ describe('CommunityCComponent: actividad y eventos', () => {
     (h.el.querySelector('[data-activity="receipt:r1"]') as HTMLButtonElement).click();
     expect(navigate).toHaveBeenNthCalledWith(1, ['/c/incidencias'], { queryParams: { issue: 'i1' } });
     expect(navigate).toHaveBeenNthCalledWith(2, ['/c/incidencias'], { queryParams: {} });
-    expect(navigate).toHaveBeenNthCalledWith(3, ['/c/properties', 'p1'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenNthCalledWith(3, ['/c/recibos'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('abrir una actividad de documento lo abre en la página de Documentación', async () => {
@@ -482,7 +482,7 @@ describe('CommunityCComponent: actividad y eventos', () => {
     (h.el.querySelector('[data-event="revision:x"]') as HTMLButtonElement).click();
     expect(navigate).not.toHaveBeenCalled();
     (h.el.querySelector('[data-event="junta:1"]') as HTMLButtonElement).click();
-    expect(navigate).toHaveBeenCalledWith(['/c/properties', 'p1'], { queryParams: { tab: 'juntas' } });
+    expect(navigate).toHaveBeenCalledWith(['/c/juntas'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('si fallan los eventos o la actividad lo dice en su tarjeta sin romper las demás', async () => {
@@ -606,7 +606,7 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
     quick('receipts').click();
     expect(navigate).toHaveBeenNthCalledWith(1, ['/c/incidencias'], { queryParams: { new: '1', estateId: 'e1' } });
     expect(navigate).toHaveBeenNthCalledWith(2, ['/c/messages']);
-    expect(navigate).toHaveBeenNthCalledWith(3, ['/c/properties', 'p1'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenNthCalledWith(3, ['/c/recibos'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('«Descargar acta» baja el acta de la última junta celebrada que la tiene (no de una convocada, ni sin acta)', async () => {
@@ -729,12 +729,14 @@ describe('CommunityCComponent: todas mis propiedades', () => {
     expect(scope.select).toHaveBeenCalledWith('p2');
   });
 
-  it('una ficha que necesita una propiedad abre el selector para elegirla', async () => {
+  it('la próxima junta abre Juntas en «Todas», sin pedir propiedad', async () => {
     mount();
     await flushAll();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('[data-kpi="meeting"]') as HTMLButtonElement).click();
     h.fixture.detectChanges();
-    expect(h.el.querySelector('.scope__panel')).not.toBeNull();
+    expect(navigate).toHaveBeenCalledWith(['/c/juntas'], { queryParams: {} });
+    expect(h.el.querySelector('.scope__panel')).toBeNull();
   });
 
   it('«Solicitudes abiertas» y «Nueva incidencia» van a la página de incidencias sin pedir propiedad', async () => {
@@ -764,12 +766,12 @@ describe('CommunityCComponent: todas mis propiedades', () => {
     expect(h.el.querySelector('.scope__panel')).toBeNull();
   });
 
-  it('el próximo recibo lleva a los recibos de la propiedad a la que pertenece', async () => {
+  it('el próximo recibo abre Recibos y pagos en «Todas»', async () => {
     mount();
     await flushAll();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('[data-kpi="receipt"]') as HTMLButtonElement).click();
-    expect(navigate).toHaveBeenCalledWith(['/c/properties', 'p2'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenCalledWith(['/c/recibos'], { queryParams: {} });
   });
 
   it('elegir después una propiedad vuelve a sus fichas', async () => {

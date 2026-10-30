@@ -1,0 +1,20 @@
+:host { display: block; min-width: 0; }
+.page-content { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+@media (max-width: 520px) { .page-content { padding: 16px; } }
+
+.juntas__topbar-scope { display: flex; align-items: center; min-width: 0; max-width: 340px; }
+
+.juntas__header { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.juntas__title { margin: 0; font-size: 32px; font-weight: 700; line-height: 1.15; color: var(--color-text); }
+.juntas__sub { margin: 0; font-size: 16px; color: var(--color-muted); }
+@media (max-width: 520px) { .juntas__title { font-size: 25px; } }
+.juntas__chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin-top: 8px; padding: 6px 12px; font-size: 13px; color: var(--color-muted); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.juntas__chip strong { color: var(--color-text); }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.juntas__block { padding: 0 18px 18px; }
+.juntas__block-title { margin: 0; padding-top: 16px; font-size: 13px; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.04em; }

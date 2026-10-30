@@ -51,6 +51,8 @@ interface JuntaRow {
 export class JuntasSectionComponent implements OnInit {
   @Input({ required: true }) estateId!: string;
   @Input({ required: true }) propertyId!: string;
+  /** Junta a resaltar (enlace `?meeting=<id>` de un aviso). */
+  @Input() highlightMeetingId: string | null = null;
 
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly meetingsSvc = inject(MeetingsService);

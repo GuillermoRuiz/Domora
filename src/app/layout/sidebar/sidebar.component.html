@@ -63,8 +63,7 @@
           <a
             class="sidebar__item"
             [routerLink]="item.route"
-            [queryParams]="item.queryParams"
-            [routerLinkActive]="item.inactive ? '' : 'sidebar__item--active'"
+            routerLinkActive="sidebar__item--active"
             (click)="state.closeSidebar()"
           >
             <app-icon [name]="item.icon" [size]="16"></app-icon>

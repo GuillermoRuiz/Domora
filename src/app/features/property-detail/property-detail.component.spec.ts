@@ -8,7 +8,7 @@ import { PropertyDetailComponent } from './property-detail.component';
 import { StateService } from '../../core/state.service';
 import type {
   OwnerProperty, PropertyView, Amenity, Booking, Communication,
-  StaffDirectoryEntry, AccountingReceipt, Estate, User,
+  StaffDirectoryEntry, Estate, User,
 } from '../../core/models';
 import type { AuthenticatedUser } from '../../core/auth.service';
 
@@ -85,15 +85,6 @@ function makeStaff(overrides: Partial<StaffDirectoryEntry> = {}): StaffDirectory
   return { id: 's1', fullName: 'Pedro Portero', position: 'Conserje', phone: '600111222', email: 'pedro@x.com', schedule: 'L-V 8-15h', ...overrides };
 }
 
-function makeReceipt(overrides: Partial<AccountingReceipt> = {}): AccountingReceipt {
-  return {
-    id: 'r1', no: 'REC-001', periodKey: '2026-06', period: 'Junio 2026', owner: 'Ana García', unit: 'Piso 3A',
-    propertyId: 'p1', amount: 120, iban: 'ES1234', mandate: 'M1', concept: 'Cuota', kind: 'Cuota ordinaria',
-    status: 'Pendiente', date: '2026-06-01', dueDate: '2026-06-10', method: 'Domiciliación', manual: false,
-    ...overrides,
-  };
-}
-
 const PINNED_NOW = '2026-06-15T12:00:00Z';
 
 /** Arma el harness con una ActivatedRoute controlada y fija "hoy" a 2026-06-15 (coincide con el mes/año por defecto del mini-calendario). */
@@ -117,7 +108,6 @@ interface LoadOpts {
   userId?: string;
   property?: OwnerProperty | null;
   view?: PropertyView | null;
-  receipts?: AccountingReceipt[];
   bookings?: Booking[];
   amenities?: Amenity[];
   communications?: { items: (Communication & { read: boolean })[]; total: number; page: number; pageSize: number };
@@ -126,7 +116,7 @@ interface LoadOpts {
 
 /**
  * Flushea la secuencia de `ngOnInit`: primero property+view en paralelo,
- * luego receipts+bookings en paralelo, y SOLO si hay estateId
+ * luego las reservas del usuario, y SOLO si hay estateId
  * resuelto, un tercer Promise.all con amenities+comunicados+personal.
  * Cada eslabón necesita su propio `await settle()` — `firstValueFrom` resuelve
  * en un microtask tras el `.flush()`, así que el siguiente grupo de requests
@@ -134,7 +124,6 @@ interface LoadOpts {
  */
 async function flushInitialLoad(http: HttpTestingController, opts: LoadOpts = {}): Promise<void> {
   const id = opts.id ?? 'p1';
-  const userId = opts.userId ?? 'u1';
   const property = opts.property === undefined ? makeProperty() : opts.property;
   const view = opts.view === undefined ? makePropertyView() : opts.view;
 
@@ -142,7 +131,6 @@ async function flushInitialLoad(http: HttpTestingController, opts: LoadOpts = {}
   http.expectOne((r) => r.url === `${API}/properties/${id}/view`).flush(view);
   await settle();
 
-  http.expectOne((r) => r.url === `${API}/users/${userId}/receipts`).flush(opts.receipts ?? []);
   http.expectOne((r) => r.url === `${API}/bookings`).flush(opts.bookings ?? []);
   await settle();
 
@@ -205,11 +193,10 @@ describe('PropertyDetailComponent', () => {
       drainAndVerify(h.http);
     });
 
-    it('con estateId resuelto, carga recibos/reservas y además amenities/comunicados/personal', async () => {
+    it('con estateId resuelto, carga reservas y además amenities/comunicados/personal', async () => {
       const h = setup();
       h.fixture.detectChanges();
       await flushInitialLoad(h.http, {
-        receipts: [makeReceipt()],
         bookings: [makeBooking()],
         amenities: [makeAmenity()],
         communications: { items: [makeCommunication()], total: 1, page: 1, pageSize: 20 },
@@ -217,7 +204,6 @@ describe('PropertyDetailComponent', () => {
       });
       h.fixture.detectChanges();
 
-      expect(h.component.receipts()).toHaveLength(1);
       expect(h.component.bookings()).toHaveLength(1);
       expect(h.component.amenities()).toHaveLength(1);
       expect(h.component.communications()).toHaveLength(1);
@@ -232,7 +218,6 @@ describe('PropertyDetailComponent', () => {
       await flushInitialLoad(h.http, {
         property: makeProperty({ estateId: null }),
         view: null,
-        receipts: [makeReceipt()],
       });
       h.fixture.detectChanges();
 
@@ -244,19 +229,16 @@ describe('PropertyDetailComponent', () => {
       drainAndVerify(h.http);
     });
 
-    it('los recibos se filtran a los de esta propiedad (o sin propertyId)', async () => {
+    it('la ficha ya no tiene pestañas de Recibos ni Juntas ni pide los recibos (tienen su propio módulo)', async () => {
       const h = setup();
       h.fixture.detectChanges();
-      await flushInitialLoad(h.http, {
-        receipts: [
-          makeReceipt({ id: 'r-mio', propertyId: 'p1' }),
-          makeReceipt({ id: 'r-sin-prop', propertyId: undefined }),
-          makeReceipt({ id: 'r-otra', propertyId: 'otra-propiedad' }),
-        ],
-      });
+      await flushInitialLoad(h.http);
       h.fixture.detectChanges();
 
-      expect(h.component.receipts().map((r) => r.id).sort()).toEqual(['r-mio', 'r-sin-prop']);
+      expect(h.component.tabs().map((t) => t.id)).toEqual(['summary', 'communications', 'reservas']);
+      expect(h.el.querySelector('app-juntas-section')).toBeNull();
+      expect(h.el.querySelector('.reports-card')).toBeNull();
+      h.http.expectNone((r) => r.url.endsWith('/receipts'));
       drainAndVerify(h.http);
     });
 
@@ -274,12 +256,22 @@ describe('PropertyDetailComponent', () => {
     });
 
     it('?tab= abre directamente esa pestaña', async () => {
-      const h = setup({ query: { tab: 'receipts' } });
+      const h = setup({ query: { tab: 'communications' } });
       h.fixture.detectChanges();
       await flushInitialLoad(h.http);
       h.fixture.detectChanges();
 
-      expect(h.component.activeTab()).toBe('receipts');
+      expect(h.component.activeTab()).toBe('communications');
+      drainAndVerify(h.http);
+    });
+
+    it('?tab=reservas sin instalaciones comunes (no hay pestaña) se queda en resumen', async () => {
+      const h = setup({ query: { tab: 'reservas' } });
+      h.fixture.detectChanges();
+      await flushInitialLoad(h.http, { amenities: [] });
+      h.fixture.detectChanges();
+
+      expect(h.component.activeTab()).toBe('summary');
       drainAndVerify(h.http);
     });
 
@@ -335,6 +327,19 @@ describe('PropertyDetailComponent', () => {
 
       expect(h.component.payTarget()).toEqual({ amount: 75, concept: 'Saldo pendiente' });
       expect(h.el.querySelector('app-transfer-instructions-modal')).not.toBeNull();
+      drainAndVerify(h.http);
+    });
+
+    it('"Ver recibos y pagos" abre el módulo de Recibos en esta propiedad', async () => {
+      const h = setup();
+      h.fixture.detectChanges();
+      await flushInitialLoad(h.http, { property: makeProperty({ balance: -75 }) });
+      h.fixture.detectChanges();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+      (h.el.querySelector('[data-action="open-receipts"]') as HTMLElement).click();
+
+      expect(navigate).toHaveBeenCalledWith(['/c/recibos'], { queryParams: { propertyId: 'p1' } });
       drainAndVerify(h.http);
     });
 
@@ -398,59 +403,6 @@ describe('PropertyDetailComponent', () => {
       drainAndVerify(h.http);
     });
 
-    it('descarga el extracto de cuenta en PDF', async () => {
-      const originalCreate = URL.createObjectURL;
-      const originalRevoke = URL.revokeObjectURL;
-      URL.createObjectURL = vi.fn(() => 'blob:fake-url');
-      URL.revokeObjectURL = vi.fn();
-      try {
-        const h = setup();
-        h.fixture.detectChanges();
-        await flushInitialLoad(h.http);
-        h.fixture.detectChanges();
-
-        const btn = Array.from(h.el.querySelectorAll('.reports-card button')).find((b) => b.textContent?.includes('PDF')) as HTMLElement;
-        btn.click();
-        const req = h.http.expectOne((r) => r.url === `${API}/properties/p1/ledger-extract?format=pdf`);
-        expect(req.request.responseType).toBe('blob');
-        req.flush(new Blob(['%PDF']));
-        await settle();
-
-        expect(URL.createObjectURL).toHaveBeenCalled();
-        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:fake-url');
-        drainAndVerify(h.http);
-      } finally {
-        URL.createObjectURL = originalCreate;
-        URL.revokeObjectURL = originalRevoke;
-      }
-    });
-
-    it('descarga el certificado de deuda en PDF', async () => {
-      const originalCreate = URL.createObjectURL;
-      const originalRevoke = URL.revokeObjectURL;
-      URL.createObjectURL = vi.fn(() => 'blob:fake-url');
-      URL.revokeObjectURL = vi.fn();
-      try {
-        const h = setup();
-        h.fixture.detectChanges();
-        await flushInitialLoad(h.http);
-        h.fixture.detectChanges();
-
-        const promise = h.component.downloadDebtCertificate();
-        const req = h.http.expectOne((r) => r.url === `${API}/properties/p1/debt-certificate.pdf`);
-        expect(req.request.responseType).toBe('blob');
-        req.flush(new Blob(['%PDF']));
-        await promise;
-
-        expect(URL.createObjectURL).toHaveBeenCalled();
-        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:fake-url');
-        drainAndVerify(h.http);
-      } finally {
-        URL.createObjectURL = originalCreate;
-        URL.revokeObjectURL = originalRevoke;
-      }
-    });
-
     it('lista el personal de la finca cuando existe directorio', async () => {
       const h = setup();
       h.fixture.detectChanges();
@@ -501,98 +453,6 @@ describe('PropertyDetailComponent', () => {
       h.fixture.detectChanges();
 
       expect(h.component.activeTab()).toBe('communications');
-      drainAndVerify(h.http);
-    });
-  });
-
-  // ── Recibos ─────────────────────────────────────────────────────────
-  describe('recibos', () => {
-    async function openReceiptsTab(h: ComponentHarness<PropertyDetailComponent>, opts: LoadOpts = {}): Promise<void> {
-      h.fixture.detectChanges();
-      await flushInitialLoad(h.http, opts);
-      h.component.setTab('receipts');
-      h.fixture.detectChanges();
-    }
-
-    it('renderiza la lista de recibos con su estado', async () => {
-      const h = setup();
-      await openReceiptsTab(h, { receipts: [makeReceipt({ id: 'r1', status: 'Pendiente' }), makeReceipt({ id: 'r2', status: 'Pagada' })] });
-
-      expect(h.el.querySelectorAll('tbody tr')).toHaveLength(2);
-      drainAndVerify(h.http);
-    });
-
-    it('"Pagar" abre el modal de transferencia con el importe y concepto del recibo, y cerrarlo lo oculta', async () => {
-      const h = setup();
-      await openReceiptsTab(h, { receipts: [makeReceipt({ id: 'r1', status: 'Pendiente', amount: 45, period: 'Junio 2026' })] });
-
-      (Array.from(h.el.querySelectorAll('.receipt-actions .action-btn--outline')).find((b) => b.textContent?.includes('Pagar')) as HTMLElement).click();
-      h.fixture.detectChanges();
-
-      expect(h.component.payTarget()).toEqual({ amount: 45, concept: 'Recibo · Junio 2026' });
-      expect(h.el.querySelector('app-transfer-instructions-modal')).not.toBeNull();
-
-      h.component.closePayModal();
-      h.fixture.detectChanges();
-      expect(h.el.querySelector('app-transfer-instructions-modal')).toBeNull();
-      drainAndVerify(h.http);
-    });
-
-    it('un recibo pagado con justificante permite descargarlo', async () => {
-      const originalCreate = URL.createObjectURL;
-      const originalRevoke = URL.revokeObjectURL;
-      URL.createObjectURL = vi.fn(() => 'blob:fake-url');
-      URL.revokeObjectURL = vi.fn();
-      try {
-        const h = setup();
-        await openReceiptsTab(h, { receipts: [makeReceipt({ id: 'r1', status: 'Pagada', proofFileName: 'justificante.pdf' })] });
-
-        const btn = Array.from(h.el.querySelectorAll('.receipt-actions button')).find((b) => b.textContent?.includes('Descargar')) as HTMLElement;
-        btn.click();
-        const req = h.http.expectOne((r) => r.url === `${API}/receipts/r1/payment-proof/file`);
-        req.flush(new Blob(['contenido']));
-        await settle();
-
-        expect(URL.createObjectURL).toHaveBeenCalled();
-        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:fake-url');
-        drainAndVerify(h.http);
-      } finally {
-        URL.createObjectURL = originalCreate;
-        URL.revokeObjectURL = originalRevoke;
-      }
-    });
-
-    it('adjuntar justificante lo sube y actualiza el recibo con toast de confirmación', async () => {
-      const h = setup();
-      await openReceiptsTab(h, { receipts: [makeReceipt({ id: 'r1', status: 'Pendiente', proofFileName: null })] });
-
-      h.component.triggerAttachProof('r1', { click: () => {} } as unknown as HTMLInputElement);
-      const file = new File(['x'], 'comprobante.pdf');
-      const promise = h.component.onProofFileChange({ target: { files: [file], value: '' } } as unknown as Event);
-      const req = h.http.expectOne((r) => r.url === `${API}/receipts/r1/payment-proof` && r.method === 'POST');
-      expect(req.request.body instanceof FormData).toBe(true);
-      req.flush(makeReceipt({ id: 'r1', status: 'Pendiente', proofFileName: 'comprobante.pdf' }));
-      await promise;
-      h.fixture.detectChanges();
-
-      expect(h.component.receipts().find((r) => r.id === 'r1')?.proofFileName).toBe('comprobante.pdf');
-      expect(h.component.toastMessage()).toContain('Justificante adjuntado correctamente');
-      drainAndVerify(h.http);
-    });
-
-    it('si falla la subida del justificante, muestra un toast de error', async () => {
-      const h = setup();
-      await openReceiptsTab(h, { receipts: [makeReceipt({ id: 'r1', status: 'Pendiente', proofFileName: null })] });
-
-      h.component.triggerAttachProof('r1', { click: () => {} } as unknown as HTMLInputElement);
-      const file = new File(['x'], 'comprobante.pdf');
-      const promise = h.component.onProofFileChange({ target: { files: [file], value: '' } } as unknown as Event);
-      const req = h.http.expectOne((r) => r.url === `${API}/receipts/r1/payment-proof` && r.method === 'POST');
-      req.flush({ message: 'error' }, { status: 500, statusText: 'Server Error' });
-      await promise;
-      h.fixture.detectChanges();
-
-      expect(h.component.toastMessage()).toContain('No se pudo adjuntar el justificante');
       drainAndVerify(h.http);
     });
   });
@@ -931,7 +791,7 @@ describe('PropertyDetailComponent', () => {
       await flushInitialLoad(h.http);
       h.fixture.detectChanges();
 
-      expect(h.component.tabs().map((t) => t.id)).toEqual(['summary', 'receipts', 'communications', 'juntas', 'reservas']);
+      expect(h.component.tabs().map((t) => t.id)).toEqual(['summary', 'communications', 'reservas']);
       expect(Array.from(h.el.querySelectorAll('.tab')).some((b) => b.textContent?.includes('Documentos'))).toBe(false);
       expect(h.el.querySelector('app-owner-library')).toBeNull();
       h.http.expectNone((r) => r.url.includes('/documents') || r.url.includes('/library'));

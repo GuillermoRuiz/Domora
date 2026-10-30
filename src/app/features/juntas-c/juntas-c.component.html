@@ -1,0 +1,38 @@
+<app-topbar title="Juntas" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="juntas__topbar-scope">
+    @if (scope.items().length > 0) {
+      <app-community-scope-selector [groups]="scope.groups()" [selectedId]="scope.selected()?.id ?? null" [showAll]="scope.showAll()"
+        (choose)="scope.select($event)" (addProperty)="openAddProperty()"></app-community-scope-selector>
+    }
+  </div>
+</app-topbar>
+
+<div class="page-content">
+  <header class="juntas__header">
+    <h1 class="juntas__title">Juntas</h1>
+    <p class="juntas__sub">Vota o delega tu voto en las juntas convocadas de tu comunidad y firma las actas que te correspondan.</p>
+    @if (scope.items().length > 0) {
+      <span class="juntas__chip" data-scope-chip>
+        <app-icon name="calendar" [size]="14"></app-icon>
+        Ámbito actual: <strong>{{ scopeName() }}</strong>
+      </span>
+    }
+  </header>
+
+  @if (scope.failed()) {
+    <app-empty-state icon="exclamation" title="No se pudieron cargar tus propiedades" description="Vuelve a intentarlo en unos minutos."></app-empty-state>
+  } @else if (scope.loaded() && scope.items().length === 0) {
+    <app-empty-state icon="home" title="Aún no tienes propiedades" description="Añade tu propiedad para ver las juntas de su comunidad."></app-empty-state>
+  } @else if (scope.loaded() && blocks().length === 0) {
+    <app-empty-state icon="users" title="Sin comunidad vinculada" description="Esta propiedad no está vinculada a ninguna comunidad, así que no tiene juntas de propietarios."></app-empty-state>
+  } @else {
+    @for (block of blocks(); track block.property.id) {
+      <section class="card juntas__block" [attr.data-property]="block.property.id">
+        @if (scope.isAll()) {
+          <p class="juntas__block-title">{{ block.property.estateName }} · {{ block.property.nickname }}</p>
+        }
+        <app-juntas-section [estateId]="block.estateId" [propertyId]="block.property.id" [highlightMeetingId]="highlightedMeetingId()"></app-juntas-section>
+      </section>
+    }
+  }
+</div>

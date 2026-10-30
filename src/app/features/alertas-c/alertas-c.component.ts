@@ -6,6 +6,7 @@ import { BtnComponent } from '../../shared/components/btn/btn.component';
 import { AlertItem, AlertType } from '../../core/models';
 import { ResourceReadsService } from '../../core/resource-reads.service';
 import { OWNER_DOCUMENTS_ROUTE, OWNER_ISSUES_ROUTE } from '../../core/legacy-owner-tab-redirect';
+import { OWNER_RECEIPTS_ROUTE, ownerPropertyCommands } from '../../core/owner-routes';
 import { StateService } from '../../core/state.service';
 
 type Filter = 'all' | 'unread' | 'pago' | 'comunidad';
@@ -118,19 +119,19 @@ export class AlertasCComponent implements OnInit {
       this.router.navigate([OWNER_ISSUES_ROUTE], { queryParams: a.sourceType === 'issue' && a.sourceId ? { issue: a.sourceId } : {} });
       return;
     }
-    // Pagos y comunicados cuelgan de una propiedad concreta; una incidencia es de la comunidad y no la necesita.
-    if (!a.propertyId) return;
+    // Un pago abre Recibos y pagos (en su propiedad, si la tiene); un comunicado cuelga de una propiedad concreta.
     if (a.type === 'pago') {
-      this.router.navigate(['/c/properties', a.propertyId], { queryParams: { tab: 'receipts' } });
-    } else if (a.type === 'comunidad') {
-      this.router.navigate(['/c/properties', a.propertyId], { queryParams: { tab: 'communications' } });
+      this.router.navigate([OWNER_RECEIPTS_ROUTE], { queryParams: a.propertyId ? { propertyId: a.propertyId } : {} });
+    } else if (a.type === 'comunidad' && a.propertyId) {
+      this.router.navigate(ownerPropertyCommands(a.propertyId), { queryParams: { tab: 'communications' } });
     }
   }
 
   hasSourceLink(a: AlertItem): boolean {
     if (a.type === 'junta') return a.sourceType === 'meeting';
     if (a.type === 'incidencia') return true;
-    return !!a.propertyId && (a.type === 'pago' || a.type === 'comunidad');
+    if (a.type === 'pago') return true;
+    return !!a.propertyId && a.type === 'comunidad';
   }
 
   /**
