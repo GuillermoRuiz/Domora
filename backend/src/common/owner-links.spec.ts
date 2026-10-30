@@ -1,6 +1,8 @@
 import {
   OWNER_HOME_LINK,
+  ownerDocumentsLink,
   ownerEstateSectionLink,
+  ownerIssueLink,
   ownerMeetingsLink,
   ownerPropertyLink,
   ownerReceiptsLink,
@@ -37,5 +39,11 @@ describe('owner-links', () => {
       '/c/community?tab=communications&estateId=e1',
     );
     expect(OWNER_HOME_LINK).toBe('/c/community');
+  });
+
+  it('Incidencias y Documentación, con el elemento abierto si se indica', () => {
+    expect(ownerIssueLink('i1')).toBe('/c/incidencias?issue=i1');
+    expect(ownerDocumentsLink('d1')).toBe('/c/documentacion?doc=d1');
+    expect(ownerDocumentsLink(null)).toBe('/c/documentacion');
   });
 });

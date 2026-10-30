@@ -9,12 +9,11 @@
 
 ## Roto
 
-1. **Alertas del propietario (rol C) — 6 CTAs sin ningún handler.**
-   `src/app/features/alertas-c/alertas-c.component.html:51-70`. "Pagar ahora",
-   "Ver recibos", "Confirmar asistencia", "Ver convocatoria", "Descargar
-   documento", "Ver solicitud" — ninguno tiene `(clicked)`, ni siquiera un
-   toast. A diferencia de `alertas-b`, este componente no se tocó en el
-   commit que cableó las alertas del administrador.
+1. ~~**Alertas del propietario (rol C) — 6 CTAs sin ningún handler.**~~
+   Resuelto (revisado el 2026-10-30): todos los CTAs de
+   `src/app/features/alertas-c/alertas-c.component.html` llaman a
+   `goToSource()` y navegan a su módulo (Recibos y pagos, Juntas/sala de
+   espera, Documentación, Incidencias o la pestaña Comunicados).
 2. **"Editar" en el menú contextual de un recibo.**
    `src/app/features/accounting/recibos-tab/recibos-tab.component.ts:224`.
    Solo `showToast`, sin formulario de edición.

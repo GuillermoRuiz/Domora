@@ -1,4 +1,5 @@
 import type { Prisma } from '../prisma/client';
+import { ownerIssueLink } from '../common/owner-links';
 
 /**
  * La finca de una incidencia es `Issue.estateId` (obligatoria): una incidencia es siempre de la comunidad, nunca de una vivienda.
@@ -17,5 +18,5 @@ export function issuesOfEstate(
 
 /** A dónde lleva, en el portal del propietario, un aviso sobre la incidencia: a su módulo de Incidencias, abierta en esa incidencia. */
 export function issuePortalLink(issueId: string): string {
-  return `/c/incidencias?issue=${issueId}`;
+  return ownerIssueLink(issueId);
 }

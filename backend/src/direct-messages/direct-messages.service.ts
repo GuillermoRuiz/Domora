@@ -15,6 +15,7 @@ import {
   USER_MESSAGING_SETTINGS_DEFAULTS,
   UserMessagingSettingsValues,
 } from './user-messaging-settings.defaults';
+import { OWNER_MESSAGES_LINK } from '../common/owner-links';
 
 /** Lo que se ve en la bandeja cuando el último mensaje de una conversación se ha borrado. */
 export const DELETED_MESSAGE_PREVIEW = 'Este mensaje ha sido borrado';
@@ -523,7 +524,7 @@ export class DirectMessagesService {
       }),
     ]);
     if (!recipient) return;
-    const link = { B: '/b/messages', C: '/c/messages' };
+    const link = { B: '/b/messages', C: OWNER_MESSAGES_LINK };
     await this.notifications.notify({
       userIds: [recipient.userId],
       category: 'direct_message',

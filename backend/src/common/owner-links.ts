@@ -5,6 +5,24 @@
 
 /** Inicio del propietario: «Mi comunidad». */
 export const OWNER_HOME_LINK = '/c/community';
+export const OWNER_MESSAGES_LINK = '/c/messages';
+/** Feed de Alertas: para avisos sin pantalla propia (p. ej. inspecciones). */
+export const OWNER_ALERTS_LINK = '/c/alerts';
+
+/**
+ * Las rutas del portal a las que puede llevar un aviso. El test de contrato comprueba que ningún
+ * otro fichero escribe un enlace `/c/…` a mano.
+ */
+export const OWNER_LINK_ROUTES = [
+  '/c/community',
+  '/c/properties',
+  '/c/incidencias',
+  '/c/documentacion',
+  '/c/juntas',
+  '/c/recibos',
+  '/c/messages',
+  '/c/alerts',
+] as const;
 
 function withQuery(
   path: string,
@@ -50,4 +68,14 @@ export function ownerEstateSectionLink(
   tab: 'communications' | 'reservas',
 ): string {
   return withQuery(OWNER_HOME_LINK, { tab, estateId });
+}
+
+/** Módulo de Incidencias, con esa incidencia abierta. */
+export function ownerIssueLink(issueId: string): string {
+  return withQuery('/c/incidencias', { issue: issueId });
+}
+
+/** Documentación, con ese documento abierto (o la página, sin él). */
+export function ownerDocumentsLink(documentId?: string | null): string {
+  return withQuery('/c/documentacion', { doc: documentId });
 }

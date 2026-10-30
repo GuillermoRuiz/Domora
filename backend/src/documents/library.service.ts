@@ -10,6 +10,7 @@ import { documentVisibleWhere } from './document-access.service';
 import { folderVisibilities, isOwnerFacing, managerOnlyFolderIds, MANAGER_ONLY_SYSTEM_KEY, staleEffectiveVisibilities, wouldCreateCycle } from './document-visibility';
 import { documentMime, fileMatchesMime } from './file-signature';
 import type { CreateFolderDto, LibraryQueryDto, UpdateDocumentDto, UpdateFolderDto, UploadDocumentDto } from './dto/library.dto';
+import { ownerDocumentsLink } from '../common/owner-links';
 
 type Tx = Prisma.TransactionClient;
 
@@ -125,7 +126,7 @@ export class LibraryService {
         const titles = entries.map((e) => e.title);
         await this.notifications.notify({
           // One document opens it in «Documentación»; several land on the page.
-          userIds, category: 'document', estateId, link: entries.length === 1 ? `/c/documentacion?doc=${entries[0].id}` : '/c/documentacion',
+          userIds, category: 'document', estateId, link: ownerDocumentsLink(entries.length === 1 ? entries[0].id : null),
           title: titles.length === 1 ? `Nuevo documento: ${titles[0]}` : `${titles.length} documentos nuevos de tu comunidad`,
           body: titles.length === 1 ? null : titles.slice(0, 5).join(' · '),
         });

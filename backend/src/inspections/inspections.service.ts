@@ -14,8 +14,10 @@ import type { CreateInspectionDto } from './dto/create-inspection.dto';
 import type { UpdateInspectionDto } from './dto/update-inspection.dto';
 import type { CreateInspectionResultDto } from './dto/create-inspection-result.dto';
 import type { CreateCorrectiveActionDto } from './dto/create-corrective-action.dto';
-import type { UpdateCorrectiveActionDto } from './dto/update-corrective-action.dto';
+import type { UpdateCorrectiveActionDto } from './dto/update-corrective-action.dto';
+
 import { dateOrNull } from '../common/date-or-null';
+import { OWNER_ALERTS_LINK } from '../common/owner-links';
 
 const DETAIL_INCLUDE = {
   asset: true,
@@ -228,7 +230,7 @@ export class InspectionsService {
       category: 'inspection',
       title: `Inspección programada: ${inspection.asset.name}`,
       body: `Se ha programado una inspección de "${inspection.asset.name}" (${inspection.inspectionType.name}) para el ${dateLabel}. Es posible que se necesite acceso o que el servicio quede interrumpido durante la visita.`,
-      link: '/c/alerts',
+      link: OWNER_ALERTS_LINK,
       estateId: inspection.estateId,
     });
   }
