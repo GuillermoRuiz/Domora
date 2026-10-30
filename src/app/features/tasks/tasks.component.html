@@ -1,0 +1,237 @@
+<app-topbar title="Tareas" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="community-heading">
+    <label class="community-heading__selector community-heading__control">
+      <app-icon class="community-control__building" name="building" [size]="18" aria-hidden="true"></app-icon>
+      <select class="community-control__label field--bare" aria-label="Comunidad" [ngModel]="filters().estateId" (ngModelChange)="changeEstate($event)">
+        <option value="">Todas mis comunidades</option>
+        @for (estate of estateOptions(); track estate.id) { <option [value]="estate.id">{{ estate.name }}</option> }
+      </select>
+      <app-icon class="community-control__chevron" name="chevron-down" [size]="14" aria-hidden="true"></app-icon>
+    </label>
+    <span class="community-heading__separator" aria-hidden="true">/</span>
+    <span class="community-heading__section">Tareas</span>
+  </div>
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Tareas</h1>
+    <p class="page-intro__subtitle">Organiza y haz seguimiento de todas las tareas de tus comunidades.</p>
+  </div>
+  <div class="page-intro__actions"><app-btn variant="primary" (clicked)="openCreate()">
+        <app-icon name="plus" [size]="14"></app-icon> Nueva tarea
+      </app-btn></div>
+</header>
+
+<div class="page-content">
+
+
+  @if (notice(); as n) {
+    <div class="notice" [class.notice--error]="n.tone === 'error'" [attr.role]="n.tone === 'error' ? 'alert' : 'status'">
+      {{ n.text }}
+      <button type="button" class="notice__close" aria-label="Cerrar aviso" (click)="notice.set(null)"><app-icon name="x" [size]="12"></app-icon></button>
+    </div>
+  }
+
+  @if (truncated()) {
+    <div class="notice notice--warn" role="status">
+      Hay muchas tareas en este periodo y solo se muestran las primeras. Usa los filtros o un periodo más corto para verlas todas.
+    </div>
+  }
+
+  <section class="controls" aria-label="Controles de tareas">
+    <div class="controls__start">
+      <label class="search">
+        <app-icon name="search" [size]="14" aria-hidden="true"></app-icon>
+        <span class="sr-only">Buscar tareas</span>
+        <input type="search" placeholder="Buscar tareas…" maxlength="100" [value]="search()" (input)="onSearch($any($event.target).value)" />
+      </label>
+    </div>
+    <div class="controls__nav">
+      <button type="button" class="nav-btn" aria-label="Periodo anterior" (click)="move(-1)"><app-icon name="chevron-left" [size]="16"></app-icon></button>
+      <div class="segmented" role="group" aria-label="Periodo">
+        <button type="button" class="segmented__btn" [class.segmented__btn--on]="view() === 'day'" [attr.aria-pressed]="view() === 'day'" (click)="setView('day')">Día</button>
+        <button type="button" class="segmented__btn" [class.segmented__btn--on]="view() === 'week'" [attr.aria-pressed]="view() === 'week'" (click)="setView('week')">Semana</button>
+        <button type="button" class="segmented__btn" [class.segmented__btn--on]="view() === 'month'" [attr.aria-pressed]="view() === 'month'" (click)="setView('month')">Mes</button>
+      </div>
+      <button type="button" class="nav-btn" aria-label="Periodo siguiente" (click)="move(1)"><app-icon name="chevron-right" [size]="16"></app-icon></button>
+      <button type="button" class="today-btn" (click)="goToday()">Hoy</button>
+      <h2 class="period" aria-live="polite">{{ period() }}</h2>
+    </div>
+    <div class="controls__end">
+      <div class="view-toggle" role="group" aria-label="Forma de ver las tareas">
+        <button type="button" aria-label="Vista tabla" title="Tabla" [attr.aria-pressed]="mode() === 'table'" (click)="setMode('table')">
+          <app-icon name="table" [size]="18" aria-hidden="true"></app-icon>
+        </button>
+        <button type="button" aria-label="Vista kanban" title="Kanban" [attr.aria-pressed]="mode() === 'kanban'" (click)="setMode('kanban')">
+          <app-icon name="kanban" [size]="18" aria-hidden="true"></app-icon>
+        </button>
+        <button type="button" aria-label="Vista calendario" title="Calendario" [attr.aria-pressed]="mode() === 'calendar'" (click)="setMode('calendar')">
+          <app-icon name="calendar" [size]="18" aria-hidden="true"></app-icon>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  @if (catalog.error()) {
+    <div class="state state--error" role="alert">
+      <app-icon name="exclamation" [size]="18" aria-hidden="true"></app-icon>
+      <div>
+        <strong>No se pudieron cargar las comunidades, el equipo y las etiquetas.</strong>
+        <p>Los filtros y el formulario de nueva tarea no funcionarán correctamente hasta que se carguen.</p>
+      </div>
+      <app-btn variant="outline" size="sm" (clicked)="catalog.load(true)">Reintentar</app-btn>
+    </div>
+  }
+
+  <app-task-filters [filters]="filters()" (filtersChange)="onFilters($event)"></app-task-filters>
+
+  @if (error()) {
+    <div class="state state--error" role="alert">
+      <app-icon name="exclamation" [size]="18" aria-hidden="true"></app-icon>
+      <div>
+        <strong>No se pudieron cargar las tareas.</strong>
+        <p>Comprueba tu conexión e inténtalo de nuevo.</p>
+      </div>
+      <app-btn variant="outline" size="sm" (clicked)="refresh()">Reintentar</app-btn>
+    </div>
+  }
+
+  <section class="content" aria-label="Tareas del periodo" (pointerdown)="trackPointer($event)" [attr.aria-busy]="loading()" [class.content--stale]="loading() && loaded()">
+    @if (showSkeleton()) {
+      <div class="skeleton-grid" aria-label="Cargando tareas" role="status">
+        @for (i of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track i) { <div class="skeleton"></div> }
+      </div>
+    } @else {
+      @if (showEmptyBanner()) {
+        <div class="empty-banner" role="status">
+          <span>No hay tareas que coincidan con estos filtros.</span>
+          <app-btn variant="outline" size="sm" (clicked)="clearFilters()">Limpiar filtros</app-btn>
+        </div>
+      }
+
+      @if (mode() === 'calendar' && upcoming().length > 0) {
+        <div class="pending" data-testid="pending-strip" role="group" aria-label="Pendientes que vencen más adelante">
+          <span class="pending__title">Pendientes</span>
+          @for (task of upcoming(); track task.occurrenceKey) {
+            <button type="button" class="pending__chip" [class]="'pending__chip pending__chip--' + task.priority.toLowerCase()" [title]="task.title" (click)="select(task)" (dblclick)="open(task)">
+              <span class="pending__text">{{ task.title }}</span>
+              <span class="pending__due">vence {{ dueLabel(task) }}</span>
+            </button>
+          }
+        </div>
+      }
+
+      @if (mode() === 'table') {
+        @if (checkedTasks().length > 0) {
+          <div class="bulk" role="toolbar" aria-label="Acciones sobre las tareas seleccionadas">
+            <span class="bulk__count" aria-live="polite">{{ checkedTasks().length }} {{ checkedTasks().length === 1 ? 'seleccionada' : 'seleccionadas' }}</span>
+            <app-dropdown class="bulk__status" label="Cambiar estado" ariaLabel="Cambiar estado de las seleccionadas" icon="refresh" [items]="statusItems" [disabled]="bulkBusy()" (selectionChange)="changeCheckedStatus($any($event.id))"></app-dropdown>
+            <app-btn variant="danger" size="sm" [disabled]="bulkBusy()" (clicked)="confirmBulkDelete.set(true)">
+              <app-icon name="trash" [size]="14"></app-icon> Eliminar
+            </app-btn>
+            <app-btn variant="ghost" size="sm" [disabled]="bulkBusy()" (clicked)="checkedKeys.set([])">Quitar selección</app-btn>
+          </div>
+        }
+        @if (items().length > 0) {
+          <app-task-table [tasks]="items()" [selectedKey]="selectedKey()" [checkedKeys]="checkedKeys()" (checkedKeysChange)="checkedKeys.set($event)" (taskSelected)="select($event)" (taskOpened)="open($event)"></app-task-table>
+        }
+      } @else if (mode() === 'kanban') {
+        <app-task-kanban [tasks]="items()" [selectedKey]="selectedKey()" (taskSelected)="select($event)" (taskOpened)="open($event)" (statusChanged)="onStatusChange($event)"></app-task-kanban>
+      } @else if (weekAsList()) {
+        <app-task-agenda-list [tasks]="calendarItems()" [selectedKey]="selectedKey()" (taskSelected)="select($event)" (taskOpened)="open($event)" (taskCompleted)="complete($event)" (taskReopened)="reopen($event)"></app-task-agenda-list>
+      } @else if (view() === 'month') {
+        <app-task-month-grid
+          [days]="range().days"
+          [anchor]="anchor()"
+          [tasks]="calendarItems()"
+          [selectedKey]="selectedKey()"
+          [maxVisible]="3"
+          (taskSelected)="select($event)" (taskOpened)="open($event)"
+          (daySelected)="openDay($event)"
+          (createOnDay)="createOnDay($event)"
+          (taskMoved)="onMoved($event)"
+          (taskHovered)="hover.set($event)"
+          (hoverEnded)="hover.set(null)"
+        ></app-task-month-grid>
+      } @else {
+        <app-task-time-grid
+          [days]="range().days"
+          [tasks]="calendarItems()"
+          [selectedKey]="selectedKey()"
+          (taskSelected)="select($event)" (taskOpened)="open($event)"
+          (slotClicked)="onSlot($event)"
+          (dayOpened)="openDay($event)"
+          (taskMoved)="onMoved($event)"
+          (taskHovered)="hover.set($event)"
+          (hoverEnded)="hover.set(null)"
+        ></app-task-time-grid>
+      }
+    }
+  </section>
+</div>
+
+@if (selected(); as task) {
+  <app-task-drawer [task]="task" (changed)="onChanged($event)" (duplicated)="onDuplicated($event)" (deleteRequested)="askDelete($event)" (closed)="closeDrawer()"></app-task-drawer>
+}
+
+@if (quickInfo(); as q) {
+  <div class="quick" role="dialog" aria-label="Resumen de la tarea" [style]="q.style">
+    <h3 class="quick__title">{{ q.task.title }}</h3>
+    <dl class="quick__meta">
+      <div><dd>{{ q.when }}</dd></div>
+      <div><dt>Asignado a</dt><dd>{{ q.task.assignee?.fullName ?? 'Sin asignar' }}</dd></div>
+    </dl>
+    <div class="quick__footer">
+      @if (q.task.type === 'INCIDENCIA' && q.task.issueId) {
+        <app-btn variant="outline" (clicked)="goToIssue(q.task)">Ir a la incidencia</app-btn>
+      }
+      <app-dropdown class="quick__actions" label="Acciones" ariaLabel="Acciones de la tarea" [cta]="true" [items]="q.actions" (selectionChange)="onQuickAction(q.task, $any($event.id))"></app-dropdown>
+    </div>
+  </div>
+}
+
+@if (creating()) {
+  <app-task-form-dialog [prefill]="prefillOf()" [defaultEstateId]="filters().estateId" (created)="onCreated($event)" (closed)="creating.set(null)"></app-task-form-dialog>
+}
+
+@if (confirmDelete(); as task) {
+  <div class="confirm-backdrop" (click)="confirmDelete.set(null)">
+    <div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-desc" appFocusTrap (click)="$event.stopPropagation()">
+      <h2 id="confirm-title">¿Eliminar esta tarea?</h2>
+      <p id="confirm-desc">
+        Se eliminará “{{ task.title }}”@if (task.recurring) { <strong> y toda su serie</strong> }, junto con sus comentarios, checklist y adjuntos. Esta acción no se puede deshacer.
+      </p>
+      <div class="confirm__actions">
+        <app-btn variant="outline" size="sm" data-autofocus [disabled]="deleting()" (clicked)="confirmDelete.set(null)">Cancelar</app-btn>
+        <app-btn variant="danger" size="sm" [disabled]="deleting()" (clicked)="confirmRemoval()">{{ deleting() ? 'Eliminando…' : 'Eliminar' }}</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (confirmBulkDelete()) {
+  <div class="confirm-backdrop" (click)="confirmBulkDelete.set(false)">
+    <div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="bulk-title" aria-describedby="bulk-desc" appFocusTrap (click)="$event.stopPropagation()">
+      <h2 id="bulk-title">¿Eliminar {{ checkedTasks().length }} {{ checkedTasks().length === 1 ? 'tarea' : 'tareas' }}?</h2>
+      <p id="bulk-desc">
+        Se eliminarán junto con sus comentarios, checklist y adjuntos@if (hasRecurringChecked()) { <strong>; las que se repiten, con toda su serie</strong> }. Esta acción no se puede deshacer.
+      </p>
+      <div class="confirm__actions">
+        <app-btn variant="outline" size="sm" data-autofocus [disabled]="bulkBusy()" (clicked)="confirmBulkDelete.set(false)">Cancelar</app-btn>
+        <app-btn variant="danger" size="sm" [disabled]="bulkBusy()" (clicked)="removeChecked()">{{ bulkBusy() ? 'Eliminando…' : 'Eliminar' }}</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (tooltip(); as tip) {
+  <div class="tooltip" role="tooltip" [style]="tip.style">
+    <strong class="tooltip__title">{{ tip.task.title }}</strong>
+    <span>{{ tip.time }}</span>
+    @if (tip.task.estate) { <span>{{ tip.task.estate.name }}</span> }
+    @if (tip.task.assignee) { <span>{{ tip.task.assignee.fullName }}</span> }
+    <span class="tooltip__meta">{{ tip.priority }} · {{ tip.type }} · {{ tip.task.overdue ? 'Vencida' : tip.status }}</span>
+  </div>
+}

@@ -1,0 +1,308 @@
+@if (!selected()) {
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <span class="kpi-card__label">Remesas 2026</span>
+      <span class="kpi-card__value">{{ remesasCount() }}</span>
+      <span class="kpi-card__sub">Generadas este año</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-card__label">Importe domiciliado YTD</span>
+      <span class="kpi-card__value">{{ fmtEur0(totalDomiciliado()) }}</span>
+      <span class="kpi-card__sub">Total cargado en cuenta</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-card__label">Tasa de devolución</span>
+      <span class="kpi-card__value kpi-card__value--warn">{{ returnRate() }}%</span>
+      <span class="kpi-card__sub">Recibos devueltos</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-card__label">Próxima remesa</span>
+      <span class="kpi-card__value">05 jun</span>
+      <span class="kpi-card__sub">Cuota ordinaria junio</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <div class="card__title">Historial de remesas</div>
+      <div class="card__actions">
+        <app-btn variant="outline" size="sm" (clicked)="showReturnsImport.set(true)">Importar devoluciones</app-btn>
+        <app-btn *appPageAction variant="primary" size="sm" (clicked)="showWizard.set(true)">Nueva remesa</app-btn>
+      </div>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Referencia</th>
+          <th>Periodo</th>
+          <th>Esquema</th>
+          <th class="th-right">Recibos</th>
+          <th class="th-right">Importe</th>
+          <th>Cargo</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of history(); track r.id) {
+          <tr class="row--clickable" (click)="open(r)">
+            <td class="td-mono">{{ r.id }}</td>
+            <td>{{ r.period }}</td>
+            <td class="td-muted">{{ r.scheme }}</td>
+            <td class="td-right">
+              {{ r.count }}
+              @if (r.returned > 0) {
+                <span class="returned-chip">{{ r.returned }} dev.</span>
+              }
+            </td>
+            <td class="td-right td-strong">{{ fmtEur(r.amount) }}</td>
+            <td class="td-muted">{{ r.charge }}</td>
+            <td>
+              <span class="status-badge" [style.background]="statusStyle(r.status).bg" [style.color]="statusStyle(r.status).fg">{{ r.status }}</span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+} @else {
+  <div class="detail">
+    <button class="back-link" (click)="back()">
+      <app-icon name="arrow-left" [size]="14"></app-icon>
+      Volver al historial
+    </button>
+
+    <div class="detail-header card">
+      <div class="detail-header__top">
+        <div>
+          <div class="detail-header__title">{{ selected()!.id }}</div>
+          <div class="detail-header__sub">{{ selected()!.period }} · Esquema {{ selected()!.scheme }}</div>
+        </div>
+        <span class="status-badge status-badge--lg" [style.background]="statusStyle(selected()!.status).bg" [style.color]="statusStyle(selected()!.status).fg">{{ selected()!.status }}</span>
+      </div>
+      <div class="detail-header__stats">
+        <div class="detail-stat">
+          <span class="detail-stat__label">Presentada</span>
+          <span class="detail-stat__value">{{ selected()!.presented }}</span>
+        </div>
+        <div class="detail-stat">
+          <span class="detail-stat__label">Cargo</span>
+          <span class="detail-stat__value">{{ selected()!.charge }}</span>
+        </div>
+        <div class="detail-stat">
+          <span class="detail-stat__label">Recibos</span>
+          <span class="detail-stat__value">{{ selected()!.count }}</span>
+        </div>
+        <div class="detail-stat">
+          <span class="detail-stat__label">Importe total</span>
+          <span class="detail-stat__value">{{ fmtEur(selected()!.amount) }}</span>
+        </div>
+        <div class="detail-stat">
+          <span class="detail-stat__label">Cobrados</span>
+          <span class="detail-stat__value">{{ selected()!.charged }}</span>
+        </div>
+      </div>
+      <div class="detail-header__actions">
+        <app-btn variant="outline" size="sm" (clicked)="downloadXml()">Descargar XML</app-btn>
+        <app-btn variant="outline" size="sm" (clicked)="viewJustificante()">Ver justificante</app-btn>
+        @if (canCollect()) {
+          <app-btn variant="outline" size="sm" (clicked)="openCancelRemesa()">Anular remesa</app-btn>
+          <app-btn variant="primary" size="sm" (clicked)="openCollect()">Marcar como cobrada</app-btn>
+        }
+      </div>
+    </div>
+
+    @if (selected()!.returned > 0) {
+      <div class="return-alert">
+        <app-icon name="exclamation" [size]="16"></app-icon>
+        <span>{{ selected()!.returned }} recibo(s) devuelto(s) por un importe de {{ fmtEur(selected()!.returnedAmount) }}. Vuelven a estar pendientes: puedes cobrarlos a mano o incluirlos en otra remesa.</span>
+      </div>
+    }
+
+    <div class="card">
+      <div class="card__header">
+        <div class="card__title">Líneas de la remesa</div>
+      </div>
+      @if (lines().length > 0) {
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Propietario</th>
+              <th>IBAN</th>
+              <th>Mandato</th>
+              <th>Secuencia</th>
+              <th class="th-right">Importe</th>
+              <th>Estado</th>
+              <th><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of lines(); track l.id) {
+              <tr>
+                <td>
+                  <div class="line-name">
+                    <app-avatar [name]="l.owner" [size]="26"></app-avatar>
+                    <div class="line-name__text">
+                      <span class="line-name__main">{{ l.owner }}</span>
+                      <span class="line-name__sub">{{ l.unit }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="td-mono td-muted">{{ l.iban }}</td>
+                <td class="td-muted">{{ l.mandate }}</td>
+                <td><span class="seq-badge">{{ l.seq }}</span></td>
+                <td class="td-right td-strong">{{ fmtEur(l.amount) }}</td>
+                <td>
+                  <span class="status-badge" [style.background]="lineStatusStyle(l.status).bg" [style.color]="lineStatusStyle(l.status).fg">{{ l.status }}</span>
+                  @if (l.returnCode) {
+                    <div class="td-muted return-reason">{{ l.returnCode }} · {{ l.returnReason }}</div>
+                  }
+                </td>
+                <td class="td-right">
+                  @if (canReturnLine(l)) {
+                    <app-btn variant="outline" size="sm" (clicked)="openReturn(l)">
+                      {{ l.status === 'Cobrado' ? 'Registrar devolución' : 'Marcar rechazado' }}
+                    </app-btn>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="td-muted">Esta remesa no tiene líneas registradas.</p>
+      }
+    </div>
+  </div>
+}
+
+@if (collectOpen()) {
+  <div class="modal-overlay" (click)="collectOpen.set(false)">
+    <div class="modal" role="dialog" aria-labelledby="collect-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Remesas · Cobro</div>
+          <h3 class="modal__title" id="collect-title">Marcar la remesa como cobrada</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">
+          Indica la fecha en que el banco abonó la remesa en la cuenta de la comunidad. Sus recibos pendientes quedan
+          pagados y se contabiliza un único abono. Si después el banco devuelve alguno, regístralo en su línea.
+        </p>
+        <div class="form-field">
+          <label class="form-label" for="collect-date">Fecha del abono</label>
+          <input id="collect-date" class="form-input" type="date" [ngModel]="collectDate()" (ngModelChange)="collectDate.set($event)" />
+        </div>
+        @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="collectOpen.set(false)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="actionSaving() || !collectDate()" (clicked)="confirmCollect()">
+          {{ actionSaving() ? 'Contabilizando…' : 'Marcar como cobrada' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (cancelOpen()) {
+  <div class="modal-overlay" (click)="cancelOpen.set(false)">
+    <div class="modal" role="dialog" aria-labelledby="cancel-remesa-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Remesas · Anular</div>
+          <h3 class="modal__title" id="cancel-remesa-title">Anular la remesa</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">
+          Hazlo solo si el fichero no se llegó a enviar o el banco no lo procesó. Sus recibos quedarán libres para otra
+          remesa. No se contabiliza nada, porque no ha entrado dinero.
+        </p>
+        @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="cancelOpen.set(false)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="actionSaving()" (clicked)="confirmCancelRemesa()">
+          {{ actionSaving() ? 'Anulando…' : 'Anular remesa' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (returningLine(); as rl) {
+  <div class="modal-overlay" (click)="returningLine.set(null)">
+    <div class="modal" role="dialog" aria-labelledby="return-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Remesas · {{ rl.owner }}</div>
+          <h3 class="modal__title" id="return-title">
+            {{ returnIsRejection() ? 'Rechazo del adeudo' : 'Devolución del adeudo' }}
+          </h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">
+          @if (returnIsRejection()) {
+            El banco no llegó a cargar {{ fmtEur(rl.amount) }}. La línea queda rechazada y el recibo, devuelto y pendiente de cobro.
+          } @else {
+            El banco devolvió {{ fmtEur(rl.amount) }}. El recibo vuelve a deber ese importe y sale de la cuenta de la comunidad.
+          }
+        </p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="return-code">Motivo SEPA</label>
+            <select id="return-code" class="form-input" [(ngModel)]="returnForm.returnCode">
+              @for (c of returnCodes; track c.code) {
+                <option [value]="c.code">{{ c.code }} · {{ c.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="return-date">Fecha del cargo</label>
+            <input id="return-date" class="form-input" type="date" [(ngModel)]="returnForm.date" />
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label" for="return-reason">Observaciones</label>
+            <input id="return-reason" class="form-input" type="text" maxlength="150" placeholder="Opcional"
+              [(ngModel)]="returnForm.returnReason" />
+          </div>
+          @if (!returnIsRejection()) {
+            <div class="form-field">
+              <label class="form-label" for="return-fee">Comisión del banco (€)</label>
+              <input id="return-fee" class="form-input" type="text" inputmode="decimal" placeholder="0,00"
+                [(ngModel)]="returnForm.feeAmount" />
+            </div>
+            <label class="form-check form-field--full" for="return-recharge">
+              <input id="return-recharge" type="checkbox" [(ngModel)]="returnForm.rechargeFee" />
+              Repercutir la comisión al propietario con un recibo (solo si lo permiten los estatutos o la junta)
+            </label>
+          }
+        </div>
+        @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="returningLine.set(null)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="actionSaving()" (clicked)="confirmReturn()">
+          {{ actionSaving() ? 'Registrando…' : (returnIsRejection() ? 'Marcar rechazado' : 'Registrar devolución') }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showReturnsImport()) {
+  <app-importar-devoluciones [estateId]="estate.id" (closed)="onReturnsImportClosed($event)"></app-importar-devoluciones>
+}
+
+@if (showWizard()) {
+  <app-nueva-remesa [estate]="estate" (closed)="onWizardClosed($event)"></app-nueva-remesa>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

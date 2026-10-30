@@ -1,0 +1,72 @@
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "properties": {
+          "signal_id": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 70
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "recommended_action": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": [
+              "issue",
+              "contract",
+              "invoice",
+              "bank",
+              "estate",
+              "event"
+            ]
+          },
+          "entity_id": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "signal_id",
+          "priority",
+          "title",
+          "explanation",
+          "recommended_action",
+          "entity_type",
+          "entity_id"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "items"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,71 @@
+<div class="login">
+  @if (checking()) {
+    <div class="login__card">
+      <h1>Domora</h1>
+      <p class="login__subtitle">Comprobando el enlace…</p>
+    </div>
+  } @else if (inviteError()) {
+    <div class="login__card">
+      <h1>Domora</h1>
+      <p class="login__error">{{ inviteError() }}</p>
+      <a routerLink="/login" class="login__demo-btn">Volver al inicio de sesión</a>
+    </div>
+  } @else {
+    <form class="login__card" (ngSubmit)="submit()">
+      <h1>Domora</h1>
+      <p class="login__subtitle">Te unes a <strong>{{ administratorName() }}</strong> como administrador</p>
+
+      <label for="invite-name">Nombre completo</label>
+      <input class="field--bare"
+        id="invite-name"
+        type="text"
+        name="fullName"
+        autocomplete="name"
+        [(ngModel)]="fullName"
+        required
+      />
+
+      <label for="invite-email">Email</label>
+      <input class="field--bare"
+        id="invite-email"
+        type="email"
+        name="email"
+        autocomplete="email"
+        [(ngModel)]="email"
+        required
+      />
+
+      <label for="invite-password">Contraseña</label>
+      <input class="field--bare"
+        id="invite-password"
+        type="password"
+        name="password"
+        autocomplete="new-password"
+        [(ngModel)]="password"
+        required
+      />
+
+      <label class="login__checkbox" for="invite-terms">
+        <input
+          id="invite-terms"
+          type="checkbox"
+          name="termsAccepted"
+          [(ngModel)]="termsAccepted"
+          required
+        />
+        <span>
+          He leído y acepto los <a routerLink="/terminos" target="_blank">Términos y Condiciones</a>
+          y la <a routerLink="/privacidad" target="_blank">Política de Privacidad</a>.
+        </span>
+      </label>
+
+      @if (submitError()) {
+        <p class="login__error">{{ submitError() }}</p>
+      }
+
+      <button type="submit" [disabled]="submitting() || !termsAccepted">
+        {{ submitting() ? 'Creando cuenta…' : 'Completar alta' }}
+      </button>
+    </form>
+  }
+</div>

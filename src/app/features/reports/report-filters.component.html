@@ -1,0 +1,46 @@
+<div class="filter-grid">
+  @if (definition.periodMode === 'range' || definition.periodMode === 'comparison') {
+    <label>Desde<input type="date" [ngModel]="value.from" (ngModelChange)="period({ from: $event })" required /></label>
+    <label>Hasta<input type="date" [ngModel]="value.to" (ngModelChange)="period({ to: $event })" required /></label>
+  }
+  @if (definition.periodMode === 'comparison') {
+    <label>Comparar desde<input type="date" [ngModel]="value.compareFrom" (ngModelChange)="period({ compareFrom: $event })" required /></label>
+    <label>Comparar hasta<input type="date" [ngModel]="value.compareTo" (ngModelChange)="period({ compareTo: $event })" required /></label>
+  }
+  @if (definition.periodMode === 'year' || definition.periodMode === 'quarter') {
+    <label>Ejercicio<input type="number" min="2000" max="2100" step="1" [ngModel]="value.fiscalYear" (ngModelChange)="period({ fiscalYear: $event })" required /></label>
+  }
+  @if (definition.periodMode === 'quarter') {
+    <label>Trimestre<select [ngModel]="value.quarter" (ngModelChange)="period({ quarter: $event })"><option [ngValue]="1">1.º trimestre</option><option [ngValue]="2">2.º trimestre</option><option [ngValue]="3">3.º trimestre</option><option [ngValue]="4">4.º trimestre</option></select></label>
+  }
+  @if (definition.periodMode === 'asOf') {
+    <div class="date-cutoff"><label for="report-as-of">Fecha de corte</label><div class="date-cutoff__control"><input id="report-as-of" type="date" [ngModel]="value.asOf" (ngModelChange)="period({ asOf: $event })" required /><button type="button" aria-label="A fecha de hoy" (click)="today()">Hoy</button></div></div>
+  }
+  @if (has('accountCode')) {
+    <label>Código de cuenta<input type="text" inputmode="numeric" pattern="[0-9]{1,10}" maxlength="10" placeholder="Ej. 572" [ngModel]="value.filters?.accountCode" (ngModelChange)="filter({ accountCode: $event })" required /></label>
+  }
+  @if (has('propertyId')) {
+    <label>Propiedad<select [disabled]="!singleEstate || optionsLoading" [ngModel]="value.filters?.propertyId || ''" (ngModelChange)="filter({ propertyId: $event || undefined })"><option value="">Todas las propiedades</option>@for (property of properties; track property.id) { <option [value]="property.id">{{ property.name }}</option> }</select>
+      @if (!singleEstate) { <span class="field-hint">Selecciona una comunidad para filtrar por propiedad.</span> }
+    </label>
+  }
+  @if (has('supplierId')) {
+    <label>Proveedor<select [disabled]="!singleEstate || optionsLoading" [ngModel]="value.filters?.supplierId || ''" (ngModelChange)="filter({ supplierId: $event || undefined })"><option value="">Todos los proveedores</option>@for (supplier of suppliers; track supplier.id) { <option [value]="supplier.id">{{ supplier.name }}</option> }</select>
+      @if (!singleEstate) { <span class="field-hint">Selecciona una comunidad para filtrar por proveedor.</span> }
+    </label>
+  }
+  @if (has('receiptKind')) {
+    <label>Tipo de recibo<select [ngModel]="value.filters?.receiptKind || ''" (ngModelChange)="filter({ receiptKind: $event || undefined })"><option value="">Todos los tipos</option>@for (kind of receiptKinds; track kind[0]) { <option [value]="kind[0]">{{ kind[1] }}</option> }</select></label>
+  }
+  @if (has('assignmentMode')) {
+    <label>Asignaciones de proveedor<select [ngModel]="value.filters?.assignmentMode || 'current'" (ngModelChange)="filter({ assignmentMode: $event })"><option value="current">Asignación actual</option><option value="history">Histórico de asignaciones</option></select></label>
+  }
+  @if (has('spendBasis')) {
+    <label>Criterio del gasto<select [ngModel]="value.filters?.spendBasis || 'invoiced'" (ngModelChange)="filter({ spendBasis: $event })"><option value="invoiced">Facturado</option><option value="accrued">Devengado</option><option value="paid">Pagado</option></select></label>
+  }
+  @if (has('days')) {
+    <label>Plazo de vencimiento (días)<input type="number" min="1" max="3650" step="1" [ngModel]="value.filters?.days ?? 30" (ngModelChange)="filter({ days: $event })" /></label>
+  }
+</div>
+@if (definition.periodMode === 'range' || definition.periodMode === 'comparison') { <p class="field-hint">Los rangos incluyen ambas fechas.</p> }
+@if (definition.key === 'monthly-executive') { <p class="field-hint">El informe ejecutivo requiere un mes natural completo, desde el primer hasta el último día del mes.</p> }

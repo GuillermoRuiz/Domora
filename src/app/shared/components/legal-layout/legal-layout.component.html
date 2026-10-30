@@ -1,0 +1,19 @@
+<div class="legal">
+  <header class="legal__header">
+    <a routerLink="/login" class="legal__brand">Domora</a>
+    <nav class="legal__nav">
+      <a routerLink="/privacidad" routerLinkActive="legal__nav-link--active">Privacidad</a>
+      <a routerLink="/aviso-legal" routerLinkActive="legal__nav-link--active">Aviso legal</a>
+      <a routerLink="/cookies" routerLinkActive="legal__nav-link--active">Cookies</a>
+      <a routerLink="/terminos" routerLinkActive="legal__nav-link--active">Términos</a>
+    </nav>
+  </header>
+
+  <main class="legal__content">
+    <h1>{{ title() }}</h1>
+    <p class="legal__updated">Última actualización: {{ updatedAt() }}</p>
+    <ng-content></ng-content>
+  </main>
+
+  <app-footer></app-footer>
+</div>

@@ -1,0 +1,69 @@
+<div class="modal-backdrop" (click)="close()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h4><app-icon name="users" [size]="16"></app-icon> Delegar voto</h4>
+      <button class="close-btn" (click)="close()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      <p class="modal__hint">
+        Escrito firmado simple, sin notario (art. 15.1 LPH). El representante no tiene por qué ser
+        propietario ni residente — solo necesita una cuenta en Domora.
+      </p>
+
+      @if (!lockedPropertyId) {
+        <label class="form-field">
+          Propiedad
+          <select [ngModel]="selectedPropertyId()" (ngModelChange)="onPropertyChange($event)">
+            <option [ngValue]="null">Selecciona una propiedad…</option>
+            @for (p of properties; track p.id) {
+              <option [ngValue]="p.id">{{ p.ref ?? p.id }}</option>
+            }
+          </select>
+        </label>
+      }
+
+      @if (!lockedDelegatorUserId && selectedPropertyId()) {
+        <label class="form-field">
+          Quién delega (titular de la propiedad)
+          <select [ngModel]="selectedDelegatorUserId()" (ngModelChange)="selectedDelegatorUserId.set($event)">
+            <option [ngValue]="null">Selecciona un titular…</option>
+            @for (d of eligibleDelegators(); track d.userId) {
+              <option [ngValue]="d.userId">{{ d.name }}</option>
+            }
+          </select>
+          @if (selectedPropertyId() && eligibleDelegators().length === 0) {
+            <span class="field-hint">Sin titulares vinculados con voto en esta propiedad.</span>
+          }
+        </label>
+      }
+
+      <label class="form-field">
+        Email del representante
+        <input type="email" placeholder="representante@ejemplo.com" [ngModel]="representativeEmail()" (ngModelChange)="representativeEmail.set($event)" />
+        <span class="field-hint">Debe tener cuenta en Domora — no hace falta que sea propietario.</span>
+      </label>
+
+      <label class="form-field">
+        Notas (opcional)
+        <textarea rows="2" [ngModel]="notes()" (ngModelChange)="notes.set($event)"></textarea>
+      </label>
+
+      <label class="form-field">
+        Escrito firmado (opcional, se puede subir más tarde)
+        <input type="file" (change)="onFileSelected($event)" />
+      </label>
+
+      @if (error()) {
+        <p class="field-error">{{ error() }}</p>
+      }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" (clicked)="close()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" [disabled]="!canSubmit() || saving()" (clicked)="submit()">
+        {{ saving() ? 'Guardando…' : 'Registrar delegación' }}
+      </app-btn>
+    </div>
+  </div>
+</div>

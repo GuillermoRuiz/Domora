@@ -1,0 +1,42 @@
+<app-section-card [title]="'Propiedades (últimas ' + (data()?.items?.length ?? 5) + ')'" [actionLabel]="actionLabel()" [padded]="false" (action)="viewAll.emit()">
+  @if (failed()) {
+    <p class="recent__message recent__message--error" role="alert">No se pudieron cargar las últimas propiedades.</p>
+  } @else if (data() === null) {
+    <p class="recent__message">Cargando…</p>
+  } @else if (rows().length === 0) {
+    <p class="recent__message">Esta finca aún no tiene propiedades.</p>
+  } @else {
+    <div class="recent__scroll">
+      <table class="recent__table">
+        <thead>
+          <tr>
+            <th scope="col">Ref.</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Titular</th>
+            <th scope="col">Estado</th>
+            <th scope="col" class="recent__num">Cuota mensual</th>
+            <th scope="col" class="recent__num">Saldo pendiente</th>
+            <th scope="col"><span class="sr-only">Acción</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.id) {
+            <tr [attr.data-property]="row.id">
+              <td class="recent__ref">{{ row.ref }}</td>
+              <td>{{ row.type }}</td>
+              <td class="recent__titular">{{ row.titular }}</td>
+              <td><app-status-pill [text]="row.status.text" [tone]="row.status.tone" [dot]="true"></app-status-pill></td>
+              <td class="recent__num">{{ row.quota }}</td>
+              <td class="recent__num" [class.recent__num--owes]="row.owes">{{ row.balance }}</td>
+              <td class="recent__action">
+                <button type="button" class="recent__open" (click)="openProperty.emit(row.id)">
+                  Ver propiedad <app-icon name="arrow-right" [size]="13"></app-icon>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</app-section-card>

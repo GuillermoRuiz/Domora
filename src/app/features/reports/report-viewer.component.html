@@ -1,0 +1,63 @@
+<app-topbar [title]="definition()?.title || 'Informe'" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="community-heading">
+    <app-report-estate-scope-selector class="community-heading__selector" [header]="true" [estates]="estates()" [value]="selection()" [single]="definition()?.scopeMode === 'single'" [disabled]="loading() || !!loadError()" (valueChange)="changeScope($event)" />
+    <span class="community-heading__separator" aria-hidden="true">/</span>
+    <nav class="community-heading__section" aria-label="Ruta de navegación">@for (crumb of breadcrumbs(); track $index; let last = $last) { <span>{{ crumb }}</span>@if (!last) { <span aria-hidden="true"> › </span> } }</nav>
+  </div>
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">{{ definition()?.title || 'Informe' }}</h1>
+    <p class="page-intro__subtitle">{{ definition()?.description || 'Configura, consulta y exporta la información de tus comunidades.' }}</p>
+  </div>
+  <div class="page-intro__actions"><app-btn [disabled]="loading() || !!loadError() || !definition() || querying() || !!exporting() || !estates().length || optionsLoading()" (clicked)="generate()"><app-icon name="chart" [size]="16" />{{ querying() ? 'Generando informe…' : result() ? 'Actualizar informe' : 'Generar informe' }}</app-btn></div>
+</header>
+<div class="reports-page">
+  @if (!loading() && !definition()) { <a class="viewer-back" routerLink="/b/reports" [queryParams]="scopeParams()" aria-label="Volver al Centro de informes" title="Volver al Centro de informes"><app-icon name="arrow-left" [size]="20" /></a> }
+  @if (loading()) {
+    <div class="report-loading" role="status" aria-busy="true"><span></span><span></span><p>Cargando informe…</p></div>
+  } @else if (loadError()) {
+    <div class="feedback-panel" role="alert"><p>{{ loadError() }}</p><app-btn variant="outline" (clicked)="load()">Reintentar</app-btn></div>
+  } @else if (definition(); as report) {
+    <div class="viewer-context"><a class="viewer-back" [routerLink]="category() ? ['/b/reports/category', category()!.key] : ['/b/reports']" [queryParams]="scopeParams()" [attr.aria-label]="'Volver a ' + (category()?.title || 'Centro de informes')" [title]="'Volver a ' + (category()?.title || 'Centro de informes')"><app-icon name="arrow-left" [size]="20" /></a><span class="viewer-sensitivity">{{ sensitivityLabels[report.sensitivity] }}</span></div>
+    <section class="report-panel viewer-configuration" aria-labelledby="report-filters-title">
+      <div class="viewer-configuration__header">
+        <h2 id="report-filters-title"><app-icon name="filter" [size]="16" /><span>Configurar informe</span></h2>
+
+      </div>
+      @if (report.periodMode !== 'none' || report.filters.length) {
+      <div class="viewer-fields" [style.--viewer-columns]="filterColumns()">
+        <app-report-filters [definition]="report" [value]="input()" [properties]="properties()" [suppliers]="suppliers()" [singleEstate]="!!singleEstate()" [optionsLoading]="optionsLoading()" (valueChange)="changeFilters($event)" />
+      </div>
+      }
+      @if (estates().length === 0) { <p class="field-hint">No tienes comunidades accesibles para generar este informe.</p> }
+      @if (optionsLoading()) { <p class="field-hint" role="status">Cargando opciones…</p> }
+      @if (optionsError()) { <div class="feedback-panel" role="alert"><p>{{ optionsError() }}</p><app-btn variant="outline" size="sm" (clicked)="loadOptions()">Reintentar filtros</app-btn></div> }
+      @if (error()) { <p class="error-text" role="alert">{{ error() }}</p> }
+    </section>
+    @if (querying()) { <div class="report-loading" role="status" aria-busy="true"><span></span><span></span><p>Generando vista previa…</p></div> }
+    @if (result(); as preview) {
+      <section class="report-panel report-metadata" aria-label="Datos de la vista previa">
+        <div><h2>Vista previa</h2><p>{{ scopeLabel() }}<span class="viewer-period">{{ periodLabel() }}</span></p><p class="field-hint">Generado el {{ generatedLabel(preview.metadata.generatedAt) }} · {{ preview.rowCount }} registros · {{ preview.metadata.currency }}</p>
+          @if (preview.metadata.snapshotId) {
+            <p class="field-hint">Referencia de la versión: {{ preview.metadata.snapshotId }}</p>
+            @if (preview.metadata.snapshotExpiresAt) { <p class="field-hint">Esta versión puede exportarse hasta el {{ generatedLabel(preview.metadata.snapshotExpiresAt!) }} (hora peninsular).</p> }
+          }
+        </div>
+        <div class="report-exports" [attr.aria-busy]="!!exporting()">
+          @for (format of report.formats; track format) { <app-btn variant="outline" size="sm" [disabled]="!!exporting()" (clicked)="exportReport(format)"><app-icon name="download" [size]="16" />{{ exporting() === format ? 'Exportando…' : format === 'pdf' ? 'Exportar PDF' : 'Exportar Excel' }}</app-btn> }
+        </div>
+      </section>
+      @if (exportError()) { <p class="error-text" role="alert">{{ exportError() }}</p> }
+      @if (preview.metadata.warnings.length) { <aside class="report-warnings" aria-label="Criterios y advertencias"><h2>Ten en cuenta</h2><ul>@for (warning of preview.metadata.warnings; track $index) { <li>{{ warning }}</li> }</ul></aside> }
+      @if (preview.summary.length) { <dl class="report-summary">@for (item of preview.summary; track $index) { <div><dt>{{ item.label }}</dt><dd>{{ formatValue(item.value, item.format) }}</dd></div> }</dl> }
+      <section class="report-panel report-output" aria-label="Resultado del informe">
+        @if (preview.rowCount === 0) { <app-empty-state icon="chart" title="No hay datos para estos filtros" description="Puedes cambiar las comunidades o el periodo y generar otra vista previa." /> }
+        <app-report-table [sections]="tableSections()" />
+      </section>
+    }
+  } @else {
+    <app-empty-state icon="chart" title="Informe no disponible" description="Vuelve al centro para consultar los informes disponibles." />
+  }
+</div>

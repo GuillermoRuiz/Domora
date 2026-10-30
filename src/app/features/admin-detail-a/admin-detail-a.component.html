@@ -1,0 +1,660 @@
+<app-topbar title="Ficha del administrador" [breadcrumb]="['Administradores de fincas', admin()?.name ?? 'Ficha']"></app-topbar>
+
+<div class="page-content">
+  <a routerLink="/a/admins" class="back-link">
+    <app-icon name="arrow-left" [size]="14"></app-icon>
+    Volver a administradores
+  </a>
+
+  @if (state() === 'loading') {
+    <p class="muted">Cargando la ficha…</p>
+  } @else if (state() === 'error' || !admin()) {
+    <div class="card detail-error" role="alert">
+      <app-icon name="exclamation" [size]="20"></app-icon>
+      <p>No se ha encontrado este administrador o no se ha podido cargar su ficha.</p>
+    </div>
+  } @else {
+    @let a = admin()!;
+    <header class="card detail-header">
+      <div class="detail-header__main">
+        <app-avatar [name]="a.name" [size]="44"></app-avatar>
+        <div class="detail-header__text">
+          <h1>{{ a.name }}</h1>
+          <p class="muted">{{ a.cif }}</p>
+          <div class="detail-header__facts">
+            <span class="fact" data-field="plan"><span class="fact__label">Plan</span><app-badge [text]="a.plan" [variant]="a.plan === 'PREMIUM' ? 'primary' : 'default'"></app-badge></span>
+            <span class="fact" data-field="estado"><span class="fact__label">Estado</span>
+              @if (a.clientStatus) { <app-badge [text]="a.clientStatus" [variant]="clientStatusVariant(a.clientStatus)"></app-badge> } @else { — }
+            </span>
+            <span class="fact" data-field="pago"><span class="fact__label">Pago</span>
+              @if (a.paymentStatus) { <app-badge [text]="a.paymentStatus" [variant]="paymentStatusVariant(a.paymentStatus)"></app-badge> } @else { — }
+              @if (a.pendingInvoices && a.pendingInvoices.count > 0) { <span class="muted">{{ fmtEur(a.pendingInvoices.amount) }} pendientes</span> }
+            </span>
+            <span class="fact" data-field="salud"><span class="fact__label">Salud</span>
+              @if (health()?.salud != null) {
+                <strong>{{ fmtScore(health()!.salud!) }}</strong><span class="muted">/100</span>
+                @if (health()!.atRisk) { <app-risk-tag [motivo]="health()!.motivo?.label"></app-risk-tag> }
+              } @else { <span class="muted">—</span> }
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="detail-header__actions">
+        <app-btn variant="primary" size="sm" (clicked)="viewCommunities()">Ver sus comunidades</app-btn>
+        <app-btn variant="outline" size="sm" (clicked)="openMessageModal()">Enviar mensaje</app-btn>
+      </div>
+    </header>
+
+    <div class="detail-tabs" role="tablist" aria-label="Secciones de la ficha">
+      @for (t of tabs; track t.key) {
+        <button type="button" role="tab" class="detail-tab" [id]="'tab-' + t.key" [attr.aria-selected]="tab() === t.key"
+                [class.detail-tab--active]="tab() === t.key" (click)="tab.set(t.key)">{{ t.label }}</button>
+      }
+    </div>
+
+    <section class="detail-panel" role="tabpanel" [attr.aria-labelledby]="'tab-' + tab()">
+      <!-- Resumen -->
+      @if (tab() === 'resumen') {
+        <div class="kpi-mini-row">
+          <div class="kpi-mini"><span class="kpi-mini__label">MRR</span><span class="kpi-mini__value">{{ fmtEur(a.mrr) }}</span></div>
+          <div class="kpi-mini"><span class="kpi-mini__label">Fincas</span><span class="kpi-mini__value">{{ a.fincas.length }}</span></div>
+          <div class="kpi-mini"><span class="kpi-mini__label">Usuarios</span><span class="kpi-mini__value">{{ a.usersActive }}/{{ a.usersMax }}</span></div>
+          <div class="kpi-mini" data-kpi="pendientes"><span class="kpi-mini__label">Facturas pendientes</span><span class="kpi-mini__value">{{ a.pendingInvoices?.count ?? 0 }}</span></div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="card block">
+            <h2 class="block__title">Contacto</h2>
+            <div class="contact-card">
+              <app-avatar [name]="a.contactName" [size]="36"></app-avatar>
+              <div>
+                <div class="strong">{{ a.contactName }}</div>
+                <div class="muted">{{ a.contactEmail }}</div>
+                <div class="muted">{{ a.phone }}</div>
+              </div>
+            </div>
+            @if (!a.primaryUserId) {
+              <div class="invite-pending">
+                <app-icon name="exclamation" [size]="14"></app-icon>
+                <span>Todavía nadie puede iniciar sesión como esta administradora.</span>
+                <button type="button" class="link-btn" (click)="inviteOpen.set(true)">Generar enlace de invitación</button>
+              </div>
+            }
+          </div>
+
+          <div class="card block">
+            <h2 class="block__title">Contrato</h2>
+            <dl class="facts-list">
+              <div><dt>Plan</dt><dd>{{ a.plan }}</dd></div>
+              <div><dt>Facturación</dt><dd>{{ a.billingInterval === 'year' ? 'Anual' : 'Mensual' }}</dd></div>
+              <div><dt>Suscripción</dt><dd><app-badge [text]="a.status" [variant]="subscriptionStatusVariant(a.status)"></app-badge></dd></div>
+              <div><dt>Vence</dt><dd>{{ a.endDate || '—' }}</dd></div>
+              <div><dt>Descuento</dt><dd>{{ a.discountPct > 0 ? a.discountPct + ' %' + (a.discountUntil ? ' hasta ' + a.discountUntil : '') : 'Sin descuento' }}</dd></div>
+            </dl>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="card block" data-section="completitud">
+            <h2 class="block__title">Completitud</h2>
+            @if (completenessState() === 'error') {
+              <p class="muted">No se ha podido cargar la completitud de este despacho.</p>
+            } @else if (completeness(); as c) {
+              <div class="score-line">
+                <strong class="score">{{ fmtPct(c.total) }}</strong>
+                <span class="muted">Despacho {{ fmtPct(c.office) }} · Comunidades {{ fmtPct(c.estates) }} ({{ c.estateCount }})</span>
+              </div>
+              <app-progress-bar [value]="c.total" [max]="100" [height]="6"></app-progress-bar>
+
+              <div class="pending" data-section="pendiente">
+                <h3 class="pending__title">Qué falta configurar</h3>
+                @if (pendingOfficeSteps().length === 0 && pendingEstates().length === 0) {
+                  <p class="muted">Todo lo que cuenta para la completitud está configurado.</p>
+                } @else {
+                  @if (pendingOfficeSteps().length > 0) {
+                    <p class="pending__group">Despacho</p>
+                    <ul class="step-list">
+                      @for (s of pendingOfficeSteps(); track s.key) {
+                        <li><span>{{ officeStepLabel[s.key] }}</span><span class="step-weight" [class.step-weight--required]="s.weight === 'required'">{{ weightLabel[s.weight] }}</span></li>
+                      }
+                    </ul>
+                  }
+                  @for (e of pendingEstates(); track e.estateId) {
+                    <p class="pending__group">{{ e.name }} · {{ fmtPct(e.percent) }}</p>
+                    <ul class="step-list">
+                      @for (s of e.pending; track s.key) {
+                        <li><span>{{ estateStepName(s.key) }}</span><span class="step-weight" [class.step-weight--required]="s.weight === 'required'">{{ weightLabel[s.weight] }}</span></li>
+                      }
+                    </ul>
+                  }
+                }
+              </div>
+            } @else {
+              <p class="muted">Cargando…</p>
+            }
+          </div>
+
+          <div class="card block" data-section="salud">
+            <h2 class="block__title">Salud</h2>
+            @if (healthState() === 'error') {
+              <p class="muted">No se ha podido cargar la salud de este despacho.</p>
+            } @else if (health(); as h) {
+              @if (h.salud === null) {
+                <p class="muted">Sin índice de salud: el cliente está cancelado.</p>
+              } @else {
+                <div class="score-line">
+                  <strong class="score">{{ fmtScore(h.salud) }}<span class="muted">/100</span></strong>
+                  @if (h.atRisk) { <app-risk-tag [motivo]="h.motivo?.label"></app-risk-tag> }
+                  @if (h.motivo) { <span class="muted">Lo que más resta: {{ h.motivo.label }}</span> }
+                </div>
+                <div class="table-scroll">
+                  <table class="mini-table">
+                    <thead><tr><th>Señal</th><th class="num">Puntuación</th><th class="num">Peso</th><th class="num">Resta</th></tr></thead>
+                    <tbody>
+                      @for (s of h.signals; track s.key) {
+                        <tr>
+                          <td>{{ signalLabel[s.key] }}</td>
+                          <td class="num">@if (s.available && s.score !== null) { {{ fmtScore(s.score) }} } @else { <span class="muted">Sin datos todavía</span> }</td>
+                          <td class="num">{{ s.weight }} %</td>
+                          <td class="num">{{ fmtDeduction(s.deduction) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <p class="muted small">Uso en los últimos 30 días: {{ h.usage.activeDays }} días activos · {{ h.usage.activeUsers }} de {{ h.usage.staffUsers }} usuarios del despacho.</p>
+              }
+            } @else {
+              <p class="muted">Cargando…</p>
+            }
+          </div>
+        </div>
+
+        @if (health()?.attention?.length) {
+          <div class="card block attention" data-section="atencion">
+            <h2 class="block__title">Requiere atención</h2>
+            <ul class="attention-list">
+              @for (r of health()!.attention; track r.code) {
+                <li [class.attention--high]="r.severity >= 3"><app-icon name="exclamation" [size]="14"></app-icon>{{ r.label }}</li>
+              }
+            </ul>
+          </div>
+        }
+
+        <div class="card block">
+          <div class="block__head">
+            <h2 class="block__title">Notas internas</h2>
+            @if (!editingNotes()) { <button type="button" class="link-btn" (click)="editingNotes.set(true)">Editar</button> }
+          </div>
+          @if (editingNotes()) {
+            <textarea class="form-textarea" rows="3" aria-label="Notas internas" [value]="notesDraft()" (input)="notesDraft.set($any($event.target).value)"></textarea>
+            <div class="inline-actions">
+              <app-btn variant="outline" size="sm" (clicked)="editingNotes.set(false)">Cancelar</app-btn>
+              <app-btn variant="primary" size="sm" (clicked)="saveNotes()">Guardar</app-btn>
+            </div>
+          } @else {
+            <p class="notes-text">{{ a.notes || 'Sin notas registradas.' }}</p>
+          }
+        </div>
+      }
+
+      <!-- Suscripción -->
+      @if (tab() === 'suscripcion') {
+        <div class="card block">
+          <div class="plan-card">
+            <div class="plan-card__head">
+              <strong>{{ a.plan }}</strong>
+              @if (a.discountPct > 0) { <span class="discount-tag">-{{ a.discountPct }}%</span> }
+            </div>
+            <div class="plan-card__price">{{ fmtEur(netPrice(a)) }} <span class="muted">/ mes</span></div>
+            @if (a.discountPct > 0) {
+              <div class="pill pill--green">
+                Ahorro anual: {{ fmtEur(annualSavings(a)) }}
+                @if (a.discountUntil) { · hasta {{ a.discountUntil }} }
+              </div>
+            }
+          </div>
+
+          <div class="info-block">
+            <span class="form-label">Estado de la suscripción</span>
+            <div class="info-row">
+              <app-badge [text]="a.status" [variant]="subscriptionStatusVariant(a.status)"></app-badge>
+              <span class="muted">{{ daysRemaining(a.endDate) }} días restantes · vence el {{ a.endDate }}</span>
+            </div>
+          </div>
+
+          @if (stripeSubscription()?.manualBillingAvailable) {
+            <div class="info-block" data-block="manual-billing">
+              <span class="form-label">Cobro por Stripe</span>
+              <span class="muted">
+                La suscripción de Stripe está {{ deadStripeLabel() }} y ya no cobra nada.
+                Si vas a cobrarle fuera de Stripe, pásalo a facturación manual.
+              </span>
+              <div class="quick-actions">
+                <app-btn variant="outline" size="sm" (clicked)="openManualBilling()">Pasar a facturación manual</app-btn>
+              </div>
+            </div>
+          }
+
+          <div class="info-block">
+            <span class="form-label">Ocupación de usuarios</span>
+            <app-progress-bar [value]="a.usersActive" [max]="a.usersMax" [height]="6"></app-progress-bar>
+            <span class="muted">{{ a.usersActive }} de {{ a.usersMax }} usuarios activos</span>
+          </div>
+
+          <div class="info-block">
+            <span class="form-label">Acciones rápidas</span>
+            <div class="quick-actions">
+              <app-btn variant="outline" size="sm" (clicked)="openDiscountModal()">Aplicar descuento</app-btn>
+              <app-btn variant="outline" size="sm" (clicked)="openExpandUsers()">Ampliar usuarios</app-btn>
+              <app-btn variant="outline" size="sm" (clicked)="openChangePlan()">Cambiar plan</app-btn>
+              <app-btn variant="outline" size="sm" (clicked)="openExtend()">Extender suscripción</app-btn>
+              <app-btn [variant]="a.status === 'Bloqueada' ? 'secondary' : 'danger'" size="sm" (clicked)="openBlockModal()">
+                {{ a.status === 'Bloqueada' ? 'Desbloquear cuenta' : 'Bloquear cuenta' }}
+              </app-btn>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Fincas -->
+      @if (tab() === 'fincas') {
+        <div class="card block">
+          <div class="block__head">
+            <h2 class="block__title">Fincas ({{ a.fincas.length }})</h2>
+            @if (a.fincas.length > 0) { <button type="button" class="link-btn" (click)="viewCommunities()">Ver sus comunidades</button> }
+          </div>
+          @if (a.fincas.length === 0) {
+            <div class="empty-state">
+              <app-icon name="building" [size]="28"></app-icon>
+              <p>Este administrador todavía no gestiona ninguna finca.</p>
+            </div>
+          } @else {
+            <div class="fincas-list">
+              @for (f of a.fincas; track f.id) {
+                <div class="finca-row" [class.finca-row--inactive]="!f.active">
+                  <div>
+                    <div class="strong">{{ f.name }}</div>
+                    <div class="muted">{{ f.type }} · {{ f.location }} · {{ f.units }} unidades · desde {{ f.since }}</div>
+                  </div>
+                  <div class="finca-row__meta">
+                    @if (f.active) {
+                      <app-btn variant="outline" size="sm" (clicked)="viewCommunities('/b/estates/' + f.id)">Abrir</app-btn>
+                    } @else {
+                      <app-badge text="Inactiva" variant="default"></app-badge>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Facturación -->
+      @if (tab() === 'facturacion') {
+        <div class="kpi-mini-row">
+          <div class="kpi-mini" data-kpi="pendientes">
+            <span class="kpi-mini__label">Pendientes de cobro</span>
+            <span class="kpi-mini__value">{{ a.pendingInvoices?.count ?? 0 }}</span>
+            <span class="muted">{{ fmtEur(a.pendingInvoices?.amount ?? 0) }}</span>
+          </div>
+          <div class="kpi-mini" data-kpi="vencidas">
+            <span class="kpi-mini__label">Vencidas</span>
+            <span class="kpi-mini__value">{{ a.pendingInvoices?.overdueCount ?? 0 }}</span>
+            <span class="muted">{{ fmtEur(a.pendingInvoices?.overdueAmount ?? 0) }}</span>
+          </div>
+        </div>
+
+        <div class="card block">
+          <div class="block__head">
+            <h2 class="block__title">Datos de facturación</h2>
+            <button type="button" class="link-btn" (click)="openBillingModal()">Editar</button>
+          </div>
+          @if (a.billing; as billing) {
+            <div class="billing-grid">
+              <div><span class="muted">Razón social</span><div>{{ billing.businessName }}</div></div>
+              <div><span class="muted">CIF</span><div>{{ billing.cif }}</div></div>
+              <div><span class="muted">Dirección</span><div>{{ billing.address || '—' }}</div></div>
+              <div><span class="muted">Email</span><div>{{ billing.email }}</div></div>
+              <div><span class="muted">Método de pago</span><div>{{ billing.paymentMethod }}</div></div>
+              <div><span class="muted">IBAN</span><div>{{ billing.iban || '—' }}</div></div>
+            </div>
+          } @else {
+            <p class="muted">Todavía no se han completado los datos de facturación.</p>
+          }
+        </div>
+
+        <div class="card block">
+          <h2 class="block__title">Historial de facturas</h2>
+          @if (a.invoices.length === 0) {
+            <p class="muted">Todavía no hay facturas emitidas.</p>
+          } @else {
+            <div class="table-scroll">
+              <table class="mini-table">
+                <thead><tr><th>Nº</th><th>Fecha</th><th class="num">Base</th><th class="num">IVA</th><th class="num">Total</th><th>Estado</th></tr></thead>
+                <tbody>
+                  @for (inv of a.invoices; track inv.id) {
+                    <tr>
+                      <td class="mono">{{ inv.no }}</td>
+                      <td class="muted">{{ inv.date }}</td>
+                      <td class="num muted">{{ fmtEur(inv.taxBase) }}</td>
+                      <td class="num muted">{{ fmtEur(inv.taxAmount) }} ({{ inv.taxRate }}%)</td>
+                      <td class="num">{{ fmtEur(inv.total) }}</td>
+                      <td><app-badge [text]="inv.status" [variant]="invoiceVariant(inv.status)"></app-badge></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Actividad -->
+      @if (tab() === 'actividad') {
+        <div class="card block">
+          @if (a.activity.length === 0) {
+            <div class="empty-state">
+              <app-icon name="calendar" [size]="28"></app-icon>
+              <p>Sin actividad registrada.</p>
+            </div>
+          } @else {
+            <div class="timeline">
+              @for (item of a.activity; track item.id) {
+                <div class="timeline-item">
+                  <div class="timeline-item__icon"><app-icon [name]="activityIcon(item.type)" [size]="14"></app-icon></div>
+                  <div class="timeline-item__content">
+                    <div class="timeline-item__head">
+                      <strong>{{ item.title }}</strong>
+                      <span class="muted">{{ item.date }}</span>
+                    </div>
+                    <div class="muted">{{ item.author }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+</div>
+
+@if (toastMessage()) {
+  <div class="toast" role="status">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}
+
+@if (inviteOpen() && admin()) {
+  <app-admin-invite-dialog [administratorId]="admin()!.id" [adminName]="admin()!.name" (closed)="inviteOpen.set(false)"></app-admin-invite-dialog>
+}
+
+<!-- ── Modal: Aplicar descuento ───────────────────────────────────────────── -->
+@if (discountModalOpen()) {
+  <div class="modal-backdrop" (click)="discountModalOpen.set(false)">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Aplicar descuento" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Aplicar descuento</h3>
+        <button class="close-btn" aria-label="Cerrar" (click)="discountModalOpen.set(false)"><app-icon name="x" [size]="18"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-label" for="discount-pct">Descuento: {{ discountPctDraft() }}%</label>
+        <input id="discount-pct" type="range" min="0" max="40" class="form-range" [value]="discountPctDraft()" (input)="discountPctDraft.set(+$any($event.target).value)" />
+
+        <label class="form-label" for="discount-duration">Duración</label>
+        <select id="discount-duration" class="form-input" [value]="discountDuration()" (change)="discountDuration.set($any($event.target).value)">
+          <option value="1m">1 mes</option>
+          <option value="3m">3 meses</option>
+          <option value="6m">6 meses</option>
+          <option value="12m">12 meses</option>
+        </select>
+
+        <label class="form-label" for="discount-reason">Motivo</label>
+        <textarea id="discount-reason" class="form-textarea" rows="2" [value]="discountReasonDraft()" (input)="discountReasonDraft.set($any($event.target).value)"></textarea>
+
+        <div class="preview-box">
+          <span class="muted">Nuevo precio mensual</span>
+          <strong>{{ fmtEur(discountPreviewPrice()) }}</strong>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="discountModalOpen.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" (clicked)="applyDiscount()">Aplicar descuento</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Modal: Ampliar usuarios ─────────────────────────────────────────────── -->
+@if (expandUsersOpen()) {
+  <div class="modal-backdrop" (click)="expandUsersOpen.set(false)">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Ampliar usuarios" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Ampliar usuarios</h3>
+        <button class="close-btn" aria-label="Cerrar" (click)="expandUsersOpen.set(false)"><app-icon name="x" [size]="18"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <span class="form-label">Tramos disponibles ({{ admin()?.plan }})</span>
+        <div class="tier-list">
+          @for (t of tiersForAdmin(); track t.max; let i = $index) {
+            <button type="button" class="tier-row" [class.tier-row--selected]="expandUsersTier() === i" (click)="expandUsersTier.set(i)">
+              <span>Hasta {{ t.max }} usuarios</span>
+              <strong>{{ fmtEur(t.price) }} / mes</strong>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="expandUsersOpen.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" (clicked)="applyExpandUsers()">Confirmar ampliación</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Modal: Cambiar plan ─────────────────────────────────────────────────── -->
+@if (changePlanOpen()) {
+  <div class="modal-backdrop" (click)="changePlanOpen.set(false)">
+    <div class="modal modal--wide" role="dialog" aria-modal="true" aria-label="Cambiar plan" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Cambiar plan</h3>
+        <button class="close-btn" aria-label="Cerrar" (click)="changePlanOpen.set(false)"><app-icon name="x" [size]="18"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <div class="plan-compare-grid">
+          @for (p of planOrder; track p) {
+            <button type="button" class="plan-compare-card" [class.plan-compare-card--selected]="changePlanTarget() === p" (click)="changePlanTarget.set(p)">
+              <strong>{{ p }}</strong>
+              <span class="plan-compare-price">{{ fmtEur(planTiers()[p][0]?.price ?? 0) }} / mes</span>
+              <ul>
+                @for (f of planFeatures[p]; track f) { <li>{{ f }}</li> }
+              </ul>
+            </button>
+          }
+        </div>
+
+        <span class="form-label">Aplicar cambio</span>
+        <div class="timing-options">
+          <button type="button" class="filter-chip" [class.filter-chip--active]="changePlanTiming() === 'inmediato'" (click)="changePlanTiming.set('inmediato')">Inmediato</button>
+          <button type="button" class="filter-chip" [class.filter-chip--active]="changePlanTiming() === 'proximo'" (click)="changePlanTiming.set('proximo')">Próximo ciclo</button>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="changePlanOpen.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" (clicked)="applyChangePlan()">Confirmar cambio</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Modal: Extender suscripción ─────────────────────────────────────────── -->
+@if (extendOpen()) {
+  <div class="modal-backdrop" (click)="extendOpen.set(false)">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Extender suscripción" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Extender suscripción</h3>
+        <button class="close-btn" aria-label="Cerrar" (click)="extendOpen.set(false)"><app-icon name="x" [size]="18"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <span class="form-label">Duración de la extensión</span>
+        <div class="timing-options">
+          @for (m of extendOptions; track m) {
+            <button type="button" class="filter-chip" [class.filter-chip--active]="extendMonths() === m" (click)="extendMonths.set(m)">+{{ m }} mes{{ m > 1 ? 'es' : '' }}</button>
+          }
+        </div>
+        <div class="preview-box">
+          <span class="muted">Nueva fecha de vencimiento</span>
+          <strong>{{ extendedDate() }}</strong>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="extendOpen.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" (clicked)="applyExtend()">Confirmar extensión</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Modal: Modificar facturación ────────────────────────────────────────── -->
+@if (billingModalOpen()) {
+  <div class="modal-backdrop" (click)="billingModalOpen.set(false)">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Modificar facturación" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Modificar facturación</h3>
+        <button class="close-btn" aria-label="Cerrar" (click)="billingModalOpen.set(false)"><app-icon name="x" [size]="18"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-label" for="billing-name">Razón social</label>
+        <input id="billing-name" class="form-input" type="text" [value]="billingBusinessName()" (input)="billingBusinessName.set($any($event.target).value)" />
+
+        <label class="form-label" for="billing-cif">CIF</label>
+        <input id="billing-cif" class="form-input" type="text" [value]="billingCif()" (input)="billingCif.set($any($event.target).value)" />
+
+        <label class="form-label" for="billing-address">Dirección</label>
+        <input id="billing-address" class="form-input" type="text" [value]="billingAddress()" (input)="billingAddress.set($any($event.target).value)" />
+
+        <label class="form-label" for="billing-email">Email</label>
+        <input id="billing-email" class="form-input" type="email" [value]="billingEmail()" (input)="billingEmail.set($any($event.target).value)" />
+
+        <label class="form-label" for="billing-method">Método de pago</label>
+        <select id="billing-method" class="form-input" [value]="billingPayMethod()" (change)="billingPayMethod.set($any($event.target).value)">
+          <option value="Domiciliación">Domiciliación</option>
+          <option value="Tarjeta">Tarjeta</option>
+          <option value="Transferencia">Transferencia</option>
+        </select>
+
+        <label class="form-label" for="billing-iban">IBAN</label>
+        <input id="billing-iban" class="form-input" type="text" [value]="billingIban()" (input)="billingIban.set($any($event.target).value)" />
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="billingModalOpen.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" (clicked)="saveBilling()">Guardar cambios</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Modal: Bloquear / Desbloquear ───────────────────────────────────────── -->
+@if (blockModalOpen()) {
+  <div class="modal-backdrop" (click)="blockModalOpen.set(false)">
+    <div class="modal" role="dialog" aria-modal="true" [attr.aria-label]="admin()?.status === 'Bloqueada' ? 'Desbloquear cuenta' : 'Bloquear cuenta'" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>{{ admin()?.status === 'Bloqueada' ? 'Desbloquear cuenta' : 'Bloquear cuenta' }}</h3>
+        <button class="close-btn" aria-label="Cerrar" (click)="blockModalOpen.set(false)"><app-icon name="x" [size]="18"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-label" for="block-reason">Motivo</label>
+        <textarea id="block-reason" class="form-textarea" rows="3" [value]="blockReasonDraft()" (input)="blockReasonDraft.set($any($event.target).value)"></textarea>
+
+        <label class="checkbox-row">
+          <input type="checkbox" [checked]="blockConfirmed()" (change)="blockConfirmed.set($any($event.target).checked)" />
+          Confirmo que esta acción es reversible y se registrará con una nota en el historial de actividad.
+        </label>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="blockModalOpen.set(false)">Cancelar</app-btn>
+        <app-btn variant="danger" [disabled]="!blockConfirmed()" (clicked)="applyBlockToggle()">
+          {{ admin()?.status === 'Bloqueada' ? 'Desbloquear' : 'Bloquear' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Modal: Pasar a facturación manual ───────────────────────────────────── -->
+@if (manualBillingOpen()) {
+  <div class="modal-backdrop" (click)="manualBillingOpen.set(false)">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Pasar a facturación manual" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Pasar a facturación manual</h3>
+        <button class="close-btn" aria-label="Cerrar" (click)="manualBillingOpen.set(false)"><app-icon name="x" [size]="18"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">
+          Se desvincula la suscripción de Stripe {{ deadStripeLabel() }}. A partir de ahora el despacho se factura manualmente:
+          @if (stripeSubscription()?.status === 'canceled') { deja de contar como cancelado, vuelve a entrar en la completitud media y }
+          su MRR pasa a ser el precio de su plan según el catálogo (con su descuento, si tiene).
+        </p>
+        <p class="modal__intro">
+          El cliente de Stripe y su historial se conservan: más adelante podrá volver a suscribirse por Stripe.
+          El cambio queda registrado en la actividad del despacho.
+        </p>
+
+        @if (admin()?.status === 'Vencida') {
+          <label class="checkbox-row">
+            <input type="checkbox" name="manual-billing-activate" [checked]="manualBillingActivate()" (change)="manualBillingActivate.set($any($event.target).checked)" />
+            Reactivar la cuenta: ahora está Vencida por la cancelación de Stripe y no puede trabajar con normalidad.
+          </label>
+        } @else if (admin()?.status === 'Bloqueada') {
+          <p class="modal__intro">La cuenta está bloqueada y seguirá bloqueada hasta que la desbloquees.</p>
+        }
+
+        <label class="form-label" for="manual-billing-interval">Periodicidad de facturación</label>
+        <select id="manual-billing-interval" name="manual-billing-interval" class="form-input" (change)="manualBillingInterval.set($any($event.target).value)">
+          <option value="month" [selected]="manualBillingInterval() === 'month'">Mensual</option>
+          <option value="year" [selected]="manualBillingInterval() === 'year'">Anual</option>
+        </select>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="manualBillingOpen.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" [disabled]="manualBillingSaving()" (clicked)="applyManualBilling()">Pasar a facturación manual</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Modal: Enviar mensaje ───────────────────────────────────────────────── -->
+@if (messageModalOpen()) {
+  <div class="modal-backdrop" (click)="messageModalOpen.set(false)">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Enviar mensaje" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Enviar mensaje</h3>
+        <button class="close-btn" aria-label="Cerrar" (click)="messageModalOpen.set(false)"><app-icon name="x" [size]="18"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <span class="form-label">Canal</span>
+        <div class="timing-options">
+          <button type="button" class="filter-chip" [class.filter-chip--active]="messageChannel() === 'email'" (click)="messageChannel.set('email')">Email</button>
+          <button type="button" class="filter-chip" [class.filter-chip--active]="messageChannel() === 'sms'" (click)="messageChannel.set('sms')">SMS</button>
+          <button type="button" class="filter-chip" [class.filter-chip--active]="messageChannel() === 'inapp'" (click)="messageChannel.set('inapp')">En la app</button>
+        </div>
+
+        <span class="form-label">Prioridad</span>
+        <div class="timing-options">
+          <button type="button" class="filter-chip" [class.filter-chip--active]="messagePriority() === 'normal'" (click)="messagePriority.set('normal')">Normal</button>
+          <button type="button" class="filter-chip filter-chip--urgent" [class.filter-chip--active]="messagePriority() === 'urgente'" (click)="messagePriority.set('urgente')">Urgente</button>
+        </div>
+
+        <label class="form-label" for="message-body">Mensaje</label>
+        <textarea id="message-body" class="form-textarea" rows="4" [value]="messageBody()" (input)="messageBody.set($any($event.target).value)"></textarea>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="messageModalOpen.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" [disabled]="!messageBody()" (clicked)="sendMessage()">Enviar mensaje</app-btn>
+      </div>
+    </div>
+  </div>
+}

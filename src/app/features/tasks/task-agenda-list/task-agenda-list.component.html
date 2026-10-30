@@ -1,0 +1,50 @@
+@for (group of groups(); track group.key) {
+  <section class="day" [attr.aria-label]="group.label">
+    <h3 class="day__title">{{ group.label }}</h3>
+    <ul class="day__list">
+      @for (task of group.tasks; track task.occurrenceKey) {
+        <li>
+          <div
+            class="row"
+            [class]="'row row--' + task.priority.toLowerCase()"
+            [class.row--selected]="selectedKey() === task.occurrenceKey"
+            [class.row--done]="task.status === 'COMPLETADA' || task.status === 'CANCELADA'"
+            [class.row--overdue]="task.overdue"
+          >
+            @if (hasCheck(task)) {
+              <button
+                type="button"
+                class="row__check"
+                [class.row__check--done]="task.status === 'COMPLETADA'"
+                role="checkbox"
+                [attr.aria-checked]="task.status === 'COMPLETADA'"
+                [attr.aria-label]="(task.status === 'COMPLETADA' ? 'Marcar como no completada: ' : 'Marcar como completada: ') + task.title"
+                (click)="toggle($event, task)"
+              >
+                <app-icon name="check" [size]="12"></app-icon>
+              </button>
+            } @else {
+              <span class="row__check row__check--done" aria-hidden="true"><app-icon name="check" [size]="12"></app-icon></span>
+            }
+            <button type="button" class="row__main" (click)="taskSelected.emit(task)" (dblclick)="taskOpened.emit(task)">
+              <span class="row__time">{{ time(task) }}</span>
+              <span class="row__title">
+                <app-icon [name]="types[task.type].icon" [size]="13" aria-hidden="true"></app-icon>
+                <span class="row__text">{{ task.title }}</span>
+                @if (task.recurring) { <app-icon name="repeat" [size]="11" aria-label="Se repite"></app-icon> }
+              </span>
+              <span class="row__meta">
+                @if (task.estate) { <span>{{ task.estate.name }}</span> }
+                @if (task.assignee) { <span>· {{ task.assignee.fullName }}</span> } @else { <span>· Sin asignar</span> }
+              </span>
+              <span class="row__badges">
+                <app-task-priority [priority]="task.priority"></app-task-priority>
+                <app-task-status [status]="task.status" [overdue]="task.overdue"></app-task-status>
+              </span>
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  </section>
+}

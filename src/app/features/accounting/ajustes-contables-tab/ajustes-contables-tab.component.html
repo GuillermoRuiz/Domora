@@ -1,0 +1,372 @@
+@if (loadError()) {
+  <p class="action-error" role="alert">{{ loadError() }}</p>
+}
+
+<div class="card">
+  <div class="card__header">
+    <span class="card__title">Fecha de inicio contable</span>
+  </div>
+  <div class="settings-body">
+    <p class="settings-text">
+      Desde esta fecha Domora lleva la contabilidad de la finca. Lo anterior (saldo del banco, deudas de cada
+      propietario, fondo de reserva, facturas pendientes) entra como asiento de apertura en esta misma fecha.
+      Lo habitual es el primer día de un mes o del ejercicio.
+    </p>
+    @if (settings(); as s) {
+      @if (s.cutoverEditable) {
+        <div class="settings-row">
+          <label class="form-field">
+            Fecha de inicio
+            <input type="date" id="cutover-date" [ngModel]="cutoverDraft()" (ngModelChange)="cutoverDraft.set($event)" [max]="s.firstEntryDate ?? ''" />
+          </label>
+          <app-btn variant="primary" size="sm" [disabled]="!cutoverChanged() || cutoverSaving()" (clicked)="saveCutover()">
+            {{ cutoverSaving() ? 'Guardando…' : 'Guardar fecha' }}
+          </app-btn>
+        </div>
+        @if (s.firstEntryDate) {
+          <p class="settings-hint">Ya hay asientos desde el {{ s.firstEntryDate | date:'d/M/yyyy' }}: la fecha puede adelantarse, pero no quedar después.</p>
+        }
+      } @else {
+        <p class="settings-fixed">
+          <strong>{{ s.cutoverDate | date:'d/M/yyyy' }}</strong>
+          <span class="td-muted"> · Fija: ya hay asiento de apertura. Para moverla hay que rehacer los saldos iniciales.</span>
+        </p>
+      }
+      @if (cutoverError()) { <span class="field-error" role="alert">{{ cutoverError() }}</span> }
+    }
+  </div>
+</div>
+
+<div class="card card--spaced">
+  <div class="card__header">
+    <span class="card__title">Fondo de reserva · ejercicio {{ currentYear }}</span>
+  </div>
+  <div class="settings-body">
+    <p class="settings-text">
+      La ley exige un fondo de reserva de al menos el 10 % del último presupuesto ordinario (art. 9.1.f LPH).
+      Con "una parte de cada cuota", cada recibo de cuota ordinaria separa ese porcentaje y lo abona directamente
+      a la cuenta 117. El cambio vale para los recibos que se emitan desde ahora: los ya emitidos no se tocan.
+    </p>
+    @if (reserveYearClosed()) {
+      <p class="settings-fixed td-muted">El ejercicio {{ currentYear }} está cerrado: su fondo de reserva ya no se cambia.</p>
+    } @else {
+      <div class="settings-row">
+        <label class="form-field">
+          Cómo se dota
+          <select id="reserve-mode" [ngModel]="reserveModeDraft()" (ngModelChange)="reserveModeDraft.set($event)">
+            @for (m of reserveModes; track m.value) {
+              <option [value]="m.value">{{ m.label }}</option>
+            }
+          </select>
+        </label>
+        @if (reserveNeedsPct()) {
+          <label class="form-field">
+            % de cada cuota
+            <input id="reserve-pct" type="text" inputmode="decimal" placeholder="ej. 9,10"
+              [ngModel]="reservePctDraft()" (ngModelChange)="reservePctDraft.set($event)" />
+          </label>
+          <button type="button" class="link-btn" (click)="useLegalMinimum()">Usar el mínimo legal ({{ legalMinimumPct }} %)</button>
+        }
+      </div>
+      @if (reserveNeedsAllocation()) {
+        <p class="settings-hint">
+          La dotación al cierre reclasifica parte del resultado del ejercicio (129) al fondo de reserva (117) al
+          contabilizar el cierre — nunca con pérdidas, y nunca más de lo que dio el ejercicio.
+        </p>
+        <div class="settings-row">
+          <label class="form-field">
+            Regla de la dotación
+            <select id="reserve-allocation-rule" [ngModel]="reserveAllocationRuleDraft()" (ngModelChange)="reserveAllocationRuleDraft.set($event)">
+              <option value="">Selecciona una regla…</option>
+              @for (r of reserveAllocationRules; track r.value) {
+                <option [value]="r.value">{{ r.label }}</option>
+              }
+            </select>
+          </label>
+          @if (reserveAllocationNeedsValue()) {
+            <label class="form-field">
+              {{ reserveAllocationValueLabel() }}
+              <input id="reserve-allocation-value" type="text" inputmode="decimal" placeholder="ej. 500"
+                [ngModel]="reserveAllocationValueDraft()" (ngModelChange)="reserveAllocationValueDraft.set($event)" />
+            </label>
+          }
+        </div>
+      }
+      <label class="check-field">
+        <input type="checkbox" id="reserve-default" [ngModel]="reserveAlsoDefault()" (ngModelChange)="reserveAlsoDefault.set($event)" />
+        Usar también para los próximos ejercicios
+      </label>
+      <div>
+        <app-btn variant="primary" size="sm" [disabled]="reserveSaving()" (clicked)="saveReserve()">
+          {{ reserveSaving() ? 'Guardando…' : 'Guardar fondo de reserva' }}
+        </app-btn>
+      </div>
+      @if (reserveError()) { <span class="field-error" role="alert">{{ reserveError() }}</span> }
+    }
+  </div>
+</div>
+
+<div class="card card--spaced">
+  <div class="card__header">
+    <span class="card__title">Uso del fondo de reserva</span>
+    <div class="card__actions">
+      <app-btn variant="primary" size="sm" (clicked)="openReserveUseForm()">
+        <app-icon name="plus" [size]="13"></app-icon>
+        Liberar fondo
+      </app-btn>
+    </div>
+  </div>
+  <p class="card__hint">
+    La ley solo permite usar el fondo para obras de conservación, reparación o rehabilitación, accesibilidad,
+    eficiencia energética, un seguro de daños o un contrato de mantenimiento permanente (art. 9.1.f LPH) — nunca
+    para gastos ordinarios. El gasto de la obra se contabiliza aparte, como cualquier factura o nómina normal;
+    esto solo libera el importe correspondiente del fondo.
+  </p>
+  @if (reserveApplications().length === 0) {
+    <p class="settings-text td-muted">Sin liberaciones registradas.</p>
+  } @else {
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Motivo</th>
+          <th>Concepto</th>
+          <th class="th-money">Importe</th>
+          <th>Acta</th>
+          <th></th>
+          <th class="th-actions">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (a of reserveApplications(); track a.id) {
+          <tr [class.tr--archived]="a.status === 'Deshecha'">
+            <td>{{ a.date | date:'d/M/yyyy' }}</td>
+            <td>{{ reserveUseLabel[a.reason] }}</td>
+            <td>{{ a.concept }}</td>
+            <td class="td-money">{{ a.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+            <td class="td-muted">{{ a.meetingReference }}</td>
+            <td class="td-flags">
+              @if (a.status === 'Deshecha') { <app-badge text="Deshecha" variant="warning"></app-badge> }
+            </td>
+            <td class="td-actions">
+              @if (a.status === 'Vigente') {
+                <button type="button" class="link-btn link-btn--danger" (click)="openCancelReserveUse(a.id)">Deshacer</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
+
+<div class="card card--spaced">
+  <div class="card__header">
+    <span class="card__title">Devoluciones bancarias</span>
+  </div>
+  <div class="settings-body">
+    <p class="settings-text">
+      Cuando el banco devuelve un recibo cobra una comisión, que se contabiliza como gasto de la comunidad.
+      Solo se puede cobrar al propietario si lo permiten los estatutos o lo ha acordado la junta.
+    </p>
+    @if (settings(); as s) {
+      <label class="check-field">
+        <input type="checkbox" id="return-fee-recharge" [disabled]="returnFeeSaving()"
+          [ngModel]="s.returnFeeRecharge" (ngModelChange)="setReturnFeeRecharge($event)" />
+        Repercutir la comisión al propietario con un recibo de gastos de devolución
+      </label>
+    }
+    @if (returnFeeError()) { <span class="field-error" role="alert">{{ returnFeeError() }}</span> }
+  </div>
+</div>
+
+<div class="card card--spaced">
+  <div class="card__header">
+    <span class="card__title">Cuentas bancarias</span>
+    <div class="card__actions">
+      <app-btn *appPageAction variant="primary" size="sm" (clicked)="openNewBank()">
+        <app-icon name="plus" [size]="13"></app-icon>
+        Nueva cuenta bancaria
+      </app-btn>
+    </div>
+  </div>
+  <p class="card__hint">
+    Cada cuenta tiene su subcuenta 572 en el plan. Los cobros y pagos sin banco indicado van a la cuenta por defecto.
+    El IBAN se guarda cifrado y aquí solo se ve enmascarado.
+  </p>
+  @if (bankActionError()) {
+    <p class="action-error" role="alert">{{ bankActionError() }}</p>
+  }
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Cuenta</th>
+        <th>Subcuenta</th>
+        <th>IBAN</th>
+        <th class="th-money">Saldo contable</th>
+        <th></th>
+        <th class="th-actions">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (b of openBanks(); track b.id) {
+        <tr>
+          <td>
+            {{ b.alias }}
+            @if (b.bankName) { <span class="td-muted"> · {{ b.bankName }}</span> }
+          </td>
+          <td class="td-code">{{ b.accountCode }}</td>
+          <td class="td-muted">{{ b.ibanMasked ?? 'Sin IBAN' }}</td>
+          <td class="td-money">{{ b.balance | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+          <td class="td-flags">
+            @if (b.isDefault) { <app-badge text="Por defecto" variant="secondary"></app-badge> }
+            @if (b.isReserveAccount) { <app-badge text="Fondo de reserva" variant="default"></app-badge> }
+          </td>
+          <td class="td-actions">
+            @if (!b.isDefault) {
+              <button type="button" class="link-btn" (click)="makeDefault(b)">Usar por defecto</button>
+            }
+            <button type="button" class="link-btn" (click)="openEditBank(b)">Editar</button>
+            @if (!b.isDefault) {
+              <button type="button" class="link-btn link-btn--danger" (click)="toggleClosed(b)">Cerrar</button>
+            }
+          </td>
+        </tr>
+      }
+      @for (b of closedBanks(); track b.id) {
+        <tr class="tr--archived">
+          <td>{{ b.alias }}</td>
+          <td class="td-code">{{ b.accountCode }}</td>
+          <td class="td-muted">{{ b.ibanMasked ?? 'Sin IBAN' }}</td>
+          <td class="td-money">{{ b.balance | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+          <td class="td-flags"><app-badge text="Cerrada" variant="warning"></app-badge></td>
+          <td class="td-actions">
+            <button type="button" class="link-btn" (click)="toggleClosed(b)">Reabrir</button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (showBankForm()) {
+  <div class="modal-backdrop" (click)="closeBankForm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>{{ editingBank() ? 'Editar ' + editingBank()!.alias : 'Nueva cuenta bancaria' }}</h4>
+        <button class="close-btn" (click)="closeBankForm()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Nombre de la cuenta
+          <input type="text" id="bank-alias" placeholder="ej. Cuenta de obras" [ngModel]="bAlias()" (ngModelChange)="bAlias.set($event)" [class.field--error]="bErrors().alias" />
+          @if (bErrors().alias) { <span class="field-error">El nombre es obligatorio</span> }
+        </label>
+        <label class="form-field">
+          IBAN
+          <input type="text" id="bank-iban" autocomplete="off"
+            [placeholder]="editingBank()?.ibanMasked ? 'Déjalo vacío para no cambiarlo (' + editingBank()!.ibanMasked + ')' : 'ES00 0000 0000 0000 0000 0000'"
+            [ngModel]="bIban()" (ngModelChange)="bIban.set($event)" [class.field--error]="bErrors().iban" />
+          @if (bErrors().iban) { <span class="field-error">El IBAN no tiene un formato válido</span> }
+        </label>
+        <div class="form-row">
+          <label>
+            BIC
+            <input type="text" id="bank-bic" placeholder="ej. CAIXESBBXXX" [ngModel]="bBic()" (ngModelChange)="bBic.set($event)" />
+          </label>
+          <label>
+            Entidad
+            <input type="text" id="bank-name" placeholder="ej. CaixaBank" [ngModel]="bBankName()" (ngModelChange)="bBankName.set($event)" />
+          </label>
+        </div>
+        <label class="check-field">
+          <input type="checkbox" id="bank-reserve" [ngModel]="bReserve()" (ngModelChange)="bReserve.set($event)" />
+          En esta cuenta se guarda el fondo de reserva
+        </label>
+        @if (bError()) { <span class="field-error" role="alert">{{ bError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeBankForm()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="bSaving()" (clicked)="submitBank()">
+          {{ bSaving() ? 'Guardando…' : 'Guardar' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showReserveUseForm()) {
+  <div class="modal-backdrop" (click)="closeReserveUseForm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Liberar el fondo de reserva</h4>
+        <button class="close-btn" (click)="closeReserveUseForm()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <div class="form-row">
+          <label>
+            Fecha
+            <input type="date" id="ru-date" [ngModel]="ruDate()" (ngModelChange)="ruDate.set($event)" />
+          </label>
+          <label>
+            Importe (€)
+            <input type="text" id="ru-amount" inputmode="decimal" placeholder="ej. 1500" [ngModel]="ruAmount()" (ngModelChange)="ruAmount.set($event)" />
+          </label>
+        </div>
+        <label class="form-field">
+          Motivo
+          <select id="ru-reason" [ngModel]="ruReason()" (ngModelChange)="ruReason.set($event)">
+            @for (r of reserveUseReasons; track r.value) {
+              <option [value]="r.value">{{ r.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="form-field">
+          Concepto
+          <input type="text" id="ru-concept" placeholder="ej. Impermeabilización de cubierta" [ngModel]="ruConcept()" (ngModelChange)="ruConcept.set($event)" />
+        </label>
+        <label class="form-field">
+          Acta que lo autoriza
+          <input type="text" id="ru-meeting" placeholder="ej. Acta junta extraordinaria 2026-03-01, punto 3" [ngModel]="ruMeetingReference()" (ngModelChange)="ruMeetingReference.set($event)" />
+        </label>
+        @if (ruError()) { <span class="field-error" role="alert">{{ ruError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeReserveUseForm()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="ruSaving()" (clicked)="submitReserveUse()">
+          {{ ruSaving() ? 'Registrando…' : 'Liberar fondo' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (cancellingReserveUseId()) {
+  <div class="modal-backdrop" (click)="cancellingReserveUseId.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Deshacer la liberación</h4>
+        <button class="close-btn" (click)="cancellingReserveUseId.set(null)"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <p class="settings-text">Se contabiliza un contraasiento: el importe vuelve a la 117.</p>
+        <label class="form-field">
+          Motivo
+          <input type="text" id="ru-cancel-reason" [ngModel]="ruCancelReason()" (ngModelChange)="ruCancelReason.set($event)" />
+        </label>
+        @if (ruCancelError()) { <span class="field-error" role="alert">{{ ruCancelError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="cancellingReserveUseId.set(null)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" (clicked)="confirmCancelReserveUse()">Deshacer liberación</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

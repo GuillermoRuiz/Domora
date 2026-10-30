@@ -1,0 +1,21 @@
+:host { display: block; min-width: 0; height: 100%; }
+
+.featured { display: flex; gap: 18px; }
+@media (max-width: 560px) { .featured { flex-direction: column; } }
+
+.featured__photo { flex: 0 0 38%; max-width: 220px; min-height: 140px; border-radius: var(--radius-md); overflow: hidden; background: var(--color-bg); }
+.featured__photo app-estate-facade-thumbnail { display: block; height: 100%; min-height: 140px; }
+@media (max-width: 560px) { .featured__photo { flex-basis: auto; max-width: none; } }
+
+.featured__body { flex: 1; min-width: 0; }
+.featured__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.featured__ref { margin: 0; font-size: 19px; font-weight: 700; color: var(--color-text); }
+.featured__subtitle { margin: 2px 0 12px; font-size: 14px; color: var(--color-muted); }
+
+.featured__details { display: flex; flex-direction: column; gap: 7px; margin: 0; }
+.featured__row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.featured__row dt { color: var(--color-muted); }
+.featured__row dd { margin: 0; font-weight: 600; color: var(--color-text); text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.featured__owes { color: var(--color-error) !important; }
+
+.featured__empty { margin: 0; padding: 24px 0; text-align: center; font-size: 14px; color: var(--color-muted); }

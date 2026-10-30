@@ -1,0 +1,70 @@
+<header class="topbar" [class.topbar--custom]="customHeading" [class.topbar--flexible]="flexible">
+  <div class="topbar__left-group">
+    <button class="topbar__menu-btn" type="button" aria-label="Abrir menú" (click)="state.toggleSidebar()">
+      <app-icon name="menu" [size]="20"></app-icon>
+    </button>
+    <div class="topbar__left" [class.topbar__left--custom]="customHeading">
+      @if (customHeading) {
+        <ng-content select="[slot=heading]"></ng-content>
+      } @else {
+        <span class="topbar__title">{{ title }}</span>
+        @if (breadcrumb.length > 0) {
+          <nav class="topbar__breadcrumb">
+            @for (crumb of breadcrumb; track crumb; let last = $last) {
+              <span class="topbar__crumb">{{ crumb }}</span>
+              @if (!last) {
+                <app-icon name="chevron-right" [size]="12"></app-icon>
+              }
+            }
+          </nav>
+        }
+      }
+    </div>
+  </div>
+  <div class="topbar__right">
+    <div class="topbar__screen-actions"><ng-content select="[slot=actions]"></ng-content></div>
+    <button class="topbar__messages" type="button" (click)="goToMessages()"
+      [attr.aria-label]="state.unreadMessagesCount() > 0 ? 'Mensajes, ' + state.unreadMessagesCount() + ' sin leer' : 'Mensajes'">
+      <app-icon name="send" [size]="18"></app-icon>
+      @if (state.unreadMessagesCount() > 0) {
+        <app-badge [text]="state.unreadMessagesCount()" variant="nav" aria-hidden="true"></app-badge>
+      }
+    </button>
+    <div class="bell-wrap">
+      <button #bell class="topbar__bell" type="button" aria-label="Notificaciones" [attr.aria-expanded]="showDropdown()" (click)="toggleDropdown()">
+        <app-icon name="bell" [size]="18"></app-icon>
+        @if (hasUnread()) {
+          <span class="topbar__bell-dot"></span>
+        }
+      </button>
+
+      @if (showDropdown()) {
+        <div class="bell-backdrop" (click)="closeDropdown()"></div>
+        <div class="bell-dropdown">
+          <div class="bell-dropdown__header">
+            <span>Notificaciones</span>
+          </div>
+          @if (state.recentAlerts().length === 0) {
+            <div class="bell-dropdown__empty">No tienes alertas nuevas.</div>
+          } @else {
+            <div class="bell-dropdown__list">
+              @for (a of state.recentAlerts().slice(0, 6); track a.id) {
+                <div class="bell-item" [class.bell-item--unread]="!a.read">
+                  <div class="bell-item__icon">
+                    <app-icon [name]="typeIcon(a.type)" [size]="14"></app-icon>
+                  </div>
+                  <div class="bell-item__body">
+                    <span class="bell-item__title">{{ a.title }}</span>
+                    <span class="bell-item__desc">{{ a.description }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+          <button class="bell-dropdown__footer" (click)="goToAlerts()">Ver todas</button>
+        </div>
+      }
+    </div>
+    <app-account-menu (opened)="closeDropdown()"></app-account-menu>
+  </div>
+</header>

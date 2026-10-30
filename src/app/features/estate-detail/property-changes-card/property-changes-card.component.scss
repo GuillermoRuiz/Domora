@@ -1,0 +1,19 @@
+:host { display: block; min-width: 0; height: 100%; }
+
+.changes { margin: 8px 0 0; padding: 0; list-style: none; transition: opacity 0.15s; }
+.changes--loading { opacity: 0.55; }
+
+.changes__row { display: flex; align-items: flex-start; gap: 12px; padding: 11px 20px; border-top: 1px solid var(--color-border); }
+.changes__row:first-child { border-top: none; }
+
+.changes__icon { flex-shrink: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); background: var(--color-bg); color: var(--color-muted); }
+
+.changes__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.changes__summary { font-size: 14px; font-weight: 500; color: var(--color-text); overflow-wrap: anywhere; }
+.changes__detail { font-size: 13px; color: var(--color-muted); }
+.changes__time { flex-shrink: 0; padding-top: 2px; font-size: 12.5px; color: var(--color-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.changes__message { margin: 0; padding: 24px 20px 28px; text-align: center; font-size: 14px; color: var(--color-muted); }
+.changes__message--error { color: var(--color-error); }
+
+@media (prefers-reduced-motion: reduce) { .changes { transition: none; } }

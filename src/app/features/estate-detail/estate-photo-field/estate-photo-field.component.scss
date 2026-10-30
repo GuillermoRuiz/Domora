@@ -1,0 +1,23 @@
+:host { display: block; grid-column: 1 / -1; }
+
+.photo-field { display: flex; flex-direction: column; gap: 8px; }
+.photo-field__label { font-size: 13px; font-weight: 600; color: var(--color-muted); }
+.photo-field__row { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 520px) { .photo-field__row { grid-template-columns: minmax(0, 1fr); } }
+
+.photo-field__preview { border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--color-border); background: var(--color-bg); aspect-ratio: 16 / 9; }
+.photo-field__preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-field__preview app-estate-facade-thumbnail { display: block; width: 100%; height: 100%; }
+
+.photo-field__actions { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.photo-field__status { margin: 0; font-size: 14px; font-weight: 500; color: var(--color-text); overflow-wrap: anywhere; }
+.photo-field__buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.photo-field__hint { margin: 0; font-size: 13px; font-weight: 400; color: var(--color-muted); }
+.photo-field__error { margin: 0; font-size: 13px; font-weight: 500; color: var(--color-error); }
+
+.photo-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font: inherit; font-size: 14px; font-weight: 600; color: var(--color-text); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); cursor: pointer; }
+.photo-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.photo-btn:focus-visible, .sr-only:focus-visible + .photo-btn { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.photo-btn--ghost { color: var(--color-muted); }
+
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

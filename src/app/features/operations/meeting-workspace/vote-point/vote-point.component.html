@@ -1,0 +1,150 @@
+<div class="point">
+  <header class="point__head">
+    <button type="button" class="back" (click)="back.emit()">
+      <app-icon name="chevron-left" [size]="16"></app-icon>Volver al orden del día
+    </button>
+    <div class="point__title">
+      <span class="point__number">{{ number < 10 ? '0' + number : number }}</span>
+      <div>
+        <h2>{{ item.title }}</h2>
+        @if (item.description) {
+          <p>{{ item.description }}</p>
+        }
+      </div>
+    </div>
+  </header>
+
+  @for (question of questions(); track question.questionIndex) {
+    <app-meeting-card [title]="questions().length > 1 ? question.title : 'Votación'" [meta]="questions().length > 1 ? '' : question.title">
+      @if (question.session; as session) {
+        <div class="pills">
+          <app-status-pill [tone]="session.status === 'abierta' ? 'yellow' : 'green'">
+            {{ session.status === 'abierta' ? 'Votación abierta' : 'Votación cerrada' }}
+          </app-status-pill>
+          <app-status-pill tone="muted" [dot]="false">{{ majorityLabel(session.majorityType) }}</app-status-pill>
+          @if (session.status === 'cerrada' && session.resultSummary?.passed != null) {
+            <app-status-pill [tone]="session.resultSummary?.passed ? 'green' : 'red'" [dot]="false">
+              {{ session.resultSummary?.passed ? 'Aprobado' : 'Rechazado' }}
+            </app-status-pill>
+          }
+        </div>
+
+        <ul class="tally">
+          @for (option of tally(question); track $index) {
+            <li>
+              <span class="tally__label">{{ option.label }}</span>
+              <span class="tally__value tally__value--{{ option.tone }}" [style.color]="option.color">{{ option.count }} · {{ option.percent }}%</span>
+              <span class="tally__bar"><span class="tally__fill tally__fill--{{ option.tone }}" [style.width.%]="option.percent" [style.background]="option.color"></span></span>
+            </li>
+          }
+        </ul>
+
+        @if (session.status === 'cerrada' && session.resultSummary; as result) {
+          <p class="note">
+            Propietarios a favor: {{ percent(result.ownersFavorablePct) }} · Coeficiente a favor: {{ percent(result.quotaFavorablePct) }}
+            (denominador: {{ result.denominatorBasis === 'censo' ? 'censo total de la finca' : 'propiedades presentes' }}).
+          </p>
+        } @else if (canManage) {
+          <div class="actions">
+            <app-btn variant="danger" size="sm" [disabled]="busy()" (clicked)="close(session)">Cerrar votación</app-btn>
+          </div>
+        }
+      } @else {
+        <p class="note">Todavía no se ha abierto la votación de este punto.</p>
+        @if (majorityFor(question); as majority) {
+          <div class="pills">
+            <app-status-pill tone="muted" [dot]="false">{{ majorityLabel(majority) }}</app-status-pill>
+          </div>
+          <p class="note">{{ majorityLegend(majority) }}</p>
+        }
+        @if (canManage) {
+          <div class="actions">
+            <app-btn variant="accent" size="sm" [disabled]="busy() || !hasParticipants()" (clicked)="start(question)">Iniciar votación</app-btn>
+            @if (!hasParticipants()) {
+              <p class="note">No se puede iniciar la votación: no hay propietarios presentes ni representados.</p>
+            }
+          </div>
+        }
+      }
+    </app-meeting-card>
+
+    @if (question.session) {
+      @if (rowsFor(question); as rows) {
+        @if (rows === 'error') {
+          <app-meeting-card title="Voto de cada propiedad">
+            <p class="note" role="alert">No se pudo cargar el detalle de los votos.</p>
+          </app-meeting-card>
+        } @else {
+          <app-meeting-card title="Voto de cada propiedad" [meta]="votedCount(rows) + ' de ' + rows.length + ' han votado'">
+            <div class="table-scroll">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Propiedad</th>
+                    <th scope="col">Propietario</th>
+                    <th scope="col">Asistencia</th>
+                    <th scope="col">Voto</th>
+                    <th scope="col">Emitido</th>
+                    <th scope="col" class="actions-col">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows; track row.propertyId) {
+                    <tr>
+                      <td data-label="Propiedad"><strong>{{ row.unit }}</strong></td>
+                      <td data-label="Propietario">
+                        <span class="owner"><span class="owner__avatar" aria-hidden="true">{{ row.initials }}</span>{{ row.owner }}</span>
+                      </td>
+                      <td data-label="Asistencia" class="muted">{{ row.statusLabel }}</td>
+                      <td data-label="Voto">
+                        @if (row.choice !== null) {
+                          <app-status-pill [tone]="row.choiceTone" [dot]="false">{{ row.choice }}</app-status-pill>
+                        } @else {
+                          <app-status-pill [tone]="stateTone[row.state]" [dot]="false">{{ stateLabel[row.state] }}</app-status-pill>
+                        }
+                      </td>
+                      <td data-label="Emitido" class="muted issued">
+                        <span class="issued__by">{{ row.registeredBy ? 'Registrado por la gestora' : (row.voter ?? '—') }}</span>
+                        <span class="issued__at">{{ row.castAt ? dateTime(row.castAt) : '—' }}</span>
+                      </td>
+                      <td data-label="Acciones" class="actions-col">
+                        @if (canRegister(question, row)) {
+                          @if (debtOf(row) > 0) {
+                            <app-btn variant="danger" size="sm" (clicked)="showDebt(question, row)">Deuda pendiente</app-btn>
+                          } @else {
+                            <app-btn variant="subtle" size="sm" (clicked)="startRegister(question, row)">
+                              {{ row.state === 'voted' ? 'Cambiar voto' : 'Registrar voto' }}
+                            </app-btn>
+                          }
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="6" class="empty">Esta comunidad todavía no tiene propiedades.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </app-meeting-card>
+        }
+      } @else {
+        <p class="note" role="status">Cargando los votos…</p>
+      }
+    }
+  } @empty {
+    <app-meeting-card title="Votación">
+      <p class="note">Este punto no tiene ninguna votación configurada.</p>
+    </app-meeting-card>
+  }
+
+  @if (registering(); as target) {
+    <app-meeting-vote-registration-modal
+      [row]="target.row"
+      [question]="target.question"
+      [busy]="busy()"
+      [error]="registerError()"
+      (confirm)="confirmRegister($event)"
+      (closed)="cancelRegister()"
+    ></app-meeting-vote-registration-modal>
+  }
+</div>

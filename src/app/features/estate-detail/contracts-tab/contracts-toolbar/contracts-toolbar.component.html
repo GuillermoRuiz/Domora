@@ -1,0 +1,79 @@
+<form class="toolbar" role="search" aria-label="Buscar y filtrar contratos" (submit)="$event.preventDefault()">
+  <div class="toolbar__top">
+    <label class="toolbar__search" for="contracts-search">
+      <app-icon name="search" [size]="18"></app-icon>
+      <input
+        id="contracts-search"
+        type="search"
+        autocomplete="off"
+        placeholder="Buscar contratos, proveedor o servicio…"
+        [value]="filters().search"
+        (input)="setSearch($any($event.target).value)"
+      />
+    </label>
+
+    <app-btn class="toolbar__new" variant="primary" (clicked)="create.emit()"><app-icon name="plus" [size]="16"></app-icon>Nuevo contrato</app-btn>
+  </div>
+
+  <div class="toolbar__filters">
+    <div class="toolbar__field">
+      <label for="contracts-vigencia">Vigencia</label>
+      <select id="contracts-vigencia" [value]="filters().vigencia" (change)="setVigencia($any($event.target).value)">
+        @for (option of vigencias; track option.id) {
+          <option [value]="option.id" [selected]="filters().vigencia === option.id">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="toolbar__field">
+      <label for="contracts-supplier">Proveedor</label>
+      <select id="contracts-supplier" [value]="filters().supplierId" (change)="setSupplier($any($event.target).value)">
+        <option value="" [selected]="filters().supplierId === ''">Todos</option>
+        @for (supplier of suppliers(); track supplier.id) {
+          <option [value]="supplier.id" [selected]="filters().supplierId === supplier.id">{{ supplier.name }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="toolbar__field">
+      <label for="contracts-renewal">Renovación</label>
+      <select id="contracts-renewal" [value]="filters().renewal" (change)="setRenewal($any($event.target).value)">
+        <option value="" [selected]="filters().renewal === ''">Todas</option>
+        <option value="tacita" [selected]="filters().renewal === 'tacita'">Automática (tácita)</option>
+        <option value="manual" [selected]="filters().renewal === 'manual'">Manual</option>
+      </select>
+    </div>
+
+    <div class="toolbar__field">
+      <label for="contracts-category">Categoría</label>
+      <select id="contracts-category" [value]="filters().category" (change)="setCategory($any($event.target).value)">
+        <option value="" [selected]="filters().category === ''">Todas</option>
+        @for (category of categories(); track category) {
+          <option [value]="category" [selected]="filters().category === category">{{ category }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="toolbar__field toolbar__dates" role="group" aria-labelledby="contracts-range-label">
+      <span id="contracts-range-label" class="toolbar__label">Vencimiento</span>
+      <span class="toolbar__range">
+        <input id="contracts-from" type="date" aria-label="Vencimiento desde" [value]="filters().from" [max]="filters().to || null" (change)="setFrom($any($event.target).value)" />
+        <span aria-hidden="true">–</span>
+        <input id="contracts-to" type="date" aria-label="Vencimiento hasta" [value]="filters().to" [min]="filters().from || null" (change)="setTo($any($event.target).value)" />
+      </span>
+    </div>
+
+    <div class="toolbar__field toolbar__sort">
+      <label for="contracts-sort">Ordenar por</label>
+      <select id="contracts-sort" [value]="filters().sort" (change)="setSort($any($event.target).value)">
+        @for (option of sorts; track option.id) {
+          <option [value]="option.id" [selected]="filters().sort === option.id">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  @if (dirty()) {
+    <button type="button" class="toolbar__clear" (click)="clear()">Quitar filtros</button>
+  }
+</form>

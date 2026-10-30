@@ -1,0 +1,53 @@
+<div class="modal-backdrop" (click)="close()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vote-registration-title" (click)="$event.stopPropagation()" (keydown.escape)="close()">
+    <div class="modal__header">
+      <h4 id="vote-registration-title">
+        <app-icon name="check" [size]="16"></app-icon>
+        {{ changing() ? 'Cambiar voto' : 'Registrar voto' }}
+      </h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="close()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      <p class="hint">
+        Propiedad <strong>{{ row.unit }}</strong>.
+        @if (row.status === 'representado') {
+          Vota <strong>{{ row.representedBy }}</strong> en representación de {{ row.owner }}.
+        } @else {
+          Vota <strong>{{ row.owner }}</strong>, presente en la junta.
+        }
+        El voto constará como registrado por la gestora.
+      </p>
+
+      <fieldset class="options">
+        <legend>{{ question.title }}</legend>
+        @for (option of question.options; track $index) {
+          <label class="option" [class]="'option option--' + tone($index)" [class.option--selected]="isSelected($index)" [style.--option-color]="customColor($index)">
+            <input
+              [type]="multiple() ? 'checkbox' : 'radio'"
+              name="vote-option"
+              [checked]="isSelected($index)"
+              [disabled]="busy"
+              (change)="pick($index)"
+            />
+            <span>{{ option }}</span>
+          </label>
+        }
+        @if (multiple()) {
+          <span class="hint">Puedes marcar varias opciones.</span>
+        }
+      </fieldset>
+
+      @if (error) {
+        <p class="field-error" role="alert">{{ error }}</p>
+      }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" [disabled]="busy" (clicked)="close()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" [disabled]="busy || !selected().length" (clicked)="submit()">
+        {{ busy ? 'Guardando…' : changing() ? 'Cambiar voto' : 'Registrar voto' }}
+      </app-btn>
+    </div>
+  </div>
+</div>

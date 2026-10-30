@@ -1,0 +1,53 @@
+<div class="dz-wrap">
+  <label
+    class="dz"
+    [class.dz--active]="dragging()"
+    [class.dz--disabled]="disabled"
+    (dragover)="onDragOver($event)"
+    (dragleave)="dragging.set(false)"
+    (drop)="onDrop($event)"
+  >
+    <input
+      class="dz__input"
+      type="file"
+      multiple
+      [accept]="accept"
+      [disabled]="disabled"
+      aria-label="Seleccionar archivos adjuntos"
+      (change)="onSelect($event)"
+    />
+    <app-icon name="upload" [size]="24" aria-hidden="true"></app-icon>
+    <span class="dz__title">Arrastra aquí tus archivos</span>
+    <span class="dz__sub">o <span class="dz__link">selecciona archivos</span></span>
+    <span class="dz__hint">PDF, imágenes, Word, Excel, XML, TXT o CSV · Máx. 10 MB por archivo</span>
+  </label>
+
+  @if (rejected().length) {
+    <ul class="dz__errors" role="alert">
+      @for (message of rejected(); track message) {
+        <li>{{ message }}</li>
+      }
+    </ul>
+  }
+
+  @if (files.length) {
+    <ul class="dz__files" aria-label="Archivos seleccionados">
+      @for (file of files; track file.name + file.size + file.lastModified; let i = $index) {
+        <li class="file">
+          <span class="file__icon" aria-hidden="true"><app-icon name="file-text" [size]="18"></app-icon></span>
+          <span class="file__name" [title]="file.name">{{ file.name }}</span>
+          <span class="file__size">{{ formatSize(file.size) }}</span>
+          <button
+            type="button"
+            class="file__remove"
+            [disabled]="disabled"
+            [attr.aria-label]="'Quitar ' + file.name"
+            (click)="remove(i)"
+          >
+            <app-icon name="x" [size]="14"></app-icon>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</div>

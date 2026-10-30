@@ -1,0 +1,15 @@
+:host { display: block; min-width: 0; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 1000px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .kpis { grid-template-columns: minmax(0, 1fr); } }
+
+.kpi-btn { position: relative; display: flex; min-width: 0; padding: 0; font: inherit; color: inherit; text-align: left; background: none; border: none; border-radius: var(--radius-lg); cursor: pointer; transition: transform 0.12s; }
+.kpi-btn > app-kpi-tile { flex: 1; }
+.kpi-btn__chevron { position: absolute; top: 50%; right: 16px; transform: translateY(-50%); color: var(--color-muted); pointer-events: none; }
+.kpi-btn:hover .kpi-btn__chevron { color: var(--color-text); }
+.kpi-btn:hover { transform: translateY(-1px); }
+.kpi-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .kpi-btn { transition: none; } }
+
+.kpis__error { margin: 10px 0 0; font-size: 14px; color: var(--color-error); }

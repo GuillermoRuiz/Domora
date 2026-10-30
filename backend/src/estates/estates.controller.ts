@@ -1,0 +1,235 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+  StreamableFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import { ESTATE_PHOTO_MAX_BYTES, EstatesService } from './estates.service';
+import { EstateSetupService } from './estate-setup.service';
+import { CreateEstateDto, UpdateEstateDto } from './dto/create-estate.dto';
+import { UpdateSepaBillingDto } from './dto/update-sepa-billing.dto';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { EstateScopeGuard } from '../estate-access/estate-scope.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { EstateOverviewService } from './estate-overview.service';
+import {
+  EstateOverviewQueryDto,
+  EstateOverviewFilterDto,
+  EstateManagementSearchQueryDto,
+} from './dto/estate-overview.dto';
+import { EstateOverviewExcelService } from './estate-overview-excel.service';
+import { EstateCommunityService } from './estate-community.service';
+import { IsOptional, IsString, MaxLength, isUUID } from 'class-validator';
+
+/**
+ * Role A despacho context (odd/tasks/role-a-panel.md S1): `?administratorId=`
+ * narrows the listing to one despacho for role A; roles B and C ignore it
+ * (they stay scoped by their own token).
+ */
+class EstateOverviewOfficeQueryDto extends EstateOverviewQueryDto {
+  @IsOptional() @IsString() @MaxLength(64) administratorId?: string;
+}
+
+class EstateOverviewOfficeFilterDto extends EstateOverviewFilterDto {
+  @IsOptional() @IsString() @MaxLength(64) administratorId?: string;
+}
+
+/**
+ * The despacho filter only exists for role A, so only role A gets it validated;
+ * for B and C it is dropped, as before the filter existed (a malformed value is
+ * not an error for them).
+ */
+function officeFilter(user: AuthenticatedUser, raw: string | undefined): string | undefined {
+  if (user.role !== 'A' || raw === undefined) return undefined;
+  if (!isUUID(raw)) throw new BadRequestException('El despacho indicado no es válido.');
+  return raw;
+}
+
+@Controller('estates')
+export class EstatesController {
+  constructor(
+    private readonly estatesService: EstatesService,
+    private readonly estateSetup: EstateSetupService,
+    private readonly overviewService: EstateOverviewService,
+    private readonly overviewExcel: EstateOverviewExcelService,
+    private readonly community: EstateCommunityService,
+  ) {}
+
+  @Get()
+  list(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('administratorId') administratorId?: string,
+  ) {
+    return this.estatesService.list(user, officeFilter(user, administratorId));
+  }
+
+  @Get('overview')
+  @Roles('A', 'B')
+  overview(
+    @Query() query: EstateOverviewOfficeQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const scoped: EstateOverviewOfficeQueryDto = { ...query, administratorId: officeFilter(user, query.administratorId) };
+    return this.overviewService.overview(scoped, user);
+  }
+
+  @Get('management-search')
+  @Roles('A', 'B')
+  managementSearch(
+    @Query() query: EstateManagementSearchQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.overviewService.search(query.q, user);
+  }
+
+  @Get('overview/export.xlsx')
+  @Roles('A', 'B')
+  async exportOverview(
+    @Query() query: EstateOverviewOfficeFilterDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const scoped: EstateOverviewOfficeFilterDto = { ...query, administratorId: officeFilter(user, query.administratorId) };
+    const file = await this.overviewExcel.generate(scoped, user);
+    return new StreamableFile(file.content, {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      disposition: `attachment; filename="${file.fileName}"`,
+      length: file.content.length,
+    });
+  }
+
+  // Debe declararse antes de ':estateId' — si no, Nest la matchea como
+  // GET /estates/:estateId con estateId='search'.
+  @Get('search')
+  search(@Query('q') q = '') {
+    return this.estatesService.search(q);
+  }
+
+  // Igual que 'search': antes de ':estateId'. Vista de rol B (panel de fincas con
+  // su progreso de puesta en marcha), reutilizada por el rol A dentro del despacho
+  // seleccionado (odd/tasks/role-a-panel.md S1): A pasa `?administratorId=` (sin él,
+  // lista vacía); B sigue con el despacho de su token e ignora el parámetro.
+  @Get('setup-summary')
+  @Roles('A', 'B')
+  setupSummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('administratorId') administratorId?: string,
+  ): Promise<Awaited<ReturnType<EstateSetupService['summaryForAdministrator']>>> {
+    const office = user.role === 'A' ? officeFilter(user, administratorId) : user.administratorId;
+    if (!office) return Promise.resolve([]);
+    return this.estateSetup.summaryForAdministrator(office);
+  }
+
+  @Get(':estateId')
+  @UseGuards(EstateScopeGuard)
+  findById(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.estatesService.findById(estateId, user);
+  }
+
+  // Foto de la finca: la sube o la quita la gestora; la ve quien tenga acceso a la finca.
+  @Post(':estateId/photo')
+  @Roles('A', 'B')
+  @UseGuards(EstateScopeGuard)
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: ESTATE_PHOTO_MAX_BYTES } }),
+  )
+  uploadPhoto(
+    @Param('estateId') estateId: string,
+    @UploadedFile() file: { buffer: Buffer; size: number } | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.estatesService.setPhoto(estateId, file, user);
+  }
+
+  @Delete(':estateId/photo')
+  @Roles('A', 'B')
+  @UseGuards(EstateScopeGuard)
+  removePhoto(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.estatesService.removePhoto(estateId, user);
+  }
+
+  /** «Mi comunidad»: datos de presentación de la finca y tres indicadores agregados (nunca datos de otros propietarios). */
+  @Get(':estateId/community-summary')
+  @Roles('A', 'B', 'C')
+  @UseGuards(EstateScopeGuard)
+  communitySummary(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.community.getSummary(estateId, user);
+  }
+
+  @Get(':estateId/photo')
+  @UseGuards(EstateScopeGuard)
+  async photo(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const photo = await this.estatesService.getPhoto(estateId, user);
+    // El tipo sale de lo que guardó el servidor tras mirar el contenido; `nosniff` evita que el navegador lo reinterprete.
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    return new StreamableFile(photo.content, { type: photo.contentType, disposition: 'inline', length: photo.content.length });
+  }
+
+  @Post()
+  create(@Body() dto: CreateEstateDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.estatesService.create(dto, user);
+  }
+
+  @Patch(':estateId')
+  update(
+    @Param('estateId') estateId: string,
+    @Body() dto: UpdateEstateDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.estatesService.update(estateId, dto, user);
+  }
+
+  @Get(':estateId/setup-status')
+  @Roles('A', 'B')
+  @UseGuards(EstateScopeGuard)
+  async setupStatus(@Param('estateId') estateId: string) {
+    const status = await this.estateSetup.compute(estateId);
+    if (!status)
+      throw new NotFoundException(`Finca ${estateId} no encontrada.`);
+    return status;
+  }
+
+  @Get(':estateId/sepa-billing')
+  @Roles('A', 'B')
+  getSepaBilling(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.estatesService.getSepaBilling(estateId, user);
+  }
+
+  @Patch(':estateId/sepa-billing')
+  @Roles('A', 'B')
+  updateSepaBilling(
+    @Param('estateId') estateId: string,
+    @Body() dto: UpdateSepaBillingDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.estatesService.updateSepaBilling(estateId, dto, user);
+  }
+}

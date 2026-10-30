@@ -1,0 +1,33 @@
+<button type="button" class="demo-panel__btn" (click)="openModal()">
+  Modo demo
+</button>
+
+@if (showModal()) {
+  <div class="demo-panel__backdrop" (click)="closeModal()">
+    <div class="demo-panel__modal" (click)="$event.stopPropagation()">
+      <h2>Elige un rol de prueba</h2>
+      <p class="demo-panel__subtitle">Entra con datos de prueba ya existentes en la aplicación</p>
+
+      <div class="demo-panel__options">
+        @for (account of accounts; track account.email) {
+          <button
+            type="button"
+            class="demo-panel__option"
+            [disabled]="loadingEmail() !== null"
+            (click)="loginAs(account)"
+          >
+            {{ loadingEmail() === account.email ? 'Entrando…' : account.label }}
+          </button>
+        }
+      </div>
+
+      @if (errorMessage()) {
+        <p class="demo-panel__error">{{ errorMessage() }}</p>
+      }
+
+      <button type="button" class="demo-panel__close" (click)="closeModal()">
+        Cancelar
+      </button>
+    </div>
+  </div>
+}

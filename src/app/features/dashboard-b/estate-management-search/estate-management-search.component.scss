@@ -1,0 +1,93 @@
+@use "breakpoints" as bp;
+:host {
+  display: block;
+  min-width: 0;
+}
+.management-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-muted);
+  &:focus-within {
+    border-color: var(--color-accent);
+  }
+}
+input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 14px;
+  &::placeholder {
+    color: var(--color-muted);
+  }
+}
+.search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  min-width: 300px;
+  max-height: 440px;
+  overflow-y: auto;
+  z-index: 300;
+  padding: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  p {
+    padding: 16px;
+    font-size: 14px;
+  }
+  button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    text-align: left;
+    color: var(--color-text);
+    &:hover {
+      background: var(--color-surface-hover);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--color-accent);
+    }
+    span {
+      flex: 1;
+      min-width: 0;
+    }
+    strong,
+    small {
+      display: block;
+    }
+    strong {
+      font-size: 14px;
+      margin: 3px 0;
+    }
+    small {
+      font-size: 12px;
+      color: var(--color-muted);
+    }
+    .result-kind {
+      color: var(--color-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+  }
+}
+@include bp.respond-to("phone") {
+  .search-results {
+    min-width: 0;
+  }
+}

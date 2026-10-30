@@ -1,0 +1,62 @@
+@use '../junta-fields' as f;
+
+@include f.fields;
+
+:host {
+  display: block;
+}
+
+// Videollamada y firma de la convocatoria, una al lado de la otra (en una sola columna en pantallas estrechas).
+.row-2--top {
+  align-items: start;
+  gap: 24px;
+}
+
+h4.group__title {
+  margin: 0;
+}
+
+.group {
+  gap: 12px;
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+
+  input {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin: 2px 0 0;
+    accent-color: var(--color-accent);
+  }
+}
+
+// Convocatoria: cabecera con el botón para volver a redactarla y la hoja editable debajo.
+.convocatoria__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  .group__title {
+    margin-bottom: 4px;
+  }
+}
+
+.convocatoria__note {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+
+  &--error {
+    color: var(--color-error);
+  }
+}

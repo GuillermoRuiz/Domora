@@ -1,0 +1,108 @@
+{
+  "type": "object",
+  "properties": {
+    "supplier_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "supplier_tax_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "invoice_number": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "invoice_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "due_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "currency": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "payment_reference": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "net_amount": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^-?\\d{1,10}\\.\\d{2}$"
+    },
+    "vat_amount": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^-?\\d{1,10}\\.\\d{2}$"
+    },
+    "total_amount": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^-?\\d{1,10}\\.\\d{2}$"
+    },
+    "withholding_amount": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^-?\\d{1,10}\\.\\d{2}$"
+    },
+    "needs_review": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "supplier_name",
+    "supplier_tax_id",
+    "invoice_number",
+    "invoice_date",
+    "due_date",
+    "description",
+    "currency",
+    "payment_reference",
+    "net_amount",
+    "vat_amount",
+    "total_amount",
+    "withholding_amount",
+    "needs_review"
+  ],
+  "additionalProperties": false
+}

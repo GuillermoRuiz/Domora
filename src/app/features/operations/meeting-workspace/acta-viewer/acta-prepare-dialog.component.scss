@@ -1,0 +1,115 @@
+@use 'dialog-shell' as ds;
+
+.modal-backdrop { @include ds.backdrop-shell($padded: true, $z: 2200); }
+
+.modal { @include ds.modal-shell($width: 440px); }
+
+.modal__header {
+  @include ds.dialog-header-chrome($margin-bottom: 12px);
+  h4 { display: flex; align-items: center; gap: 8px; }
+}
+
+.close-btn { @include ds.close-btn-chrome; }
+
+.modal__body { @include ds.modal-body-chrome($gap: 12px); }
+
+.hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.ref {
+  display: block;
+  margin-top: 2px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  legend {
+    padding: 0;
+    margin-bottom: 6px;
+  }
+  select {
+    min-width: 0;
+    font-variant-numeric: tabular-nums;
+  }
+}
+// Elegir entre una convocatoria y la otra: el interruptor de ajustes (la opción elegida en negrita y dorado).
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  &__label {
+    flex: 1;
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    color: var(--color-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 400;
+    text-align: left;
+    cursor: pointer;
+    &--first {
+      text-align: right;
+    }
+    &--on {
+      color: var(--color-accent);
+      font-weight: 700;
+    }
+  }
+}
+// Hora = dos desplegables (hora y minutos) con la lista de Domora, en 24 h.
+.time {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  &__sep {
+    color: var(--color-muted);
+    font-weight: 600;
+  }
+}
+.times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.suggestion {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.alert {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-error) 14%, transparent);
+  color: var(--color-error);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.warnings {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-warning);
+  font-size: 12px;
+  line-height: 1.5;
+  list-style: disc;
+}
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

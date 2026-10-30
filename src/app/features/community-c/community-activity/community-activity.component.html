@@ -1,0 +1,24 @@
+<app-section-card title="Actividad reciente" [actionLabel]="rows().length > 0 ? 'Ver todas' : ''" [padded]="false" (action)="viewAll.emit()">
+  @if (items() === null && !failed()) {
+    <p class="act__message">Cargando…</p>
+  } @else if (failed()) {
+    <p class="act__message act__message--error" role="alert">No se pudo cargar la actividad reciente.</p>
+  } @else if (rows().length === 0) {
+    <p class="act__message" data-empty>Todavía no hay actividad reciente.</p>
+  } @else {
+    <ul class="act" data-list="activity">
+      @for (row of rows(); track row.item.id) {
+        <li>
+          <button type="button" class="act__item" [attr.data-activity]="row.item.id" [disabled]="!row.clickable" (click)="openItem.emit(row.item)">
+            <span class="act__dot" [style.background]="row.color"><app-icon [name]="row.icon" [size]="14"></app-icon></span>
+            <span class="act__text">
+              <span class="act__title">{{ row.item.title }}</span>
+              <span class="act__desc">{{ row.item.description }}</span>
+            </span>
+            <span class="act__when">{{ row.when }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-section-card>

@@ -1,0 +1,50 @@
+<app-meeting-card title="Subir acta existente">
+  <div
+    class="drop"
+    [class.drop--active]="dragging()"
+    [class.drop--disabled]="disabled"
+    (dragover)="onDragOver($event)"
+    (dragleave)="dragging.set(false)"
+    (drop)="onDrop($event)"
+  >
+    <input #picker class="sr-only" type="file" tabindex="-1" aria-hidden="true" [accept]="accept" [disabled]="disabled" (change)="onSelect($event)" />
+    <span class="drop__icon" aria-hidden="true">
+      <app-icon name="file-text" [size]="44"></app-icon>
+      <span class="drop__badge"><app-icon name="upload" [size]="14"></app-icon></span>
+    </span>
+    <p class="drop__title">Arrastra aquí el acta o selecciónala desde tu equipo</p>
+    <p class="drop__hint">Formatos admitidos: PDF y DOCX</p>
+    <app-btn variant="outline" [disabled]="disabled" (clicked)="picker.click()">
+      <app-icon name="file" [size]="16"></app-icon>Seleccionar archivo
+    </app-btn>
+
+    @if (file; as chosen) {
+      <div class="file" aria-label="Archivo seleccionado">
+        <app-icon name="file-text" [size]="18"></app-icon>
+        <span class="file__name" [title]="chosen.name">{{ chosen.name }}</span>
+        <span class="file__size">{{ formatSize(chosen.size) }}</span>
+        <button type="button" class="file__remove" [disabled]="disabled" [attr.aria-label]="'Quitar ' + chosen.name" (click)="remove()">
+          <app-icon name="x" [size]="14"></app-icon>
+        </button>
+      </div>
+    }
+    @if (problem()) {
+      <p class="drop__error" role="alert">{{ problem() }}</p>
+    }
+  </div>
+
+  <app-btn class="submit" variant="accent" [block]="true" [disabled]="!canSubmit" (clicked)="submitted.emit()">
+    {{ busy ? 'Subiendo…' : 'Subir acta' }}
+  </app-btn>
+
+  <p class="note">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9.5"></circle>
+      <path d="M12 11v5.5M12 7.8v.1"></path>
+    </svg>
+    <span>El acta subida sustituirá al borrador generado en Domora.</span>
+  </p>
+  @if (blockedReason) {
+    <p class="note note--warn" role="status">{{ blockedReason }}</p>
+  }
+</app-meeting-card>

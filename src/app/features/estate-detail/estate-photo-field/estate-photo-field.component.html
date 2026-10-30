@@ -1,0 +1,34 @@
+<div class="photo-field" data-field="photo">
+  <span class="photo-field__label">Foto de la finca</span>
+  <div class="photo-field__row">
+    <div class="photo-field__preview" aria-hidden="false">
+      @if (stagedUrl(); as preview) {
+        <img [src]="preview" alt="Vista previa de la foto elegida" />
+      } @else {
+        <app-estate-facade-thumbnail variant="wide" [name]="estate().name"
+          [url]="estate().catastroFacadeUrl ?? null"
+          [estateId]="removing() ? null : estate().id"
+          [photoVersion]="removing() ? null : (estate().photoUpdatedAt ?? null)"></app-estate-facade-thumbnail>
+      }
+    </div>
+    <div class="photo-field__actions">
+      <p class="photo-field__status" data-photo-status>{{ status() }}</p>
+      <div class="photo-field__buttons">
+        <label class="photo-btn" for="photo-input">
+          <app-icon name="upload" [size]="14"></app-icon>
+          {{ staged() || hasUploaded() ? 'Cambiar foto' : 'Subir foto' }}
+        </label>
+        <input id="photo-input" class="sr-only" type="file" [accept]="accept" (change)="choose($event)" />
+        @if (staged()) {
+          <button type="button" class="photo-btn photo-btn--ghost" data-photo-action="discard" (click)="discard()">Descartar</button>
+        } @else if (removing()) {
+          <button type="button" class="photo-btn photo-btn--ghost" data-photo-action="undo" (click)="undoRemove()">Deshacer</button>
+        } @else if (hasUploaded()) {
+          <button type="button" class="photo-btn photo-btn--ghost" data-photo-action="remove" (click)="remove()">Quitar foto</button>
+        }
+      </div>
+      @if (error()) { <p class="photo-field__error" role="alert">{{ error() }}</p> }
+      <p class="photo-field__hint">JPG, PNG o WebP · máximo 5 MB. Se muestra en la cabecera y el Resumen de la finca.</p>
+    </div>
+  </div>
+</div>

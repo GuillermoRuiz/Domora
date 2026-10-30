@@ -1,0 +1,131 @@
+<div class="wait-room">
+  @if (loading()) {
+    <div class="wait-room__card">
+      <p class="wait-room__loading"><app-icon name="refresh" [size]="16"></app-icon> Cargando…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="wait-room__card">
+      <p class="wait-room__error">{{ loadError() }}</p>
+      <a routerLink="/login" class="wait-room__link">Volver al inicio</a>
+    </div>
+  } @else {
+    <div class="wait-room__card">
+      <div class="wait-room__header">
+        <div>
+          <h1>Sala de espera</h1>
+          <p class="wait-room__subtitle">{{ meeting()?.title }}</p>
+        </div>
+        <span class="wait-room__badge">Conectados: {{ polling.presence().length }}</span>
+      </div>
+
+      @if (!hasEntered()) {
+        @if (countdown()) {
+          <div class="wait-room__countdown">
+            <span class="wait-room__countdown-label">Se estima que la reunión comenzará en</span>
+            <span class="wait-room__countdown-value"><app-icon name="calendar" [size]="18"></app-icon> {{ countdown() }}</span>
+          </div>
+        } @else {
+          <p class="wait-room__waiting">Esperando a que el administrador inicie la sesión…</p>
+        }
+      }
+    </div>
+
+    @if (!attendanceConfirmed() && attendanceOptions().length > 0) {
+      <div class="wait-room__card wait-room__card--attendance">
+        <h3><app-icon name="check" [size]="16"></app-icon> ¿Por cuál propiedad estás presente?</h3>
+        <p class="wait-room__muted">Cuenta para el quórum de la junta. Elige tus propiedades y las que lleves por delegación de voto.</p>
+        <div class="attendance-options">
+          @for (opt of attendanceOptions(); track opt.propertyId) {
+            <label class="attendance-option">
+              <input
+                type="checkbox"
+                [checked]="selectedPropertyIds().includes(opt.propertyId)"
+                (change)="toggleAttendanceProperty(opt.propertyId)"
+              />
+              <span>{{ opt.label }}</span>
+              @if (opt.kind === 'delegated') {
+                <span class="wait-room__badge-small">Por delegación</span>
+              }
+            </label>
+          }
+        </div>
+        @if (attendanceError()) {
+          <p class="wait-room__error">{{ attendanceError() }}</p>
+        }
+        <app-btn variant="primary" size="sm" [disabled]="selectedPropertyIds().length === 0" (clicked)="confirmAttendance()">
+          Confirmar asistencia
+        </app-btn>
+      </div>
+    } @else if (attendanceConfirmed()) {
+      <div class="wait-room__card wait-room__card--attendance">
+        <p class="wait-room__muted"><app-icon name="check" [size]="14"></app-icon> Asistencia confirmada.</p>
+      </div>
+    }
+
+    @defer (when hasEntered()) {
+      <div class="wait-room__card wait-room__card--jitsi">
+        <app-jitsi-embed
+          [roomName]="meeting()!.jitsiRoomName!"
+          [displayName]="displayName()"
+          [subject]="meeting()?.title"
+          (joined)="onJitsiJoined()"
+        ></app-jitsi-embed>
+        <button type="button" class="wait-room__fallback-link" (click)="openJitsi()">
+          ¿Problemas con la videollamada? Ábrela en una pestaña nueva
+        </button>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="wait-room__card">
+        <p class="wait-room__loading"><app-icon name="refresh" [size]="16"></app-icon> Cargando videollamada…</p>
+      </div>
+    }
+
+    <div class="wait-room__card">
+      <h3><app-icon name="users" [size]="16"></app-icon> Presentes ({{ polling.presence().length }})</h3>
+      <div class="presence-list">
+        @if (polling.presence().length === 0) {
+          <p class="wait-room__muted">Aún no hay nadie conectado.</p>
+        } @else {
+          @for (p of polling.presence(); track p.userId) {
+            <div class="presence-row">
+              <span>{{ p.username }}</span>
+              @if (p.building || p.floor || p.unit) {
+                <span class="wait-room__muted">
+                  {{ p.building }}{{ p.building && (p.floor || p.unit) ? ' · ' : '' }}{{ p.floor ? 'Planta ' + p.floor : '' }}{{ p.floor && p.unit ? ' · ' : '' }}{{ p.unit ? 'Unidad ' + p.unit : '' }}
+                </span>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="wait-room__card">
+      <h3>Chat de la sala</h3>
+      <div class="chat-log">
+        @if (polling.chatMessages().length === 0) {
+          <p class="wait-room__muted">Aún no hay mensajes.</p>
+        } @else {
+          @for (m of polling.chatMessages(); track m.id) {
+            <div class="chat-message">
+              <span class="chat-message__meta">{{ m.senderName }}</span>
+              <p>{{ m.text }}</p>
+            </div>
+          }
+        }
+      </div>
+      <div class="chat-input">
+        <input
+          type="text"
+          placeholder="Escribe un mensaje…"
+          [ngModel]="chatText()"
+          (ngModelChange)="chatText.set($event)"
+          (keydown.enter)="sendMessage()"
+        />
+        <app-btn variant="primary" size="sm" (clicked)="sendMessage()">
+          <app-icon name="send" [size]="14"></app-icon>
+        </app-btn>
+      </div>
+    </div>
+  }
+</div>

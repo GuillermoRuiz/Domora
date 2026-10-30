@@ -1,0 +1,24 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cc-title" (click)="$event.stopPropagation()" appContractDialog (dismiss)="closed.emit()" tabindex="-1">
+    <div class="modal__header">
+      <div class="modal__titles">
+        <h4 id="cc-title">Cancelar contrato</h4>
+        <span class="modal__subtitle">{{ contract.serviceType }} · {{ contract.supplier.name }}</span>
+      </div>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      <p class="field-hint">El contrato pasará a «Cancelado» y dejará de contar en las fichas y en los avisos. Esta acción no se puede deshacer desde aquí.</p>
+      <label class="form-field">
+        Motivo (opcional)
+        <textarea id="cc-reason" rows="2" placeholder="Por ejemplo: sustituido por otro proveedor" [ngModel]="reason()" (ngModelChange)="reason.set($event)"></textarea>
+      </label>
+      @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closed.emit()">Volver</app-btn>
+        <app-btn variant="danger" size="sm" [disabled]="saving()" (clicked)="confirm()">{{ saving() ? 'Cancelando…' : 'Cancelar contrato' }}</app-btn>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,250 @@
+<app-topbar title="Contabilidad" [customHeading]="!!estate">
+  @if (estate; as e) {
+    <div slot="heading" class="accounting-heading">
+      <app-accounting-community-selector [estate]="e" [activeTab]="activeTab()"></app-accounting-community-selector>
+      <span class="accounting-heading__separator" aria-hidden="true">/</span>
+      <span class="accounting-heading__section">{{ activeGroup()?.label || 'Resumen' }}</span>
+    </div>
+  }
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">{{ pageTitle }}</h1>
+    <p class="page-intro__subtitle">{{ estate?.name || 'Consulta la contabilidad de tu comunidad.' }}</p>
+  </div>
+  <div class="page-intro__actions"><ng-container [ngTemplateOutlet]="pageActions.action()" /></div>
+</header>
+
+<div class="page-content">
+  @if (activeGroup(); as group) {
+    <nav class="accounting-subnav" [appAccountingChipTabs]="activeTab()" [attr.aria-label]="group.label">
+      <span class="accounting-subnav__indicator" aria-hidden="true"></span>
+      @for (entry of group.items; track entry.id) {
+        <button
+          class="accounting-subnav__item"
+          type="button"
+          [attr.data-accounting-tab]="entry.id"
+          [class.accounting-subnav__item--active]="activeTab() === entry.id"
+          [attr.aria-current]="activeTab() === entry.id ? 'page' : null"
+          (click)="entry.link ? goToSuppliers() : activeTab.set(entry.id)"
+        ><span class="accounting-subnav__label">{{ entry.label }}</span></button>
+      }
+    </nav>
+  }
+
+  <div class="tab-content">
+    <!-- Summary -->
+    @if (activeTab() === 'summary') {
+      @if (estate; as e) {
+        <app-accounting-ai-panel [estateId]="e.id" [compact]="true" (reviewRequested)="activeTab.set('treasury')"></app-accounting-ai-panel>
+      }
+      <div class="summary-layout">
+        <div class="summary-main">
+          <div class="pl-table card">
+            <div class="card__header">
+              <h4>Cuenta de resultados {{ currentYear }}</h4>
+            </div>
+            <table class="table">
+              <tbody>
+                <tr>
+                  <td class="td--label">Ingresos</td>
+                  <td class="td--money td--positive">{{ estate?.income | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                </tr>
+                <tr>
+                  <td class="td--label">Gastos</td>
+                  <td class="td--money td--negative">-{{ estate?.expenses | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                </tr>
+                <tr class="tr--total">
+                  <td class="td--label"><strong>Resultado del ejercicio</strong></td>
+                  <td class="td--money"><strong>{{ ((estate?.income || 0) - (estate?.expenses || 0)) | currency:'EUR':'symbol':'1.2-2':'es' }}</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="movements-preview card">
+            <div class="card__header">
+              <h4>Últimos asientos</h4>
+              <button class="link-btn" type="button" (click)="activeTab.set('journal')">Ver el diario</button>
+            </div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Concepto</th>
+                  <th>Origen</th>
+                  <th>Importe</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (e of recentEntries(); track e.id) {
+                  <tr>
+                    <td class="td--muted">{{ e.date }}</td>
+                    <td>{{ e.concept }}</td>
+                    <td class="td--muted">{{ e.sourceLabel }}</td>
+                    <td class="td--money">{{ e.total | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="4" class="td--muted">Todavía no hay asientos.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="summary-side">
+          <div class="reserve-card card">
+            <div class="card__header">
+              <h4>Fondo de reserva</h4>
+            </div>
+            <div class="reserve-body">
+              <div class="reserve-percent">{{ reservePercent }}%</div>
+              <app-progress-bar [value]="estate?.reserve || 0" [max]="estate?.reserveTarget || 1" [height]="12"></app-progress-bar>
+              <div class="reserve-amounts">
+                <span>{{ estate?.reserve | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                <span class="text-muted">objetivo {{ estate?.reserveTarget | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+              </div>
+            </div>
+          </div>
+          @if ((estate?.delinquency || 0) > 0) {
+            <div class="delinquency-card card">
+              <div class="card__header delinquency-header">
+                <h4>Morosidad</h4>
+                <app-badge [text]="estate?.delinquency | currency:'EUR':'symbol':'1.0-0':'es'" variant="error"></app-badge>
+              </div>
+              <div class="delinquency-body">
+                <p class="text-muted">Existen cuotas pendientes de cobro. Revisa la sección de morosidad.</p>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Receipts -->
+    @if (activeTab() === 'receipts') {
+      @if (estate) {
+        <app-recibos-tab [estate]="estate"></app-recibos-tab>
+      }
+    }
+
+    <!-- Tesorería -->
+    @if (activeTab() === 'treasury') {
+      @if (estate) {
+        <app-accounting-ai-panel [estateId]="estate.id"></app-accounting-ai-panel>
+        <app-tesoreria-tab [estateId]="estate.id"></app-tesoreria-tab>
+      }
+    }
+
+    <!-- Diario -->
+    @if (activeTab() === 'journal') {
+      @if (estate) {
+        <app-diario-tab [estateId]="estate.id"></app-diario-tab>
+      }
+    }
+
+    <!-- Remesas -->
+    @if (activeTab() === 'remesas') {
+      @if (estate) {
+        <app-remesas-tab [estate]="estate"></app-remesas-tab>
+      }
+    }
+
+    <!-- Cuentas contables -->
+    @if (activeTab() === 'accounts') {
+      @if (estate) {
+        <app-cuentas-contables-tab [estate]="estate"></app-cuentas-contables-tab>
+      }
+    }
+
+    <!-- Budget -->
+    @if (activeTab() === 'budget') {
+      @if (estate) {
+        <app-presupuesto-tab [estate]="estate"></app-presupuesto-tab>
+      }
+    }
+
+    <!-- Centros de coste -->
+    @if (activeTab() === 'cost-centres') {
+      @if (estate) {
+        <app-centros-coste-tab [estate]="estate"></app-centros-coste-tab>
+      }
+    }
+
+    <!-- Análisis -->
+    @if (activeTab() === 'analysis') {
+      @if (estate) {
+        <app-analisis-tab [estate]="estate"></app-analisis-tab>
+      }
+    }
+
+    <!-- Delinquency -->
+    @if (activeTab() === 'delinquency') {
+      @if (estate) {
+        <app-morosidad-tab [estate]="estate"></app-morosidad-tab>
+      }
+    }
+
+    <!-- Nóminas -->
+    @if (activeTab() === 'payroll') {
+      @if (estate) {
+        <app-nominas-tab [estateId]="estate.id"></app-nominas-tab>
+      }
+    }
+
+    <!-- Impuestos -->
+    @if (activeTab() === 'taxes') {
+      @if (estate) {
+        <app-impuestos-tab [estateId]="estate.id"></app-impuestos-tab>
+      }
+    }
+
+    <!-- Saldos iniciales -->
+    @if (activeTab() === 'opening') {
+      @if (estate) {
+        <app-saldos-iniciales-tab [estate]="estate"></app-saldos-iniciales-tab>
+      }
+    }
+
+    <!-- Cierre de ejercicio -->
+    @if (activeTab() === 'closing') {
+      @if (estate) {
+        <app-cierre-tab [estate]="estate"></app-cierre-tab>
+      }
+    }
+
+    <!-- Mayor -->
+    @if (activeTab() === 'ledger') {
+      @if (estate) {
+        <app-mayor-tab [estateId]="estate.id"></app-mayor-tab>
+      }
+    }
+
+    <!-- Sumas y saldos / balance de situación -->
+    @if (activeTab() === 'balance') {
+      @if (estate) {
+        <app-balance-tab [estateId]="estate.id"></app-balance-tab>
+      }
+    }
+
+    <!-- Resultados frente a presupuesto -->
+    @if (activeTab() === 'results') {
+      @if (estate) {
+        <app-resultados-tab [estateId]="estate.id"></app-resultados-tab>
+      }
+    }
+
+    <!-- Liquidación por criterio de caja -->
+    @if (activeTab() === 'cash-settlement') {
+      @if (estate) {
+        <app-liquidacion-tab [estateId]="estate.id"></app-liquidacion-tab>
+      }
+    }
+
+    <!-- Configuración contable -->
+    @if (activeTab() === 'settings') {
+      @if (estate) {
+        <app-ajustes-contables-tab [estate]="estate"></app-ajustes-contables-tab>
+      }
+    }
+  </div>
+</div>

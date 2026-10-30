@@ -1,0 +1,47 @@
+<div class="community-selector">
+  <button #trigger class="community-selector__trigger" type="button" [title]="estate().name"
+    [attr.aria-label]="'Cambiar comunidad: ' + estate().name" aria-haspopup="dialog"
+    [attr.aria-expanded]="open()" [attr.aria-controls]="open() ? 'estate-community-menu' : null" (click)="toggle()">
+    <app-icon class="community-control__building" name="building" [size]="18" aria-hidden="true"></app-icon>
+    <span class="community-selector__name community-control__label">{{ estate().name }}</span>
+    <app-icon class="community-control__chevron" name="chevron-down" [size]="14" aria-hidden="true"></app-icon>
+  </button>
+  @if (open()) {
+    <div id="estate-community-menu" class="community-selector__menu" role="dialog" aria-label="Seleccionar comunidad"
+      (keydown)="onMenuKeydown($event)">
+      <div class="community-selector__search">
+        <app-icon name="search" [size]="15" aria-hidden="true"></app-icon>
+        <input class="field--bare" #search type="search" placeholder="Buscar finca o comunidad..." aria-label="Buscar finca o comunidad"
+          [value]="query()" (input)="onSearch($event)" />
+      </div>
+      <div class="community-selector__results" [attr.aria-busy]="loading()">
+        @if (loading()) {
+          <p class="community-selector__message" role="status">Cargando comunidades…</p>
+        } @else if (error()) {
+          <p class="community-selector__message" role="alert">{{ error() }}</p>
+          <button class="community-selector__retry" type="button" (click)="loadEstates()">Reintentar</button>
+        } @else {
+          @for (entry of filteredEstates(); track entry.id) {
+            <button class="community-selector__option" type="button" [attr.data-community-id]="entry.id"
+              [class.community-selector__option--active]="entry.id === estate().id"
+              [attr.aria-pressed]="entry.id === estate().id" (click)="select(entry)">
+              <app-icon name="building" [size]="16" aria-hidden="true"></app-icon>
+              <span class="community-selector__details">
+                <span class="community-selector__option-name">{{ entry.name }}</span>
+                @if (address(entry)) { <span class="community-selector__address">{{ address(entry) }}</span> }
+              </span>
+              @if (entry.id === estate().id) { <app-icon class="community-selector__check" name="check" [size]="16" aria-hidden="true"></app-icon> }
+            </button>
+          } @empty {
+            <p class="community-selector__message" role="status">No se encontraron comunidades.</p>
+          }
+        }
+      </div>
+      <button class="community-selector__all" type="button" (click)="viewAll()">
+        <app-icon name="building" [size]="16" aria-hidden="true"></app-icon>
+        <span>Ver todas las fincas</span>
+        <app-icon name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+      </button>
+    </div>
+  }
+</div>

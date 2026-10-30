@@ -1,0 +1,220 @@
+:host {
+  display: block;
+}
+.communities-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+.communities-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  th:first-child {
+    width: 55%;
+  }
+  th {
+    text-align: left;
+    padding: 14px 18px;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-muted);
+    white-space: nowrap;
+    button {
+      color: inherit;
+      font: inherit;
+      text-transform: inherit;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    span {
+      color: var(--color-accent);
+    }
+  }
+  td {
+    padding: 14px 18px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--color-border-light);
+    vertical-align: middle;
+  }
+  .metric-column {
+    text-align: center;
+    button {
+      width: 100%;
+      justify-content: center;
+    }
+    span:empty {
+      display: none;
+    }
+  }
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+  tbody tr:hover td {
+    background: var(--color-surface-hover);
+  }
+}
+.community-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 420px;
+}
+.community-name {
+  color: var(--color-text);
+  text-align: left;
+  display: block;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.4;
+  white-space: nowrap;
+  &:hover {
+    color: var(--color-accent);
+  }
+}
+.community-address {
+  display: block;
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.money-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.debt-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-border-light);
+  color: var(--color-muted);
+  font-weight: 600;
+  font-size: 14px;
+  &--active {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+  }
+}
+.accounting-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.accounting-card {
+  width: 100%;
+  min-width: 0;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+  &:hover {
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+  }
+}
+.accounting-card__status {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  gap: 6px;
+  min-height: 28px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 12px;
+  &.debt-pill--active {
+    border-color: var(--color-error);
+  }
+  &.debt-pill--current {
+    color: var(--color-secondary);
+    background: var(--color-secondary-bg);
+    border-color: var(--color-secondary);
+  }
+}
+.accounting-card__body {
+  padding: 14px;
+}
+.accounting-card__name {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.accounting-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid var(--color-border-light);
+  > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+  }
+  dt {
+    color: var(--color-muted);
+    font-size: 11px;
+    margin-bottom: 5px;
+  }
+  dd {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.accounting-card__balance {
+  grid-column: 1 / -1;
+  dd {
+    font-size: 21px;
+  }
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+@media (max-width: 1200px) {
+  .accounting-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .accounting-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .accounting-card {
+    transition: none;
+  }
+}

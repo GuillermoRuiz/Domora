@@ -1,0 +1,111 @@
+// La pantalla de login tiene una paleta oscura FIJA (no sigue el tema de la
+// app: ver login.component.scss), así que este panel, que vive dentro de ella,
+// usa la misma paleta fija para mantener el contraste en ambos modos.
+$gold: #d9a62e;
+$gold-hover: #c6941f;
+$surface: #1a1a1d;
+$border: rgba(255, 255, 255, 0.1);
+$text: #f5f5f0;
+$muted: #9a9a9e;
+
+:host {
+  display: contents;
+}
+
+.demo-panel__btn {
+  margin-top: 1.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: $gold;
+  border: 1px solid $gold;
+
+  &:hover:not(:disabled) {
+    background: rgba(217, 166, 46, 0.1);
+  }
+}
+
+.demo-panel__backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 1100; // por encima del banner demo (1000)
+}
+
+.demo-panel__modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 320px;
+  max-width: calc(100vw - 2rem);
+  padding: 2rem;
+  border-radius: 18px;
+  background: $surface;
+  border: 1px solid $border;
+
+  h2 {
+    color: $text;
+    font-size: 1.4rem;
+    margin: 0;
+    text-align: center;
+  }
+}
+
+.demo-panel__subtitle {
+  margin: 0 0 1.25rem;
+  color: $muted;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.demo-panel__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.demo-panel__option {
+  padding: 0.7rem;
+  border-radius: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: $gold;
+  color: #14120a;
+
+  &:hover:not(:disabled) {
+    background: $gold-hover;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.demo-panel__error {
+  color: #e0594a;
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0;
+  text-align: center;
+}
+
+.demo-panel__close {
+  padding: 0.7rem;
+  border-radius: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: $muted;
+
+  &:hover {
+    color: $text;
+  }
+}

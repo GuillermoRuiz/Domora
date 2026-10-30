@@ -1,0 +1,26 @@
+<app-section-card title="Actividad reciente" [padded]="false">
+  @if (failed()) {
+    <p class="activity__message activity__message--error" role="alert">No se pudo cargar la actividad reciente.</p>
+  } @else if (items() === null) {
+    <p class="activity__message">Cargando…</p>
+  } @else if (rows().length === 0) {
+    <p class="activity__message">Todavía no hay actividad en esta finca.</p>
+  } @else {
+    <ul class="activity">
+      @for (row of rows(); track row.id) {
+        <li>
+          <button type="button" class="activity__row" [attr.data-activity]="row.id" (click)="openTarget.emit(row.target)">
+            <span class="activity__icon"><app-icon [name]="row.icon" [size]="15"></app-icon></span>
+            <span class="activity__text">
+              <span class="activity__summary">{{ row.summary }}</span>
+              @if (row.detail) {
+                <span class="activity__detail">{{ row.detail }}</span>
+              }
+            </span>
+            <span class="activity__time">{{ row.time }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-section-card>

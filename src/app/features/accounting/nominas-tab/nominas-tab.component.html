@@ -1,0 +1,294 @@
+<div class="toolbar">
+  <label class="year" for="payroll-year">
+    Año
+    <select id="payroll-year" class="form-input" [ngModel]="year()" (ngModelChange)="setYear($event)">
+      @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
+    </select>
+  </label>
+  <div class="toolbar__actions">
+    <app-btn variant="outline" size="sm" (clicked)="openSs()">Pagar Seguridad Social</app-btn>
+    <app-btn *appPageAction variant="primary" size="sm" [disabled]="activeStaff().length === 0" (clicked)="openNew()">
+      <app-icon name="plus" [size]="13"></app-icon>
+      Registrar nómina
+    </app-btn>
+  </div>
+</div>
+
+<p class="intro">
+  Registra las nóminas con los importes que te da la gestoría laboral: Domora no las calcula, las contabiliza. La
+  retención de IRPF entra en los modelos 111 y 190 cuando la nómina se paga.
+</p>
+
+<div class="kpis">
+  <div class="kpi"><span class="kpi__label">Coste para la comunidad</span><span class="kpi__value money">{{ fmtEur(totals().cost) }}</span></div>
+  <div class="kpi"><span class="kpi__label">IRPF retenido</span><span class="kpi__value money">{{ fmtEur(totals().irpf) }}</span></div>
+  <div class="kpi"><span class="kpi__label">Seguridad Social</span><span class="kpi__value money">{{ fmtEur(totals().ss) }}</span></div>
+  <div class="kpi"><span class="kpi__label">Neto sin pagar</span><span class="kpi__value money">{{ fmtEur(totals().unpaid) }}</span></div>
+</div>
+
+@if (loading()) {
+  <p class="muted">Cargando…</p>
+} @else if (activeStaff().length === 0 && payrolls().length === 0) {
+  <p class="muted">No hay personal dado de alta en esta finca. Añádelo en la ficha de la finca, pestaña Personal.</p>
+} @else {
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Mes</th><th>Empleado</th><th>Tipo</th>
+          <th class="num">Bruto</th><th class="num">SS obrera</th><th class="num">SS patronal</th>
+          <th class="num">IRPF</th><th class="num">Neto</th><th>Estado</th><th><span class="sr-only">Acciones</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of payrolls(); track p.id) {
+          <tr [class.row--cancelled]="p.status === 'Anulada'">
+            <td>{{ p.period }}</td>
+            <td>{{ p.staffName }}<span class="sub">{{ p.position }}</span></td>
+            <td>{{ kindLabels[p.kind] }}</td>
+            <td class="num money">{{ fmtEur(p.grossSalary) }}</td>
+            <td class="num money">{{ fmtEur(p.employeeSs) }}</td>
+            <td class="num money">{{ fmtEur(p.employerSs) }}</td>
+            <td class="num money">{{ fmtEur(p.irpfWithholding) }}</td>
+            <td class="num money">{{ fmtEur(p.netPay) }}</td>
+            <td>
+              <app-badge [text]="p.status" [variant]="statusVariant(p.status)"></app-badge>
+              @if (p.paidDate) { <span class="sub">{{ p.paidDate }}</span> }
+              @if (p.cancelReason) { <span class="sub">{{ p.cancelReason }}</span> }
+            </td>
+            <td class="actions">
+              @if (p.status === 'Registrada') {
+                <app-btn variant="outline" size="sm" (clicked)="openPay(p)">Pagar</app-btn>
+                <button class="icon-btn" type="button" [attr.aria-label]="'Anular la nómina de ' + p.staffName + ' de ' + p.period"
+                  (click)="openReason({ kind: 'cancel', payroll: p })">
+                  <app-icon name="trash" [size]="14"></app-icon>
+                </button>
+              }
+              @if (p.status === 'Pagada') {
+                <button class="icon-btn" type="button" [attr.aria-label]="'Deshacer el pago de la nómina de ' + p.staffName"
+                  (click)="openReason({ kind: 'undo', payroll: p })">
+                  <app-icon name="refresh" [size]="14"></app-icon>
+                </button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="10" class="muted">Sin nóminas registradas en {{ year() }}.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="section-title">Pagos a la Seguridad Social</h3>
+  @if (ssPayments().length === 0) {
+    <p class="muted">Sin pagos registrados en {{ year() }}.</p>
+  } @else {
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Mes</th><th>Fecha</th><th>Referencia</th><th class="num">Importe</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+        <tbody>
+          @for (s of ssPayments(); track s.id) {
+            <tr [class.row--cancelled]="s.status === 'Deshecho'">
+              <td>{{ s.period }}</td>
+              <td>{{ s.date }}</td>
+              <td>{{ s.reference ?? '—' }}</td>
+              <td class="num money">{{ fmtEur(s.amount) }}</td>
+              <td>{{ s.status }}@if (s.undoReason) { <span class="sub">{{ s.undoReason }}</span> }</td>
+              <td class="actions">
+                @if (s.status === 'Vigente') {
+                  <button class="icon-btn" type="button" [attr.aria-label]="'Deshacer el pago de la Seguridad Social de ' + s.period"
+                    (click)="openReason({ kind: 'undo-ss', settlement: s })">
+                    <app-icon name="refresh" [size]="14"></app-icon>
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}
+
+@if (showNew()) {
+  <div class="modal-overlay" (click)="showNew.set(false)">
+    <div class="modal" role="dialog" aria-labelledby="new-payroll-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Contabilidad · Nóminas</div>
+          <h3 class="modal__title" id="new-payroll-title">Registrar nómina</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <div class="form-grid">
+          <div class="form-field form-field--full">
+            <label class="form-label" for="np-staff">Empleado</label>
+            <select id="np-staff" class="form-input" [ngModel]="newForm.staffMemberId" (ngModelChange)="onStaffChange($event)">
+              <option value="" disabled>Elige un empleado</option>
+              @for (s of activeStaff(); track s.id) { <option [value]="s.id">{{ s.fullName }} · {{ s.position }}</option> }
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="np-period">Mes</label>
+            <input id="np-period" class="form-input" type="month" [(ngModel)]="newForm.period" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="np-kind">Tipo</label>
+            <select id="np-kind" class="form-input" [(ngModel)]="newForm.kind">
+              @for (k of kinds; track k) { <option [value]="k">{{ kindLabels[k] }}</option> }
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="np-gross">Bruto (€)</label>
+            <input id="np-gross" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="newForm.gross" (ngModelChange)="touchNew()" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="np-irpf">Retención IRPF (€)</label>
+            <input id="np-irpf" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="newForm.irpf" (ngModelChange)="touchNew()" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="np-ss-e">Seguridad Social del trabajador (€)</label>
+            <input id="np-ss-e" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="newForm.employeeSs" (ngModelChange)="touchNew()" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="np-ss-c">Seguridad Social de la comunidad (€)</label>
+            <input id="np-ss-c" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="newForm.employerSs" (ngModelChange)="touchNew()" />
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label" for="np-notes">Nota</label>
+            <input id="np-notes" class="form-input" type="text" maxlength="255" placeholder="Opcional" [(ngModel)]="newForm.notes" />
+          </div>
+        </div>
+        @if (newNet() !== null) {
+          <p class="form-hint">Neto a pagar al empleado: <strong class="money">{{ fmtEur(newNet()!) }}</strong></p>
+        }
+        @if (newError()) { <p class="form-error" role="alert">{{ newError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="showNew.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="newSaving()" (clicked)="saveNew()">
+          {{ newSaving() ? 'Registrando…' : 'Registrar nómina' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (paying(); as p) {
+  <div class="modal-overlay" (click)="paying.set(null)">
+    <div class="modal" role="dialog" aria-labelledby="pay-payroll-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Nóminas · {{ p.period }}</div>
+          <h3 class="modal__title" id="pay-payroll-title">Pagar la nómina de {{ p.staffName }}</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">Se paga el neto: <strong class="money">{{ fmtEur(p.netPay) }}</strong>.</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="pp-date">Fecha del pago</label>
+            <input id="pp-date" class="form-input" type="date" [(ngModel)]="payForm.date" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="pp-method">Método</label>
+            <select id="pp-method" class="form-input" [(ngModel)]="payForm.method">
+              <option value="Transferencia">Transferencia</option>
+              <option value="Efectivo">Efectivo</option>
+            </select>
+          </div>
+          @if (payForm.method !== 'Efectivo' && banks().length > 1) {
+            <div class="form-field form-field--full">
+              <label class="form-label" for="pp-bank">Cuenta</label>
+              <select id="pp-bank" class="form-input" [(ngModel)]="payForm.bankAccountId">
+                @for (b of banks(); track b.id) { <option [value]="b.id">{{ b.alias }}</option> }
+              </select>
+            </div>
+          }
+        </div>
+        @if (payError()) { <p class="form-error" role="alert">{{ payError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="paying.set(null)">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="paySaving()" (clicked)="confirmPay()">
+          {{ paySaving() ? 'Registrando…' : 'Registrar pago' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showSs()) {
+  <div class="modal-overlay" (click)="showSs.set(false)">
+    <div class="modal" role="dialog" aria-labelledby="ss-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Nóminas</div>
+          <h3 class="modal__title" id="ss-title">Pagar la Seguridad Social</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">
+          Registra el cargo de la Seguridad Social del mes: las cuotas del trabajador y de la comunidad de sus nóminas.
+        </p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="ss-period">Mes de las cuotas</label>
+            <input id="ss-period" class="form-input" type="month" [ngModel]="ssForm.period" (ngModelChange)="onSsPeriodChange($event)" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ss-date">Fecha del cargo</label>
+            <input id="ss-date" class="form-input" type="date" [(ngModel)]="ssForm.date" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ss-amount">Importe (€)</label>
+            <input id="ss-amount" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="ssForm.amount" />
+            <span class="form-hint">Cuotas de las nóminas del mes: {{ fmtEur(ssDueFor(ssForm.period)) }}.</span>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ss-ref">Referencia</label>
+            <input id="ss-ref" class="form-input" type="text" maxlength="40" placeholder="Opcional" [(ngModel)]="ssForm.reference" />
+          </div>
+        </div>
+        @if (ssError()) { <p class="form-error" role="alert">{{ ssError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="showSs.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="ssSaving()" (clicked)="confirmSs()">
+          {{ ssSaving() ? 'Registrando…' : 'Registrar pago' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (reasonAction(); as action) {
+  <div class="modal-overlay" (click)="reasonAction.set(null)">
+    <div class="modal" role="dialog" aria-labelledby="reason-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Nóminas</div>
+          <h3 class="modal__title" id="reason-title">{{ reasonTitle(action) }}</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">Se contabiliza un contraasiento. Indica el motivo: queda en la contabilidad.</p>
+        <div class="form-field">
+          <label class="form-label" for="reason-input">Motivo</label>
+          <input id="reason-input" class="form-input" type="text" maxlength="200" [ngModel]="reason()" (ngModelChange)="reason.set($event)" />
+        </div>
+        @if (reasonError()) { <p class="form-error" role="alert">{{ reasonError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="reasonAction.set(null)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="reasonSaving()" (clicked)="confirmReason()">
+          {{ reasonSaving() ? 'Guardando…' : 'Confirmar' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast" role="status">{{ toastMessage() }}</div>
+}

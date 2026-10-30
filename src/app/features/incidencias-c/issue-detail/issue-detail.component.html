@@ -1,0 +1,176 @@
+<aside class="detail" aria-labelledby="issue-detail-title" (keydown.escape)="close()">
+  @if (detail(); as d) {
+    <header class="detail__header">
+      <span class="detail__icon" [class]="'detail__icon detail__icon--' + status()!.tone" aria-hidden="true">
+        <app-icon name="wrench" [size]="18"></app-icon>
+      </span>
+      <div class="detail__heading">
+        <h2 id="issue-detail-title" #heading tabindex="-1" data-detail-title>{{ d.title }}</h2>
+        <div class="detail__sub">
+          <span class="detail__ref" data-detail-ref>{{ d.ref }}</span>
+          <app-status-pill [text]="status()!.label" [tone]="status()!.tone"></app-status-pill>
+        </div>
+      </div>
+      <button type="button" class="detail__close" data-action="close" aria-label="Cerrar detalle" (click)="close()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </header>
+
+    <dl class="detail__meta">
+      <div data-meta="tipo">
+        <dt>Tipo</dt>
+        <dd>{{ typeLabel() }}</dd>
+      </div>
+      <div data-meta="ubicacion">
+        <dt>Ubicación</dt>
+        <dd>{{ d.location ?? '—' }}</dd>
+      </div>
+      <div data-meta="comunidad">
+        <dt>Comunidad</dt>
+        <dd>{{ d.estateName }}</dd>
+      </div>
+      <div data-meta="fecha">
+        <dt>Fecha de creación</dt>
+        <dd>{{ createdOn() }}</dd>
+      </div>
+    </dl>
+
+    <p class="detail__reporter" data-reporter>{{ d.mine ? 'Reportada por ti' : 'Reportada por un vecino' }}</p>
+
+    <section class="detail__section">
+      <h3>Descripción</h3>
+      <p class="detail__description" data-description>{{ d.description }}</p>
+    </section>
+
+    @if (!d.mine && (d.canMarkAffected || d.affectedByMe)) {
+      <section class="detail__section detail__affected">
+        <button type="button" class="detail__affected-btn" data-affected [attr.aria-pressed]="d.affectedByMe" [disabled]="busy()" (click)="toggleAffected()">
+          <app-icon [name]="d.affectedByMe ? 'check' : 'users'" [size]="15"></app-icon>
+          Me afecta también
+        </button>
+        <span class="detail__affected-count" data-affected-count>{{ affectedText(d.affectedCount) }}</span>
+      </section>
+    }
+
+    @if (d.mine) {
+      <section class="detail__section" data-attachments>
+        <h3>Adjuntos</h3>
+        @if (d.attachments.length === 0 && !d.canReply) {
+          <p class="detail__muted">Sin adjuntos.</p>
+        }
+        <app-attachment-gallery [attachments]="d.attachments" [loader]="loader" [canAdd]="d.canReply"
+          (filesSelected)="addFiles($event)" (download)="download($event)"></app-attachment-gallery>
+        @if (attachmentError()) {
+          <p class="detail__error" role="alert" data-attachment-error>{{ attachmentError() }}</p>
+        }
+      </section>
+    }
+
+    <section class="detail__section">
+      <h3>Seguimiento</h3>
+      <app-issue-timeline [entries]="d.timeline" [pending]="pending()" [statusLabel]="statusLabel"></app-issue-timeline>
+      @if (expected()) {
+        <p class="detail__expected" data-expected>
+          <app-icon name="clock" [size]="14"></app-icon>
+          Respuesta estimada: {{ expected() }}
+        </p>
+      }
+    </section>
+
+    @if (d.rating !== null) {
+      <section class="detail__section" data-rating>
+        <h3>Tu valoración</h3>
+        <p class="detail__stars" [attr.aria-label]="d.rating + ' de 5'">
+          @for (n of starOptions; track n) {
+            <span class="detail__star" [class.detail__star--on]="n <= d.rating" aria-hidden="true">★</span>
+          }
+          <span class="detail__muted">{{ d.rating }} de 5</span>
+        </p>
+        @if (d.ratingComment) {
+          <p class="detail__description">{{ d.ratingComment }}</p>
+        }
+      </section>
+    }
+
+    @if (d.status === 'PendienteInformacion' && d.canReply) {
+      <div class="detail__banner" role="status" data-info-banner>
+        <app-icon name="exclamation" [size]="16"></app-icon>
+        <div>
+          <strong>El administrador necesita información</strong>
+          <p>Responde abajo para que pueda seguir con tu incidencia.</p>
+        </div>
+      </div>
+    }
+
+    @if (d.canReply) {
+      <section class="detail__section detail__reply">
+        <label for="issue-reply">{{ d.status === 'PendienteInformacion' ? 'Tu respuesta' : 'Añadir información' }}</label>
+        <textarea id="issue-reply" rows="3" data-reply placeholder="Escribe aquí tu mensaje…" [value]="replyText()" (input)="replyText.set($any($event.target).value)"></textarea>
+        <div class="detail__reply-actions">
+          <button type="button" class="detail__primary" data-action="reply" [disabled]="busy() || !replyText().trim()" (click)="reply()">
+            <app-icon name="send" [size]="14"></app-icon>
+            Enviar
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (d.canRate) {
+      <section class="detail__section detail__rate">
+        <h3>Valora la resolución</h3>
+        <div class="detail__stars" role="group" aria-label="Valoración de 1 a 5 estrellas">
+          @for (n of starOptions; track n) {
+            <button type="button" class="detail__star-btn" [class.detail__star--on]="n <= stars()" [attr.data-star]="n"
+              [attr.aria-pressed]="n === stars()" [attr.aria-label]="n + (n === 1 ? ' estrella' : ' estrellas')" (click)="stars.set(n)">★</button>
+          }
+        </div>
+        <label for="issue-rating-comment">Comentario (opcional)</label>
+        <textarea id="issue-rating-comment" rows="2" data-rating-comment [value]="ratingComment()" (input)="ratingComment.set($any($event.target).value)"></textarea>
+        <div class="detail__reply-actions">
+          <button type="button" class="detail__primary" data-action="rate" [disabled]="busy() || !stars()" (click)="rate()">Enviar valoración</button>
+        </div>
+      </section>
+    }
+
+    @if (actionError()) {
+      <p class="detail__error" role="alert" data-action-error>{{ actionError() }}</p>
+    }
+
+    @if (d.withdrawBlockedByOthers) {
+      <p class="detail__muted" data-withdraw-blocked>No puedes retirarla tú solo: otros vecinos también la han reportado o les afecta. Si ya no hace falta, díselo a la administración.</p>
+    }
+
+    @if (d.canWithdraw || d.canReopen) {
+      <footer class="detail__actions">
+        @if (d.canReopen) {
+          <button type="button" class="detail__secondary" data-action="reopen" [disabled]="busy()" (click)="reopen()">
+            <app-icon name="refresh" [size]="14"></app-icon>
+            Reabrir
+          </button>
+        }
+        @if (d.canWithdraw) {
+          <button type="button" class="detail__secondary detail__secondary--danger" data-action="withdraw" [disabled]="busy()" (click)="withdraw()">
+            <app-icon name="x" [size]="14"></app-icon>
+            Retirar
+          </button>
+        }
+      </footer>
+    }
+  } @else if (loadFailed()) {
+    <header class="detail__header detail__header--bare">
+      <h2 id="issue-detail-title" class="detail__visually-hidden">Detalle de la incidencia</h2>
+      <button type="button" class="detail__close" data-action="close" aria-label="Cerrar detalle" (click)="close()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </header>
+    <p class="detail__error" role="alert" data-detail-error>No se pudo cargar la incidencia. Inténtalo de nuevo.</p>
+  } @else {
+    <header class="detail__header detail__header--bare">
+      <h2 id="issue-detail-title" class="detail__visually-hidden">Detalle de la incidencia</h2>
+      <button type="button" class="detail__close" data-action="close" aria-label="Cerrar detalle" (click)="close()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </header>
+    <p class="detail__muted">Cargando…</p>
+  }
+</aside>

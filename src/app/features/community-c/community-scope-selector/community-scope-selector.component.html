@@ -1,0 +1,49 @@
+<div class="scope" (keydown.escape)="close()">
+  <button type="button" class="scope__btn" aria-haspopup="listbox" [attr.aria-expanded]="open()" aria-label="Propiedad que se visualiza" (click)="toggle()">
+    <span class="scope__icon"><app-icon name="building" [size]="16"></app-icon></span>
+    <span class="scope__text">
+      @if (selected(); as s) {
+        <strong class="scope__name">{{ s.nickname }}</strong>
+        <span class="scope__sub">{{ s.addressFull }}</span>
+      } @else if (showAll()) {
+        <strong class="scope__name">Todas mis propiedades</strong>
+        <span class="scope__sub">{{ propertyCount() }} propiedades</span>
+      } @else {
+        <strong class="scope__name">Elige una propiedad</strong>
+      }
+    </span>
+    <app-icon name="chevron-down" [size]="14"></app-icon>
+  </button>
+
+  @if (open()) {
+    <div class="scope__backdrop" (click)="close()"></div>
+    <div class="scope__panel" role="listbox" aria-label="Tus propiedades">
+      @if (showAll()) {
+        <button type="button" role="option" class="scope__option" data-property="all"
+          [attr.aria-selected]="selected() === null" [class.scope__option--active]="selected() === null" (click)="pick(null)">
+          <span class="scope__option-text">
+            <strong>Todas mis propiedades</strong>
+            <span class="scope__sub">{{ propertyCount() }} propiedades</span>
+          </span>
+          @if (selected() === null) { <app-icon name="check" [size]="14"></app-icon> }
+        </button>
+      }
+      @for (group of groups(); track group.estateId) {
+        <p class="scope__group" [attr.data-group]="group.estateId ?? 'none'">{{ group.estateName }}</p>
+        @for (p of group.properties; track p.id) {
+          <button type="button" role="option" class="scope__option" [attr.data-property]="p.id"
+            [attr.aria-selected]="p.id === selectedId()" [class.scope__option--active]="p.id === selectedId()" (click)="pick(p.id)">
+            <span class="scope__option-text">
+              <strong>{{ p.nickname }}</strong>
+              <span class="scope__sub">{{ p.addressFull }}</span>
+            </span>
+            @if (p.id === selectedId()) { <app-icon name="check" [size]="14"></app-icon> }
+          </button>
+        }
+      }
+      <button type="button" class="scope__add" data-action="add-property" (click)="add()">
+        <app-icon name="plus" [size]="14"></app-icon> Añadir propiedad
+      </button>
+    </div>
+  }
+</div>

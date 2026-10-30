@@ -1,0 +1,333 @@
+:host {
+  display: block;
+}
+.participation {
+  display: block;
+}
+dl,
+ol,
+p {
+  margin: 0;
+}
+ol {
+  padding: 0;
+  list-style: none;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.muted {
+  color: var(--color-muted);
+}
+.muted--small {
+  display: block;
+  font-size: 12px;
+  color: var(--color-light);
+}
+.row-menu {
+  // Popover (capa superior): se coloca con coordenadas de ventana desde el componente.
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: visible;
+  min-width: 210px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  hr {
+    margin: 6px 4px;
+    border: 0;
+    border-top: 1px solid var(--color-border-light);
+  }
+  button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    &:hover,
+    &:focus-visible {
+      background: var(--color-surface-hover);
+      outline: 0;
+    }
+    &:focus-visible {
+      box-shadow: inset 0 0 0 2px var(--color-accent);
+    }
+  }
+}
+.empty {
+  padding: 18px 8px;
+  color: var(--color-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+// ── Cabecera de estadísticas ───────────────────────────────────────────────
+.stats {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr);
+  gap: 14px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--color-border-light);
+  &__quorum {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    p {
+      margin-top: 3px;
+      color: var(--color-muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+  }
+  &__icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--color-surface-hover);
+    &--green {
+      color: #0b1d14;
+      background: var(--meeting-green, #3FA372);
+    }
+    &--red {
+      color: #fff;
+      background: var(--color-error);
+    }
+    &--blue {
+      color: #0b1530;
+      background: var(--color-blue);
+    }
+  }
+  &__label {
+    font-size: 15px;
+    &--green {
+      color: var(--meeting-green, #3FA372);
+    }
+    &--red {
+      color: var(--color-error);
+    }
+    &--blue {
+      color: var(--color-blue);
+    }
+  }
+  &__metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    dt {
+      color: var(--color-muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    dd {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+      app-icon {
+        color: var(--color-muted);
+      }
+    }
+  }
+}
+
+// ── Herramientas ───────────────────────────────────────────────────────────
+.tools {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+  &__search,
+  &__filter {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    min-height: 34px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-muted);
+    &:focus-within {
+      border-color: var(--color-accent);
+    }
+    input,
+    select {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--color-text);
+      font: inherit;
+      font-size: 13px;
+    }
+    select {
+      appearance: none;
+      background-image: none;
+      cursor: pointer;
+      padding-right: 4px;
+      option {
+        background: var(--color-surface);
+      }
+    }
+  }
+}
+
+// ── Tabla ──────────────────────────────────────────────────────────────────
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+}
+.table {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  font-size: 13px;
+  th {
+    padding: 10px 8px;
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  td {
+    padding: 8px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  tbody tr:hover {
+    background: var(--color-surface-hover);
+  }
+  &__actions {
+    width: 44px;
+    text-align: center;
+  }
+}
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+  &__avatar {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-blue) 22%, var(--color-surface));
+    color: var(--color-text);
+    font-size: 11px;
+    font-weight: 700;
+  }
+}
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    background: var(--color-border-light);
+    color: var(--color-text);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@container (max-width: 760px) {
+  .stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container (max-width: 600px) {
+  .stats__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  // La tabla se convierte en una tarjeta por propietario
+  .table-scroll {
+    border: 0;
+  }
+  .table {
+    min-width: 0;
+    thead {
+      display: none;
+    }
+    tbody,
+    tr,
+    td {
+      display: block;
+    }
+    tr {
+      margin-bottom: 10px;
+      padding: 6px 0;
+      border: 1px solid var(--color-border-light);
+      border-radius: var(--radius-md);
+    }
+    td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 14px;
+      border: 0;
+      text-align: right;
+      &::before {
+        content: attr(data-label);
+        color: var(--color-muted);
+        font-size: 13px;
+        text-align: left;
+      }
+    }
+    &__actions {
+      width: auto;
+    }
+  }
+}
+@container (max-width: 560px) {
+  .tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,89 @@
+<div class="summary">
+  <app-meeting-card title="Participación" class="summary__participation">
+    <div class="quorum">
+      <span class="quorum__icon" [class]="'quorum__icon quorum__icon--' + stats.quorumTone" aria-hidden="true">
+        <app-icon [name]="stats.quorumTone === 'green' ? 'check' : 'exclamation'" [size]="18"></app-icon>
+      </span>
+      <div>
+        <strong class="quorum__label" [class]="'quorum__label quorum__label--' + stats.quorumTone">{{ stats.quorumLabel }}</strong>
+        <p class="quorum__hint">{{ stats.quorumHint }}</p>
+      </div>
+    </div>
+    <dl class="metrics">
+      <div class="metric">
+        <dt>Propietarios</dt>
+        <dd><app-icon name="users" [size]="18"></app-icon>{{ stats.attending }} / {{ stats.totalOwners }}</dd>
+      </div>
+      <div class="metric">
+        <dt>Vecinos presentes</dt>
+        <dd><app-icon name="users" [size]="18"></app-icon>{{ percent(stats.ownersPercent) }}</dd>
+      </div>
+      <div class="metric">
+        <dt>Coeficiente presente</dt>
+        <dd><app-icon name="chart" [size]="18"></app-icon>{{ percent(stats.quotaPercent) }}</dd>
+      </div>
+    </dl>
+  </app-meeting-card>
+
+  <app-meeting-card title="Información de la junta" class="summary__info">
+    <dl class="info">
+      <div><app-icon name="building" [size]="16"></app-icon><dt>Tipo</dt><dd>{{ typeLabel || '—' }}</dd></div>
+      <div><app-icon name="calendar" [size]="16"></app-icon><dt>Fecha</dt><dd>{{ date(meeting.scheduledAt1) }}</dd></div>
+      <div><app-icon name="clock" [size]="16"></app-icon><dt>1ª Convocatoria</dt><dd>{{ time(meeting.scheduledAt1) }}</dd></div>
+      <div><app-icon name="clock" [size]="16"></app-icon><dt>2ª Convocatoria</dt><dd>{{ secondCallLabel }}</dd></div>
+      <div><app-icon name="map-pin" [size]="16"></app-icon><dt>Lugar</dt><dd>{{ meeting.location || 'Sin lugar indicado' }}</dd></div>
+    </dl>
+  </app-meeting-card>
+
+  <app-meeting-attachments
+    class="summary__wide"
+    [attachments]="attachments"
+    [busy]="attachmentsBusy"
+    (upload)="attach.emit($event)"
+    (download)="downloadAttachment.emit($event)"
+    (remove)="removeAttachment.emit($event)"
+  ></app-meeting-attachments>
+
+  <app-meeting-card
+    title="Orden del día"
+    [meta]="agenda.length + (agenda.length === 1 ? ' punto' : ' puntos')"
+    class="summary__wide"
+  >
+    <ul class="agenda">
+      @for (row of agenda; track row.id) {
+        <li>
+          <button type="button" class="agenda__row" (click)="openAgenda.emit()" [attr.aria-label]="'Ver punto ' + row.number + ': ' + row.title">
+            <span class="agenda__number">{{ row.number }}</span>
+            <span class="agenda__body">
+              <strong>{{ row.title }}</strong>
+              <app-status-pill [tone]="row.tone">{{ row.statusLabel }}</app-status-pill>
+            </span>
+            <app-icon name="chevron-right" [size]="18" aria-hidden="true"></app-icon>
+          </button>
+        </li>
+      } @empty {
+        <li class="empty">No hay puntos en el orden del día.</li>
+      }
+    </ul>
+  </app-meeting-card>
+
+  <app-meeting-card title="Estado del acta" class="summary__wide">
+    <div class="acta">
+      <span class="acta__icon" aria-hidden="true"><app-icon name="file-text" [size]="20"></app-icon></span>
+      <div class="acta__text">
+        @if (acta.phase === 'draft') {
+          <strong>Acta aún no disponible</strong>
+          <p>El acta se generará automáticamente cuando marques la junta como celebrada.</p>
+        } @else {
+          <strong>{{ acta.label }}</strong>
+          <p>{{ acta.hint }}</p>
+        }
+      </div>
+      @if (acta.phase === 'draft') {
+        <app-btn variant="subtle" size="sm" [disabled]="true"><app-icon name="file-text" [size]="16"></app-icon>Generar acta</app-btn>
+      } @else if (meeting.actaDistributedAt) {
+        <app-btn variant="accent" size="sm" (clicked)="download.emit()"><app-icon name="download" [size]="16"></app-icon>Descargar acta</app-btn>
+      }
+    </div>
+  </app-meeting-card>
+</div>

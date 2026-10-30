@@ -1,0 +1,89 @@
+.tfa-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tfa-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0;
+  }
+}
+
+.tfa-card__hint {
+  font-size: 13.5px;
+  color: var(--color-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tfa-card__error {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-error);
+  margin: 0;
+}
+
+.tfa-enroll {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+
+  input {
+    font-size: 17px;
+    letter-spacing: 0.2em;
+    text-align: center;
+    width: 140px;
+  }
+}
+
+.tfa-enroll__qr {
+  width: 180px;
+  height: 180px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  background: #fff;
+}
+
+.tfa-enroll__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tfa-backup-codes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.tfa-backup-codes__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  width: 100%;
+
+  code {
+    background: var(--color-bg);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 14px;
+    text-align: center;
+    font-family: var(--font-mono, monospace);
+  }
+}

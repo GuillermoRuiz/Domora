@@ -1,0 +1,71 @@
+<div class="panels">
+  <app-section-card title="Próximos vencimientos" [actionLabel]="upcoming().length > 0 ? 'Ver todos' : ''" [padded]="false" (action)="viewAll.emit()">
+    @if (upcoming().length === 0) {
+      <p class="panels__empty" data-panel="upcoming-empty">Ningún contrato vigente tiene vencimiento próximo.</p>
+    } @else {
+      <div class="panels__scroll">
+        <table class="panels__table" data-panel="upcoming">
+          <thead>
+            <tr>
+              <th scope="col">Contrato / Servicio</th>
+              <th scope="col">Vencimiento</th>
+              <th scope="col">Días restantes</th>
+              <th scope="col" class="panels__num">Importe</th>
+              <th scope="col"><span class="sr-only">Acción</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of upcoming(); track row.contract.id) {
+              <tr [attr.data-upcoming]="row.contract.id">
+                <td>
+                  <span class="panels__title">{{ row.contract.serviceType }}</span>
+                  <span class="panels__sub">{{ row.contract.supplier.name }}</span>
+                </td>
+                <td class="panels__date">{{ row.end }}</td>
+                <td class="panels__days"><span class="panels__dot" [class]="'panels__dot panels__dot--' + row.tone" aria-hidden="true"></span>{{ row.days }}</td>
+                <td class="panels__num">{{ row.amount }}</td>
+                <td class="panels__actions">
+                  <button type="button" class="panels__view" [attr.aria-label]="'Ver ' + row.contract.serviceType + ' de ' + row.contract.supplier.name" (click)="view.emit(row.contract)">Ver</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </app-section-card>
+
+  <app-section-card title="Últimas renovaciones" [actionLabel]="latest().length > 0 ? 'Ver histórico' : ''" [padded]="false" (action)="viewHistory.emit()">
+    @if (latest().length === 0) {
+      <p class="panels__empty" data-panel="renewals-empty">Todavía no se ha registrado ninguna renovación. Las que hagas con «Renovar» en el menú «⋯» de un contrato aparecerán aquí.</p>
+    } @else {
+      <div class="panels__scroll">
+        <table class="panels__table" data-panel="renewals">
+          <thead>
+            <tr>
+              <th scope="col">Contrato / Servicio</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Nuevo vencimiento</th>
+              <th scope="col" class="panels__num">Importe</th>
+              <th scope="col">Tipo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of latest(); track row.id) {
+              <tr [attr.data-renewal]="row.id">
+                <td>
+                  <span class="panels__title">{{ row.service }}</span>
+                  <span class="panels__sub">{{ row.supplier }}</span>
+                </td>
+                <td class="panels__date">{{ row.date }}</td>
+                <td class="panels__date">{{ row.newEnd }}</td>
+                <td class="panels__num">{{ row.amount }}</td>
+                <td>{{ row.kind }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </app-section-card>
+</div>

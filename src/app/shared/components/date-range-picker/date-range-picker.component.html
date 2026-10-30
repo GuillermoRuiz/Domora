@@ -1,0 +1,52 @@
+<div class="drp" [class.drp--open]="open()">
+  <button type="button" class="drp__trigger" [class.drp__trigger--set]="!!value()" [class.drp__trigger--clearable]="!!value()"
+    aria-haspopup="dialog" [attr.aria-expanded]="open()" [attr.aria-label]="label() + ': ' + triggerText()" (click)="toggle()">
+    <app-icon name="calendar" [size]="15" aria-hidden="true"></app-icon>
+    <span class="drp__text">{{ triggerText() }}</span>
+    <app-icon class="drp__chevron" name="chevron-down" [size]="14" aria-hidden="true"></app-icon>
+  </button>
+  @if (value()) {
+    <button type="button" class="drp__clear" aria-label="Quitar el filtro de fechas" (click)="clear()"><app-icon name="x" [size]="12"></app-icon></button>
+  }
+
+  @if (open()) {
+    <div class="drp__panel" role="dialog" [attr.aria-label]="label()">
+      <div class="drp__presets">
+        @for (preset of presets(); track preset.label) {
+          <button type="button" class="drp__preset" [class.drp__preset--on]="isPresetActive(preset.range)" (click)="applyPreset(preset.range)">{{ preset.label }}</button>
+        }
+      </div>
+
+      <div class="drp__nav">
+        <button type="button" class="drp__nav-btn" aria-label="Mes anterior" (click)="shiftMonth(-1)"><app-icon name="chevron-left" [size]="16"></app-icon></button>
+        <span class="drp__title" aria-live="polite">{{ title() }}</span>
+        <button type="button" class="drp__nav-btn" aria-label="Mes siguiente" (click)="shiftMonth(1)"><app-icon name="chevron-right" [size]="16"></app-icon></button>
+      </div>
+
+      <div class="drp__grid" role="grid" [attr.aria-label]="title()">
+        <div class="drp__week" role="row">
+          @for (name of weekdays; track name) { <span class="drp__weekday" role="columnheader">{{ name }}</span> }
+        </div>
+        @for (week of weeks(); track week[0].iso) {
+          <div class="drp__week" role="row">
+            @for (d of week; track d.iso) {
+              <span class="drp__cell" role="gridcell"
+                [class.drp__cell--start]="isStart(d.iso)" [class.drp__cell--end]="isEnd(d.iso)" [class.drp__cell--middle]="isMiddle(d.iso)"
+                [class.drp__cell--single]="isStart(d.iso) && isEnd(d.iso)">
+                <button type="button" class="drp__day" [class.drp__day--outside]="!d.inMonth" [class.drp__day--today]="d.iso === today"
+                  [class.drp__day--edge]="isStart(d.iso) || isEnd(d.iso)" [attr.tabindex]="tabIndex(d.iso)"
+                  [attr.aria-label]="dayLabel(d.iso)" [attr.aria-pressed]="isStart(d.iso) || isEnd(d.iso) || isMiddle(d.iso)"
+                  (click)="select(d.iso)" (mouseenter)="hover(d.iso)" (keydown)="onDayKeydown($event, d.iso)">{{ d.day }}</button>
+              </span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="drp__footer">
+        <span class="drp__hint" role="status">{{ hint() }}</span>
+        <button type="button" class="drp__reset" [disabled]="!value()" (click)="clear()">Limpiar</button>
+      </div>
+    </div>
+  }
+</div>

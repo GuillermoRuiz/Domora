@@ -1,0 +1,123 @@
+<div class="picker">
+  <div class="picker__actions">
+    <button
+      type="button"
+      class="picker__action"
+      [disabled]="disabled || loading || allSelected()"
+      (click)="addAll()"
+    >
+      Añadir todos
+    </button>
+    <button
+      type="button"
+      class="picker__action"
+      [disabled]="disabled || !attendees().length"
+      (click)="clearAll()"
+    >
+      Limpiar selección
+    </button>
+  </div>
+
+  <div class="picker__search">
+    <app-icon name="search" [size]="16" aria-hidden="true"></app-icon>
+    <input
+      class="picker__input field--bare"
+      type="text"
+      role="combobox"
+      autocomplete="off"
+      aria-autocomplete="list"
+      aria-label="Buscar propietario por nombre o email"
+      placeholder="Buscar propietarios por nombre o email…"
+      [disabled]="disabled"
+      [attr.aria-expanded]="open() && options().length > 0"
+      [attr.aria-controls]="listId"
+      [attr.aria-activedescendant]="open() && options().length ? listId + '-' + activeIndex() : null"
+      [attr.aria-invalid]="invalidEmail() ? 'true' : null"
+      [value]="query()"
+      (input)="onInput($event)"
+      (focus)="open.set(true)"
+      (blur)="onBlur()"
+      (keydown)="onKeydown($event)"
+      (paste)="onPaste($event)"
+    />
+  </div>
+
+  @if (open() && options().length) {
+    <ul class="picker__list" role="listbox" [id]="listId" (mousedown)="$event.preventDefault()">
+      @for (option of options(); track option.email; let i = $index) {
+        <li
+          role="option"
+          class="picker__option"
+          [id]="listId + '-' + i"
+          [class.picker__option--active]="i === activeIndex()"
+          [attr.aria-selected]="i === activeIndex()"
+          (mouseenter)="activeIndex.set(i)"
+          (click)="add(option)"
+        >
+          @if (option.kind === 'owner') {
+            <span class="avatar" [class]="'avatar avatar--' + tone({ email: option.email })" aria-hidden="true">{{
+              initials({ email: option.email, name: option.name })
+            }}</span>
+            <span class="picker__option-text">
+              <span class="picker__option-name">{{ option.label }}</span>
+              @if (option.name) {
+                <span class="picker__option-email">{{ option.email }}</span>
+              }
+            </span>
+          } @else {
+            <app-icon name="plus" [size]="14" aria-hidden="true"></app-icon>
+            <span class="picker__option-name">{{ option.label }}</span>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (invalidEmail()) {
+    <p class="picker__note picker__note--error" role="alert">
+      Ese texto no es un email válido. Escribe una dirección completa, p. ej. nombre&#64;correo.com.
+    </p>
+  }
+
+  @if (loading) {
+    <p class="picker__note" role="status">Cargando propietarios…</p>
+  } @else if (!attendees().length) {
+    <p class="picker__note">
+      {{
+        owners().length
+          ? "Ningún asistente seleccionado."
+          : "Esta finca no tiene propietarios con email. Puedes escribir direcciones a mano."
+      }}
+    </p>
+  }
+
+  @if (attendees().length) {
+    <ul class="picker__chips" aria-label="Asistentes seleccionados">
+      @for (a of attendees(); track a.email) {
+        <li class="chip">
+          <span class="avatar" [class]="'avatar avatar--' + tone(a)" aria-hidden="true">{{ initials(a) }}</span>
+          <span class="chip__name" [title]="a.email">{{ displayName(a) }}</span>
+          <button
+            type="button"
+            class="chip__remove"
+            [disabled]="disabled"
+            [attr.aria-label]="'Quitar a ' + displayName(a)"
+            (click)="remove(a.email)"
+          >
+            <app-icon name="x" [size]="12"></app-icon>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="picker__footer">
+    <button type="button" class="chip chip--add" [disabled]="disabled" (click)="focusSearch()">
+      <app-icon name="plus" [size]="14" aria-hidden="true"></app-icon>
+      Añadir propietario
+    </button>
+    @if (attendees().length) {
+      <span class="picker__count">{{ attendees().length }} {{ attendees().length === 1 ? "asistente" : "asistentes" }}</span>
+    }
+  </div>
+</div>

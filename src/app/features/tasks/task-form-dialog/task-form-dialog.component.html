@@ -1,0 +1,178 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="new-task-title" appFocusTrap (click)="$event.stopPropagation()">
+  <form novalidate (ngSubmit)="submit()">
+    <div class="modal__header">
+      <h2 id="new-task-title"><app-icon name="calendar" [size]="16"></app-icon> Nueva tarea</h2>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      <label class="form-field">
+        Título *
+        <input #titleInput data-autofocus type="text" name="title" maxlength="200" placeholder="Ej: Llamar al proveedor del ascensor" required [attr.aria-invalid]="titleInvalid" [ngModel]="title()" (ngModelChange)="title.set($event)" />
+        @if (titleInvalid) { <span class="field-error" role="alert">El título es obligatorio.</span> }
+      </label>
+
+      <div class="form-row">
+        <label class="form-field">
+          Comunidad
+          <select name="estate" [ngModel]="estateId()" (ngModelChange)="onEstateChange($event)">
+            <option value="">Sin comunidad</option>
+            @for (estate of catalog.estates(); track estate.id) {
+              <option [value]="estate.id">{{ estate.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="form-field">
+          Responsable
+          <select name="assignee" [ngModel]="assigneeId()" (ngModelChange)="assigneeId.set($event)">
+            <option value="">Sin asignar</option>
+            @for (person of catalog.assignees(); track person.id) {
+              <option [value]="person.id">{{ person.fullName }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      <div class="schedule-row">
+        <app-datetime-field [label]="allDay() ? 'Fecha de inicio' : 'Inicio'" [dateOnly]="allDay()" [value]="startValue()"
+          [invalid]="dateInvalid || !!scheduleError" (valueChange)="onStartValue($event)"></app-datetime-field>
+        @if (!noDuration()) {
+          <app-datetime-field [label]="allDay() ? 'Fecha de fin' : 'Fin'" [dateOnly]="allDay()" [value]="endValue()"
+            [invalid]="!!scheduleError" (valueChange)="onEndValue($event)"></app-datetime-field>
+        }
+      </div>
+      @if (scheduleError) { <span class="field-error" role="alert" data-schedule-error>{{ scheduleError }}</span> }
+      <div class="schedule-checks">
+      <label class="form-field form-field--checkbox">
+        <input type="checkbox" name="allDay" [ngModel]="allDay()" [disabled]="noDuration()" (ngModelChange)="onAllDayChange($event)" />
+        Dura todo el día
+      </label>
+      <label class="form-field form-field--checkbox">
+        <input type="checkbox" name="noDuration" [ngModel]="noDuration()" (ngModelChange)="onNoDurationChange($event)" />
+        Sin duración (solo cuenta la fecha de inicio)
+      </label>
+      </div>
+
+      <div class="form-row">
+        <label class="form-field">
+          Tipo
+          <select name="type" [ngModel]="type()" (ngModelChange)="type.set($event)">
+            @for (t of types; track t.key) {
+              <option [value]="t.key">{{ t.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="form-field">
+          Prioridad
+          <select name="priority" [ngModel]="priority()" (ngModelChange)="priority.set($event)">
+            @for (p of priorities; track p.key) {
+              <option [value]="p.key">{{ p.label }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      <button type="button" class="link-btn" [attr.aria-expanded]="showMore()" aria-controls="new-task-more" (click)="showMore.set(!showMore())">
+        <app-icon [name]="showMore() ? 'chevron-down' : 'chevron-right'" [size]="12"></app-icon>
+        {{ showMore() ? 'Menos opciones' : 'Más opciones' }}
+      </button>
+
+      @if (showMore()) {
+        <div id="new-task-more" class="more">
+          <label class="form-field">
+            Descripción
+            <textarea name="description" rows="3" maxlength="10000" [ngModel]="description()" (ngModelChange)="description.set($event)"></textarea>
+          </label>
+
+          <div class="form-row">
+            <label class="form-field">
+              Estado
+              <select name="status" [ngModel]="status()" (ngModelChange)="status.set($event)">
+                @for (s of statuses; track s.key) {
+                  <option [value]="s.key">{{ s.label }}</option>
+                }
+              </select>
+            </label>
+            <div class="form-field">
+              Etiquetas
+              <app-task-label-picker [selected]="labelIds()" (selectedChange)="labelIds.set($event)"></app-task-label-picker>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              Recordatorio
+              <app-task-reminder-field [value]="reminder()" (valueChange)="reminder.set($event)"></app-task-reminder-field>
+            </div>
+            <div class="form-field">
+              Repetición
+              <app-task-recurrence-field [value]="recurrence()" (valueChange)="recurrence.set($event)"></app-task-recurrence-field>
+            </div>
+          </div>
+
+          <div class="form-field">
+            Checklist
+            @if (checklist().length > 0) {
+              <ul class="items">
+                @for (item of checklist(); track $index) {
+                  <li class="items__row">
+                    <span>{{ item }}</span>
+                    <button type="button" class="items__remove" [attr.aria-label]="'Quitar: ' + item" (click)="removeChecklistItem($index)"><app-icon name="x" [size]="12"></app-icon></button>
+                  </li>
+                }
+              </ul>
+            }
+            <div class="inline-add">
+              <input type="text" name="checklistDraft" maxlength="300" placeholder="Añadir subtarea y pulsar Intro" aria-label="Nueva subtarea" [ngModel]="checklistDraft()" (ngModelChange)="checklistDraft.set($event)" (keydown.enter)="$event.preventDefault(); addChecklistItem()" />
+              <button type="button" class="mini-btn" [disabled]="!checklistDraft().trim()" (click)="addChecklistItem()">Añadir</button>
+            </div>
+          </div>
+
+          <div class="form-field">
+            Entidades vinculadas
+            @if (links().length > 0) {
+              <ul class="items">
+                @for (link of links(); track link.type + link.id) {
+                  <li class="items__row">
+                    <span><app-icon [name]="linkTypes[link.type].icon" [size]="12" aria-hidden="true"></app-icon> {{ linkTypes[link.type].label }}: {{ link.label }}</span>
+                    <button type="button" class="items__remove" [attr.aria-label]="'Quitar vínculo: ' + link.label" (click)="removeLink(link)"><app-icon name="x" [size]="12"></app-icon></button>
+                  </li>
+                }
+              </ul>
+            }
+            <app-task-link-picker [estateId]="estateId() || null" [linked]="links()" (linkAdded)="addLink($event)"></app-task-link-picker>
+          </div>
+
+          <div class="form-field">
+            Adjuntos
+            @if (files().length > 0) {
+              <ul class="items">
+                @for (file of files(); track $index) {
+                  <li class="items__row">
+                    <span><app-icon name="paperclip" [size]="12" aria-hidden="true"></app-icon> {{ file.name }}</span>
+                    <button type="button" class="items__remove" [attr.aria-label]="'Quitar adjunto: ' + file.name" (click)="removeFile($index)"><app-icon name="x" [size]="12"></app-icon></button>
+                  </li>
+                }
+              </ul>
+            }
+            <label class="dropzone" [class.dropzone--over]="dragging()" (dragover)="onDragOver($event)" (dragleave)="dragging.set(false)" (drop)="onDrop($event)">
+              <input type="file" multiple (change)="onFiles($event)" />
+              <app-icon name="upload" [size]="22"></app-icon>
+              <strong>Arrastra aquí tus ficheros o haz clic para seleccionar</strong>
+              <small>PDF, imágenes, Word, Excel o texto. Máx. 10 MB cada uno.</small>
+            </label>
+          </div>
+        </div>
+      }
+
+      @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" type="button" [disabled]="saving()" (clicked)="closed.emit()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Crear tarea' }}</app-btn>
+    </div>
+  </form>
+  </div>
+</div>

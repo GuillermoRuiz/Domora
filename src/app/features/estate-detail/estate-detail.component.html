@@ -1,0 +1,447 @@
+<app-topbar title="Fincas" [customHeading]="!!estateData()" [flexible]="true">
+  @if (estateData(); as e) {
+    <div slot="heading" class="estate-heading">
+      <app-estate-community-selector [estate]="e" [activeTab]="activeTab()"></app-estate-community-selector>
+      <span class="estate-heading__separator" aria-hidden="true">/</span>
+      <span class="estate-heading__section">{{ activeTabLabel() }}</span>
+    </div>
+  }
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">{{ pageTitle }}</h1>
+    <p class="page-intro__subtitle">{{ estateData()?.name || 'Cargando comunidad…' }}</p>
+  </div>
+  <div class="page-intro__actions">
+    @if (pageActions.action(); as action) {
+      <ng-container [ngTemplateOutlet]="action" />
+    }
+  </div>
+</header>
+
+<div class="page-content">
+  @if (estateData()) {
+    @if (estateData(); as e) {
+      <app-estate-header
+        [estate]="e"
+        [setupRemaining]="setupRemaining()"
+        (edit)="openEditEstate()"
+        (officeHistory)="showOfficeHistory.set(true)"
+        (importCatastro)="openCatastroImport()"
+        (newProperty)="openNewProperty()"
+        (openSetup)="openSetupDrawer()"
+      ></app-estate-header>
+    }
+    <nav class="estate-subnav" [appEstateChipTabs]="activeTab()" aria-label="Secciones de la finca">
+      <span class="estate-subnav__indicator" aria-hidden="true"></span>
+      @for (tab of estateNavigation.tabs; track tab.id) {
+        <button class="estate-subnav__item" type="button" [attr.data-estate-tab]="tab.id"
+          [class.estate-subnav__item--active]="activeTab() === tab.id"
+          [attr.aria-current]="activeTab() === tab.id ? 'page' : null" (click)="selectTab(tab.id)">
+          <span class="estate-subnav__label">{{ tab.label }}
+            @if (tabCount(tab.id) !== null) {
+              <span class="tab__count">{{ tabCount(tab.id) }}</span>
+            }
+          </span>
+        </button>
+      }
+    </nav>
+  }
+
+  @if (setupDrawerOpen() && setupStatus(); as setupDrawerStatus) {
+    <div class="setup-drawer-backdrop" (click)="closeSetupDrawer()">
+      <div class="setup-drawer" (click)="$event.stopPropagation()">
+        <button type="button" class="close-btn" (click)="closeSetupDrawer()" title="Cerrar">
+          <app-icon name="x" [size]="16"></app-icon>
+        </button>
+        <app-estate-setup-card
+          [status]="setupDrawerStatus"
+          (action)="onSetupActionFromDrawer($event)"
+        ></app-estate-setup-card>
+      </div>
+    </div>
+  }
+
+  @if (isLegacyTab()) {
+    <div class="legacy-back">
+      <button type="button" class="link-btn" data-legacy-back (click)="selectTab('summary')">← Volver al resumen</button>
+    </div>
+  }
+
+  <!-- Summary Tab -->
+  @if (activeTab() === 'summary') {
+    @if (estate; as e) {
+      <app-summary-tab [estateId]="e.id" [estate]="e" (openTab)="selectTab($event)" (addProperty)="openNewProperty()" (editEstate)="openEditEstate()" (openProperty)="openPropertyFromSummary($event)"></app-summary-tab>
+    }
+    @if (propertiesLoaded()) {
+      @if (estateData(); as e) {
+        <app-intelligence-panel class="estate-intelligence" [estateId]="e.id"></app-intelligence-panel>
+      }
+    }
+    <div class="card">
+      <div class="card__header">
+        <h4 class="card__title">Otras secciones</h4>
+      </div>
+      <p class="td--muted" style="margin-top: 8px;">Secciones de la finca que no tienen pestaña propia:</p>
+      <div class="legacy-links">
+        @for (link of legacyLinks; track link.id) {
+          <button type="button" class="link-btn" [attr.data-legacy-link]="link.id" (click)="selectTab(link.id)">
+            {{ link.label }}@if (tabCount(link.id); as count) { ({{ count }})}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Contracts Tab -->
+  @if (activeTab() === 'contracts') {
+    @if (estate; as e) {
+      <app-contracts-tab [estateId]="e.id" (openProviders)="selectTab('providers')"></app-contracts-tab>
+    }
+  }
+
+  <!-- Properties Tab -->
+  @if (activeTab() === 'properties') {
+    @if (estate; as e) {
+      <app-properties-tab
+        [estateId]="e.id"
+        [(properties)]="properties"
+        [propertiesLoaded]="propertiesLoaded()"
+        [facadeUrl]="e.catastroFacadeUrl ?? null"
+        [estateName]="e.name"
+        [photoVersion]="e.photoUpdatedAt ?? null"
+        [titularByProperty]="titularByProperty()"
+        [externalOwnerByProperty]="externalOwnerByProperty()"
+        (titularAdded)="onTitularAdded()"
+        (setupChanged)="refreshSetupStatus()"
+        (importCatastro)="openCatastroImport()"
+        [focusPropertyId]="deepLinkPropertyId()"
+        (focusHandled)="deepLinkPropertyId.set(null)"
+      ></app-properties-tab>
+    }
+  }
+  <!-- Requests Tab -->
+  @if (activeTab() === 'requests') {
+    @if (estate; as e) {
+      <app-adhesiones-tab
+        [estateId]="e.id"
+        [requests]="requests()"
+        [properties]="properties()"
+        (resolved)="onRequestResolved($event)"
+      ></app-adhesiones-tab>
+    }
+  }
+</div>
+
+@if (activeTab() === 'amenities') {
+  <div class="providers-subtabs">
+    <button class="providers-subtab" data-installations-sub="panel" [class.providers-subtab--active]="installationsSubTab() === 'panel'" (click)="installationsSubTab.set('panel')">
+      Instalaciones
+    </button>
+    <button class="providers-subtab" data-installations-sub="inspections" [class.providers-subtab--active]="installationsSubTab() === 'inspections'" (click)="installationsSubTab.set('inspections')">
+      Inspecciones
+    </button>
+    <button class="providers-subtab" data-installations-sub="amenities" [class.providers-subtab--active]="installationsSubTab() === 'amenities'" (click)="installationsSubTab.set('amenities')">
+      Zonas comunes
+    </button>
+  </div>
+  @if (estate; as e) {
+    @if (installationsSubTab() === 'panel') {
+      <app-installations-panel [estateId]="e.id" (openInspections)="installationsSubTab.set('inspections')" (openCalendar)="router.navigate(['/b/tasks'])" (openIssues)="openIssuesOf($event)"></app-installations-panel>
+    } @else if (installationsSubTab() === 'inspections') {
+      <app-inspecciones-tab [estateId]="e.id"></app-inspecciones-tab>
+    } @else {
+      <app-amenities-tab [estateId]="e.id" (countChange)="amenitiesCount.set($event)"></app-amenities-tab>
+    }
+  }
+}
+@if (activeTab() === 'providers') {
+  <div class="providers-subtabs">
+    <button class="providers-subtab" [class.providers-subtab--active]="providersSubTab() === 'suppliers'" (click)="providersSubTab.set('suppliers')">
+      Proveedores
+    </button>
+    <button class="providers-subtab" [class.providers-subtab--active]="providersSubTab() === 'billing'" (click)="providersSubTab.set('billing')">
+      Facturas y pagos
+    </button>
+    <button class="providers-subtab" [class.providers-subtab--active]="providersSubTab() === 'staff'" (click)="providersSubTab.set('staff')">
+      Personal
+    </button>
+  </div>
+  @if (estate; as e) {
+    @if (providersSubTab() === 'suppliers') {
+      <app-suppliers-panel class="subtab-content" [estateId]="e.id"></app-suppliers-panel>
+    } @else if (providersSubTab() === 'billing') {
+      <app-proveedores-tab class="subtab-content" [estateId]="e.id"></app-proveedores-tab>
+    } @else {
+      <app-personal-tab class="subtab-content" [estateId]="e.id"></app-personal-tab>
+    }
+  }
+}
+
+@if (activeTab() === 'general') {
+  @if (estate; as e) {
+    <app-general-tab [estate]="e" [estateId]="e.id" (officeHistory)="showOfficeHistory.set(true)" (sepaSaved)="refreshSetupStatus()" (openDocuments)="selectTab('documents')"></app-general-tab>
+  }
+}
+
+@if (activeTab() === 'sepa') {
+  @if (estate; as e) {
+    <app-sepa-tab [estateId]="e.id" (saved)="refreshSetupStatus()"></app-sepa-tab>
+  }
+}
+
+@if (activeTab() === 'documents') {
+  @if (estate; as e) {
+    <app-library-tab [estateId]="e.id" [properties]="properties()" [titularByProperty]="titularNamesByProperty()"></app-library-tab>
+  }
+}
+
+@if (activeTab() === 'juntas') {
+  @if (estate; as e) {
+    <app-juntas-tab [estateId]="e.id"></app-juntas-tab>
+      }
+}
+
+@if (activeTab() === 'communications') {
+  @if (estate; as e) {
+    <app-comunicados-tab
+      [estateId]="e.id"
+      [properties]="properties()"
+      [titularByProperty]="titularNamesByProperty()"
+    ></app-comunicados-tab>
+  }
+}
+
+
+@if (showEditEstate()) {
+  <div class="modal-backdrop modal-backdrop--blur" (click)="closeEditEstate()">
+    <div class="modal modal--estate-edit" role="dialog" aria-modal="true" aria-labelledby="ee-title" (click)="$event.stopPropagation()">
+      <div class="modal__header ee-header">
+        <div class="ee-header__titles">
+          <h4 id="ee-title">Editar finca</h4>
+          @if (estate; as currentEstate) { <p class="ee-header__subtitle">{{ currentEstate.name }}</p> }
+        </div>
+        <button type="button" class="close-btn" aria-label="Cerrar" (click)="closeEditEstate()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+
+      <div class="estate-subnav ee-tabs" role="tablist" aria-label="Secciones de la finca"
+        [appEstateChipTabs]="eeTab()" chipActiveSelector='[role="tab"][aria-selected="true"]'>
+        <span class="estate-subnav__indicator" aria-hidden="true"></span>
+        @for (tab of eeTabs; track tab.id) {
+          <button type="button" role="tab" class="estate-subnav__item ee-tab" [class.estate-subnav__item--active]="eeTab() === tab.id"
+            [id]="'ee-tab-' + tab.id" [attr.data-tab]="tab.id"
+            [attr.aria-selected]="eeTab() === tab.id" [attr.aria-controls]="'ee-panel-' + tab.id"
+            [attr.tabindex]="eeTab() === tab.id ? 0 : -1"
+            [attr.aria-label]="eeTabAlerts()[tab.id] ? tab.label + ' (hay un dato que revisar)' : null"
+            (click)="eeTab.set(tab.id)" (keydown)="onEeTabKeydown($event)">
+            <span class="estate-subnav__label">{{ tab.label }}</span>
+            @if (eeTabAlerts()[tab.id]) {<span class="ee-tab__alert" aria-hidden="true"></span>}
+          </button>
+        }
+      </div>
+
+      <div class="modal__body ee-body">
+        <!-- General -->
+        <section role="tabpanel" id="ee-panel-general" aria-labelledby="ee-tab-general" data-panel="general" class="ee-grid" [hidden]="eeTab() !== 'general'">
+          <label class="form-field">
+            Nombre de la finca
+            <input id="ee-name" type="text" autocomplete="off" [ngModel]="eeName()" (ngModelChange)="eeName.set($event)" />
+          </label>
+          <label class="form-field">
+            Tipo
+            <select id="ee-type" [ngModel]="eeType()" (ngModelChange)="eeType.set($event)">
+              @for (t of eeTypeOptions; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            Año de construcción <span class="ee-optional">(opcional)</span>
+            <input id="ee-year-built" type="number" min="1500" [max]="eeMaxYear" step="1" placeholder="ej. 2001"
+              [class.ee-invalid]="eeYearInvalid()" [attr.aria-invalid]="eeYearInvalid()"
+              [ngModel]="eeYearBuilt()" (ngModelChange)="eeYearBuilt.set($event === '' || $event == null ? null : +$event)" />
+            @if (eeYearInvalid()) { <span class="form-error">Entre 1500 y {{ eeMaxYear }}.</span> }
+          </label>
+          <label class="form-field">
+            Uso principal <span class="ee-optional">(opcional)</span>
+            <select id="ee-main-use" [ngModel]="eeMainUse()" (ngModelChange)="eeMainUse.set($event)">
+              <option value="">Sin informar</option>
+              @for (use of eeMainUseOptions; track use) {
+                <option [value]="use">{{ use }}</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            Referencia interna <span class="ee-optional">(opcional)</span>
+            <input id="ee-internal-ref" type="text" maxlength="50" placeholder="ej. FIN-0001" autocomplete="off"
+              [ngModel]="eeInternalRef()" (ngModelChange)="eeInternalRef.set($event)" />
+          </label>
+          <label class="form-field ee-span">
+            Descripción <span class="ee-optional">(opcional)</span>
+            <span class="ee-textarea">
+              <textarea id="ee-description" rows="3" maxlength="600" placeholder="Presenta la comunidad: zonas comunes, servicios, número de viviendas…"
+                [ngModel]="eeDescription()" (ngModelChange)="eeDescription.set($event)"></textarea>
+              <span class="ee-counter" aria-hidden="true">{{ eeDescription().length }}/600</span>
+            </span>
+            <span class="form-hint">Se muestra en el Resumen de la finca.</span>
+          </label>
+          <label class="form-field ee-span">
+            Observaciones <span class="ee-optional">(opcional)</span>
+            <span class="ee-textarea">
+              <textarea id="ee-notes" rows="3" maxlength="2000" [ngModel]="eeNotes()" (ngModelChange)="eeNotes.set($event)"></textarea>
+              <span class="ee-counter" aria-hidden="true">{{ eeNotes().length }}/2000</span>
+            </span>
+            <span class="form-hint">Notas internas de la gestora: los propietarios no las ven.</span>
+          </label>
+        </section>
+
+        <!-- Ubicación y Catastro -->
+        <section role="tabpanel" id="ee-panel-location" aria-labelledby="ee-tab-location" data-panel="location" class="ee-grid" [hidden]="eeTab() !== 'location'">
+          <label class="form-field">
+            Dirección
+            <input id="ee-address" type="text" autocomplete="off" [ngModel]="eeAddress()" (ngModelChange)="eeAddress.set($event)" />
+          </label>
+          <label class="form-field">
+            Número <span class="ee-optional">(opcional)</span>
+            <input id="ee-street-number" type="text" autocomplete="off" [ngModel]="eeStreetNumber()" (ngModelChange)="eeStreetNumber.set($event)" />
+          </label>
+          <label class="form-field">
+            Localidad
+            <input id="ee-location" type="text" autocomplete="off" [ngModel]="eeLocation()" (ngModelChange)="eeLocation.set($event)" />
+          </label>
+          <label class="form-field">
+            Provincia <span class="ee-optional">(opcional)</span>
+            <input id="ee-province" type="text" autocomplete="off" [ngModel]="eeProvince()" (ngModelChange)="eeProvince.set($event)" />
+          </label>
+          <label class="form-field">
+            Código postal <span class="ee-optional">(opcional)</span>
+            <input id="ee-postal-code" type="text" maxlength="10" autocomplete="off" [ngModel]="eePostalCode()" (ngModelChange)="eePostalCode.set($event)" />
+          </label>
+          <label class="form-field">
+            Referencia catastral de la parcela <span class="ee-optional">(opcional)</span>
+            <input id="ee-cadastral" type="text" maxlength="14" placeholder="14 caracteres" autocomplete="off"
+              [class.ee-invalid]="eeCadastralInvalid()" [attr.aria-invalid]="eeCadastralInvalid()"
+              [ngModel]="eeCadastralReference()" (ngModelChange)="eeCadastralReference.set($event)" />
+            @if (eeCadastralInvalid()) { <span class="form-error">Debe tener 14 caracteres (mayúsculas y dígitos).</span> }
+          </label>
+          <p class="form-hint ee-span">Cambiar la dirección o la referencia catastral vuelve a ubicar la finca en el mapa de «Datos generales».</p>
+        </section>
+
+        <!-- Finanzas y contabilidad -->
+        <section role="tabpanel" id="ee-panel-finance" aria-labelledby="ee-tab-finance" data-panel="finance" class="ee-grid" [hidden]="eeTab() !== 'finance'">
+          <label class="form-field">
+            CIF de la comunidad
+            <input id="ee-cif" type="text" placeholder="ej. H12345678" autocomplete="off"
+              [class.ee-invalid]="eeCifInvalid()" [attr.aria-invalid]="eeCifInvalid()"
+              [ngModel]="eeCif()" (ngModelChange)="eeCif.set($event)" />
+            @if (eeCifInvalid()) {
+              <span class="form-error">Formato no válido: letra + 7 dígitos + control (ej. H12345678).</span>
+            } @else {
+              <span class="form-hint">Sale en el certificado de deudas y en los documentos de la comunidad.</span>
+            }
+          </label>
+          <label class="form-field">
+            Fondo de reserva objetivo (€)
+            <input id="ee-reserve" type="number" min="0" [ngModel]="eeReserveTarget()" (ngModelChange)="eeReserveTarget.set($event)" />
+          </label>
+          <label class="form-field ee-span">
+            IBAN de referencia
+            <input id="ee-iban" type="text" autocomplete="off" [ngModel]="eeIban()" (ngModelChange)="eeIban.set($event)" />
+          </label>
+          <label class="form-field">
+            Régimen fiscal <span class="ee-optional">(opcional)</span>
+            <input id="ee-tax-regime" type="text" maxlength="150" list="ee-tax-regimes" autocomplete="off"
+              [ngModel]="eeTaxRegime()" (ngModelChange)="eeTaxRegime.set($event)" />
+            <datalist id="ee-tax-regimes">
+              <option value="Entidad en régimen de atribución de rentas"></option>
+            </datalist>
+          </label>
+          <label class="form-field">
+            Normativa aplicable
+            <input id="ee-applicable-law" type="text" maxlength="150" autocomplete="off"
+              [ngModel]="eeApplicableLaw()" (ngModelChange)="eeApplicableLaw.set($event)" />
+          </label>
+        </section>
+
+        <!-- Personalización -->
+        <section role="tabpanel" id="ee-panel-personalization" aria-labelledby="ee-tab-personalization" data-panel="personalization" class="ee-grid" [hidden]="eeTab() !== 'personalization'">
+          @if (estate; as currentEstate) {
+            <div class="ee-span">
+              <app-estate-photo-field [estate]="currentEstate" (changed)="eePhoto.set($event)"></app-estate-photo-field>
+            </div>
+          }
+          <div class="form-field ee-span">
+            <span id="ee-color-label">Color identificativo</span>
+            <div class="color-swatches" role="radiogroup" aria-labelledby="ee-color-label">
+              @for (c of eeColorOptions; track c; let i = $index) {
+                <button
+                  type="button"
+                  role="radio"
+                  class="color-swatch"
+                  [style.background]="c"
+                  [class.color-swatch--selected]="eeColor() === c"
+                  [attr.aria-checked]="eeColor() === c"
+                  [attr.aria-label]="'Color ' + (i + 1)"
+                  (click)="eeColor.set(c)"
+                >
+                  @if (eeColor() === c) { <app-icon name="check" [size]="14"></app-icon> }
+                </button>
+              }
+              <button
+                type="button"
+                role="radio"
+                class="color-swatch color-swatch--auto"
+                [class.color-swatch--selected]="!eeColor()"
+                [attr.aria-checked]="!eeColor()"
+                aria-label="Color automático"
+                (click)="eeColor.set(null)"
+                title="Color automático"
+              >
+                <app-icon name="refresh" [size]="14"></app-icon>
+              </button>
+            </div>
+            <span class="form-hint">Ayuda a distinguir esta finca en el panel "Fincas". Si no seleccionas uno, se asigna automáticamente.</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="modal__footer ee-footer">
+        <app-btn variant="outline" (clicked)="closeEditEstate()">Cancelar</app-btn>
+        <app-btn variant="accent" [disabled]="eeSaving() || eeCifInvalid()" (clicked)="saveEditEstate()">
+          {{ eeSaving() ? 'Guardando…' : 'Guardar cambios' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (estate; as e) {
+  <app-catastro-import-modal
+    [estate]="e"
+    [open]="showCatastroImport()"
+    (closed)="closeCatastroImport()"
+    (imported)="onCatastroImported($event)"
+  ></app-catastro-import-modal>
+
+  <app-coefficient-recalc-modal
+    [estateId]="e.id"
+    [open]="showCoefficientRecalc()"
+    (closed)="closeCoefficientRecalc()"
+    (applied)="onCoefficientsRecalculated()"
+    (reviewProperties)="activeTab.set('properties')"
+  ></app-coefficient-recalc-modal>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}
+
+@if (showOfficeHistory()) {
+  @if (estateData(); as e) {
+    <app-office-history-dialog [estateId]="e.id" [estateName]="e.name" (closed)="showOfficeHistory.set(false)"></app-office-history-dialog>
+  }
+}

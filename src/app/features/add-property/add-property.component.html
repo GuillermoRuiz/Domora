@@ -1,0 +1,312 @@
+<div class="modal-overlay" (click)="close()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="modal__header">
+      <div class="modal__title">
+        <h3>Añadir propiedad</h3>
+        @if (step() < 4) {
+          <p>
+            @if (isEstateMode()) {
+              Paso {{ step() }} de 3 · Nueva unidad en {{ state.addPropertyEstateContext()?.name }}
+            } @else {
+              Paso {{ step() }} de 3
+            }
+          </p>
+        }
+      </div>
+      <button class="modal__close" (click)="close()">
+        <app-icon name="x" [size]="18"></app-icon>
+      </button>
+    </div>
+
+    <div class="modal__body">
+      <!-- Main content -->
+      <div class="modal__main">
+        <!-- Step 1: Type selector -->
+        @if (step() === 1) {
+          <div class="step">
+            <h4 class="step__title">¿Qué tipo de propiedad es?</h4>
+            <div class="type-grid">
+              @for (opt of typeOptions; track opt.type) {
+                <button
+                  class="type-card"
+                  [class.type-card--selected]="selectedType() === opt.type"
+                  (click)="selectedType.set(opt.type)"
+                >
+                  <div class="type-card__icon">
+                    <app-icon [name]="opt.icon" [size]="22"></app-icon>
+                  </div>
+                  <span class="type-card__label">{{ opt.label }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Step 2: Location -->
+        @if (step() === 2) {
+          <div class="step">
+            <h4 class="step__title">Ubicación de la propiedad</h4>
+            @if (isEstateMode()) {
+              <p class="form-hint">Precargada con la dirección de la finca — ajustala si esta unidad concreta la necesita distinta.</p>
+            }
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Tipo de vía</label>
+                <select class="form-input" [value]="viaType()" (change)="viaType.set($any($event.target).value)">
+                  @for (v of viaTypeOptions; track v) {
+                    <option [value]="v">{{ v }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-group form-group--wide">
+                <label class="form-label">Nombre de la vía</label>
+                <input class="form-input" type="text" placeholder="Nombre de la calle"
+                  [value]="street()" (input)="street.set($any($event.target).value)" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Número</label>
+                <input class="form-input" type="text" placeholder="Nº"
+                  [value]="number()" (input)="number.set($any($event.target).value)" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Ciudad</label>
+                <input class="form-input" type="text" placeholder="Ciudad"
+                  [value]="city()" (input)="city.set($any($event.target).value)" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Provincia</label>
+                <input class="form-input" type="text" placeholder="Provincia"
+                  [value]="province()" (input)="province.set($any($event.target).value)" />
+              </div>
+              @if (hasFloorDoor) {
+                <div class="form-group">
+                  <label class="form-label">Planta</label>
+                  <input class="form-input" type="text" placeholder="ej. 2"
+                    [value]="floor()" (input)="floor.set($any($event.target).value)" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Puerta</label>
+                  <input class="form-input" type="text" placeholder="ej. B"
+                    [value]="door()" (input)="door.set($any($event.target).value)" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Escalera</label>
+                  <input class="form-input" type="text" placeholder="ej. 1"
+                    [value]="staircase()" (input)="staircase.set($any($event.target).value)" />
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Step 3 (modo finca): datos de administración -->
+        @if (step() === 3 && isEstateMode()) {
+          <div class="step">
+            <h4 class="step__title">Datos de administración</h4>
+            <p class="form-hint">La propiedad queda vinculada a la finca de inmediato, sin necesidad de aprobación.</p>
+            <div class="form-grid" style="margin-top: 16px;">
+              <div class="form-group">
+                <label class="form-label">Cuota mensual (€)</label>
+                <input class="form-input" type="number" min="0" step="0.01" placeholder="0,00"
+                  [value]="quotaMonthly()" (input)="quotaMonthly.set($any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Coeficiente de participación (%)</label>
+                <input class="form-input" type="number" min="0" max="100" step="0.01" placeholder="ej. 2,50"
+                  [value]="participationQuota()" (input)="participationQuota.set($any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+                <span class="form-hint">Sobre el total de la finca. Es la base del quórum por cuota en las juntas.</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Superficie construida (m²)</label>
+                <input class="form-input" type="number" min="0" step="0.01" placeholder="ej. 85,00"
+                  [value]="builtAreaM2()" (input)="builtAreaM2.set($any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Step 3 (rol C): Role + community -->
+        @if (step() === 3 && !isEstateMode()) {
+          <div class="step">
+            <h4 class="step__title">Tu relación con la propiedad</h4>
+            <div class="role-grid">
+              @for (role of roleOptions; track role) {
+                <button
+                  class="role-card"
+                  [class.role-card--selected]="roleType() === role"
+                  (click)="roleType.set(role)"
+                >
+                  <app-icon name="user" [size]="16"></app-icon>
+                  {{ role }}
+                </button>
+              }
+            </div>
+
+            <div class="mode-options" style="margin-top: 20px;">
+              <button class="mode-option" [class.mode-option--active]="linkMode() === 'existing'" (click)="linkMode.set('existing')">
+                <app-icon name="link" [size]="18"></app-icon>
+                <strong>Vincular a comunidad existente</strong>
+                <span>Busca y selecciona tu comunidad de la lista.</span>
+              </button>
+              <button class="mode-option" [class.mode-option--active]="linkMode() === 'request'" (click)="linkMode.set('request')">
+                <app-icon name="building" [size]="18"></app-icon>
+                <strong>Solicitar alta de comunidad</strong>
+                <span>Tu comunidad todavía no está registrada.</span>
+              </button>
+              @if (!needsCommunity) {
+                <button class="mode-option" [class.mode-option--active]="linkMode() === 'later'" (click)="linkMode.set('later')">
+                  <app-icon name="calendar" [size]="18"></app-icon>
+                  <strong>Vincular más tarde</strong>
+                  <span>Añade la propiedad y vincúlala cuando quieras.</span>
+                </button>
+              }
+            </div>
+
+            @if (linkMode() === 'existing') {
+              <div class="form-group" style="margin-top: 16px;">
+                <label class="form-label">Buscar comunidad <span class="form-label--required">*</span></label>
+                <input class="form-input" type="text" placeholder="Nombre o dirección de la comunidad"
+                  [value]="linkSearch()" (input)="onLinkSearchInput($any($event.target).value)" />
+              </div>
+              <div class="estate-list">
+                @for (e of linkEstateResults(); track e.id) {
+                  <button class="estate-row" [class.estate-row--selected]="selectedLinkEstate()?.id === e.id" (click)="selectLinkEstate(e)">
+                    <strong>{{ e.name }}</strong>
+                    <span>{{ e.address }}</span>
+                    <span class="text-muted">{{ e.admin }}</span>
+                  </button>
+                }
+              </div>
+            }
+
+            @if (linkMode() === 'request') {
+              <div class="form-grid" style="margin-top: 16px;">
+                <div class="form-group form-group--wide">
+                  <label class="form-label">Nombre de la comunidad <span class="form-label--required">*</span></label>
+                  <input class="form-input" type="text" placeholder="Ej. Edificio Eixample Centro"
+                    [value]="reqCommunityName()" (input)="reqCommunityName.set($any($event.target).value)" />
+                </div>
+                <div class="form-group form-group--wide">
+                  <label class="form-label">Dirección</label>
+                  <input class="form-input" type="text" placeholder="Dirección de la comunidad"
+                    [value]="reqCommunityAddress()" (input)="reqCommunityAddress.set($any($event.target).value)" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Nombre del administrador</label>
+                  <input class="form-input" type="text" placeholder="Razón social"
+                    [value]="reqAdminName()" (input)="reqAdminName.set($any($event.target).value)" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Email del administrador</label>
+                  <input class="form-input" type="email" placeholder="contacto@administrador.es"
+                    [value]="reqAdminEmail()" (input)="reqAdminEmail.set($any($event.target).value)" />
+                </div>
+              </div>
+              <p class="form-hint" style="margin-top: 10px;">Esta solicitud será revisada por nuestro equipo antes de activarse.</p>
+            }
+
+            @if (linkMode() === 'later') {
+              <p class="form-hint" style="margin-top: 16px;">
+                Tu propiedad se añadirá sin vincular. Podrás vincularla a una comunidad más adelante desde su ficha.
+              </p>
+            }
+          </div>
+        }
+
+        <!-- Step 4: Success -->
+        @if (step() === 4) {
+          <div class="step step--success">
+            <div class="success-icon">
+              <app-icon name="check" [size]="28"></app-icon>
+            </div>
+            <h4 class="step__title">Propiedad añadida correctamente</h4>
+            <p class="form-hint">
+              @if (isEstateMode()) {
+                La propiedad ya está disponible en <strong>{{ state.addPropertyEstateContext()?.name }}</strong>.
+              } @else if (needsCommunity && linkMode() === 'existing') {
+                Se ha enviado la solicitud de vinculación a <strong>{{ selectedLinkEstate()?.name }}</strong>.
+              } @else if (needsCommunity && linkMode() === 'request') {
+                Tu propiedad ya está disponible en tu listado. Hemos enviado tu solicitud de alta de <strong>{{ reqCommunityName() }}</strong> a nuestro equipo — te contactaremos para completar el proceso.
+              } @else {
+                Tu propiedad ya está disponible en tu listado.
+              }
+            </p>
+          </div>
+        }
+      </div>
+
+      <!-- Sidebar -->
+      <div class="modal__sidebar">
+        <!-- Preview -->
+        <div class="preview-card">
+          <div class="preview-card__header">
+            <app-icon name="home" [size]="14"></app-icon>
+            <span>Vista previa</span>
+          </div>
+          <div class="preview-card__body">
+            <div class="preview-type">
+              @if (selectedType()) {
+                <strong>{{ selectedType() }}</strong>
+              } @else {
+                <span class="preview-empty">Tipo no seleccionado</span>
+              }
+            </div>
+            <div class="preview-address">{{ previewAddress }}</div>
+            @if (roleType()) {
+              <div class="preview-role">{{ roleType() }}</div>
+            }
+          </div>
+        </div>
+
+        <!-- Steps checklist -->
+        <div class="steps-checklist">
+          <div class="step-check" [class.step-check--done]="step() > 1" [class.step-check--active]="step() === 1">
+            <div class="step-check__dot"></div>
+            <span>Tipo de propiedad</span>
+          </div>
+          <div class="step-check" [class.step-check--done]="step() > 2" [class.step-check--active]="step() === 2">
+            <div class="step-check__dot"></div>
+            <span>Ubicación</span>
+          </div>
+          <div class="step-check" [class.step-check--active]="step() === 3">
+            <div class="step-check__dot"></div>
+            <span>{{ isEstateMode() ? 'Administración' : 'Rol y comunidad' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    @if (step() < 4) {
+      <div class="modal__footer">
+        @if (step() > 1) {
+          <app-btn variant="outline" (clicked)="back()">
+            <app-icon name="arrow-left" [size]="14"></app-icon>
+            Atrás
+          </app-btn>
+        } @else {
+          <div></div>
+        }
+        @if (step() < 3) {
+          <app-btn variant="primary" (clicked)="next()" [disabled]="step() === 1 && !selectedType()">
+            Siguiente
+            <app-icon name="chevron-right" [size]="14"></app-icon>
+          </app-btn>
+        } @else {
+          <app-btn variant="secondary" (clicked)="submit()" [disabled]="!canSubmit || submitting()">
+            <app-icon name="check" [size]="14"></app-icon>
+            {{ submitting() ? 'Guardando…' : 'Añadir propiedad' }}
+          </app-btn>
+        }
+      </div>
+      @if (submitError()) {
+        <p class="form-hint" style="padding: 0 24px 12px; color: var(--color-error);">{{ submitError() }}</p>
+      }
+    } @else {
+      <div class="modal__footer modal__footer--success">
+        <app-btn variant="primary" (clicked)="close()">Cerrar</app-btn>
+      </div>
+    }
+  </div>
+</div>

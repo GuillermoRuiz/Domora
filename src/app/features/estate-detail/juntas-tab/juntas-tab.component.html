@@ -1,0 +1,113 @@
+@if (selectedMeetingId(); as id) {
+  <app-meeting-detail [meetingId]="id" [estateId]="estateId" (closed)="selectedMeetingId.set(null)"></app-meeting-detail>
+} @else {
+  <div class="card">
+    <div class="card__header">
+      <h4 class="card__title">Juntas</h4>
+      <app-btn variant="secondary" size="sm" (clicked)="openCreateModal()">
+        <app-icon name="plus" [size]="14"></app-icon>
+        Nueva junta
+      </app-btn>
+    </div>
+
+    @if (loading()) {
+      <p class="td--muted" style="margin: 20px;">Cargando…</p>
+    } @else {
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Título</th>
+              <th>Tipo</th>
+              <th>1ª convocatoria</th>
+              <th>Estado</th>
+              <th>Videollamada</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of meetings(); track m.id) {
+              <tr>
+                <td class="td--type">{{ m.title }}</td>
+                <td class="td--muted">{{ m.type === 'ordinaria' ? 'Ordinaria' : 'Extraordinaria' }}</td>
+                <td class="td--muted">{{ dateLabel(m.scheduledAt1) }}</td>
+                <td><app-badge [text]="statusLabel(m.status)" [variant]="statusVariant(m.status)"></app-badge></td>
+                <td>
+                  @if (m.includeJitsi) {
+                    <app-badge text="Jitsi activo" variant="secondary"></app-badge>
+                  } @else {
+                    <span class="td--muted">—</span>
+                  }
+                </td>
+                <td class="td--actions">
+                  <button class="action-btn" (click)="selectedMeetingId.set(m.id)" title="Ver detalle (quórum, asistencia, delegaciones)">
+                    <app-icon name="eye" [size]="16"></app-icon>
+                  </button>
+                  @if (m.status === 'convocada') {
+                    <button class="action-btn" [disabled]="closingMeetingId() === m.id" (click)="closeMeeting(m, 'celebrada')" title="Marcar como celebrada">
+                      <app-icon name="check" [size]="16"></app-icon>
+                    </button>
+                    <button class="action-btn" [disabled]="closingMeetingId() === m.id" (click)="closeMeeting(m, 'cancelada')" title="Cancelar junta">
+                      <app-icon name="x" [size]="16"></app-icon>
+                    </button>
+                  }
+                  <button class="action-btn" (click)="downloadConvocatoria(m)" title="Descargar convocatoria (DOCX)">
+                    <app-icon name="download" [size]="16"></app-icon>
+                  </button>
+                  @if (m.includeJitsi) {
+                    <button class="action-btn" (click)="openBeacon(m)" title="Panel de anfitrión">
+                      <app-icon name="link" [size]="16"></app-icon>
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="empty-row">Todavía no hay juntas convocadas.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  @if (participationHistory().length > 0) {
+    <div class="card participation-card">
+      <div class="card__header">
+        <h4 class="card__title">Histórico de participación</h4>
+      </div>
+      <div class="participation-list">
+        @for (p of participationHistory(); track p.meetingId) {
+          <div class="participation-row">
+            <div class="participation-row__title">
+              <strong>{{ p.title }}</strong>
+              <span class="td--muted">{{ p.celebratedAt ? dateLabel(p.celebratedAt) : '—' }}</span>
+            </div>
+            <div class="participation-row__metric">
+              <span class="td--muted">Quórum</span>
+              <app-badge [text]="p.quorumMet ? 'Alcanzado' : 'No alcanzado'" [variant]="p.quorumMet ? 'green' : 'error'"></app-badge>
+            </div>
+            <div class="participation-row__metric participation-row__metric--bar">
+              <span class="td--muted">Delegación: {{ p.delegationUsageRate }}%</span>
+              <div class="participation-bar-track"><div class="participation-bar-fill" [style.width.%]="p.delegationUsageRate"></div></div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <app-create-junta-modal
+    [estateId]="estateId"
+    [open]="showCreateModal()"
+    (closed)="onModalClosed()"
+    (created)="onMeetingCreated()"
+    (viewed)="selectedMeetingId.set($event.id)"
+  ></app-create-junta-modal>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

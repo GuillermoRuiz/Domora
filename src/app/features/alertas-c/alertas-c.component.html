@@ -1,0 +1,107 @@
+<app-topbar title="Alertas" [breadcrumb]="['Notificaciones y avisos']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Alertas</h1>
+    <p class="page-intro__subtitle">Consulta los avisos y novedades de tus propiedades.</p>
+  </div>
+</header>
+
+<div class="page-content">
+
+  <div class="page-header">
+    <span></span>
+    @if (unread() > 0) {
+      <app-btn variant="outline" size="sm" (clicked)="markAllRead()">Marcar todas como leídas</app-btn>
+    }
+  </div>
+
+  <div class="summary-banner" [class.summary-banner--ok]="unread() === 0">
+    @if (unread() > 0) {
+      <app-icon name="bell" [size]="16"></app-icon>
+      <span>Tienes <strong>{{ unread() }} notificación{{ unread() !== 1 ? 'es' : '' }} sin leer</strong></span>
+    } @else {
+      <app-icon name="check" [size]="16"></app-icon>
+      <span>Estás al día — no tienes notificaciones pendientes</span>
+    }
+  </div>
+
+  <div class="filter-pills">
+    <button class="pill" [class.pill--active]="filter() === 'all'" (click)="filter.set('all')">Todas</button>
+    <button class="pill" [class.pill--active]="filter() === 'unread'" (click)="filter.set('unread')">Sin leer ({{ unread() }})</button>
+    <button class="pill" [class.pill--active]="filter() === 'pago'" (click)="filter.set('pago')">Pagos</button>
+    <button class="pill" [class.pill--active]="filter() === 'comunidad'" (click)="filter.set('comunidad')">Comunidad</button>
+  </div>
+
+  <div class="alert-list">
+    @if (filtered().length === 0) {
+      <div class="alert-empty">No hay alertas en esta categoría</div>
+    } @else {
+      @for (a of filtered(); track a.id) {
+        <div class="alert-row" [class.alert-row--unread]="!a.read" (click)="toggleExpanded(a)">
+          @if (!a.read) { <span class="unread-dot"></span> }
+          <div class="alert-row__icon" [class]="typeClass(a.type)">
+            <app-icon [name]="typeIcon(a.type)" [size]="16"></app-icon>
+          </div>
+          <div class="alert-row__body">
+            <div class="alert-row__meta">
+              <span class="alert-row__label" [class]="typeClass(a.type)">{{ typeLabel(a.type) }}</span>
+              @if (a.urgent) { <span class="urgent-dot"></span> }
+            </div>
+            <div class="alert-row__title" [class.alert-row__title--unread]="!a.read">{{ a.title }}</div>
+            <div class="alert-row__desc">{{ a.description }}</div>
+
+            @if (expanded() === a.id) {
+              <div class="alert-row__detail">
+                @if (a.type === 'pago' && a.urgent) {
+                  @if (hasSourceLink(a)) {
+                    <div class="detail-actions">
+                      <app-btn variant="primary" size="sm" (clicked)="goToSource(a); $event.stopPropagation()">Pagar ahora</app-btn>
+                      <app-btn variant="outline" size="sm" (clicked)="goToSource(a); $event.stopPropagation()">Ver recibos</app-btn>
+                    </div>
+                  }
+                }
+                @if (a.type === 'junta') {
+                  @if (a.sourceType === 'meeting') {
+                    <div class="detail-actions">
+                      <app-btn variant="primary" size="sm" (clicked)="goToSource(a); $event.stopPropagation()">Entrar a junta</app-btn>
+                    </div>
+                  } @else {
+                    <div>Junta convocada. La confirmación de asistencia estará disponible cuando se incorpore el módulo de Juntas.</div>
+                  }
+                }
+                @if (a.type === 'documento') {
+                  <div class="detail-actions">
+                    <app-btn variant="outline" size="sm" (clicked)="goToSource(a); $event.stopPropagation()">Ver documento</app-btn>
+                    <app-btn variant="primary" size="sm" (clicked)="downloadDocumento(a); $event.stopPropagation()">Descargar documento</app-btn>
+                  </div>
+                }
+                @if (a.type === 'incidencia' && hasSourceLink(a)) {
+                  <div class="detail-actions">
+                    <app-btn variant="outline" size="sm" (clicked)="goToSource(a); $event.stopPropagation()">Ver solicitud</app-btn>
+                  </div>
+                }
+                @if (a.type === 'pago' && !a.urgent) {
+                  <div>Recibo cobrado mediante domiciliación bancaria. Puedes descargar el justificante desde tus recibos.</div>
+                }
+                @if (a.type === 'comunidad' && hasSourceLink(a)) {
+                  <div class="detail-actions">
+                    <app-btn variant="outline" size="sm" (clicked)="goToSource(a); $event.stopPropagation()">Ver comunicado</app-btn>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          <div class="alert-row__date">{{ a.date }}</div>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

@@ -1,0 +1,199 @@
+<div class="kpi-row">
+  <div class="kpi-card">
+    <span class="kpi-card__label">Personal activo</span>
+    <span class="kpi-card__value">{{ activeStaff().length }}</span>
+    <span class="kpi-card__sub">{{ positionsCount() }} puestos distintos</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Total registrado</span>
+    <span class="kpi-card__value">{{ staff().length }}</span>
+    <span class="kpi-card__sub">Incluye bajas</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__header">
+    <span class="card__title">Personal contratado</span>
+    <div class="card__actions">
+      <app-btn *appPageAction variant="primary" size="sm" (clicked)="openNuevoPersonal()">
+        <app-icon name="plus" [size]="13"></app-icon>
+        Nuevo miembro del personal
+      </app-btn>
+    </div>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Puesto</th>
+        <th>Tipo de contrato</th>
+        <th>Estado</th>
+        <th class="th-right">Coste mensual</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (s of staff(); track s.id) {
+        <tr class="row--clickable" (click)="openStaffDetail(s)">
+          <td>
+            <div class="supplier-name">
+              <app-avatar [name]="s.fullName" [size]="30" bg="var(--color-secondary)"></app-avatar>
+              <span>{{ s.fullName }}</span>
+            </div>
+          </td>
+          <td><app-badge [text]="s.position" variant="default"></app-badge></td>
+          <td class="td-muted">{{ s.contractType }}</td>
+          <td>
+            <app-badge [text]="s.status" [variant]="s.status === 'Activo' ? 'green' : 'default'"></app-badge>
+          </td>
+          <td class="td-right td-strong">{{ s.monthlyCost != null ? fmtEur(s.monthlyCost) : '—' }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="5" class="td-muted">Todavía no hay personal registrado en esta finca.</td></tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (showNuevoPersonal()) {
+  <div class="modal-backdrop" (click)="closeNuevoPersonal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Nuevo miembro del personal</h4>
+        <button class="close-btn" (click)="closeNuevoPersonal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Nombre completo
+          <input type="text" placeholder="Nombre y apellidos" [ngModel]="npFullName()" (ngModelChange)="npFullName.set($event)" [class.field--error]="npErrors().fullName" />
+          @if (npErrors().fullName) { <span class="field-error">El nombre es obligatorio</span> }
+        </label>
+        <label class="form-field">
+          Puesto
+          <input type="text" list="position-options" placeholder="Portero, Seguridad, Socorrista..." [ngModel]="npPosition()" (ngModelChange)="npPosition.set($event)" [class.field--error]="npErrors().position" />
+          <datalist id="position-options">
+            @for (p of positionSuggestions; track p) { <option [value]="p"></option> }
+          </datalist>
+          @if (npErrors().position) { <span class="field-error">El puesto es obligatorio</span> }
+        </label>
+        <div class="form-row">
+          <label>
+            DNI / NIE
+            <input type="text" placeholder="12345678A" [ngModel]="npNationalId()" (ngModelChange)="npNationalId.set($event)" />
+          </label>
+          <label>
+            Teléfono
+            <input type="text" placeholder="600 000 000" [ngModel]="npPhone()" (ngModelChange)="npPhone.set($event)" />
+          </label>
+        </div>
+        <label class="form-field">
+          Email de contacto
+          <input type="email" placeholder="nombre@email.com" [ngModel]="npEmail()" (ngModelChange)="npEmail.set($event)" />
+        </label>
+        <div class="form-row">
+          <label>
+            Tipo de contrato
+            <select [ngModel]="npContractType()" (ngModelChange)="npContractType.set($event)">
+              @for (c of contractTypeOptions; track c) { <option [value]="c">{{ c }}</option> }
+            </select>
+          </label>
+          <label>
+            Fecha de inicio
+            <input type="date" [ngModel]="npStartDate()" (ngModelChange)="npStartDate.set($event)" />
+          </label>
+        </div>
+        <label class="form-field">
+          Horario
+          <input type="text" placeholder="L-V 8:00-16:00" [ngModel]="npSchedule()" (ngModelChange)="npSchedule.set($event)" />
+        </label>
+        <label class="form-field">
+          Coste mensual (informativo)
+          <input type="number" placeholder="0.00" [ngModel]="npMonthlyCost()" (ngModelChange)="npMonthlyCost.set($event)" />
+        </label>
+        @if (npError()) { <span class="field-error">{{ npError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeNuevoPersonal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="npSaving()" (clicked)="submitNuevoPersonal()">
+          {{ npSaving() ? 'Guardando…' : 'Añadir' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (selectedStaffMember; as s) {
+  <div class="drawer-backdrop" (click)="closeStaffDetail()">
+    <div class="drawer" (click)="$event.stopPropagation()">
+      <div class="drawer__header">
+        <h4>{{ s.fullName }}</h4>
+        <button class="close-btn" (click)="closeStaffDetail()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__label">Datos del contrato</div>
+        <div class="drawer__field"><span>Puesto</span><span>{{ s.position }}</span></div>
+        <div class="drawer__field"><span>Tipo de contrato</span><span>{{ s.contractType }}</span></div>
+        <div class="drawer__field"><span>Inicio</span><span>{{ s.startDate }}</span></div>
+        @if (s.endDate) { <div class="drawer__field"><span>Fin</span><span>{{ s.endDate }}</span></div> }
+        @if (s.schedule) { <div class="drawer__field"><span>Horario</span><span>{{ s.schedule }}</span></div> }
+        @if (s.monthlyCost != null) { <div class="drawer__field"><span>Coste mensual</span><span>{{ fmtEur(s.monthlyCost) }}</span></div> }
+        <div class="drawer__field"><span>Estado</span><span>{{ s.status }}</span></div>
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__label">Contacto</div>
+        @if (s.nationalId) { <div class="drawer__field"><span>DNI/NIE</span><span>{{ s.nationalId }}</span></div> }
+        @if (s.email) { <div class="drawer__field"><span>Email</span><span>{{ s.email }}</span></div> }
+        @if (s.phone) { <div class="drawer__field"><span>Teléfono</span><span>{{ s.phone }}</span></div> }
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__section-header">
+          <span class="drawer__label">Documentos</span>
+        </div>
+        @if (documentsLoading()) {
+          <div class="td-muted">Cargando…</div>
+        } @else if (staffDocuments().length === 0) {
+          <div class="td-muted">Sin documentos adjuntos.</div>
+        } @else {
+          @for (doc of staffDocuments(); track doc.id) {
+            <div class="invoice-row">
+              <div>
+                <div class="invoice-row__concept">{{ doc.title }}</div>
+                <div class="invoice-row__date">{{ doc.fileName }}</div>
+              </div>
+              <div class="invoice-row__actions">
+                <button class="icon-btn" title="Descargar" (click)="downloadDocument(doc)">
+                  <app-icon name="download" [size]="14"></app-icon>
+                </button>
+                <button class="icon-btn" title="Eliminar" (click)="deleteDocument(doc)">
+                  <app-icon name="trash" [size]="14"></app-icon>
+                </button>
+              </div>
+            </div>
+          }
+        }
+        <div class="doc-upload">
+          <input type="text" placeholder="Título (DNI, Contrato, Certificado...)" [ngModel]="docTitleInput()" (ngModelChange)="docTitleInput.set($event)" />
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" (change)="onDocFileSelected($event)" />
+          <app-btn variant="outline" size="sm" [disabled]="uploadingDoc()" (clicked)="submitDocument()">
+            {{ uploadingDoc() ? 'Subiendo…' : 'Adjuntar' }}
+          </app-btn>
+        </div>
+      </div>
+
+      @if (s.status === 'Activo') {
+        <div class="drawer__section">
+          <app-btn variant="outline" size="sm" (clicked)="darDeBaja(s)">Dar de baja</app-btn>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

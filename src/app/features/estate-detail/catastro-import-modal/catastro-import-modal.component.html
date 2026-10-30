@@ -1,0 +1,196 @@
+@if (open) {
+  <div class="modal-backdrop" (click)="close()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4><app-icon name="building" [size]="16"></app-icon> Importar propiedades desde el Catastro</h4>
+        <button class="close-btn" type="button" aria-label="Cerrar" (click)="close()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+
+      @if (errorMsg()) {
+        <div class="alert alert--error" role="alert">{{ errorMsg() }}</div>
+      }
+
+      <!-- Paso 1: búsqueda -->
+      @if (step() === 'search') {
+        <div class="modal__body">
+          <p class="hint">
+            Busca el edificio en el Catastro y crea de una vez todas sus unidades (pisos, locales, garajes, trasteros)
+            con su escalera, planta, puerta, superficie y coeficiente. Los datos son públicos: no incluyen a los titulares.
+          </p>
+
+          <div class="mode-switch" role="tablist">
+            <button type="button" class="mode-switch__btn" [class.mode-switch__btn--active]="mode() === 'ref'" (click)="setMode('ref')">Por referencia catastral</button>
+            <button type="button" class="mode-switch__btn" [class.mode-switch__btn--active]="mode() === 'address'" (click)="setMode('address')">Por dirección</button>
+          </div>
+
+          @if (mode() === 'ref') {
+            <label class="form-field">
+              Referencia catastral
+              <input type="text" autocomplete="off" maxlength="20" placeholder="Ej: 2853604VK4725D" [ngModel]="refCat()" (ngModelChange)="refCat.set($event)" (keyup.enter)="search()" />
+              <span class="field-hint">14 caracteres (la parcela) o 18/20 (una unidad). Siempre se cargan todas las unidades de la parcela.</span>
+            </label>
+          } @else {
+            <div class="form-row">
+              <label class="form-field">
+                <span class="form-field__label">
+                  Provincia
+                  @if (provincesLoading()) {
+                    <span class="field-spinner" aria-label="Cargando provincias…"></span>
+                  }
+                </span>
+                <select autocomplete="off" [ngModel]="province()" (ngModelChange)="onProvinceChange($event)" [disabled]="provincesLoading()">
+                  <option value="">Selecciona…</option>
+                  @for (p of provinces(); track p.code) {
+                    <option [value]="p.name">{{ p.name }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field suggest">
+                Municipio
+                <input type="text" autocomplete="off" [ngModel]="municipality()" (ngModelChange)="onMunicipalityInput($event)" [disabled]="!province()" />
+                @if (!province()) {
+                  <span class="field-hint">Elige antes una provincia.</span>
+                }
+                @if (municipalitySuggestions().length > 0) {
+                  <ul class="suggest__list">
+                    @for (m of municipalitySuggestions(); track m) {
+                      <li><button type="button" (click)="pickMunicipality(m)">{{ m }}</button></li>
+                    }
+                  </ul>
+                }
+              </label>
+            </div>
+            <div class="form-row form-row--street">
+              <label class="form-field suggest">
+                Calle
+                <input type="text" autocomplete="off" placeholder="Nombre de la calle" [ngModel]="streetQuery()" (ngModelChange)="onStreetInput($event)" [disabled]="!municipality().trim()" />
+                @if (!municipality().trim()) {
+                  <span class="field-hint">Elige antes el municipio.</span>
+                } @else if (selectedStreet(); as s) {
+                  <span class="field-hint">Seleccionada: {{ s.sigla }} {{ s.name }}</span>
+                } @else {
+                  <span class="field-hint">Elige una de las sugerencias del Catastro.</span>
+                }
+                @if (streetSuggestions().length > 0) {
+                  <ul class="suggest__list">
+                    @for (s of streetSuggestions(); track s.sigla + s.name) {
+                      <li><button type="button" (click)="pickStreet(s)">{{ s.sigla }} {{ s.name }}</button></li>
+                    }
+                  </ul>
+                }
+              </label>
+              <label class="form-field">
+                Número
+                <input type="text" autocomplete="off" inputmode="numeric" maxlength="4" [ngModel]="number()" (ngModelChange)="number.set($event)" (keyup.enter)="search()" [disabled]="!selectedStreet()" />
+                @if (!selectedStreet()) {
+                  <span class="field-hint">Elige antes la calle.</span>
+                }
+              </label>
+            </div>
+          }
+        </div>
+        <div class="modal__footer">
+          <app-btn variant="outline" (clicked)="close()">Cancelar</app-btn>
+          <app-btn variant="secondary" [disabled]="loading()" (clicked)="search()">
+            <app-icon name="search" [size]="14"></app-icon>
+            {{ loading() ? 'Consultando…' : 'Buscar en el Catastro' }}
+          </app-btn>
+        </div>
+      }
+
+      <!-- Paso 2: revisión -->
+      @if (step() === 'review' && lookup(); as l) {
+        <div class="modal__body">
+          @if (catastroAddress(); as addr) {
+            <div class="summary__address">
+              <app-icon name="map-pin" [size]="14"></app-icon>
+              {{ addr }}
+            </div>
+          }
+          <div class="summary">
+            <strong>{{ units().length }}</strong> unidades en la parcela <code>{{ l.source.parcelReference }}</code>
+            · <strong>{{ selectedUnits().length }}</strong> seleccionadas
+            · coeficientes seleccionados: <strong>{{ formatQuota(selectedQuotaSum()) }}</strong>
+          </div>
+
+          @for (w of l.warnings; track w) {
+            <div class="alert alert--warning">{{ w }}</div>
+          }
+
+          <div class="table-wrap">
+            <table class="units">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" aria-label="Seleccionar todas" [checked]="allSelected()" [disabled]="importableUnits().length === 0" (change)="toggleAll()" /></th>
+                  <th>Unidad</th>
+                  <th>Uso catastral</th>
+                  <th>Tipo</th>
+                  <th class="num">m²</th>
+                  <th class="num">Coef. (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (u of units(); track u.cadastralReference) {
+                  <tr [class.units__row--disabled]="u.alreadyImported">
+                    <td><input type="checkbox" [attr.aria-label]="'Seleccionar ' + unitLabel(u)" [checked]="isSelected(u)" [disabled]="u.alreadyImported" (change)="toggle(u)" /></td>
+                    <td>
+                      <div>{{ unitLabel(u) }}</div>
+                      <div class="td--muted mono">{{ u.cadastralReference }}</div>
+                    </td>
+                    <td>
+                      {{ u.use || '—' }}
+                      @if (u.alreadyImported) {
+                        <app-badge text="Ya importada" variant="warning"></app-badge>
+                      }
+                    </td>
+                    <td>
+                      <select class="cell-input" [attr.aria-label]="'Tipo de ' + unitLabel(u)" [ngModel]="u.type" [disabled]="u.alreadyImported" (ngModelChange)="setType(u, $event)">
+                        @for (t of propertyTypes; track t) {
+                          <option [value]="t">{{ t }}</option>
+                        }
+                      </select>
+                    </td>
+                    <td class="num">{{ u.builtAreaM2 ?? '—' }}</td>
+                    <td class="num">
+                      <input class="cell-input cell-input--num field--sm" type="number" step="0.01" min="0" max="100" [attr.aria-label]="'Coeficiente de ' + unitLabel(u)" [ngModel]="u.participationQuota" [disabled]="u.alreadyImported" (ngModelChange)="setQuota(u, $event)" />
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <p class="attribution">
+            Fuente: {{ l.source.name }} · consultado el {{ fetchedAtLabel() }}. El coeficiente es el catastral y puede
+            diferir del de la escritura de división horizontal: revísalo antes de importar.
+          </p>
+        </div>
+        <div class="modal__footer">
+          <app-btn variant="outline" (clicked)="backToSearch()">Volver</app-btn>
+          <app-btn variant="secondary" [disabled]="loading() || selectedUnits().length === 0" (clicked)="importSelected()">
+            {{ loading() ? 'Importando…' : 'Importar ' + selectedUnits().length + (selectedUnits().length === 1 ? ' unidad' : ' unidades') }}
+          </app-btn>
+        </div>
+      }
+
+      <!-- Paso 3: resultado -->
+      @if (step() === 'done' && result(); as r) {
+        <div class="modal__body">
+          <div class="done">
+            <app-icon name="check" [size]="20"></app-icon>
+            <div>
+              <strong>{{ r.created }} {{ r.created === 1 ? 'propiedad creada' : 'propiedades creadas' }}</strong>
+              @if (r.skipped > 0) {
+                <div class="td--muted">{{ r.skipped }} ya existían y se omitieron.</div>
+              }
+              <div class="td--muted">Se han creado vacías y sin propietario: vincula a cada titular desde su ficha.</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal__footer">
+          <app-btn variant="secondary" (clicked)="close()">Cerrar</app-btn>
+        </div>
+      }
+    </div>
+  </div>
+}

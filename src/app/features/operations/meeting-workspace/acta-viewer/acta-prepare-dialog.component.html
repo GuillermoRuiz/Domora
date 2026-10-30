@@ -1,0 +1,84 @@
+<div class="modal-backdrop" (click)="close()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="acta-prepare-title" (click)="$event.stopPropagation()" (keydown.escape)="close()">
+    <div class="modal__header">
+      <h4 id="acta-prepare-title"><app-icon name="file-text" [size]="16"></app-icon> Preparar el acta</h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="close()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      <p class="hint">
+        Confirma estos datos de la reunión: Domora no puede deducirlos y aparecen en el acta.
+        <span class="ref">Convocatorias: 1ª {{ time(validation.reference.scheduledAt1) }} · 2ª {{ time(validation.reference.scheduledAt2) }}.</span>
+      </p>
+
+      @for (issue of blockingIssues; track issue.code) {
+        <p class="alert" role="alert" data-testid="blocking">{{ issue.message }}</p>
+      }
+
+      <div class="field" role="group" aria-labelledby="acta-prepare-convocation">
+        <span id="acta-prepare-convocation">Convocatoria en la que se constituyó la junta</span>
+        <div class="toggle">
+          <button type="button" class="toggle__label toggle__label--first" [class.toggle__label--on]="convocation() === 'primera'" (click)="setConvocation('primera')">Primera convocatoria</button>
+          <app-toggle
+            variant="choice"
+            label="Constituida en segunda convocatoria"
+            [on]="convocation() === 'segunda'"
+            (onChange)="setConvocation($event ? 'segunda' : 'primera')"
+          ></app-toggle>
+          <button type="button" class="toggle__label" [class.toggle__label--on]="convocation() === 'segunda'" (click)="setConvocation('segunda')">Segunda convocatoria</button>
+        </div>
+      </div>
+
+      <div class="times">
+        <div class="field" role="group" aria-labelledby="acta-prepare-start">
+          <span id="acta-prepare-start">Hora real de inicio</span>
+          <div class="time">
+            <select aria-label="Hora de inicio: hora" [ngModel]="part(startTime(), 'hour')" (ngModelChange)="setPart('start', 'hour', $event)">
+              @for (hour of hours; track hour) { <option [value]="hour">{{ hour }}</option> }
+            </select>
+            <span class="time__sep" aria-hidden="true">:</span>
+            <select aria-label="Hora de inicio: minutos" [ngModel]="part(startTime(), 'minute')" (ngModelChange)="setPart('start', 'minute', $event)">
+              @for (minute of minutes; track minute) { <option [value]="minute">{{ minute }}</option> }
+            </select>
+          </div>
+        </div>
+        <div class="field" role="group" aria-labelledby="acta-prepare-end">
+          <span id="acta-prepare-end">Hora real de fin</span>
+          <div class="time">
+            <select aria-label="Hora de fin: hora" [ngModel]="part(endTime(), 'hour')" (ngModelChange)="setPart('end', 'hour', $event)">
+              @for (hour of hours; track hour) { <option [value]="hour">{{ hour }}</option> }
+            </select>
+            <span class="time__sep" aria-hidden="true">:</span>
+            <select aria-label="Hora de fin: minutos" [ngModel]="part(endTime(), 'minute')" (ngModelChange)="setPart('end', 'minute', $event)">
+              @for (minute of minutes; track minute) { <option [value]="minute">{{ minute }}</option> }
+            </select>
+          </div>
+        </div>
+      </div>
+      @if (endSuggestion) {
+        <p class="suggestion">
+          La hora de fin se ha rellenado con la de marcar la junta como celebrada ({{ endSuggestion }}); ajústala si la real es otra.
+        </p>
+      }
+      @if (invalidOrder()) {
+        <p class="alert" role="alert">La hora de fin debe ser posterior a la de inicio.</p>
+      }
+
+      @if (validation.warnings.length) {
+        <ul class="warnings" aria-label="Avisos">
+          @for (warning of validation.warnings; track warning.code) {
+            <li>{{ warning.message }}</li>
+          }
+        </ul>
+      }
+      @if (error) {
+        <p class="alert" role="alert">{{ error }}</p>
+      }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" [disabled]="busy" (clicked)="close()">Cancelar</app-btn>
+      <app-btn variant="accent" size="sm" [disabled]="!canGenerate" (clicked)="submit()">{{ busy ? 'Generando…' : 'Generar borrador' }}</app-btn>
+    </div>
+  </div>
+</div>

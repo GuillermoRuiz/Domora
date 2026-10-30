@@ -1,0 +1,10 @@
+:host { display: block; min-width: 0; height: 100%; }
+
+
+.cashflow__body { transition: opacity 0.15s; }
+.cashflow__body--loading { opacity: 0.55; }
+
+.cashflow__placeholder, .cashflow__error { margin: 0; padding: 32px 0; text-align: center; font-size: 14px; color: var(--color-muted); }
+.cashflow__error { color: var(--color-error); padding: 12px 0 0; }
+
+@media (prefers-reduced-motion: reduce) { .cashflow__body { transition: none; } }

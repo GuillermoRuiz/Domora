@@ -1,0 +1,160 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal modal--wide" role="dialog" aria-modal="true" [attr.aria-label]="isNew() ? 'Nuevo cliente' : 'Oportunidad ' + name()" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h3>{{ isNew() ? 'Nuevo cliente' : (lead()?.name ?? 'Oportunidad') }}</h3>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="18"></app-icon></button>
+    </div>
+
+    @if (loading()) {
+      <p class="modal__intro">Cargando…</p>
+    } @else {
+      <div class="modal__body">
+        @if (isNew()) {
+          <p class="modal__intro">Registra un despacho interesado como oportunidad. Cuando empiece la prueba o contrate, usa «Convertir en cliente» y se dará de alta como administrador de fincas.</p>
+        }
+        @if (lead(); as l) {
+          <div class="lead-meta">
+            <app-badge [text]="statusLabel[l.status]" [variant]="statusVariant(l.status)"></app-badge>
+            <span>Creada el {{ fmtDay(l.createdAt) }}</span>
+            @if (l.onboardingRequest; as r) {
+              <span>· Solicitud de alta de «{{ r.communityName }}»@if (r.communityAddress) { ({{ r.communityAddress }}) } enviada por {{ r.requestedByName }}</span>
+            }
+          </div>
+          @if (l.convertedAdministrator; as a) {
+            <p class="converted-note">
+              Ya es cliente: <strong>{{ a.name }}</strong>.
+              <button type="button" class="link-btn" (click)="openClient.emit(a.id)">Abrir su ficha</button>
+            </p>
+          }
+        }
+
+        <fieldset class="form-grid" [disabled]="isConverted()">
+          <label class="form-field form-field--full">
+            <span class="form-label">Nombre del despacho <span class="required">*</span></span>
+            <input class="form-input" type="text" maxlength="200" data-field="name" [value]="name()" (input)="name.set($any($event.target).value)" />
+          </label>
+          <label class="form-field">
+            <span class="form-label">Persona de contacto</span>
+            <input class="form-input" type="text" maxlength="150" autocomplete="off" [value]="contactName()" (input)="contactName.set($any($event.target).value)" />
+          </label>
+          <label class="form-field">
+            <span class="form-label">Email</span>
+            <input class="form-input" type="email" maxlength="200" autocomplete="off" [value]="contactEmail()" (input)="contactEmail.set($any($event.target).value)" />
+          </label>
+          <label class="form-field">
+            <span class="form-label">Teléfono</span>
+            <input class="form-input" type="tel" maxlength="30" autocomplete="off" [value]="contactPhone()" (input)="contactPhone.set($any($event.target).value)" />
+          </label>
+          <label class="form-field">
+            <span class="form-label">Ciudad</span>
+            <input class="form-input" type="text" maxlength="120" autocomplete="off" [value]="city()" (input)="city.set($any($event.target).value)" />
+          </label>
+          <label class="form-field">
+            <span class="form-label">Origen</span>
+            @if (fromRequest()) {
+              <input class="form-input" type="text" [value]="originLabel.solicitud_alta" disabled />
+            } @else {
+              <select class="form-input" data-field="origin" [value]="origin()" (change)="origin.set($any($event.target).value)">
+                @for (o of manualOrigins; track o) { <option [value]="o" [selected]="origin() === o">{{ originLabel[o] }}</option> }
+              </select>
+            }
+          </label>
+          <label class="form-field">
+            <span class="form-label">Plan de interés</span>
+            <select class="form-input" data-field="plan" [value]="planOfInterest()" (change)="planOfInterest.set($any($event.target).value)">
+              <option value="" [selected]="planOfInterest() === ''">Sin decidir</option>
+              @for (p of plans; track p) { <option [value]="p" [selected]="planOfInterest() === p">{{ p }}</option> }
+            </select>
+          </label>
+          <label class="form-field">
+            <span class="form-label">Estado</span>
+            @if (isConverted()) {
+              <input class="form-input" type="text" [value]="statusLabel.convertido" disabled />
+            } @else {
+              <select class="form-input" data-field="status" [value]="status()" (change)="status.set($any($event.target).value)">
+                @for (s of editableStatuses; track s) { <option [value]="s" [selected]="status() === s">{{ statusLabel[s] }}</option> }
+              </select>
+            }
+          </label>
+          <label class="form-field">
+            <span class="form-label">Próxima acción</span>
+            <input class="form-input" type="text" maxlength="300" placeholder="Ej.: enviar propuesta" [value]="nextAction()" (input)="nextAction.set($any($event.target).value)" />
+          </label>
+          <label class="form-field">
+            <span class="form-label">Fecha</span>
+            <input class="form-input" type="date" [value]="nextActionAt()" (input)="nextActionAt.set($any($event.target).value)" />
+          </label>
+          <label class="form-field form-field--full">
+            <span class="form-label">Notas</span>
+            <textarea class="form-textarea" rows="3" maxlength="5000" [value]="notes()" (input)="notes.set($any($event.target).value)"></textarea>
+          </label>
+        </fieldset>
+
+        @if (!isNew()) {
+          <section class="followups" aria-label="Seguimiento comercial">
+            <h4 class="section-title">Seguimiento comercial</h4>
+            @if (!isConverted()) {
+              <div class="followup-form">
+                <textarea class="form-textarea" rows="2" maxlength="2000" data-field="followup" aria-label="Nuevo seguimiento" placeholder="Qué se habló, qué se acordó…" [value]="followUpText()" (input)="followUpText.set($any($event.target).value)"></textarea>
+                <app-btn variant="outline" size="sm" data-action="add-followup" [disabled]="!followUpText().trim() || addingFollowUp()" (clicked)="addFollowUp()">Añadir seguimiento</app-btn>
+              </div>
+            }
+            <ul class="followup-list" data-followups>
+              @for (f of followUps(); track f.id) {
+                <li>
+                  <span class="followup-meta">{{ fmtDay(f.occurredAt) }} · {{ f.author }}</span>
+                  <span class="followup-text">{{ f.text }}</span>
+                </li>
+              } @empty {
+                <li class="followup-empty">Sin seguimiento todavía.</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (!isNew() && !isConverted()) {
+          <section class="convert" aria-label="Convertir en cliente">
+            @if (!converting()) {
+              <app-btn variant="secondary" size="sm" data-action="start-convert" (clicked)="startConvert()">Convertir en cliente</app-btn>
+              <span class="field-hint">Al empezar la prueba o contratar: crea el despacho en Administradores de fincas.</span>
+            } @else {
+              <h4 class="section-title">Convertir en cliente</h4>
+              <p class="field-hint">Se da de alta el despacho con estos datos y los de contacto de la oportunidad. Después podrás compartir su enlace de invitación.</p>
+              <div class="form-grid">
+                <label class="form-field">
+                  <span class="form-label">CIF <span class="required">*</span></span>
+                  <input class="form-input" type="text" maxlength="20" placeholder="B12345678" data-field="cif" [value]="convertCif()" (input)="convertCif.set($any($event.target).value)" />
+                </label>
+                <label class="form-field">
+                  <span class="form-label">Plan <span class="required">*</span></span>
+                  <select class="form-input" data-field="convert-plan" [value]="convertPlan()" (change)="convertPlan.set($any($event.target).value)">
+                    <option value="" [selected]="convertPlan() === ''" disabled>Elige un plan</option>
+                    @for (p of plans; track p) { <option [value]="p" [selected]="convertPlan() === p">{{ p }}</option> }
+                  </select>
+                </label>
+                <label class="form-field form-field--full">
+                  <span class="form-label">Razón social</span>
+                  <input class="form-input" type="text" maxlength="200" [value]="convertName()" (input)="convertName.set($any($event.target).value)" />
+                </label>
+              </div>
+              @if (convertError()) { <p class="form-error" role="alert">{{ convertError() }}</p> }
+              <div class="convert__actions">
+                <app-btn variant="outline" size="sm" (clicked)="converting.set(false)">Cancelar</app-btn>
+                <app-btn variant="primary" size="sm" data-action="convert" [disabled]="!canConvert()" (clicked)="convert()">Crear cliente</app-btn>
+              </div>
+            }
+          </section>
+        }
+
+        @if (error()) { <p class="form-error" role="alert">{{ error() }}</p> }
+      </div>
+    }
+
+    <div class="modal__footer">
+      <app-btn variant="outline" (clicked)="closed.emit()">{{ isConverted() ? 'Cerrar' : 'Cancelar' }}</app-btn>
+      @if (!isConverted()) {
+        <app-btn variant="primary" data-action="save-lead" [disabled]="!canSave()" (clicked)="save()">{{ isNew() ? 'Crear oportunidad' : 'Guardar' }}</app-btn>
+      }
+    </div>
+  </div>
+</div>

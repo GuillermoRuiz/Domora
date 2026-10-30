@@ -1,0 +1,25 @@
+<section class="quick" aria-label="Accesos rápidos">
+  <h3 class="quick__title">Accesos rápidos</h3>
+  <div class="quick__grid">
+    <button type="button" class="quick__btn quick__btn--primary" data-quick="issue" (click)="run.emit('issue')">
+      <span class="quick__icon"><app-icon name="wrench" [size]="18"></app-icon></span>
+      <span class="quick__text"><strong>Nueva incidencia</strong><small>Comunica un problema</small></span>
+      <app-icon name="arrow-right" [size]="14"></app-icon>
+    </button>
+    <button type="button" class="quick__btn" data-quick="message" (click)="run.emit('message')">
+      <span class="quick__icon"><app-icon name="send" [size]="18"></app-icon></span>
+      <span class="quick__text"><strong>Enviar mensaje</strong><small>Contacta con tu administrador</small></span>
+      <app-icon name="arrow-right" [size]="14"></app-icon>
+    </button>
+    <button type="button" class="quick__btn" data-quick="receipts" (click)="run.emit('receipts')">
+      <span class="quick__icon"><app-icon name="card" [size]="18"></app-icon></span>
+      <span class="quick__text"><strong>Ver recibos</strong><small>Consulta tus pagos</small></span>
+      <app-icon name="arrow-right" [size]="14"></app-icon>
+    </button>
+    <button type="button" class="quick__btn" data-quick="acta" [disabled]="!actaAvailable()" (click)="run.emit('acta')">
+      <span class="quick__icon"><app-icon name="file-text" [size]="18"></app-icon></span>
+      <span class="quick__text"><strong>Descargar acta</strong><small>{{ actaAvailable() ? 'Última junta celebrada' : 'Sin acta disponible' }}</small></span>
+      <app-icon name="arrow-right" [size]="14"></app-icon>
+    </button>
+  </div>
+</section>

@@ -1,0 +1,27 @@
+<app-section-card title="Actividad reciente" [padded]="false">
+  @if (error() && !data()) {
+    <p class="activity__message activity__message--error" role="alert">
+      No se pudo cargar la actividad.
+      <button type="button" class="activity__retry" (click)="retry()()">Reintentar</button>
+    </p>
+  } @else if (!data()) {
+    <p class="activity__message" role="status">Cargando actividad…</p>
+  } @else if (rows().length === 0) {
+    <p class="activity__message">Todavía no hay actividad tuya que mostrar.</p>
+  } @else {
+    <ul class="activity" [attr.aria-busy]="loading()" aria-label="Actividad reciente">
+      @for (row of rows(); track row.item.id) {
+        <li class="activity__row" [attr.data-subject]="row.item.subjectType">
+          <span class="activity__icon" aria-hidden="true"><app-icon [name]="row.icon" [size]="16"></app-icon></span>
+          <span class="activity__text">
+            <span class="activity__summary">{{ row.item.summary }}</span>
+            @if (row.item.estateName) {
+              <span class="activity__estate">{{ row.item.estateName }}</span>
+            }
+          </span>
+          <time class="activity__time" [attr.datetime]="row.item.occurredAt" [attr.title]="row.exact">{{ row.ago }}</time>
+        </li>
+      }
+    </ul>
+  }
+</app-section-card>

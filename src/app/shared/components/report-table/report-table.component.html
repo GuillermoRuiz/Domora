@@ -1,0 +1,34 @@
+@for (section of sections; track section.title ?? $index) {
+  @if (section.title) {
+    <h3 class="section-title">{{ section.title }}</h3>
+  }
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          @for (col of section.columns; track col.key) {
+            <th [class.num]="align(col) === 'right'">{{ col.header }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of section.rows; track $index) {
+          <tr>
+            @for (col of section.columns; track col.key) {
+              <td [class.num]="align(col) === 'right'" [class.money]="col.money">{{ fmt(row[col.key], col) }}</td>
+            }
+          </tr>
+        } @empty {
+          <tr><td [attr.colspan]="section.columns.length" class="muted">{{ section.empty ?? 'Sin datos.' }}</td></tr>
+        }
+        @if (section.totals && section.rows.length) {
+          <tr class="total">
+            @for (col of section.columns; track col.key) {
+              <td [class.num]="align(col) === 'right'" [class.money]="col.money">{{ fmt(section.totals[col.key], col) }}</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

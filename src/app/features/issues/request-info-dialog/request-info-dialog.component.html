@@ -1,0 +1,47 @@
+<div class="backdrop" (click)="closed.emit()">
+  <form
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="request-info-title"
+    (click)="$event.stopPropagation()"
+    (keydown.escape)="closed.emit()"
+    (submit)="$event.preventDefault(); submit()"
+  >
+    <header class="dialog__header">
+      <h4 id="request-info-title">Pedir información</h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </header>
+    <div class="dialog__body">
+      <p class="hint">
+        La incidencia quedará en «Pendiente de información» y se avisará a quien la reportó. Cuando responda, volverá al estado
+        en el que estaba.
+      </p>
+      @if (alreadyWaiting()) {
+        <p class="hint hint--warn" data-already-waiting>Ya está esperando una respuesta: esta pregunta se añade a la anterior.</p>
+      }
+      <label class="field">
+        ¿Qué necesitas saber? *
+        <textarea
+          name="text"
+          rows="4"
+          maxlength="5000"
+          aria-label="Qué necesitas saber"
+          [class.field--error]="invalid()"
+          [ngModel]="text()"
+          (ngModelChange)="text.set($event)"
+        ></textarea>
+        @if (invalid()) { <span class="error" data-error="text">Escribe qué información necesitas.</span> }
+      </label>
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+    </div>
+    <footer class="dialog__footer">
+      <app-btn variant="outline" size="sm" (clicked)="closed.emit()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" type="submit" [disabled]="busy()">Pedir información</app-btn>
+    </footer>
+  </form>
+</div>

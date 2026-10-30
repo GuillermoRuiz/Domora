@@ -1,0 +1,95 @@
+@use '../task-form';
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal {
+  width: 640px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+
+    h4 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  }
+
+  &__body { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--color-border);
+  }
+}
+
+.more { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; border-top: 1px dashed var(--color-border); }
+
+.items { display: flex; flex-direction: column; gap: 4px; }
+.items__row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px;
+  background: var(--color-bg); border-radius: var(--radius-sm); font-size: 14px; font-weight: 400; color: var(--color-text);
+}
+.items__remove {
+  width: 24px; height: 24px; border-radius: 50%; color: var(--color-muted); display: inline-flex; align-items: center; justify-content: center;
+  &:hover { color: var(--color-error); }
+  &:focus-visible { outline: 2px solid var(--color-accent); }
+}
+
+.inline-add { display: flex; gap: 6px; }
+/* La misma zona de subida que el alta de incidencias. */
+.dropzone {
+  position: relative;
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 96px;
+  padding: 14px;
+  text-align: center;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  strong { font-size: 13px; font-weight: 600; color: var(--color-text); }
+  small { font-size: 11.5px; font-weight: 400; }
+  &:hover, &--over { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 6%, var(--color-bg)); }
+  &:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  input[type='file'] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+}
+
+@media (max-width: 720px) {
+  .modal-backdrop { padding: 0; align-items: stretch; }
+  .modal { width: 100%; max-height: none; height: 100%; border-radius: 0; border: none; }
+}
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .schedule-row { grid-template-columns: minmax(0, 1fr); }
+}

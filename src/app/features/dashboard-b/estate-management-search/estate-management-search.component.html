@@ -1,0 +1,47 @@
+<div class="management-search" (keydown)="onKeydown($event)">
+  <app-icon name="search" [size]="18"></app-icon>
+  <input class="field--bare"
+    #search
+    type="search"
+    aria-label="Buscar comunidades, propietarios e incidencias"
+    placeholder="Buscar comunidades, propietarios, incidencias…"
+    maxlength="100"
+    [value]="query()"
+    [attr.aria-expanded]="open()"
+    aria-haspopup="dialog"
+    [attr.aria-controls]="open() ? 'estate-management-results' : null"
+    (input)="onInput($any($event.target).value)"
+    (focus)="onFocus()"
+  />
+  @if (open()) {
+    <div
+      id="estate-management-results"
+      class="search-results"
+      role="dialog"
+      aria-label="Resultados de búsqueda en Fincas"
+      [attr.aria-busy]="loading()"
+    >
+      @if (loading()) {
+        <p role="status">Buscando…</p>
+      } @else if (error()) {
+        <p role="alert">No se pudo completar la búsqueda.</p>
+        <button type="button" (click)="load()">Reintentar</button>
+      } @else {
+        @for (result of results(); track result.kind + ":" + result.id) {
+          <button type="button" (click)="select(result)">
+            <app-icon [name]="icons[result.kind]" [size]="18"></app-icon
+            ><span
+              ><small class="result-kind">{{ labels[result.kind] }}</small
+              ><strong>{{ result.label }}</strong
+              ><small>{{
+                result.kind === "community" ? result.address : result.estateName
+              }}</small></span
+            ><app-icon name="arrow-right" [size]="15"></app-icon>
+          </button>
+        } @empty {
+          <p role="status">No se encontraron resultados.</p>
+        }
+      }
+    </div>
+  }
+</div>

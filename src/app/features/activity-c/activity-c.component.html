@@ -1,0 +1,31 @@
+<app-topbar title="Actividad" [breadcrumb]="['Mi comunidad', 'Actividad']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Actividad</h1>
+    <p class="page-intro__subtitle">Consulta la actividad reciente de tus propiedades.</p>
+  </div>
+</header>
+
+<div class="page-content">
+  @if (loading()) {
+    <div class="empty-state">Cargando actividad…</div>
+  } @else if (activities().length === 0) {
+    <div class="empty-state">No hay actividad reciente.</div>
+  } @else {
+    <div class="activity-list">
+      @for (item of activities(); track item.id) {
+        <div class="activity-item" [class.activity-item--clickable]="activityClickable(item)" (click)="openActivity(item)">
+          <div class="activity-dot" [style.background]="activityColor(item.type)">
+            <app-icon [name]="activityIcon(item.type)" [size]="11"></app-icon>
+          </div>
+          <div class="activity-content">
+            <div class="activity-title">{{ item.title }}</div>
+            <div class="activity-desc">{{ item.description }}</div>
+          </div>
+          <div class="activity-date">{{ item.date }}</div>
+        </div>
+      }
+    </div>
+  }
+</div>

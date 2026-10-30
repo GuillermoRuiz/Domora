@@ -1,0 +1,27 @@
+:host { display: block; }
+
+.filters { display: flex; flex-direction: column; gap: 8px; }
+
+.filters__toggle {
+  display: none; align-items: center; gap: 6px; align-self: flex-start; padding: 8px 14px; min-height: 40px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface);
+  color: var(--color-text); font-size: 14px; font-weight: 500;
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+.filters__count {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--color-accent); color: var(--color-primary);
+  font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+}
+
+.filters__fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Reparten todo el ancho de la fila; la base evita recortar el texto de los desplegables. */
+.field { flex: 1 1 175px; min-width: 0; }
+.filters__clear { font-size: 14px; color: var(--color-accent); padding: 6px 8px; border-radius: var(--radius-sm); }
+.filters__clear:hover { text-decoration: underline; }
+.filters__clear:focus-visible { outline: 2px solid var(--color-accent); }
+
+@media (max-width: 720px) {
+  .filters__toggle { display: inline-flex; }
+  .filters__fields { display: none; flex-direction: column; align-items: stretch; padding: 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); &--open { display: flex; } }
+}

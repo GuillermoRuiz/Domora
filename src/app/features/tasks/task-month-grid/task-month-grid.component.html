@@ -1,0 +1,59 @@
+<div class="month">
+  <div class="month__head" aria-hidden="true">
+    @for (name of weekdayShort; track name) {
+      <div class="month__dow">{{ name }}</div>
+    }
+  </div>
+  <div class="month__grid">
+    @for (cell of cells(); track cell.key) {
+      <div
+        class="cell"
+        [class.cell--muted]="!cell.inMonth"
+        [class.cell--today]="cell.isToday"
+        [class.cell--drop]="dropTarget() === cell.key"
+        (dragover)="onDragOver($event, cell.key)"
+        (dragleave)="dropTarget.set(null)"
+        (drop)="onDrop($event, cell.date)"
+      >
+        <div class="cell__top">
+          <button type="button" class="cell__num" [attr.aria-label]="cellLabel(cell)" (click)="daySelected.emit(cell.date)">{{ cell.date.getDate() }}</button>
+          @if (cell.total > 0) {
+            <span class="cell__count" aria-hidden="true">{{ cell.total }}</span>
+          }
+          <button type="button" class="cell__add" [attr.aria-label]="'Nueva tarea el ' + cell.date.getDate()" (click)="createOnDay.emit(cell.date)">
+            <app-icon name="plus" [size]="12"></app-icon>
+          </button>
+        </div>
+        <div class="cell__tasks">
+          @for (task of cell.visible; track task.occurrenceKey) {
+            <button
+              type="button"
+              class="mchip"
+              [class]="'mchip mchip--' + task.priority.toLowerCase()"
+              [class.mchip--done]="task.status === 'COMPLETADA'"
+              [class.mchip--cancelled]="task.status === 'CANCELADA'"
+              [class.mchip--overdue]="task.overdue"
+              [class.mchip--selected]="selectedKey() === task.occurrenceKey"
+              [attr.draggable]="task.recurring ? null : 'true'"
+              [attr.aria-label]="label(task)"
+              (click)="taskSelected.emit(task)" (dblclick)="taskOpened.emit(task)"
+              (dragstart)="onDragStart($event, task)"
+              (dragend)="onDragEnd()"
+              (mouseenter)="hover(task, $event)"
+              (mouseleave)="hoverEnded.emit()"
+              (focus)="hover(task, $event)"
+              (blur)="hoverEnded.emit()"
+            >
+              <app-icon [name]="types[task.type].icon" [size]="10" aria-hidden="true"></app-icon>
+              @if (time(task)) { <span class="mchip__time">{{ time(task) }}</span> }
+              <span class="truncate">{{ task.title }}</span>
+            </button>
+          }
+          @if (cell.hidden > 0) {
+            <button type="button" class="more" (click)="daySelected.emit(cell.date)">+{{ cell.hidden }} más</button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

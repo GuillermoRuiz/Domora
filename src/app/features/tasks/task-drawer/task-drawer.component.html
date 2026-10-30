@@ -1,0 +1,295 @@
+<div class="drawer-backdrop" (click)="closed.emit()"></div>
+<div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-heading" appFocusTrap>
+  <header class="drawer__header">
+    <h2 id="drawer-heading" class="drawer__kicker">Detalle de tarea</h2>
+    <div class="drawer__header-end">
+      <div class="statusline">
+        @if (saving()) { <span class="saving" aria-live="polite">Guardando…</span> }
+        <app-task-status [status]="status()" [overdue]="overdue()"></app-task-status>
+        @if (task().recurring) { <span class="tag"><app-icon name="repeat" [size]="11" aria-hidden="true"></app-icon> Se repite</span> }
+      </div>
+      <button type="button" class="close-btn" data-autofocus aria-label="Cerrar el detalle" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="drawer__body" aria-busy="true" aria-live="polite">
+      <div class="skeleton skeleton--title"></div>
+      <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton skeleton--short"></div>
+    </div>
+  } @else if (loadError() || !detail()) {
+    <div class="drawer__body drawer__state" role="alert">
+      <p>No se pudo cargar la tarea.</p>
+      <button type="button" class="mini-btn" (click)="load()">Reintentar</button>
+    </div>
+  } @else {
+    @let d = detail()!;
+    <div class="drawer__body">
+      <div class="titlerow">
+        @if (titlePrefix(d); as prefix) { <span class="title-prefix">{{ prefix }}</span> }
+        <textarea
+          class="title"
+          rows="2"
+          maxlength="200"
+          aria-label="Título"
+          [ngModel]="d.title.slice(titlePrefix(d).length)"
+          (blur)="saveTitle(titlePrefix(d) + $any($event.target).value)"
+          (keydown.enter)="$event.preventDefault(); $any($event.target).blur()"
+        ></textarea>
+      </div>
+
+      @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+
+      @if (d.kind && !terminal()) {
+        <app-task-decision-panel [task]="d" (resolved)="onDecisionResolved($event)"></app-task-decision-panel>
+        @if (d.kind === 'review_issue') {
+          <app-review-next-step-panel [task]="d" (resolved)="onDecisionResolved($event)"></app-review-next-step-panel>
+        }
+      }
+      @if (d.kind && terminal()) {
+        <p class="decision-resolved" role="status">Esta decisión ya está resuelta y no puede modificarse.</p>
+      }
+
+      <div class="tabs" role="tablist" aria-label="Secciones de la tarea">
+        @for (item of sections; track item.id; let n = $index) {
+          <button
+            type="button"
+            role="tab"
+            class="tabs__tab"
+            [id]="'task-tab-' + item.id"
+            [class.tabs__tab--active]="section() === item.id"
+            [attr.aria-selected]="section() === item.id"
+            [attr.aria-controls]="'task-panel-' + item.id"
+            [attr.tabindex]="section() === item.id ? 0 : -1"
+            (click)="section.set(item.id)"
+            (keydown)="onSectionKeydown($event, n)"
+          >{{ item.label }}</button>
+        }
+      </div>
+
+      @if (originIssue(d); as issue) {
+        <button type="button" class="origin" data-origin-issue (click)="openLink(issue)">
+          <app-icon name="exclamation" [size]="16" aria-hidden="true"></app-icon>
+          <span class="origin__text">
+            <span class="origin__kicker">Incidencia</span>
+            <span class="origin__label">{{ issue.label }}</span>
+          </span>
+          <span class="origin__go">Abrir <app-icon name="arrow-right" [size]="12" aria-hidden="true"></app-icon></span>
+        </button>
+      }
+
+      <div class="panel" role="tabpanel" id="task-panel-details" aria-labelledby="task-tab-details" [hidden]="section() !== 'details'">
+      <section class="section">
+        <label class="section__label" for="drawer-description">Descripción</label>
+        <textarea id="drawer-description" rows="4" maxlength="10000" placeholder="Añade contexto, enlaces o instrucciones…" [ngModel]="d.description ?? ''" (blur)="saveDescription($any($event.target).value)"></textarea>
+      </section>
+
+      <section class="section">
+        <div class="grid2">
+          <label class="form-field">
+            Comunidad
+            <select [ngModel]="d.estate?.id ?? ''" (ngModelChange)="saveEstate($event)">
+              <option value="">Sin comunidad</option>
+              @for (estate of catalog.estates(); track estate.id) {
+                <option [value]="estate.id">{{ estate.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            Responsable
+            <select [ngModel]="d.assignee?.id ?? ''" (ngModelChange)="saveAssignee($event)">
+              <option value="">Sin asignar</option>
+              @for (person of catalog.assignees(); track person.id) {
+                <option [value]="person.id">{{ person.fullName }}</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            Tipo
+            <select [ngModel]="d.type" (ngModelChange)="saveType($event)" [disabled]="!!d.issueId"
+              [title]="d.issueId ? 'El tipo lo fija la incidencia de origen' : ''">
+              @for (t of types; track t.key) {
+                <option [value]="t.key">{{ t.label }}</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            Prioridad
+            <select [ngModel]="d.priority" (ngModelChange)="savePriority($event)">
+              @for (p of priorities; track p.key) {
+                <option [value]="p.key">{{ p.label }}</option>
+              }
+            </select>
+          </label>
+          @if (!task().recurring) {
+            <label class="form-field">
+              Estado
+              <select [ngModel]="d.status" (ngModelChange)="changeStatus($event)">
+                @for (s of statuses; track s.key) {
+                  <option [value]="s.key">{{ s.label }}</option>
+                }
+                @if (terminal()) { <option [value]="d.status" disabled>{{ d.status === 'COMPLETADA' ? 'Completada' : 'Cancelada' }}</option> }
+              </select>
+            </label>
+          } @else {
+            <label class="form-field">
+              Estado de la serie
+              <select [ngModel]="d.status" (ngModelChange)="changeStatus($event)">
+                @for (s of statuses; track s.key) {
+                  <option [value]="s.key">{{ s.label }}</option>
+                }
+              </select>
+            </label>
+          }
+          <div class="form-field">
+            Etiquetas
+            <app-task-label-picker [selected]="d.labels.map(l => l.id)" (selectedChange)="saveLabels($event)"></app-task-label-picker>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3 class="section__label">Fecha y hora</h3>
+        @if (!editingSchedule()) {
+          <div class="schedule">
+            <span>{{ scheduleSummary }}</span>
+            <button type="button" class="link-btn" (click)="startScheduleEdit()">Cambiar</button>
+          </div>
+          @if (task().recurring) { <p class="field-hint">Al cambiar la fecha se mueve toda la serie.</p> }
+        } @else {
+          <div class="schedule-stack">
+            <app-datetime-field [label]="scheduleAllDay() ? 'Fecha de inicio' : 'Inicio'" [dateOnly]="scheduleAllDay()" [value]="scheduleStartValue()"
+              [invalid]="!!scheduleError" (valueChange)="onScheduleStartValue($event)"></app-datetime-field>
+            <app-datetime-field [label]="scheduleAllDay() ? 'Fecha de fin' : 'Fin'" [dateOnly]="scheduleAllDay()" [value]="scheduleEndValue()"
+              [invalid]="!!scheduleError" (valueChange)="onScheduleEndValue($event)"></app-datetime-field>
+          </div>
+          <button type="button" class="link-btn" (click)="editingSchedule.set(false)">Listo</button>
+          @if (scheduleError) { <p class="field-error" role="alert" data-schedule-error>{{ scheduleError }}</p> }
+          <label class="form-field form-field--checkbox">
+            <input type="checkbox" [ngModel]="scheduleAllDay()" (ngModelChange)="onScheduleAllDayChange($event)" />
+            Todo el día (sin hora concreta)
+          </label>
+        }
+      </section>
+
+      <section class="section">
+        <div class="grid2">
+          <div class="form-field">
+            Recordatorio
+            <app-task-reminder-field [value]="d.reminderMinutesBefore" (valueChange)="saveReminder($event)"></app-task-reminder-field>
+          </div>
+          <div class="form-field">
+            Repetición
+            <app-task-recurrence-field [value]="d.recurrence" (valueChange)="saveRecurrence($event)"></app-task-recurrence-field>
+          </div>
+        </div>
+      </section>
+
+      </div>
+
+      <div class="panel" role="tabpanel" id="task-panel-follow" aria-labelledby="task-tab-follow" [hidden]="section() !== 'follow'">
+      <section class="section">
+        <h3 class="section__label">
+          Checklist
+          @if (checklistProgress().total > 0) {
+            <span class="progress">{{ checklistProgress().done }} / {{ checklistProgress().total }} · {{ checklistProgress().percent }}%</span>
+          }
+        </h3>
+        @if (checklistProgress().total > 0) {
+          <div class="bar" role="progressbar" aria-label="Progreso de la checklist" [attr.aria-valuenow]="checklistProgress().percent" aria-valuemin="0" aria-valuemax="100">
+            <span [style.width.%]="checklistProgress().percent"></span>
+          </div>
+        }
+        <ul class="list">
+          @for (item of d.checklist; track item.id) {
+            <li class="list__row">
+              <label class="check">
+                <input type="checkbox" [checked]="item.done" (change)="toggleChecklistItem(item.id, $any($event.target).checked)" />
+                <span [class.check__done]="item.done">{{ item.text }}</span>
+              </label>
+              <button type="button" class="icon-btn" [attr.aria-label]="'Eliminar subtarea: ' + item.text" (click)="deleteChecklistItem(item.id)"><app-icon name="x" [size]="12"></app-icon></button>
+            </li>
+          }
+        </ul>
+        <div class="inline-add">
+          <input type="text" maxlength="300" placeholder="Añadir subtarea" aria-label="Nueva subtarea" [ngModel]="checklistDraft()" (ngModelChange)="checklistDraft.set($event)" (keydown.enter)="addChecklistItem()" />
+          <button type="button" class="mini-btn" [disabled]="!checklistDraft().trim() || saving()" (click)="addChecklistItem()">Añadir</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3 class="section__label">Vinculado a</h3>
+        @if (d.links.length > 0) {
+          <ul class="list">
+            @for (link of d.links; track link.type + link.id) {
+              <li class="list__row">
+                <button type="button" class="linked" (click)="openLink(link)">
+                  <app-icon [name]="linkTypes[link.type].icon" [size]="13" aria-hidden="true"></app-icon>
+                  <span class="linked__type">{{ linkTypes[link.type].label }}</span>
+                  <span class="linked__label">{{ link.label }}</span>
+                  <app-icon name="arrow-right" [size]="12" aria-hidden="true"></app-icon>
+                </button>
+                @if (!isOrigin(d, link)) {
+                  <button type="button" class="icon-btn" [attr.aria-label]="'Quitar vínculo: ' + link.label" (click)="removeLink(link)"><app-icon name="x" [size]="12"></app-icon></button>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="field-hint">Esta tarea no está vinculada a ninguna incidencia, junta, proveedor o documento.</p>
+        }
+        <app-task-link-picker [estateId]="d.estate?.id ?? null" [linked]="d.links" (linkAdded)="addLink($event)"></app-task-link-picker>
+      </section>
+
+      <section class="section">
+        <h3 class="section__label">Adjuntos</h3>
+        @if (d.attachments.length > 0) {
+          <ul class="list">
+            @for (file of d.attachments; track file.id) {
+              <li class="list__row">
+                <button type="button" class="linked" (click)="download(file.id, file.fileName)" [attr.aria-label]="'Descargar ' + file.fileName">
+                  <app-icon name="paperclip" [size]="13" aria-hidden="true"></app-icon>
+                  <span class="linked__label">{{ file.fileName }}</span>
+                  <span class="linked__type">{{ sizeLabel(file.sizeBytes) }}</span>
+                </button>
+                <button type="button" class="icon-btn" [attr.aria-label]="'Eliminar adjunto: ' + file.fileName" (click)="deleteAttachment(file.id)"><app-icon name="trash" [size]="12"></app-icon></button>
+              </li>
+            }
+          </ul>
+        }
+        <label class="mini-btn upload">
+          <app-icon name="upload" [size]="13"></app-icon> Adjuntar fichero
+          <input class="sr-only" type="file" multiple (change)="onFiles($event)" />
+        </label>
+      </section>
+
+      <section class="section">
+        <h3 class="section__label">Comentarios</h3>
+        <ul class="comments">
+          @for (comment of d.comments; track comment.id) {
+            <li class="comment">
+              <div class="comment__head">
+                <strong>{{ comment.author?.fullName ?? 'Usuario eliminado' }}</strong>
+                <span>{{ commentTime(comment.createdAt) }}</span>
+                @if (comment.author?.id === currentUserId()) {
+                  <button type="button" class="icon-btn" [attr.aria-label]="'Eliminar mi comentario'" (click)="deleteComment(comment.id)"><app-icon name="trash" [size]="11"></app-icon></button>
+                }
+              </div>
+              <p>{{ comment.text }}</p>
+            </li>
+          } @empty {
+            <li class="field-hint">Aún no hay comentarios.</li>
+          }
+        </ul>
+        <div class="inline-add inline-add--stack">
+          <textarea rows="2" maxlength="5000" placeholder="Escribe un comentario…" aria-label="Nuevo comentario" [ngModel]="commentDraft()" (ngModelChange)="commentDraft.set($event)"></textarea>
+          <button type="button" class="mini-btn" [disabled]="!commentDraft().trim() || saving()" (click)="addComment()">Comentar</button>
+        </div>
+      </section>
+      </div>
+    </div>
+    <div class="drawer__footer">
+      <app-dropdown align="end" label="Acciones" ariaLabel="Acciones de la tarea" [cta]="true" [items]="actionItems()" [disabled]="saving()" (selectionChange)="onAction($any($event.id))"></app-dropdown>
+    </div>
+  }
+</div>

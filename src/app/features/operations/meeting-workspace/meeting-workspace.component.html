@@ -1,0 +1,179 @@
+@if (managing()) {
+  <app-meeting-detail
+    [meetingId]="row.id"
+    [estateId]="row.estate.id"
+    [votingOnly]="true"
+    (closed)="leaveManagement()"
+  ></app-meeting-detail>
+} @else if (votePoint(); as point) {
+  <app-meeting-vote-point
+    [meetingId]="row.id"
+    [item]="point.item"
+    [number]="point.number"
+    [sessions]="data()?.voteSessions ?? []"
+    [participation]="rows()"
+    [canManage]="convocada()"
+    (back)="closePoint()"
+    (changed)="onVoteChanged($event)"
+    (failed)="failed.emit($event)"
+  ></app-meeting-vote-point>
+} @else {
+  <div class="workspace">
+    <header class="head">
+      <div class="head__title">
+        <h1>{{ row.title }}</h1>
+        <div class="head__side">
+          <app-status-pill class="head__status" [tone]="status().tone">{{ status().label }}</app-status-pill>
+          <div class="actions-menu">
+            <button
+              type="button"
+              class="actions-menu__trigger"
+              aria-haspopup="menu"
+              aria-label="Más acciones de la junta"
+              [attr.aria-expanded]="menuOpen()"
+              (click)="toggleMenu()"
+            >
+              <app-icon name="ellipsis" [size]="20"></app-icon>
+            </button>
+            @if (menuOpen()) {
+              <div class="actions-menu__panel" role="menu" aria-label="Acciones de la junta">
+                <button type="button" role="menuitem" [disabled]="!convocada() || !!celebrationHint() || busy()" [attr.title]="celebrationHint()" (click)="closeMeeting('celebrada')">
+                  <app-icon name="check" [size]="16"></app-icon>Marcar como celebrada
+                </button>
+                <button type="button" role="menuitem" [disabled]="!convocada() || hasVotes() || busy()"
+                  [attr.title]="convocada() && hasVotes() ? 'No se puede editar la junta: ya hay votaciones iniciadas o completadas' : null"
+                  (click)="editMeeting()">
+                  <app-icon name="edit" [size]="16"></app-icon>Editar junta
+                </button>
+                @if (row.includeJitsi) {
+                  <button type="button" role="menuitem" (click)="menuOpen.set(false); openBeacon.emit()">
+                    <app-icon name="users" [size]="16"></app-icon>Panel de anfitrión
+                  </button>
+                }
+                <hr />
+                <button type="button" role="menuitem" class="danger" [disabled]="!convocada() || busy()" (click)="closeMeeting('cancelada')">
+                  <app-icon name="trash" [size]="16"></app-icon>Cancelar junta
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="tabs" role="tablist" aria-label="Secciones de la junta">
+      @for (item of tabs; track item.id; let i = $index) {
+        <button
+          type="button"
+          role="tab"
+          class="tabs__tab"
+          [id]="'meeting-tab-' + item.id"
+          [class.tabs__tab--active]="tab() === item.id"
+          [attr.aria-selected]="tab() === item.id"
+          [attr.aria-controls]="'meeting-panel-' + item.id"
+          [attr.tabindex]="tab() === item.id ? 0 : -1"
+          (click)="selectTab(item.id)"
+          (keydown)="onTabKeydown($event, i)"
+        >
+          {{ item.label }}
+        </button>
+      }
+    </div>
+
+    <div
+      class="panel"
+      role="tabpanel"
+      [id]="'meeting-panel-' + tab()"
+      [attr.aria-labelledby]="'meeting-tab-' + tab()"
+      [attr.aria-busy]="loading()"
+      tabindex="0"
+    >
+      @if (error()) {
+        <div class="state state--error" role="alert">
+          {{ error() }}
+          <button type="button" (click)="load(true)">Reintentar</button>
+        </div>
+      } @else if (data(); as d) {
+        @switch (tab()) {
+          @case ('resumen') {
+            <app-meeting-summary-tab
+              [meeting]="d.meeting"
+              [stats]="stats()"
+              [agenda]="agenda()"
+              [acta]="acta()"
+              [typeLabel]="row.typeLabel"
+              (openAgenda)="selectTab('orden-del-dia')"
+              [attachments]="d.attachments"
+              [attachmentsBusy]="busy()"
+              (download)="downloadActa()"
+              (attach)="attachFiles($event)"
+              (downloadAttachment)="downloadAttachment($event)"
+              (removeAttachment)="removeAttachment($event)"
+            ></app-meeting-summary-tab>
+          }
+          @case ('participacion') {
+            <app-meeting-participation-tab
+              [rows]="rows()"
+              [stats]="stats()"
+              [canRegister]="convocada() && !busy()"
+              (markPresent)="markPresent($event)"
+              (markAbsent)="markAbsent($event)"
+              (holderChosen)="chooseHolder($event.row, $event.userId)"
+              (represent)="openRepresentation($event)"
+              (removeRepresentation)="removeRepresentation($event)"
+            ></app-meeting-participation-tab>
+          }
+          @case ('orden-del-dia') {
+            <app-meeting-agenda-tab [rows]="agenda()" (openPoint)="openPoint($event)" (startVote)="startPointVote($event)" (closeVote)="closePointVote($event)" (markTreated)="markPointTreated($event)" (unmarkTreated)="unmarkPointTreated($event)" (editComments)="openComments($event)"></app-meeting-agenda-tab>
+          }
+          @case ('acta') {
+            <app-meeting-acta-tab
+              [meeting]="d.meeting"
+              [status]="acta()"
+              [signers]="signers()"
+              [stats]="stats()"
+              [rows]="rows()"
+              [agenda]="agenda()"
+              [typeLabel]="row.typeLabel"
+              [community]="row.estate.name"
+              [address]="address()"
+              [busy]="busy()"
+              [impugnacionDaysLeft]="impugnacionDaysLeft()"
+              (review)="enterManagement()"
+              (download)="downloadActa()"
+              (downloadPdf)="downloadActaPdf($event)"
+              (downloadUpload)="downloadActaUpload($event)"
+              (send)="sendActa()"
+              (manageAgenda)="selectTab('orden-del-dia')"
+              (saved)="onActaSaved($event)"
+              (failed)="failed.emit($event)"
+            ></app-meeting-acta-tab>
+          }
+        }
+      } @else {
+        <p class="state" role="status">Cargando el detalle de la junta…</p>
+      }
+    </div>
+
+    @if (commenting(); as target) {
+      <app-meeting-comments-modal
+        [row]="target"
+        [busy]="busy()"
+        [error]="commentsError()"
+        (save)="saveComments($event)"
+        (closed)="closeComments()"
+      ></app-meeting-comments-modal>
+    }
+
+    @if (representing(); as target) {
+      <app-meeting-representation-modal
+        [row]="target"
+        [owners]="owners()"
+        [busy]="busy()"
+        [error]="representationError()"
+        (confirm)="confirmRepresentation($event)"
+        (closed)="closeRepresentation()"
+      ></app-meeting-representation-modal>
+    }
+  </div>
+}

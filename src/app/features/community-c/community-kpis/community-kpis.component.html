@@ -1,0 +1,11 @@
+<section class="kpis" aria-label="Resumen de tu propiedad">
+  @for (k of kpis(); track k.id) {
+    <button type="button" class="kpi-btn" [attr.data-kpi]="k.id" [attr.aria-label]="k.label" (click)="open.emit(k.target)">
+      <app-kpi-tile align="start" [label]="k.label" [value]="k.value" [sub]="k.sub" [icon]="k.icon" [tone]="k.tone" [iconTone]="iconTone[k.id]"></app-kpi-tile>
+      <app-icon class="kpi-btn__chevron" name="chevron-right" [size]="18" aria-hidden="true"></app-icon>
+    </button>
+  }
+</section>
+@if (failed()) {
+  <p class="kpis__error" role="alert">No se pudieron cargar los datos de tu propiedad. Inténtalo de nuevo más tarde.</p>
+}

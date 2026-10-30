@@ -1,0 +1,359 @@
+<div class="overlay" (click)="close()">
+  <div class="wizard" (click)="$event.stopPropagation()">
+
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <div class="wizard__header">
+      <div class="wizard__meta">
+        @if (step() < 4) {
+          <div class="wizard__breadcrumb">Paso {{ step() }} de 3 · {{ estate.name }}</div>
+        }
+        <h2 class="wizard__title">Nueva remesa SEPA</h2>
+      </div>
+
+      @if (step() < 4) {
+        <div class="step-indicator">
+          @for (s of steps; track s.n; let last = $last) {
+            <div class="step-pill">
+              <div class="step-circle"
+                [class.step-circle--done]="step() > s.n"
+                [class.step-circle--active]="step() === s.n">
+                @if (step() > s.n) {
+                  <app-icon name="check" [size]="12"></app-icon>
+                } @else {
+                  {{ s.n }}
+                }
+              </div>
+              <span class="step-label"
+                [class.step-label--active]="step() === s.n"
+                [class.step-label--done]="step() > s.n">{{ s.label }}</span>
+            </div>
+            @if (!last) { <div class="step-connector" [class.step-connector--done]="step() > s.n"></div> }
+          }
+        </div>
+      }
+
+      <button class="close-btn" (click)="close()">
+        <app-icon name="x" [size]="14"></app-icon>
+      </button>
+    </div>
+
+    <!-- ── Body ───────────────────────────────────────────────────────── -->
+    <div class="wizard__body">
+
+      <!-- PASO 1 — Configuración -->
+      @if (step() === 1) {
+        <div class="step-content">
+          <h3 class="step-heading">Datos de la remesa</h3>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="form-label">Periodo <span class="required">*</span></label>
+              <select class="form-input form-select" [ngModel]="cfgPeriod()" (ngModelChange)="cfgPeriod.set($event); onPeriodChange()">
+                @for (p of periods(); track p.key) {
+                  <option [value]="p.key">{{ p.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">
+                Fecha de cargo
+                <span class="form-hint">día de adeudo</span>
+                <span class="required">*</span>
+              </label>
+              <input class="form-input" type="date" [ngModel]="cfgChargeDate()" (ngModelChange)="cfgChargeDate.set($event)" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Esquema SEPA <span class="required">*</span></label>
+              <select class="form-input form-select" [ngModel]="cfgScheme()" (ngModelChange)="cfgScheme.set($event)">
+                <option value="CORE">CORE — Adeudo básico (consumidores)</option>
+                <option value="B2B">B2B — Empresas (sin derecho a devolución)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Concepto en el adeudo</label>
+              <input class="form-input" type="text" [ngModel]="cfgConcept()" (ngModelChange)="cfgConcept.set($event)" placeholder="Ej. Cuota ordinaria junio 2026" />
+            </div>
+          </div>
+
+          <!-- Creditor info card -->
+          <div class="section-label">Cuenta de abono y acreedor</div>
+          <div class="info-card">
+            @for (row of [
+              { k: 'Comunidad acreedora',        v: estate.name,     mono: false },
+              { k: 'Cuenta de abono (IBAN)',      v: estateIban,      mono: true  },
+              { k: 'Identificador del acreedor',  v: creditorId,      mono: true  },
+              { k: 'Esquema',                     v: schemeLabel,     mono: false }
+            ]; track row.k) {
+              <div class="info-row">
+                <span class="info-row__key">{{ row.k }}</span>
+                <span class="info-row__val" [class.info-row__val--mono]="row.mono">{{ row.v }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- SEPA notice -->
+          <div class="notice notice--blue">
+            <app-icon name="exclamation" [size]="15"></app-icon>
+            <span>
+              El fichero generado sigue el estándar <strong>pain.008.001.02 (Cuaderno 19.14)</strong>.
+              Deberás subirlo a la banca electrónica de la comunidad para ejecutar los cobros en la fecha indicada.
+            </span>
+          </div>
+        </div>
+      }
+
+      <!-- PASO 2 — Selección de recibos -->
+      @if (step() === 2) {
+        <div class="step-content">
+          <div class="step-heading-row">
+            <div>
+              <h3 class="step-heading" style="margin-bottom:2px">Recibos a incluir</h3>
+              <p class="step-sub">Solo se incluyen propietarios con mandato SEPA firmado.</p>
+            </div>
+            <div class="batch-btns">
+              <button class="batch-btn" (click)="selectAll()">Todos</button>
+              <button class="batch-btn" (click)="selectNone()">Ninguno</button>
+            </div>
+          </div>
+
+          @if (noMandate().length > 0) {
+            <div class="notice notice--warning">
+              <app-icon name="exclamation" [size]="15"></app-icon>
+              <span>
+                <strong>{{ noMandate().length }} propietario sin mandato</strong>
+                ({{ noMandate()[0].owner }}) — no puede domiciliarse.
+                Solicita el mandato o cobra por otro medio.
+              </span>
+            </div>
+          }
+
+          <div class="candidates-list">
+            @for (c of allCandidates(); track c.id; let last = $last) {
+              <div class="candidate"
+                [class.candidate--selected]="isSelected(c.id)"
+                [class.candidate--disabled]="!c.mandate"
+                [class.candidate--last]="last"
+                (click)="c.mandate && toggle(c.id)">
+
+                <!-- Checkbox -->
+                <div class="candidate__check"
+                  [class.candidate__check--checked]="isSelected(c.id)"
+                  [class.candidate__check--disabled]="!c.mandate">
+                  @if (isSelected(c.id)) {
+                    <app-icon name="check" [size]="11"></app-icon>
+                  }
+                </div>
+
+                <!-- Avatar -->
+                <app-avatar [name]="c.owner" [size]="30" [bg]="!c.mandate ? 'var(--color-light)' : 'var(--color-primary)'"></app-avatar>
+
+                <!-- Info -->
+                <div class="candidate__info">
+                  <div class="candidate__name">
+                    {{ c.owner }}
+                    <span class="candidate__unit">· {{ c.unit }}</span>
+                  </div>
+                  <div class="candidate__iban">{{ c.iban ?? 'Sin IBAN registrado' }}</div>
+                </div>
+
+                <!-- Right side -->
+                @if (c.isNew) {
+                  <app-badge text="Primer adeudo (FRST)" variant="primary"></app-badge>
+                }
+                @if (!c.mandate) {
+                  <app-badge text="Sin mandato" variant="error"></app-badge>
+                } @else {
+                  <span class="candidate__amount">{{ fmtEur(c.amount) }}</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- PASO 3 — Confirmar -->
+      @if (step() === 3) {
+        <div class="step-content">
+          <h3 class="step-heading">Resumen y generación del fichero</h3>
+
+          <!-- Summary KPIs -->
+          <div class="summary-kpis">
+            <div class="summary-kpi">
+              <span class="summary-kpi__label">Recibos</span>
+              <span class="summary-kpi__value">{{ chosen().length }}</span>
+              <span class="summary-kpi__sub">a domiciliar</span>
+            </div>
+            <div class="summary-kpi summary-kpi--accent">
+              <span class="summary-kpi__label">Importe total</span>
+              <span class="summary-kpi__value">{{ fmtEur(totalAmount()) }}</span>
+              <span class="summary-kpi__sub">{{ cfgPeriod() }}</span>
+            </div>
+            <div class="summary-kpi">
+              <span class="summary-kpi__label">Fecha de cargo</span>
+              <span class="summary-kpi__value">{{ formattedChargeDate }}</span>
+              <span class="summary-kpi__sub">{{ cfgScheme() }}</span>
+            </div>
+          </div>
+
+          <!-- SEPA file card -->
+          <div class="sepa-file-card">
+            <div class="sepa-file-card__header">
+              <div class="sepa-file-card__icon">
+                <app-icon name="file-text" [size]="17"></app-icon>
+              </div>
+              <div>
+                <div class="sepa-file-card__name">Fichero SEPA · pain.008.001.02</div>
+                <div class="sepa-file-card__sub">
+                  Cuaderno 19.14 · {{ cfgScheme() }} · listo para presentar al banco
+                </div>
+              </div>
+            </div>
+            <div class="sepa-file-card__rows">
+              <div class="sepa-file-row">
+                <span>Secuencias</span>
+                <span class="fw-500">{{ firstCount() }} FRST · {{ rcurCount() }} RCUR</span>
+              </div>
+              <div class="sepa-file-row">
+                <span>Cuenta de abono</span>
+                <span class="fw-500 mono">{{ estateIban }}</span>
+              </div>
+              <div class="sepa-file-row">
+                <span>Concepto</span>
+                <span class="fw-500">{{ cfgConcept() }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detalles de cada recibo seleccionado -->
+          <div class="chosen-list">
+            <div class="chosen-list__header">
+              {{ chosen().length }} recibos incluidos
+            </div>
+            <table class="chosen-table">
+              <thead>
+                <tr>
+                  <th>Propietario</th>
+                  <th>Unidad</th>
+                  <th>IBAN</th>
+                  <th>Seq.</th>
+                  <th class="th-right">Importe</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of chosen(); track c.id) {
+                  <tr>
+                    <td class="td-name">{{ c.owner }}</td>
+                    <td class="td-muted">{{ c.unit }}</td>
+                    <td class="td-mono">{{ c.iban }}</td>
+                    <td><app-badge [text]="c.seq" variant="default"></app-badge></td>
+                    <td class="td-money">{{ fmtEur(c.amount) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Action notice -->
+          <div class="notice notice--blue" style="margin-top:16px">
+            <app-icon name="exclamation" [size]="15"></app-icon>
+            <span>
+              Al generar la remesa se creará el fichero XML y los recibos pasarán a estado
+              <strong>Presentada</strong>. Deberás subir el fichero a la banca electrónica
+              de la comunidad para ejecutar el cobro en la fecha indicada.
+            </span>
+          </div>
+        </div>
+      }
+
+      <!-- PASO 4 — Success -->
+      @if (step() === 4) {
+        <div class="success-screen">
+          <div class="success-icon">
+            <app-icon name="check" [size]="32"></app-icon>
+          </div>
+          <h3 class="success-title">Remesa generada correctamente</h3>
+          <p class="success-sub">
+            El fichero <strong>pain.008</strong> se ha generado para
+            <strong>{{ chosen().length }} adeudos</strong> por un total de
+            <strong>{{ fmtEur(totalAmount()) }}</strong>.
+            Los recibos han pasado a estado <em>Presentada</em>.
+          </p>
+
+          <div class="success-card">
+            <div class="success-card__row">
+              <span>Referencia</span>
+              <span class="mono fw-500">{{ remesaRef() }}</span>
+            </div>
+            <div class="success-card__row">
+              <span>Fecha de cargo</span>
+              <span class="fw-500">{{ formattedChargeDate }}</span>
+            </div>
+            <div class="success-card__row">
+              <span>Esquema</span>
+              <span class="fw-500">{{ cfgScheme() }}</span>
+            </div>
+            <div class="success-card__row">
+              <span>Cuenta de abono</span>
+              <span class="mono fw-500">{{ estateIban }}</span>
+            </div>
+          </div>
+
+          <div class="success-actions">
+            <button class="btn-outline" (click)="downloadXml()">
+              <app-icon name="download" [size]="13"></app-icon>
+              Descargar XML
+            </button>
+            <button class="btn-outline" (click)="close()">
+              <app-icon name="file-text" [size]="13"></app-icon>
+              Resumen PDF
+            </button>
+          </div>
+        </div>
+      }
+
+    </div>
+
+    <!-- ── Footer ─────────────────────────────────────────────────────── -->
+    @if (step() < 4) {
+      <div class="wizard__footer">
+        <div class="footer-info">
+          @if (step() === 2) {
+            <span>
+              <strong>{{ chosen().length }}</strong> recibos ·
+              <strong>{{ fmtEur(totalAmount()) }}</strong>
+            </span>
+          }
+        </div>
+        <div class="footer-btns">
+          <button class="btn-secondary" (click)="step() === 1 ? close() : back()">
+            {{ step() === 1 ? 'Cancelar' : 'Atrás' }}
+          </button>
+          @if (step() < 3) {
+            <app-btn variant="primary"
+              (click)="next()"
+              [disabled]="step() === 2 && chosen().length === 0">
+              Continuar
+              <app-icon name="chevron-right" [size]="13"></app-icon>
+            </app-btn>
+          } @else {
+            <app-btn variant="primary" (click)="generate()" [disabled]="generating()">
+              <app-icon name="check" [size]="13"></app-icon>
+              {{ generating() ? 'Generando…' : 'Generar remesa' }}
+            </app-btn>
+          }
+        </div>
+      </div>
+      @if (generateError()) {
+        <div class="notice notice--warning" style="margin: 0 24px 16px;">
+          <app-icon name="exclamation" [size]="15"></app-icon>
+          <span>{{ generateError() }}</span>
+        </div>
+      }
+    } @else {
+      <div class="wizard__footer wizard__footer--success">
+        <app-btn variant="primary" (click)="close()">Cerrar</app-btn>
+      </div>
+    }
+
+  </div>
+</div>

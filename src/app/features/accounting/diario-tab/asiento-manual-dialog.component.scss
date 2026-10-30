@@ -1,0 +1,70 @@
+.modal--wide { max-width: 860px; }
+
+.lines-wrap {
+  overflow-x: auto;
+  margin-top: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.lines {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+
+  th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-light);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+  }
+
+  tfoot td {
+    border-bottom: none;
+    vertical-align: middle;
+  }
+
+  .num { text-align: right; white-space: nowrap; }
+}
+
+.col-account { min-width: 240px; }
+.col-money { width: 120px; }
+
+.form-input--sub { margin-top: 6px; }
+
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.diff {
+  color: var(--color-error);
+  font-weight: 600;
+  margin-right: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ok {
+  color: var(--color-secondary);
+  font-weight: 600;
+}

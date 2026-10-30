@@ -1,0 +1,125 @@
+<div class="modal-overlay" (click)="close()">
+  <div class="modal modal--wide" role="dialog" aria-labelledby="returns-title" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <div>
+        <div class="modal__breadcrumb">Remesas · Devoluciones del banco</div>
+        <h3 class="modal__title" id="returns-title">
+          {{ current() ? current()!.fileName : 'Importar devoluciones' }}
+        </h3>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </div>
+
+    <div class="modal__body">
+      @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
+      @if (error()) { <p class="form-error" role="alert">{{ error() }}</p> }
+
+      @if (current(); as f) {
+        <div class="file-meta">
+          <span>{{ formatLabels[f.format] }}</span>
+          <span>Subido el {{ f.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+          @if (f.lastAppliedAt) { <span>Aplicado el {{ f.lastAppliedAt | date: 'dd/MM/yyyy HH:mm' }}</span> }
+        </div>
+
+        <div class="counts">
+          @for (s of countOrder; track s) {
+            @if (f.counts[s] > 0) {
+              <span [class]="statusClass(s)">{{ statusLabels[s] }}: {{ f.counts[s] }}</span>
+            }
+          }
+        </div>
+
+        <div class="items-wrap">
+          <table class="items">
+            <thead>
+              <tr>
+                <th>Recibo</th>
+                <th>Motivo</th>
+                <th class="num">Importe</th>
+                <th class="num">Comisión</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (i of f.items; track i.id) {
+                <tr>
+                  <td>
+                    @if (i.line; as l) {
+                      <span class="items__main">{{ l.owner || 'Sin titular' }}{{ l.unit ? ' · ' + l.unit : '' }}</span>
+                      <span class="items__meta">Recibo {{ l.receiptNo }} · {{ l.remesaConcept }}</span>
+                    } @else {
+                      <span class="items__main">—</span>
+                      <span class="items__meta mono">{{ i.endToEndId ?? 'Sin referencia' }}</span>
+                    }
+                  </td>
+                  <td>
+                    <span class="items__main">{{ i.returnReason ?? '—' }}</span>
+                    <span class="items__meta">{{ i.returnCode }}{{ i.date ? ' · ' + i.date : '' }}</span>
+                  </td>
+                  <td class="num money">{{ fmtEur(i.amount ?? i.line?.amount ?? null) }}</td>
+                  <td class="num money">{{ fmtEur(i.feeAmount) }}</td>
+                  <td>
+                    <span [class]="statusClass(i.status)">{{ statusLabels[i.status] }}</span>
+                    @if (i.error) { <span class="items__meta items__error">{{ i.error }}</span> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (f.counts.unmatched > 0) {
+          <p class="form-hint">
+            Las devoluciones sin emparejar no se contabilizan: regístralas a mano desde la línea de su remesa.
+          </p>
+        }
+        <p class="form-hint">
+          Si el banco cobró comisión, se contabiliza como gasto; se repercute al propietario solo si está activado en
+          Ajustes contables.
+        </p>
+      } @else {
+        <p class="modal__intro">
+          Sube el fichero que te da el banco: el informe de estado de la remesa (pain.002), con los adeudos rechazados
+          antes del cargo, o el aviso de devoluciones (camt.054), con los recibos devueltos después del cobro. Antes de
+          contabilizar podrás revisar a qué recibo corresponde cada devolución.
+        </p>
+        <label class="upload" for="return-file-input">
+          <app-icon name="upload" [size]="18"></app-icon>
+          <span>{{ busy() ? 'Leyendo el fichero…' : 'Elegir fichero XML' }}</span>
+          <input id="return-file-input" type="file" accept=".xml,application/xml,text/xml" [disabled]="busy()"
+            (change)="onFileSelected($event)" />
+        </label>
+
+        @if (files().length > 0) {
+          <h4 class="history-title">Ficheros anteriores</h4>
+          <ul class="history">
+            @for (f of files(); track f.id) {
+              <li>
+                <button type="button" class="history__item" (click)="open(f)">
+                  <span class="items__main">{{ f.fileName }}</span>
+                  <span class="items__meta">
+                    {{ f.createdAt | date: 'dd/MM/yyyy' }} · {{ f.counts.applied }} contabilizadas
+                    @if (f.counts.matched + f.counts.failed > 0) { · {{ f.counts.matched + f.counts.failed }} pendientes }
+                  </span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      }
+    </div>
+
+    <div class="modal__footer">
+      @if (current()) {
+        <app-btn variant="outline" size="sm" (clicked)="back()">Subir otro fichero</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="busy() || toApply() === 0" (clicked)="apply()">
+          {{ busy() ? 'Contabilizando…' : (toApply() > 0 ? 'Contabilizar ' + toApply() + ' devolución(es)' : 'Nada pendiente') }}
+        </app-btn>
+      } @else {
+        <app-btn variant="outline" size="sm" (clicked)="close()">Cerrar</app-btn>
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,28 @@
+<div class="toolbar">
+  <div class="toolbar__actions">
+    <label class="year" for="resultados-year">
+      Ejercicio
+      <select id="resultados-year" class="form-input" [ngModel]="year()" (ngModelChange)="setYear($event)">
+        @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
+      </select>
+    </label>
+    <app-btn variant="outline" size="sm" (clicked)="download('xlsx')">
+      <app-icon name="download" [size]="13"></app-icon>
+      Excel
+    </app-btn>
+    <app-btn variant="outline" size="sm" (clicked)="download('pdf')">
+      <app-icon name="download" [size]="13"></app-icon>
+      PDF
+    </app-btn>
+  </div>
+</div>
+
+<p class="intro">Devengo: lo ejecutado es lo emitido o registrado en el ejercicio, no lo cobrado o pagado de verdad.</p>
+
+@if (loadError()) {
+  <p class="form-error" role="alert">{{ loadError() }}</p>
+} @else if (loading()) {
+  <p class="muted">Calculando…</p>
+} @else if (report()) {
+  <app-report-table [sections]="sections"></app-report-table>
+}

@@ -1,0 +1,162 @@
+<div class="members-card">
+  <div class="members-card__header">
+    <h4 class="card__title">Miembros</h4>
+    @if (showInviteActions()) {
+      <button class="link-btn" (click)="openInviteModal()">Invitar inquilino</button>
+    }
+  </div>
+
+  @if (loading()) {
+    <p class="members-hint">Cargando…</p>
+  } @else if (members().length === 0) {
+    <p class="members-hint">Todavía no hay miembros registrados.</p>
+  } @else {
+    @for (m of members(); track m.id) {
+      <div class="member-row">
+        <div class="member-row__avatar">{{ memberLabel(m).charAt(0) }}</div>
+        <div class="member-row__info">
+          <strong>{{ memberLabel(m) }}</strong>
+          <div class="member-row__badges">
+            <app-badge [text]="m.roleType" [variant]="roleBadgeVariant(m.roleType)"></app-badge>
+            <app-badge [text]="m.status" [variant]="statusBadgeVariant(m.status)"></app-badge>
+            @if (m.isPrimaryContact) {
+              <app-badge text="Titular" variant="primary"></app-badge>
+            }
+          </div>
+        </div>
+        @if (showRevokeActions() && m.status === 'linked') {
+          <button class="icon-link icon-link--danger" title="Revocar" (click)="startRevoke(m)">
+            <app-icon name="x" [size]="14"></app-icon>
+          </button>
+        }
+      </div>
+    }
+  }
+
+  @if (showPendingInvites() && pendingInvites().length > 0) {
+    <div class="invites">
+      <h5 class="invites__title">Invitaciones pendientes</h5>
+      @for (inv of pendingInvites(); track inv.id) {
+        <div class="invite-row">
+          <div class="invite-row__info">
+            <strong class="invite-row__email">{{ inv.inviteeEmail }}</strong>
+            <div class="member-row__badges">
+              <app-badge [text]="inv.roleType" variant="default"></app-badge>
+              <app-badge [text]="inviteStatusLabel(inv.status)" [variant]="inviteStatusVariant(inv.status)"></app-badge>
+            </div>
+            <span class="invite-row__meta">
+              @if (inv.status === 'expired') {
+                Caducó el {{ formatDate(inv.expiresAt) }}
+              } @else if (inv.status !== 'revoked') {
+                Caduca el {{ formatDate(inv.expiresAt) }}
+              }
+              @if (inv.lastSentAt) {
+                · enviada el {{ formatDate(inv.lastSentAt) }}
+              }
+            </span>
+          </div>
+          @if (inv.status !== 'revoked') {
+            <div class="invite-row__actions">
+              <button class="link-btn" [disabled]="inviteActionBusyId() === inv.id" (click)="resendInvite(inv)">Reenviar</button>
+              <button class="link-btn link-btn--danger" [disabled]="inviteActionBusyId() === inv.id" (click)="revokeInvite(inv)">Revocar</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
+
+@if (showInviteModal()) {
+  <div class="modal-backdrop" (click)="closeInviteModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4><app-icon name="mail" [size]="16"></app-icon> Invitar inquilino</h4>
+        <button class="close-btn" (click)="closeInviteModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+
+      @if (inviteResult(); as result) {
+        <div class="modal__body">
+          <p class="success-note">
+            <app-icon name="check" [size]="14"></app-icon>
+            Invitación enviada por email a <strong>{{ result.email }}</strong>.
+          </p>
+          <div class="success-block">
+            <span class="success-block__label">¿No le llega? Comparte el enlace o el QR por otro canal</span>
+            <div class="success-block__row">
+              <input type="text" readonly [value]="result.inviteUrl" />
+              <app-btn variant="outline" size="sm" (clicked)="copyInviteLink()">Copiar</app-btn>
+            </div>
+            <img class="success-block__qr" [src]="result.qrDataUrl" alt="Código QR de la invitación" width="160" height="160" />
+          </div>
+        </div>
+        <div class="modal__footer">
+          <app-btn variant="primary" size="sm" (clicked)="closeInviteModal()">Listo</app-btn>
+        </div>
+      } @else {
+        <div class="modal__body">
+          <label class="form-field">
+            Email de quien invitas
+            <input
+              id="invite-email"
+              type="email"
+              autocomplete="email"
+              placeholder="nombre@ejemplo.com"
+              [ngModel]="inviteEmail()"
+              (ngModelChange)="inviteEmail.set($event)"
+            />
+          </label>
+          <label class="form-field">
+            Rol
+            <select [ngModel]="inviteRoleType()" (ngModelChange)="inviteRoleType.set($event)">
+              @for (o of roleOptions; track o.value) {
+                <option [value]="o.value">{{ o.label }}</option>
+              }
+            </select>
+          </label>
+          <p class="field-hint">Le enviamos un email con un enlace de un solo uso, válido 7 días. Si no lo recibe, puedes reenviarlo o compartir el enlace vos mismo.</p>
+        </div>
+        <div class="modal__footer">
+          <app-btn variant="outline" size="sm" (clicked)="closeInviteModal()">Cancelar</app-btn>
+          <app-btn variant="primary" size="sm" [disabled]="inviting() || !inviteEmailValid()" (clicked)="submitInvite()">{{ inviting() ? 'Enviando…' : 'Enviar invitación' }}</app-btn>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+@if (revokeTarget(); as target) {
+  <div class="modal-backdrop" (click)="closeRevokeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4><app-icon name="exclamation" [size]="16"></app-icon> Revocar titular principal</h4>
+        <button class="close-btn" (click)="closeRevokeModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <p>{{ memberLabel(target) }} es el titular principal de esta propiedad. Elige a quién promover antes de revocarlo.</p>
+        @if (otherLinkedMembers(target).length === 0) {
+          <p class="field-error">No hay otro miembro vinculado a quien promover — no se puede revocar.</p>
+        } @else {
+          <label class="form-field">
+            Nuevo titular principal
+            <select [ngModel]="promoteTargetId()" (ngModelChange)="promoteTargetId.set($event)">
+              @for (o of otherLinkedMembers(target); track o.id) {
+                <option [value]="o.id">{{ memberLabel(o) }}</option>
+              }
+            </select>
+          </label>
+        }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeRevokeModal()">Cancelar</app-btn>
+        <app-btn variant="danger" size="sm" [disabled]="revoking() || !promoteTargetId()" (clicked)="confirmPromoteAndRevoke()">
+          {{ revoking() ? 'Revocando…' : 'Promover y revocar' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage(); as msg) {
+  <div class="toast">{{ msg }}</div>
+}

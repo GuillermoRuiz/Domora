@@ -1,0 +1,228 @@
+<div class="card">
+  <div class="card__header">
+    <h4 class="card__title">Comunicados</h4>
+    <app-btn *appPageAction variant="secondary" size="sm" (clicked)="openNuevoComunicado()">
+      <app-icon name="plus" [size]="14"></app-icon>
+      Nuevo comunicado
+    </app-btn>
+  </div>
+  <div class="filter-pills">
+    <button class="pill" [class.pill--active]="filter() === 'active'" (click)="setFilter('active')">Activos</button>
+    <button class="pill" [class.pill--active]="filter() === 'archived'" (click)="setFilter('archived')">Archivados</button>
+    <button class="pill" [class.pill--active]="filter() === 'all'" (click)="setFilter('all')">Todos</button>
+  </div>
+  @if (loading()) {
+    <p class="td--muted" style="margin: 20px;">Cargando…</p>
+  } @else {
+    <div class="comm-list">
+      @for (comm of communications(); track comm.id) {
+        <div class="comm-card">
+          <div class="comm-card__header">
+            <span class="comm-card__title">
+              @if (comm.pinnedAt) { <app-icon name="check" [size]="12"></app-icon> }
+              {{ comm.title }}
+            </span>
+            <div class="comm-card__badges">
+              @if (comm.category !== 'General') {
+                <app-badge [text]="categoryLabel(comm.category)" [variant]="comm.category === 'Urgente' ? 'error' : 'default'"></app-badge>
+              }
+              @if (comm.isLegalNotice) {
+                <app-badge [text]="comm.legalNoticeEffective ? 'Notificación fehaciente (con efecto)' : 'Notificación fehaciente (pendiente)'" [variant]="comm.legalNoticeEffective ? 'green' : 'default'"></app-badge>
+              }
+              @if (comm.archived) {
+                <app-badge text="Archivado" variant="default"></app-badge>
+              }
+            </div>
+          </div>
+          <p class="comm-card__body">{{ comm.body }}</p>
+          <div class="comm-card__meta">
+            <span>{{ comm.authorName || comm.from }} · {{ comm.date }} · {{ communicationTargetLabel(comm) }}</span>
+            @if (showsEditTrace(comm)) {
+              <span class="comm-card__trace">Editado por {{ comm.lastEditedByName }} el {{ comm.lastEditedAt }}</span>
+            }
+          </div>
+          @if (comm.isLegalNotice) {
+            <div class="legal-notice-box">
+              <span>Diligencia: {{ comm.legalNoticeSignerRole ? signerRoleLabel(comm.legalNoticeSignerRole) : '—' }}{{ comm.legalNoticeSignerName ? ' · ' + comm.legalNoticeSignerName : '' }}</span>
+              @if (comm.legalNoticeReason) { <span>Motivo: {{ comm.legalNoticeReason }}</span> }
+              <span>{{ comm.legalNoticeEffective ? 'Con pleno efecto legal' : ('Efectivo a partir del ' + (comm.legalNoticeEffectiveAt | slice:0:10)) }}</span>
+            </div>
+          }
+          <div class="comm-card__actions">
+            <button class="action-btn" (click)="openEdit(comm)" title="Editar">
+              <app-icon name="edit" [size]="16"></app-icon>
+            </button>
+            <button class="action-btn" (click)="remove(comm)" title="Eliminar">
+              <app-icon name="trash" [size]="16"></app-icon>
+            </button>
+            <button class="action-btn" (click)="openReads(comm)" title="Ver quién lo ha leído">
+              <app-icon name="eye" [size]="16"></app-icon>
+            </button>
+            <app-btn variant="outline" size="sm" (clicked)="togglePinned(comm)">
+              {{ comm.pinnedAt ? 'Desfijar' : 'Fijar arriba' }}
+            </app-btn>
+            <app-btn variant="outline" size="sm" (clicked)="toggleArchived(comm)">
+              {{ comm.archived ? 'Desarchivar' : 'Archivar' }}
+            </app-btn>
+          </div>
+
+          <div class="comm-replies">
+            @for (reply of comm.replies; track reply.id) {
+              <div class="comm-reply">
+                <div class="comm-reply__meta">
+                  <span class="comm-reply__author">{{ reply.authorName }}</span>
+                  <span class="comm-reply__role">{{ reply.role }}</span>
+                  <span class="comm-reply__date">{{ reply.createdAt | slice:0:10 }}</span>
+                  <button class="action-btn action-btn--sm" (click)="deleteReply(comm, reply.id)" title="Eliminar respuesta">
+                    <app-icon name="trash" [size]="12"></app-icon>
+                  </button>
+                </div>
+                <p class="comm-reply__text">{{ reply.text }}</p>
+              </div>
+            }
+            <div class="comm-reply-form">
+              <input type="text" placeholder="Responder como gestora…" [ngModel]="replyDraft(comm.id)" (ngModelChange)="setReplyDraft(comm.id, $event)" (keyup.enter)="submitReply(comm)" />
+              <app-btn variant="outline" size="sm" (clicked)="submitReply(comm)">Responder</app-btn>
+            </div>
+          </div>
+        </div>
+      } @empty {
+        <p class="empty-row">Todavía no hay comunicados publicados.</p>
+      }
+    </div>
+    <!-- El listado viene paginado del servidor: se dice explícitamente
+         cuántos faltan en vez de truncar en silencio. -->
+    @if (hasMoreCommunications()) {
+      <div class="doc-load-more">
+        <span class="doc-load-more__count">
+          Mostrando {{ communications().length }} de {{ communicationsTotal() }} comunicados
+        </span>
+        <app-btn variant="outline" size="sm" [disabled]="communicationsLoadingMore()" (clicked)="loadMoreCommunications()">
+          {{ communicationsLoadingMore() ? 'Cargando…' : 'Cargar más' }}
+        </app-btn>
+      </div>
+    }
+  }
+</div>
+
+@if (showNuevoComunicado()) {
+  <div class="modal-backdrop" (click)="closeNuevoComunicado()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>{{ editCommId() ? 'Editar comunicado' : 'Nuevo comunicado' }}</h4>
+        <button class="close-btn" (click)="closeNuevoComunicado()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Título
+          <input type="text" [class.form-field--error]="ncErrors().title" [ngModel]="ncTitle()" (ngModelChange)="ncTitle.set($event)" />
+          @if (ncErrors().title) { <span class="form-error">Campo obligatorio</span> }
+        </label>
+        <label class="form-field">
+          Mensaje
+          <textarea rows="4" [class.form-field--error]="ncErrors().body" [ngModel]="ncBody()" (ngModelChange)="ncBody.set($event)"></textarea>
+          @if (ncErrors().body) { <span class="form-error">Campo obligatorio</span> }
+        </label>
+        <div class="form-row">
+          <label class="form-field">
+            Categoría
+            <select [ngModel]="ncCategory()" (ngModelChange)="ncCategory.set($event)">
+              @for (c of categoryOptions; track c) { <option [value]="c">{{ categoryLabel(c) }}</option> }
+            </select>
+          </label>
+          <label class="form-field">
+            Dirigido a
+            <select [ngModel]="ncTargetProperty()" (ngModelChange)="ncTargetProperty.set($event)">
+              <option value="all">Toda la finca</option>
+              @for (p of properties; track p.id) {
+                <option [value]="p.id">{{ propertyOptionLabel(p) }}</option>
+              }
+            </select>
+          </label>
+        </div>
+        <label class="form-field">
+          Vigente hasta (opcional)
+          <input type="date" [ngModel]="ncActiveUntil()" (ngModelChange)="ncActiveUntil.set($event)" />
+          <span class="field-hint">Pasada esta fecha, el comunicado se archiva automáticamente.</span>
+        </label>
+        <label class="form-field form-field--checkbox">
+          <input type="checkbox" [ngModel]="ncIsLegalNotice()" (ngModelChange)="ncIsLegalNotice.set($event)" />
+          Notificación fehaciente por tablón (LPH art. 9.1.h)
+        </label>
+        @if (ncIsLegalNotice()) {
+          <div class="legal-notice-fields">
+            <p class="field-hint">Último recurso tras agotar el domicilio designado y el propio piso — produce pleno efecto legal a los 3 días naturales.</p>
+            <div class="form-row">
+              <label class="form-field">
+                Firma como
+                <select [ngModel]="ncLegalNoticeSignerRole()" (ngModelChange)="ncLegalNoticeSignerRole.set($event)">
+                  @for (r of signerRoleOptions; track r) { <option [value]="r">{{ signerRoleLabel(r) }}</option> }
+                </select>
+              </label>
+              <label class="form-field">
+                Nombre de quien firma
+                <input type="text" [ngModel]="ncLegalNoticeSignerName()" (ngModelChange)="ncLegalNoticeSignerName.set($event)" />
+              </label>
+            </div>
+            <label class="form-field">
+              Motivo de la diligencia
+              <textarea rows="2" placeholder="Ej.: domicilio desconocido del propietario" [ngModel]="ncLegalNoticeReason()" (ngModelChange)="ncLegalNoticeReason.set($event)"></textarea>
+            </label>
+            <label class="form-field form-field--checkbox">
+              <input type="checkbox" [ngModel]="ncLegalNoticeCountersigned()" (ngModelChange)="ncLegalNoticeCountersigned.set($event)" />
+              Con visto bueno del/de la presidente
+            </label>
+          </div>
+        }
+        @if (ncError()) { <span class="field-error">{{ ncError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeNuevoComunicado()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="ncSaving()" (clicked)="submitComunicado()">
+          {{ ncSaving() ? 'Guardando…' : (editCommId() ? 'Guardar cambios' : 'Publicar comunicado') }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showReadsFor()) {
+  <div class="modal-backdrop" (click)="closeReads()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Quién lo ha leído</h4>
+        <button class="close-btn" (click)="closeReads()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        @if (readsLoading()) {
+          <p class="td--muted">Cargando…</p>
+        } @else if (reads().length === 0) {
+          <p class="td--muted">No hay destinatarios vinculados para este comunicado.</p>
+        } @else {
+          <div class="reads-list">
+            @for (r of reads(); track r.userId) {
+              <div class="reads-row">
+                <span>{{ r.fullName }}</span>
+                @if (r.read) {
+                  <app-badge [text]="'Leído · ' + (r.readAt | slice:0:10)" variant="secondary"></app-badge>
+                } @else {
+                  <app-badge text="Sin leer" variant="default"></app-badge>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeReads()">Cerrar</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

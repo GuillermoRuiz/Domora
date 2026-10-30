@@ -1,0 +1,47 @@
+<div class="tfa-card">
+  <div class="tfa-card__header">
+    <h4><app-icon name="key" [size]="16"></app-icon> Verificación en dos pasos</h4>
+    @if (!loading()) {
+      <app-badge [text]="enabled() ? 'Activada' : 'Desactivada'" [variant]="enabled() ? 'green' : 'default'"></app-badge>
+    }
+  </div>
+  <p class="tfa-card__hint">
+    Opcional. Una vez activada, la gestora puede exigirla para votar en juntas concretas de alto riesgo.
+  </p>
+
+  @if (loading()) {
+    <p class="tfa-card__hint">Cargando…</p>
+  } @else if (backupCodes(); as codes) {
+    <div class="tfa-backup-codes">
+      <p class="tfa-card__hint"><strong>Guarda estos códigos de respaldo.</strong> Solo se muestran una vez — cada uno sirve para un único inicio de sesión sin tu teléfono.</p>
+      <div class="tfa-backup-codes__grid">
+        @for (code of codes; track code) {
+          <code>{{ code }}</code>
+        }
+      </div>
+      <app-btn variant="primary" size="sm" (clicked)="dismissBackupCodes()">Ya los guardé</app-btn>
+    </div>
+  } @else if (enrolling()) {
+    <div class="tfa-enroll">
+      @if (qrDataUrl(); as qr) {
+        <img [src]="qr" alt="Código QR para enrolar 2FA" class="tfa-enroll__qr" />
+      }
+      <p class="tfa-card__hint">Escanea el código con tu app de autenticación (Google Authenticator, Authy, etc.) e introduce el código de 6 dígitos.</p>
+      <input type="text" inputmode="numeric" maxlength="6" placeholder="000000" [ngModel]="code()" (ngModelChange)="code.set($event)" />
+      @if (errorMsg()) {
+        <p class="tfa-card__error">{{ errorMsg() }}</p>
+      }
+      <div class="tfa-enroll__actions">
+        <app-btn variant="primary" size="sm" [disabled]="code().trim().length !== 6 || busy()" (clicked)="confirmEnroll()">Confirmar</app-btn>
+        <app-btn variant="outline" size="sm" (clicked)="cancelEnroll()">Cancelar</app-btn>
+      </div>
+    </div>
+  } @else if (enabled()) {
+    <div class="tfa-enroll__actions">
+      <app-btn variant="outline" size="sm" [disabled]="busy()" (clicked)="regenerateBackupCodes()">Regenerar códigos de respaldo</app-btn>
+      <app-btn variant="danger" size="sm" [disabled]="busy()" (clicked)="disable()">Desactivar</app-btn>
+    </div>
+  } @else {
+    <app-btn variant="primary" size="sm" [disabled]="busy()" (clicked)="startEnroll()">Activar verificación en dos pasos</app-btn>
+  }
+</div>

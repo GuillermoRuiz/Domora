@@ -1,0 +1,272 @@
+@use "breakpoints" as bp;
+:host {
+  display: block;
+}
+.communities-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+.communities-table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+  th {
+    text-align: left;
+    padding: 14px 18px;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-muted);
+    white-space: nowrap;
+    button {
+      color: inherit;
+      font: inherit;
+      text-transform: inherit;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    span {
+      color: var(--color-accent);
+    }
+  }
+  td {
+    padding: 14px 18px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--color-border-light);
+    vertical-align: middle;
+  }
+  .metric-column {
+    text-align: center;
+    button {
+      width: 100%;
+      justify-content: center;
+    }
+    span:empty {
+      display: none;
+    }
+  }
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+  tbody tr:hover td {
+    background: var(--color-surface-hover);
+  }
+}
+.community-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 250px;
+}
+.community-name {
+  display: block;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.4;
+  &:hover {
+    color: var(--color-accent);
+  }
+}
+.community-address {
+  display: block;
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.number-cell {
+  font-variant-numeric: tabular-nums;
+}
+.money-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.issue-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-border-light);
+  color: var(--color-muted);
+  font-weight: 600;
+  font-size: 14px;
+  &--active {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+  }
+}
+.view-estate {
+  display: inline-flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 7px 12px;
+  white-space: nowrap;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  &:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+}
+.actions-column {
+  width: 172px;
+  text-align: right;
+}
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.estates-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.estate-card {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+  &:hover,
+  &:focus-within {
+    border-color: var(--color-accent);
+  }
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+// Enlace «estirado»: toda la tarjeta navega, pero el botón de acciones es su hermano (no va dentro del enlace).
+.estate-card__link {
+  color: inherit;
+  text-decoration: none;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  &:focus-visible {
+    outline: none;
+  }
+  &:focus-visible::after {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+    border-radius: var(--radius-lg);
+  }
+}
+.estate-card__menu {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  // Fondo translúcido y desenfoque para leerse sobre cualquier fachada.
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  backdrop-filter: blur(6px);
+}
+.estate-card__issues {
+  pointer-events: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  gap: 6px;
+  min-height: 28px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 12px;
+  &.issue-pill--active {
+    border-color: var(--color-error);
+  }
+}
+.estate-card__body {
+  padding: 14px;
+}
+.estate-card__name {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.estate-card__address {
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  margin-top: 3px;
+}
+.estate-card__metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) repeat(2, minmax(0, 1.1fr));
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid var(--color-border-light);
+  > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+  }
+  dt {
+    color: var(--color-muted);
+    font-size: 11px;
+    margin-bottom: 5px;
+  }
+  dd {
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .card-balance,
+  .card-pending {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+@media (max-width: 1200px) {
+  .estates-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@include bp.respond-to("phone") {
+  .estates-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .estate-card {
+    transition: none;
+  }
+}

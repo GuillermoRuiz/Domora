@@ -1,0 +1,77 @@
+<figure class="chart">
+  @if (!hasData()) {
+    <p class="chart__empty">{{ emptyText() }}</p>
+  } @else {
+    @if (series().length > 1) {
+      <ul class="chart__legend" aria-label="Leyenda">
+        @for (item of legend(); track item.key) {
+          <li class="chart__legend-item"><span class="chart__swatch" [style.background]="item.color" aria-hidden="true"></span>{{ item.label }}</li>
+        }
+      </ul>
+    }
+
+    @if (showTable()) {
+      <div class="chart__table-wrap">
+        <table class="chart__table">
+          <caption>{{ caption() }}</caption>
+          <thead>
+            <tr><th scope="col"></th>@for (s of series(); track s.key) { <th scope="col">{{ s.label }}</th> }</tr>
+          </thead>
+          <tbody>
+            @for (row of tableRows(); track row.label) {
+              <tr><th scope="row">{{ row.label }}</th>@for (cell of row.cells; track $index) { <td>{{ cell }}</td> }</tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="chart__plot" (pointerleave)="hover.set(null)">
+        <svg class="chart__svg" [attr.width]="width()" [attr.height]="height()" role="group" [attr.aria-label]="caption()">
+          @for (tick of ticks(); track tick.value) {
+            <line class="chart__grid" [attr.x1]="plotLeft" [attr.x2]="width() - 8" [attr.y1]="tick.y" [attr.y2]="tick.y" />
+            <text class="chart__tick" [attr.x]="plotLeft - 8" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
+          }
+          @for (group of groups(); track group.index) {
+            <g class="chart__group" [class.chart__group--active]="hover() === group.index">
+              @for (bar of group.bars; track bar.key) {
+                <path class="chart__bar" [attr.d]="bar.d" [style.fill]="bar.color" />
+              }
+              @if (group.showLabel) {
+                <text class="chart__xlabel" [attr.x]="group.cx" [attr.y]="height() - 10" text-anchor="middle">{{ group.label }}</text>
+              }
+              <rect
+                class="chart__hit"
+                role="img"
+                tabindex="0"
+                [attr.aria-label]="group.aria"
+                [attr.x]="group.slotX"
+                [attr.y]="0"
+                [attr.width]="group.slotWidth"
+                [attr.height]="height()"
+                (pointermove)="hover.set(group.index)"
+                (focus)="hover.set(group.index)"
+                (blur)="hover.set(null)"
+              />
+            </g>
+          }
+        </svg>
+        @if (tooltip(); as tip) {
+          <div class="chart__tooltip" role="presentation" [style.left.px]="tip.left">
+            <div class="chart__tooltip-title">{{ tip.label }}</div>
+            @for (row of tip.rows; track row.key) {
+              <div class="chart__tooltip-row">
+                <span class="chart__key" [style.background]="row.color" aria-hidden="true"></span>
+                <strong class="chart__tooltip-value">{{ row.value }}</strong>
+                <span class="chart__tooltip-label">{{ row.label }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <button type="button" class="chart__toggle" (click)="showTable.set(!showTable())">
+      {{ showTable() ? 'Ver gráfico' : 'Ver como tabla' }}
+    </button>
+  }
+</figure>

@@ -1,0 +1,40 @@
+@use "breakpoints" as bp;
+
+:host { display: block; }
+
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px 24px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kpis > li { display: flex; min-width: 0; }
+.kpis app-stat-card { flex: 1; min-width: 0; }
+
+.kpis-error { margin: 0; font-size: 14px; color: var(--color-error); }
+.kpis-error__retry { padding: 0 0 0 6px; font: inherit; font-weight: 600; color: var(--color-accent); background: none; border: none; cursor: pointer; }
+.kpis-error__retry:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 2px; }
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+.overview-grid--wide { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+
+@include bp.respond-to("tablet") {
+  .overview-grid, .overview-grid--wide { grid-template-columns: minmax(0, 1fr); }
+}
+@include bp.respond-to("phone") {
+  .page-content { padding: 16px; gap: 14px; }
+}

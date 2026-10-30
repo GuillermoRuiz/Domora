@@ -1,0 +1,30 @@
+# ── Build stage: Angular producción ──────────────────────────────────────
+FROM node:24-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+# ngsw-config.json: angular.json lo exige (serviceWorker, PWA); sin el, el build falla.
+COPY angular.json ngsw-config.json tsconfig*.json ./
+COPY src ./src
+COPY public ./public
+
+# Por defecto `production` (identico al build historico). La imagen demo se
+# construye con --build-arg NG_CONFIG=demo.
+ARG NG_CONFIG=production
+RUN npx ng build --configuration ${NG_CONFIG}
+
+# ── Runtime: nginx sirviendo la SPA + proxy /api/v1 ─────────────────────
+FROM nginx:1.27-alpine AS runtime
+
+# El template se renderiza en el arranque sustituyendo ${API_UPSTREAM}
+# (FQDN interno de la API: http://domora-api en Container Apps,
+# http://api:3000 en compose). envsubst viene en la imagen oficial.
+ENV API_UPSTREAM=http://api:3000
+
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+COPY --from=build /app/dist/domora-app/browser /usr/share/nginx/html
+
+EXPOSE 8080

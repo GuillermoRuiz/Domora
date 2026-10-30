@@ -1,0 +1,156 @@
+$gold: #d9a62e;
+$bg: #0b0b0d;
+$surface: #1a1a1d;
+$border: rgba(255, 255, 255, 0.1);
+$text: #f5f5f0;
+$muted: #9a9a9e;
+
+:host {
+  display: block;
+  min-height: 100vh;
+  background: $bg;
+}
+
+.legal {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.legal__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid $border;
+}
+
+.legal__brand {
+  color: $text;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  font-size: 1.1rem;
+}
+
+.legal__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+
+  a {
+    color: $muted;
+    font-size: 0.85rem;
+    text-decoration: none;
+
+    &:hover {
+      color: $gold;
+    }
+  }
+
+  &-link--active {
+    color: $gold !important;
+  }
+}
+
+.legal__content {
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 3rem;
+  color: $text;
+
+  h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.75rem;
+    letter-spacing: 0.01em;
+  }
+
+  h2 {
+    margin: 2rem 0 0.75rem;
+    font-size: 1.2rem;
+    color: $gold;
+  }
+
+  h3 {
+    margin: 1.5rem 0 0.5rem;
+    font-size: 1rem;
+    color: $text;
+  }
+
+  p,
+  li {
+    line-height: 1.65;
+    color: $text;
+  }
+
+  p {
+    margin: 0 0 1rem;
+  }
+
+  ul,
+  ol {
+    margin: 0 0 1rem;
+    padding-left: 1.25rem;
+  }
+
+  li {
+    margin-bottom: 0.4rem;
+  }
+
+  a {
+    color: $gold;
+  }
+
+  strong {
+    color: $text;
+  }
+
+  .legal__notice {
+    margin: 1.5rem 0;
+    padding: 1rem 1.1rem;
+    border-radius: 12px;
+    background: $surface;
+    border: 1px solid $border;
+    font-size: 0.9rem;
+    color: $muted;
+
+    strong {
+      color: $gold;
+    }
+  }
+
+  .legal__table-wrap {
+    overflow-x: auto;
+    margin: 0 0 1.25rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid $border;
+    vertical-align: top;
+  }
+
+  th {
+    color: $gold;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}
+
+.legal__updated {
+  margin: 0 0 1.75rem;
+  color: $muted;
+  font-size: 0.85rem;
+}

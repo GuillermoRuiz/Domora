@@ -1,0 +1,30 @@
+<app-section-card title="Resumen económico">
+  @if (error() && !data()) {
+    <p class="economic__message economic__message--error" role="alert">
+      No se pudo cargar el resumen económico.
+      <button type="button" class="economic__retry" (click)="retry()()">Reintentar</button>
+    </p>
+  } @else if (!data()) {
+    <p class="economic__message" role="status">Cargando resumen económico…</p>
+  } @else {
+    <div class="economic" [attr.aria-busy]="loading()">
+      <p class="economic__subtitle">{{ subtitle() }} · facturado {{ euro(data()!.billed) }}</p>
+      <app-donut-chart
+        [slices]="slices()"
+        [valueFormatter]="euro"
+        [showTotal]="false"
+        caption="Facturado en el ejercicio: cobrado y pendiente"
+        emptyText="Todavía no hay recibos emitidos en el ejercicio."
+      ></app-donut-chart>
+      <dl class="economic__figures">
+        @for (figure of figures(); track figure.key) {
+          <div class="economic__figure" [attr.data-figure]="figure.key">
+            <dt>{{ figure.label }}</dt>
+            <dd>{{ figure.value }}</dd>
+            <dd class="economic__hint">{{ figure.hint }}</dd>
+          </div>
+        }
+      </dl>
+    </div>
+  }
+</app-section-card>

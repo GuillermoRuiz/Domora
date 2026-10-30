@@ -1,0 +1,44 @@
+<app-section-card title="Contacto rápido" [padded]="true">
+  @if (supplier(); as s) {
+    <div class="contact" data-quick-contact>
+      <div class="contact__head">
+        <span class="contact__avatar" aria-hidden="true">{{ initials() }}</span>
+        <div class="contact__who">
+          <strong class="contact__person">{{ person() }}</strong>
+          <span class="contact__company"><app-icon [name]="categoryIcon()" [size]="13"></app-icon> {{ s.name }}</span>
+        </div>
+      </div>
+
+      <dl class="contact__details">
+        <div>
+          <dt>Teléfono</dt>
+          <dd data-field="phone">{{ s.phone ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>Correo</dt>
+          <dd data-field="email">{{ s.email ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>Próxima visita</dt>
+          <dd data-field="visit">
+            @if (nextVisit(); as v) { {{ v.date }} · {{ v.time }}<span class="contact__sub">{{ v.purpose }}</span> } @else { Sin visitas programadas }
+          </dd>
+        </div>
+      </dl>
+
+      <div class="contact__actions">
+        @if (telHref(); as href) {
+          <a class="contact__btn contact__btn--primary" data-action="call" [href]="href"><app-icon name="phone" [size]="14"></app-icon> Llamar</a>
+        }
+        @if (mailHref(); as href) {
+          <a class="contact__btn" data-action="mail" [href]="href"><app-icon name="mail" [size]="14"></app-icon> Escribir</a>
+        }
+        @if (!telHref() && !mailHref()) {
+          <p class="contact__none">Este proveedor no tiene teléfono ni correo registrados.</p>
+        }
+      </div>
+    </div>
+  } @else {
+    <p class="contact__empty">Selecciona un proveedor de la tabla para ver su contacto.</p>
+  }
+</app-section-card>

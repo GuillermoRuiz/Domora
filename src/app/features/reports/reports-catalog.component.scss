@@ -1,0 +1,61 @@
+.page-content {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.page-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.page-heading p { margin: 0; }
+.report-search input { font-size: 14px; }
+.category-explorer { min-width: 0; }
+.category-explorer__title { color: var(--color-muted); font-size: 13px; font-weight: 700; letter-spacing: .14em; line-height: 1.5; text-transform: uppercase; margin: 0 0 8px; }
+.report-grid { gap: 12px; }
+
+.catalog-card {
+  --category-color: var(--color-accent);
+  --category-background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 8px;
+  min-height: 124px;
+  padding: 12px;
+  border-color: var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 70%, var(--color-bg));
+}
+
+.catalog-card[data-category='finance'] { --category-color: var(--color-secondary); --category-background: var(--color-secondary-bg); }
+.catalog-card[data-category='collections'] { --category-color: var(--color-maroon); --category-background: var(--color-maroon-bg); }
+.catalog-card[data-category='budgets'] { --category-color: var(--color-blue); --category-background: var(--color-blue-bg); }
+.catalog-card[data-category='operations'] { --category-color: var(--color-purple); --category-background: var(--color-purple-bg); }
+.catalog-card .report-card__icon { width: 40px; height: 40px; border-radius: var(--radius-md); color: var(--category-color); background: var(--category-background); }
+.catalog-card__content { min-width: 0; }
+.catalog-card h3 { margin-bottom: 4px; }
+.catalog-card .report-card__footer { grid-column: 1 / -1; align-self: end; border: 0; padding: 0; }
+
+.catalog-card--featured {
+  grid-column: 1 / -1;
+  grid-template-columns: 48px minmax(0, 1fr);
+  row-gap: 6px;
+  min-height: 96px;
+  border-color: var(--color-accent);
+  background: linear-gradient(110deg, color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)), var(--color-surface) 55%, color-mix(in srgb, var(--color-accent) 9%, var(--color-surface)));
+}
+
+.catalog-card--featured .report-card__icon { width: 48px; height: 48px; grid-row: 1 / 3; background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+.catalog-card--featured .catalog-card__content { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 4px 12px; }
+.catalog-card--featured h3 { grid-column: 1; grid-row: 1; margin: 0; }
+.catalog-card--featured p { grid-column: 1 / -1; }
+.catalog-card--featured .report-card__footer { grid-column: 2; }
+.catalog-card__eyebrow { display: inline-flex; grid-column: 2; grid-row: 1; justify-self: start; padding: 2px 8px; border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent); font-size: 12px; font-weight: 500; }
+
+@media (max-width: 640px) {
+  .page-content { padding: 16px; gap: 14px; }
+  .catalog-card--featured { grid-template-columns: 40px minmax(0, 1fr); }
+  .catalog-card--featured .report-card__icon { width: 40px; height: 40px; }
+  .catalog-card--featured .catalog-card__content { display: block; }
+  .catalog-card--featured h3 { margin: 4px 0; }
+}

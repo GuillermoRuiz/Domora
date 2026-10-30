@@ -1,0 +1,241 @@
+<div class="viewer" role="dialog" aria-modal="true" aria-label="Acta de la junta">
+  <header class="toolbar">
+    <app-btn variant="outline" size="sm" (clicked)="back.emit()">
+      <app-icon name="chevron-left" [size]="16"></app-icon>Volver
+    </app-btn>
+
+    <div class="toolbar__title">
+      <strong>Acta</strong>
+      @if (versions.length > 1) {
+        <select
+          class="chip chip--select field--bare"
+          aria-label="Versión del acta"
+          [value]="version.id"
+          [disabled]="busy || hasChanges()"
+          [attr.title]="hasChanges() ? 'Guarda o descarta los cambios antes de cambiar de versión' : null"
+          (change)="pickVersion.emit($any($event.target).value)"
+        >
+          @for (option of versions; track option.id) {
+            <option [value]="option.id" [selected]="option.id === version.id">Versión {{ option.versionNumber }} · {{ option.statusLabel }}</option>
+          }
+        </select>
+      } @else {
+        <span class="chip">Versión {{ version.versionNumber }}</span>
+      }
+      <span [class]="'chip chip--' + version.status" data-testid="version-status">{{ statusLabel }}</span>
+      @if (hasChanges()) {
+        <span class="chip chip--dirty" role="status">Cambios sin guardar</span>
+      }
+    </div>
+
+    <div class="toolbar__actions">
+      <app-btn variant="primary" size="sm" [disabled]="!hasChanges() || busy" (clicked)="onSave()">Guardar</app-btn>
+      <app-btn variant="outline" size="sm" [disabled]="!editable() || busy" (clicked)="onRegenerate()">
+        <app-icon name="refresh" [size]="16"></app-icon>Regenerar redacción
+      </app-btn>
+      <app-btn variant="outline" size="sm" [disabled]="busy" (clicked)="downloadPdf.emit(version.id)">
+        <app-icon name="download" [size]="16"></app-icon>Descargar PDF
+      </app-btn>
+      @if (isReady) {
+        <app-btn variant="accent" size="sm" [disabled]="busy" (clicked)="continueToSign.emit()">Continuar a la firma</app-btn>
+      } @else {
+        <app-btn
+          variant="accent"
+          size="sm"
+          [disabled]="!canPrepare"
+          [attr.title]="hasChanges() ? 'Guarda los cambios antes de preparar el acta para la firma' : null"
+          (clicked)="prepare.emit()"
+        >
+          Preparar para firma
+        </app-btn>
+      }
+    </div>
+  </header>
+
+  <div class="notices" aria-live="polite">
+    @if (error) {
+      <p class="notice notice--error" role="alert">{{ error }}</p>
+    }
+    @if (version.status === 'superseded') {
+      <p class="notice notice--warning" data-testid="old-version">
+        Estás viendo la versión {{ version.versionNumber }}, que ya fue sustituida: es solo lectura.
+        @if (versions.length) {
+          <button type="button" class="link" [disabled]="busy" (click)="pickVersion.emit(versions[0].id)">Ir a la versión vigente</button>
+        }
+      </p>
+    }
+    @if (version.notesChanged && editable()) {
+      <p class="notice notice--warning" data-testid="notes-changed">
+        Las notas de la junta cambiaron después de generar este borrador. Usa «Regenerar redacción» para recogerlas.
+      </p>
+    }
+    @if (version.narrative; as narrative) {
+      <p class="notice" data-testid="narrative-note">
+        @if (narrative.mode === 'llm') {
+          La redacción se ha generado automáticamente a partir de tus notas. Revísala antes de preparar el acta para la firma.
+        } @else {
+          Los textos de cada punto recogen tus notas tal cual. {{ narrative.reason }} Puedes editarlos.
+        }
+      </p>
+    }
+    @for (warning of warnings; track warning.code) {
+      <p class="notice notice--warning" data-testid="warning">{{ warning.message }}</p>
+    }
+    @if (missingNotice) {
+      <p class="notice notice--warning">{{ missingNotice }}</p>
+    }
+    <p class="notice notice--hint">
+      Edita los textos con el lápiz de cada apartado. Los datos de la junta (fecha, asistencia, coeficientes, votos y resultados) los fija el sistema y no se pueden escribir aquí.
+      <button type="button" class="link" (click)="editData.emit()" [disabled]="!editable()">Corregir horas y convocatoria</button>
+    </p>
+  </div>
+
+  <div class="scroller" #scroller>
+    <div class="pages" [style.zoom]="scale()">
+      @for (page of pages(); track $index; let p = $index) {
+        <section class="page" [style.width.px]="pageWidth" [style.min-height.px]="pageHeight" [attr.aria-label]="'Página ' + (p + 1)">
+          @if (p > 0) {
+            <div class="page__header">{{ model().header.communityName }} — {{ model().header.title }}</div>
+          }
+          <div class="page__body">
+            @for (index of page; track $index) {
+              @if (blockAt(index); as block) {
+                <ng-container *ngTemplateOutlet="blockTpl; context: { $implicit: block, measuring: false }"></ng-container>
+              }
+            }
+          </div>
+          <div class="page__footer">Página {{ p + 1 }} de {{ pages().length }}</div>
+        </section>
+      }
+    </div>
+  </div>
+
+  <!-- Medición oculta: mismo estilo y ancho que la página, para repartir los bloques en páginas A4. -->
+  <div class="measure" #measure aria-hidden="true" [style.width.px]="pageWidth">
+    <div class="page__body">
+      @for (block of blocks(); track block.key) {
+        <ng-container *ngTemplateOutlet="blockTpl; context: { $implicit: block, measuring: true }"></ng-container>
+      }
+    </div>
+  </div>
+</div>
+
+<ng-template #blockTpl let-block let-measuring="measuring">
+  @if (measuring || !block.edit || block.edit.first || !isEditing(block)) {
+    <div [class]="'blk blk--' + block.kind" [attr.data-block]="block.key" [class.blk--editable]="!!block.edit && !measuring">
+      @if (!measuring && block.edit && isEditing(block)) {
+        <div class="editor">
+          <textarea
+            class="editor__input"
+            rows="6"
+            [ngModel]="draftText()"
+            (ngModelChange)="draftText.set($event)"
+            (keydown.control.enter)="applyEdit()"
+            aria-label="Texto del acta"
+          ></textarea>
+          <div class="editor__actions">
+            <button type="button" class="editor__btn editor__btn--primary" (click)="applyEdit()">Aplicar</button>
+            <button type="button" class="editor__btn" (click)="cancelEdit()">Cancelar</button>
+            <span class="editor__hint">Una línea por párrafo. Ctrl + Intro aplica.</span>
+          </div>
+        </div>
+      } @else {
+        @switch (block.kind) {
+          @case ('title') {
+            <h1>{{ block.text }}</h1>
+          }
+          @case ('subtitle') {
+            <h2>{{ block.text }}</h2>
+          }
+          @case ('community') {
+            <h2 class="community">{{ block.text }}</h2>
+          }
+          @case ('address') {
+            <p class="address">{{ block.text }}</p>
+          }
+          @case ('rule') {
+            <hr />
+          }
+          @case ('heading') {
+            <h3>{{ block.text }}</h3>
+          }
+          @case ('itemTitle') {
+            <h4>{{ block.text }}</h4>
+          }
+          @case ('agendaLine') {
+            <p class="agenda-line">{{ block.text }}</p>
+          }
+          @case ('tableHeader') {
+            <div class="row row--header" [class.row--names]="block.cells.length === 4">
+              @for (cell of block.cells; track $index) {
+                <span>{{ cell }}</span>
+              }
+            </div>
+          }
+          @case ('tableRow') {
+            <div class="row" [class.row--names]="block.cells.length === 4">
+              @for (cell of block.cells; track $index) {
+                <span>{{ cell }}</span>
+              }
+            </div>
+          }
+          @case ('italic') {
+            <p class="italic">{{ block.text }}</p>
+          }
+          @case ('bullet') {
+            <p class="bullet">–&nbsp;&nbsp;{{ block.text }}</p>
+          }
+          @case ('agreement') {
+            <p class="agreement">{{ block.text }}</p>
+          }
+          @case ('placeholder') {
+            <button type="button" class="placeholder" (click)="startEdit(block.edit!.key)" [disabled]="measuring">
+              <app-icon name="plus" [size]="14"></app-icon>{{ block.text }}
+            </button>
+          }
+          @case ('vote') {
+            <div class="vote">
+              @if (block.vote.lines.question) {
+                <p>{{ block.vote.lines.question }}</p>
+              }
+              <ul>
+                @for (option of block.vote.lines.options; track $index) {
+                  <li>{{ option }}</li>
+                }
+              </ul>
+              <p>{{ block.vote.lines.majority }}</p>
+              @if (block.vote.lines.favorable) {
+                <p>{{ block.vote.lines.favorable }}</p>
+              }
+              @if (block.vote.lines.outcome) {
+                <p class="vote__outcome">{{ block.vote.lines.outcome }}</p>
+              }
+            </div>
+          }
+          @case ('signatures') {
+            <div class="signatures">
+              @for (signer of block.signatures; track signer.role) {
+                <div class="signature">
+                  <div class="signature__labels">
+                    @for (line of signer.lines; track $index) {
+                      <strong>{{ line }}</strong>
+                    }
+                  </div>
+                  <span class="signature__line"></span>
+                </div>
+              }
+            </div>
+          }
+          @default {
+            <p>{{ block.text }}</p>
+          }
+        }
+        @if (!measuring && block.edit?.first && editable() && block.kind !== 'placeholder') {
+          <button type="button" class="blk__edit" (click)="startEdit(block.edit!.key)" aria-label="Editar este texto">
+            <app-icon name="edit" [size]="14"></app-icon>Editar
+          </button>
+        }
+      }
+    </div>
+  }
+</ng-template>

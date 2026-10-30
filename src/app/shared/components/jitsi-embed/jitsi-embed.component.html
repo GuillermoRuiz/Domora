@@ -1,0 +1,18 @@
+<div class="jitsi-embed">
+  @if (loading()) {
+    <div class="jitsi-embed__status">
+      <app-icon name="refresh" [size]="20"></app-icon>
+      <p>Cargando videollamada…</p>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="jitsi-embed__status jitsi-embed__status--error">
+      <app-icon name="exclamation" [size]="20"></app-icon>
+      <p>{{ error() }}</p>
+      <button type="button" (click)="retry()">Reintentar</button>
+    </div>
+  }
+
+  <div #container class="jitsi-embed__container" [class.jitsi-embed__container--hidden]="loading() || error()"></div>
+</div>

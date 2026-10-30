@@ -1,0 +1,289 @@
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  h3 { font-size: 17px; font-weight: 700; margin: 0; }
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+
+  &:hover { color: var(--color-text); }
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+  padding: 14px 20px;
+}
+
+.card__header .card__title { padding: 0; border-bottom: none; }
+
+.table-wrapper { overflow-x: auto; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-light);
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 12px 20px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--color-border-light);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--color-bg); }
+
+  select {
+    margin-right: 6px;
+  }
+}
+
+.td--type { font-weight: 500; }
+.td--muted { color: var(--color-muted); font-size: 13px; }
+.td--actions { text-align: right; white-space: nowrap; }
+.empty-row { color: var(--color-muted); text-align: center; padding: 22px; }
+
+.action-btn {
+  border: none;
+  background: var(--color-bg);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-muted);
+
+  &:hover { background: var(--color-secondary-bg); color: var(--color-secondary); }
+}
+
+.action-btn--sm {
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+}
+
+.attendee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 0;
+}
+
+// ── Quórum ───────────────────────────────────────────────────────────────
+.quorum {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px;
+}
+
+.quorum__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quorum__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quorum__bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quorum__bar-label {
+  font-size: 13px;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.quorum__bar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.quorum__bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.quorum__warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-warning, #b45309);
+  margin: 0;
+}
+
+// ── Votación (Fase 2.1) ─────────────────────────────────────────────────
+.require-2fa-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-muted);
+  cursor: pointer;
+
+  &--locked { cursor: not-allowed; opacity: 0.6; }
+}
+
+.vote-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 20px 16px;
+}
+
+.vote-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--color-border-light);
+
+  &:first-child { border-top: none; padding-top: 0; }
+}
+
+.vote-item__header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  strong { font-size: 14px; }
+  span { font-size: 13.5px; }
+}
+
+.vote-item__badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.vote-item__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vote-item__option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13.5px;
+}
+
+// ── Acta digital (Fase 2.2) ────────────────────────────────────────────
+.acta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px 16px;
+}
+
+.acta__signers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.acta__signer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.acta__signer-input {
+  display: flex;
+  gap: 8px;
+
+  input {
+    flex: 1;
+  }
+}
+
+.acta__signed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-primary);
+  color: #fff;
+  padding: 11px 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

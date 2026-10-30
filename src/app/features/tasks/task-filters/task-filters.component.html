@@ -1,0 +1,43 @@
+<div class="filters">
+  <button type="button" class="filters__toggle" [attr.aria-expanded]="expanded()" aria-controls="task-filter-fields" (click)="expanded.set(!expanded())">
+    <app-icon name="filter" [size]="14"></app-icon>
+    Filtros@if (activeCount() > 0) { <span class="filters__count">{{ activeCount() }}</span> }
+  </button>
+
+  <div id="task-filter-fields" class="filters__fields" [class.filters__fields--open]="expanded()">
+    <div class="field">
+      <app-dropdown ariaLabel="Responsable" [items]="assigneeItems()" [selectedId]="filters().assignee" [active]="!!filters().assignee" (selectionChange)="pick('assignee', $event)"></app-dropdown>
+    </div>
+
+    <div class="field">
+      <app-dropdown ariaLabel="Estado" [items]="statusItems" [selectedId]="filters().status" [active]="!!filters().status" (selectionChange)="pick('status', $event)"></app-dropdown>
+    </div>
+
+    <div class="field">
+      <app-dropdown ariaLabel="Prioridad" [items]="priorityItems" [selectedId]="filters().priority" [active]="!!filters().priority" (selectionChange)="pick('priority', $event)"></app-dropdown>
+    </div>
+
+    <div class="field">
+      <app-dropdown ariaLabel="Tipo" [items]="typeItems" [selectedId]="filters().type" [active]="!!filters().type" (selectionChange)="pick('type', $event)"></app-dropdown>
+    </div>
+
+    <div class="field">
+      <app-dropdown
+        ariaLabel="Etiquetas"
+        label="Etiquetas"
+        icon="tag"
+        [multiple]="true"
+        [items]="labelItems()"
+        [selectedIds]="filters().labelIds"
+        [summary]="filters().labelIds.length ? labelsSummary() : ''"
+        [active]="filters().labelIds.length > 0"
+        emptyText="Aún no hay etiquetas."
+        (selectionChange)="toggleLabel($any($event.id))"
+      ></app-dropdown>
+    </div>
+
+    @if (activeCount() > 0) {
+      <button type="button" class="filters__clear" (click)="clear()">Limpiar filtros</button>
+    }
+  </div>
+</div>

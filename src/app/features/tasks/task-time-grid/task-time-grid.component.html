@@ -1,0 +1,137 @@
+<div class="grid" [style.--cols]="days().length" [style.--hour-px]="hourPx + 'px'">
+  <div class="grid__head">
+    <div class="grid__corner" aria-hidden="true"></div>
+    @for (col of columns(); track col.key) {
+      <button type="button" class="day-head" [class.day-head--today]="col.isToday" [attr.aria-label]="'Abrir el día ' + col.date.getDate()" (click)="dayOpened.emit(col.date)">
+        <span class="day-head__name">{{ weekdayShort[col.date.getDay()] }}</span>
+        <span class="day-head__num">{{ col.date.getDate() }}</span>
+      </button>
+    }
+  </div>
+
+  @if (hasAllDay()) {
+    <div class="grid__allday">
+      <div class="grid__gutter allday-label">Todo el día</div>
+      @for (col of columns(); track col.key) {
+        <div class="allday-cell" (dragover)="onDragOver($event)" (drop)="onDropAllDay($event, col.date)">
+          @for (task of col.allDay; track task.occurrenceKey) {
+            <button
+              type="button"
+              class="chip"
+              [class]="'chip chip--' + task.priority.toLowerCase()"
+              [class.chip--done]="task.status === 'COMPLETADA'"
+              [class.chip--cancelled]="task.status === 'CANCELADA'"
+              [class.chip--overdue]="task.overdue"
+              [class.chip--selected]="selectedKey() === task.occurrenceKey"
+              [attr.draggable]="task.recurring ? null : 'true'"
+              [attr.aria-label]="label(task)"
+              (click)="taskSelected.emit(task)" (dblclick)="taskOpened.emit(task)"
+              (dragstart)="onDragStart($event, task, chipEl)"
+              (dragend)="onDragEnd()"
+              (mouseenter)="hover(task, $event)"
+              (mouseleave)="hoverEnded.emit()"
+              (focus)="hover(task, $event)"
+              (blur)="hoverEnded.emit()"
+              #chipEl
+            >
+              <app-icon [name]="types[task.type].icon" [size]="11" aria-hidden="true"></app-icon>
+              <span class="truncate">{{ task.title }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (hasNotes()) {
+    <div class="grid__notes" data-testid="day-notes">
+      <div class="grid__gutter allday-label">Acciones</div>
+      @for (col of columns(); track col.key) {
+        <div class="notes-cell">
+          @for (task of notesShown(col); track task.occurrenceKey) {
+            <button
+              type="button"
+              class="note"
+              [class]="'note note--' + task.priority.toLowerCase()"
+              [class.note--done]="task.status === 'COMPLETADA'"
+              [class.note--cancelled]="task.status === 'CANCELADA'"
+              [class.note--overdue]="task.overdue"
+              [class.note--selected]="selectedKey() === task.occurrenceKey"
+              [attr.aria-label]="label(task)"
+              (click)="taskSelected.emit(task)" (dblclick)="taskOpened.emit(task)"
+              (mouseenter)="hover(task, $event)"
+              (mouseleave)="hoverEnded.emit()"
+              (focus)="hover(task, $event)"
+              (blur)="hoverEnded.emit()"
+            >
+              <app-icon [name]="task.status === 'COMPLETADA' ? 'check' : 'clock'" [size]="11" aria-hidden="true"></app-icon>
+              <span class="truncate">{{ task.title }}</span>
+            </button>
+          }
+          @if (col.notes.length > notesVisible) {
+            <button type="button" class="notes-toggle" [attr.aria-expanded]="expandedNotes().has(col.key)" (click)="toggleNotes(col.key)">
+              <app-icon [name]="'chevron-down'" [size]="11" aria-hidden="true"></app-icon>
+              {{ expandedNotes().has(col.key) ? 'Ocultar acciones' : 'Ver acciones (' + (col.notes.length - notesVisible) + ' más)' }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <div class="grid__body" #body>
+    <div class="grid__inner" [style.height.px]="24 * hourPx">
+      <div class="grid__gutter hours" aria-hidden="true">
+        @for (hour of hours; track hour) {
+          <div class="hours__label" [style.top.px]="hour * hourPx">{{ hour === 0 ? '' : hourLabel(hour) }}</div>
+        }
+      </div>
+      @for (col of columns(); track col.key) {
+        <div class="col" [class.col--today]="col.isToday" (click)="onColumnClick($event, col.date)" (dragover)="onDragOver($event)" (drop)="onDropTimed($event, col.date)">
+          @for (hour of hours; track hour) {
+            <div class="col__line" [style.top.px]="hour * hourPx"></div>
+          }
+          @if (col.isToday) {
+            <div class="now" [style.top.px]="nowTop()" aria-hidden="true"><span class="now__dot"></span></div>
+          }
+          @for (segment of col.timed; track segment.task.occurrenceKey) {
+            <button
+              type="button"
+              class="block"
+              [class]="'block block--' + segment.task.priority.toLowerCase()"
+              [class.block--done]="segment.task.status === 'COMPLETADA'"
+              [class.block--cancelled]="segment.task.status === 'CANCELADA'"
+              [class.block--overdue]="segment.task.overdue"
+              [class.block--selected]="selectedKey() === segment.task.occurrenceKey"
+              [class.block--tall]="isTall(segment)"
+              [style]="blockStyle(segment)"
+              [attr.draggable]="segment.task.recurring ? null : 'true'"
+              [attr.aria-label]="label(segment.task)"
+              (click)="taskSelected.emit(segment.task)" (dblclick)="taskOpened.emit(segment.task)"
+              (dragstart)="onDragStart($event, segment.task, blockEl)"
+              (dragend)="onDragEnd()"
+              (mouseenter)="hover(segment.task, $event)"
+              (mouseleave)="hoverEnded.emit()"
+              (focus)="hover(segment.task, $event)"
+              (blur)="hoverEnded.emit()"
+              #blockEl
+            >
+              <span class="block__title">
+                <app-icon [name]="types[segment.task.type].icon" [size]="11" aria-hidden="true"></app-icon>
+                <span class="truncate">{{ segment.task.title }}</span>
+                @if (segment.task.status === 'COMPLETADA') { <app-icon name="check" [size]="11" aria-hidden="true"></app-icon> }
+                @if (segment.task.recurring) { <app-icon name="repeat" [size]="10" aria-hidden="true"></app-icon> }
+              </span>
+              @if (isTall(segment)) {
+                <span class="block__meta truncate">{{ timeLabel(segment.task) }}@if (segment.task.estate) { · {{ segment.task.estate.name }} }</span>
+              }
+              @if (segment.task.overdue && isTall(segment)) {
+                <span class="block__flag">Vencida</span>
+              }
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,68 @@
+<div class="login">
+  <div class="login__brand">
+    <!-- El logo es un asset estático, no un icono: son 84 KB de trazado
+         vectorial con colores propios, así que vivía mal dentro de
+         IconComponent (que carga en las 31 plantillas que usan iconos). -->
+    <div class="login__logo">
+      <img src="domora-logo.svg" width="40" height="40" alt="Domora" />
+    </div>
+    <h1>Domora</h1>
+    <p class="login__tagline">Plataforma de gestión de comunidades de propietarios</p>
+  </div>
+
+  <form class="login__card" (ngSubmit)="submit()">
+    <h2>Iniciar Sesión</h2>
+    <p class="login__subtitle">Accede a tu comunidad con tu email y contraseña</p>
+
+    @if (passwordResetSuccess) {
+      <p class="login__success">Contraseña actualizada. Inicia sesión con tu contraseña nueva.</p>
+    }
+
+    <label for="login-email">Email</label>
+    <div class="login__input-wrap">
+      <app-icon name="mail" [size]="15" class="login__input-icon"></app-icon>
+      <input class="field--bare"
+        id="login-email"
+        type="email"
+        name="email"
+        placeholder="tu@email.com"
+        autocomplete="email"
+        [(ngModel)]="email"
+        required
+      />
+    </div>
+
+    <label for="login-password">Contraseña</label>
+    <div class="login__input-wrap">
+      <app-icon name="key" [size]="15" class="login__input-icon"></app-icon>
+      <input class="field--bare"
+        id="login-password"
+        type="password"
+        name="password"
+        placeholder="••••••••"
+        autocomplete="current-password"
+        [(ngModel)]="password"
+        required
+      />
+    </div>
+
+    @if (errorMessage()) {
+      <p class="login__error">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" class="login__submit" [disabled]="loading()">
+      {{ loading() ? 'Entrando…' : 'Iniciar Sesión' }}
+    </button>
+
+    <a routerLink="/forgot-password" class="login__forgot-link">¿Olvidaste tu contraseña?</a>
+  </form>
+
+  <div class="login__footer-links">
+    <p>¿No tienes cuenta? <a routerLink="/register"><strong>Registrarse</strong></a></p>
+    <p>¿Problemas para acceder? <a href="mailto:soporte@domora.app">Contacta con soporte</a></p>
+  </div>
+
+  @if (demoPanel) {
+    <ng-container *ngComponentOutlet="demoPanel"></ng-container>
+  }
+</div>

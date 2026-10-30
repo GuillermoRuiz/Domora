@@ -1,0 +1,79 @@
+<section class="detail" data-detail [attr.role]="modal() ? 'dialog' : 'region'" [attr.aria-modal]="modal() ? 'true' : null"
+  aria-labelledby="doc-detail-title">
+  <div class="detail__head">
+    @if (document(); as doc) {
+      <span class="doc-icon doc-icon--lg" [class]="'doc-icon doc-icon--lg doc-icon--' + doc.fileType" aria-hidden="true">
+        <app-icon [name]="fileIcon(doc.fileType)" [size]="22"></app-icon>
+      </span>
+      <div class="detail__heading">
+        <h2 id="doc-detail-title" class="detail__title" data-detail-title>{{ doc.title }}</h2>
+        @if (doc.description) {
+          <p class="detail__subtitle">{{ doc.description }}</p>
+        }
+        <div class="detail__tags">
+          <span class="cat-pill" [class]="'cat-pill cat-pill--' + category()!.tone">{{ category()!.label }}</span>
+          @if (doc.board) {
+            <span class="detail__board">Junta</span>
+          }
+          <span class="detail__type" data-detail-type>{{ typeAndSize() }}</span>
+        </div>
+      </div>
+    } @else {
+      <h2 id="doc-detail-title" class="detail__title">Documento no disponible</h2>
+    }
+    <button #closeBtn type="button" class="detail__close" data-action="close-detail" aria-label="Cerrar" (click)="closed.emit()">
+      <app-icon name="x" [size]="18"></app-icon>
+    </button>
+  </div>
+
+  @if (document(); as doc) {
+    <dl class="detail__meta">
+      <div class="detail__row" data-meta="fecha">
+        <dt>Fecha de publicación</dt>
+        <dd>{{ formatDay(doc.date) }}</dd>
+      </div>
+      <div class="detail__row" data-meta="publicado">
+        <dt>Publicado por</dt>
+        <dd>{{ doc.publishedBy }}</dd>
+      </div>
+      @if (doc.description) {
+        <div class="detail__row" data-meta="descripcion">
+          <dt>Descripción</dt>
+          <dd>{{ doc.description }}</dd>
+        </div>
+      }
+      @if (doc.estateName) {
+        <div class="detail__row" data-meta="comunidad">
+          <dt>Comunidad</dt>
+          <dd>{{ doc.estateName }}</dd>
+        </div>
+      }
+    </dl>
+
+    @if (doc.previewable) {
+      <app-document-viewer class="detail__viewer" [loader]="loader()" [mimeType]="doc.mimeType" [title]="doc.title"></app-document-viewer>
+    } @else {
+      <div class="detail__no-preview" data-no-preview>
+        <app-icon [name]="fileIcon(doc.fileType)" [size]="28"></app-icon>
+        <p>Vista previa no disponible para este formato. Descarga el documento para consultarlo.</p>
+        <button type="button" class="btn-outline" data-action="download-inline" [disabled]="busy()" (click)="download.emit(doc)">
+          <app-icon name="download" [size]="15"></app-icon>
+          Descargar
+        </button>
+      </div>
+    }
+
+    <div class="detail__actions">
+      <button type="button" class="btn-outline" data-action="download" [disabled]="busy()" (click)="download.emit(doc)">
+        <app-icon name="download" [size]="15"></app-icon>
+        Descargar
+      </button>
+      <button type="button" class="btn-accent" data-action="open" [disabled]="busy()" (click)="open.emit(doc)">
+        <app-icon name="external-link" [size]="15"></app-icon>
+        Abrir documento
+      </button>
+    </div>
+  } @else {
+    <p class="detail__missing">No encontramos este documento. Puede que ya no esté disponible o que no coincida con los filtros actuales.</p>
+  }
+</section>

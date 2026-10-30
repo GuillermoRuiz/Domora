@@ -1,0 +1,46 @@
+:host { display: block; min-width: 0; }
+
+.performance__scroll { margin-top: 12px; overflow-x: auto; }
+.performance__scroll:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.performance { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14.5px; }
+.performance th {
+  padding: 8px 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+.performance td { padding: 10px 20px; border-bottom: 1px solid var(--color-border-light); vertical-align: middle; }
+.performance__num { text-align: right; font-variant-numeric: tabular-nums; }
+.performance__rank { width: 52px; color: var(--color-muted); font-variant-numeric: tabular-nums; }
+
+.performance__row--selected { background: var(--color-surface-hover); box-shadow: inset 3px 0 0 var(--color-accent); }
+.performance__row--selected .performance__name { font-weight: 700; }
+/* La fila extra (posición de la finca elegida cuando no está en el Top 10) se separa del resto. */
+.performance__row--extra td { border-top: 2px dashed var(--color-border); }
+
+.performance__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: var(--color-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.performance__name:hover { text-decoration: underline; }
+.performance__name:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 2px; }
+.performance__dot { flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; }
+
+.performance__message { margin: 0; padding: 28px 20px; text-align: center; font-size: 14px; color: var(--color-muted); }
+.performance__message--error { color: var(--color-error); }
+.performance__retry { padding: 0 0 0 6px; font: inherit; font-weight: 600; color: var(--color-accent); background: none; border: none; cursor: pointer; }
+.performance__retry:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 2px; }

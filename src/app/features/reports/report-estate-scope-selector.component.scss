@@ -1,0 +1,40 @@
+@use '../../shared/styles/community-control' as control;
+
+:host { display: contents; }
+.scope-fieldset { padding: 0; border: 0; margin: 0; min-width: 0; position: relative; }
+legend { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--color-text); }
+legend { margin-bottom: 6px; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.scope-trigger { width: 100%; height: 40px; box-sizing: border-box; min-width: 0; padding: 8px 12px; font-size: 14px; font-weight: 400; line-height: 20px; background: var(--color-bg); color: var(--color-text); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.scope-control { position: relative; }
+.scope-trigger { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; }
+.scope-trigger:hover, .scope-trigger[aria-expanded='true'] { border-color: var(--color-accent); }
+.scope-trigger app-icon { color: var(--color-muted); flex-shrink: 0; }
+.scope-trigger[aria-expanded='true'] .scope-chevron { transform: rotate(180deg); }
+.scope-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scope-panel { position: absolute; top: calc(100% + 8px); left: 0; width: 340px; max-width: calc(100vw - 32px); box-sizing: border-box; z-index: 200; padding: 6px; text-align: left; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); }
+.scope-search { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-muted); }
+.scope-search:focus-within { border-color: var(--color-accent); }
+.scope-search input { width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; color: var(--color-text); font-size: 14px; outline: none; }
+.scope-search input::placeholder { color: var(--color-muted); }
+.scope-all, .scope-estate { display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 10px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text); font-size: 14px; text-align: left; }
+.scope-all:hover:not(:disabled), .scope-estate:hover { background: var(--color-surface-hover); }
+.scope-all app-icon, .scope-estate app-icon { display: flex; flex-shrink: 0; color: var(--color-muted); }
+.scope-all { margin-top: 6px; }
+.scope-all--active, .scope-estate--active { color: var(--color-accent); }
+.scope-all--active { font-weight: 600; }
+.scope-all:not(.scope-all--active) app-icon { visibility: hidden; }
+.scope-all--active app-icon, .scope-estate--active .scope-estate__check, .scope-estate--active strong { color: var(--color-accent); }
+.scope-estate__text { flex: 1; min-width: 0; }
+.scope-estate strong, .scope-estate small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scope-estate small { margin-top: 4px; color: var(--color-muted); font-size: 13px; }
+.scope-results { max-height: min(360px, 50vh); overflow-y: auto; border-top: 1px solid var(--color-border-light); }
+.scope-empty, .scope-hint { font-size: 13px; line-height: 1.5; color: var(--color-muted); margin: 8px 0 0; }
+.scope-empty { padding: 8px; margin: 0; }
+button:disabled, select:disabled { opacity: .6; cursor: not-allowed; }
+@media (pointer: coarse) { .scope-all, .scope-estate { min-height: 44px; } }
+.scope-fieldset--header {
+  .scope-trigger { @include control.trigger; }
+}

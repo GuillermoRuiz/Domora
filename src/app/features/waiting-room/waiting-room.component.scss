@@ -1,0 +1,199 @@
+.wait-room {
+  min-height: 100vh;
+  background: var(--color-bg);
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.wait-room__card {
+  width: 100%;
+  max-width: 640px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+
+  h1 { font-size: 19px; font-weight: 700; margin: 0; }
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.wait-room__loading, .wait-room__error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.wait-room__error { color: var(--color-error); }
+
+.wait-room__link {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wait-room__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.wait-room__subtitle {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.wait-room__badge {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.wait-room__countdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wait-room__countdown-label { font-size: 13px; color: var(--color-muted); }
+
+.wait-room__countdown-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--color-error);
+}
+
+.wait-room__waiting {
+  color: var(--color-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.wait-room__card--attendance {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 15px;
+  }
+}
+
+.attendance-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attendance-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.wait-room__badge-small {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1px 8px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.wait-room__card--jitsi {
+  max-width: 960px;
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.wait-room__fallback-link {
+  align-self: center;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.wait-room__muted { color: var(--color-muted); font-size: 14px; margin: 0; }
+
+.presence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.presence-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border-light);
+  font-size: 14px;
+
+  &:last-child { border-bottom: none; }
+}
+
+.chat-log {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-message {
+  p { margin: 2px 0 0; font-size: 14px; }
+}
+
+.chat-message__meta {
+  font-size: 12px;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.chat-input {
+  display: flex;
+  gap: 8px;
+
+  input {
+    flex: 1;
+  }
+}

@@ -1,0 +1,284 @@
+<div class="toolbar">
+  <div class="models" role="tablist" aria-label="Modelo">
+    @for (m of ['111', '190', '347']; track m) {
+      <button type="button" role="tab" class="model-tab" [class.model-tab--active]="model() === m"
+        [attr.aria-selected]="model() === m" (click)="select($any(m))">Modelo {{ m }}</button>
+    }
+  </div>
+  <div class="toolbar__actions">
+    <label class="year" for="tax-year">
+      Año
+      <select id="tax-year" class="form-input" [ngModel]="year()" (ngModelChange)="setYear($event)">
+        @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
+      </select>
+    </label>
+    @if (model() === '111') {
+      <label class="year" for="tax-quarter">
+        Trimestre
+        <select id="tax-quarter" class="form-input" [ngModel]="quarter()" (ngModelChange)="setQuarter($event)">
+          @for (q of [1, 2, 3, 4]; track q) { <option [ngValue]="q">{{ q }}.º trimestre</option> }
+        </select>
+      </label>
+    }
+    <app-btn variant="outline" size="sm" (clicked)="download('xlsx')">
+      <app-icon name="download" [size]="13"></app-icon>
+      Excel
+    </app-btn>
+    <app-btn variant="outline" size="sm" (clicked)="download('pdf')">
+      <app-icon name="download" [size]="13"></app-icon>
+      PDF
+    </app-btn>
+  </div>
+</div>
+
+<p class="intro">
+  Datos preparados desde la contabilidad para presentar en la sede de la AEAT. Las retenciones cuentan en la fecha
+  en que se pagan: lo que no se ha pagado todavía no aparece.
+</p>
+
+@if (loadError()) {
+  <p class="form-error" role="alert">{{ loadError() }}</p>
+} @else if (loading()) {
+  <p class="muted">Calculando…</p>
+} @else {
+  @if (model() === '111' && m111(); as r) {
+    <div class="summary">
+      <div>
+        <span class="summary__label">Periodo</span>
+        <span>{{ fmtDate(r.from) }} a {{ fmtDate(r.to) }}</span>
+      </div>
+      <div>
+        <span class="summary__label">Plazo</span>
+        <span>hasta el {{ fmtDate(r.deadline) }}</span>
+      </div>
+      <div>
+        <span class="summary__label">A ingresar (casilla 28)</span>
+        <strong class="money">{{ fmtEur(r.boxes['28']) }}</strong>
+      </div>
+      <div>
+        <span class="summary__label">Pendiente de ingresar</span>
+        <strong class="money" [class.warn]="r.pending > 0">{{ fmtEur(r.pending) }}</strong>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Casilla</th><th>Concepto</th><th class="num">Valor</th></tr></thead>
+        <tbody>
+          <tr><td>01</td><td>Rendimientos del trabajo · nº de perceptores</td><td class="num">{{ r.boxes['01'] }}</td></tr>
+          <tr><td>02</td><td>Rendimientos del trabajo · importe de las percepciones</td><td class="num money">{{ fmtEur(r.boxes['02']) }}</td></tr>
+          <tr><td>03</td><td>Rendimientos del trabajo · importe de las retenciones</td><td class="num money">{{ fmtEur(r.boxes['03']) }}</td></tr>
+          <tr><td>07</td><td>Actividades económicas · nº de perceptores</td><td class="num">{{ r.boxes['07'] }}</td></tr>
+          <tr><td>08</td><td>Actividades económicas · importe de las percepciones</td><td class="num money">{{ fmtEur(r.boxes['08']) }}</td></tr>
+          <tr><td>09</td><td>Actividades económicas · importe de las retenciones</td><td class="num money">{{ fmtEur(r.boxes['09']) }}</td></tr>
+          <tr class="total"><td>28</td><td>Suma de retenciones</td><td class="num money">{{ fmtEur(r.boxes['28']) }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    @if (r.unclassified.withholdings > 0) {
+      <p class="warning" role="note">
+        Hay {{ fmtEur(r.unclassified.withholdings) }} retenidos con clave "otra" que no se suman al 111. Revísalos: si son
+        de un alquiler se declaran en el modelo 115.
+      </p>
+    }
+
+    <div class="section-head">
+      <h3 class="section-title">Ingresos en Hacienda</h3>
+      <app-btn *appPageAction variant="primary" size="sm" (clicked)="openSettle()">Registrar ingreso</app-btn>
+    </div>
+    @if (r.settlements.length === 0) {
+      <p class="muted">Sin ingresos registrados para este trimestre.</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Fecha</th><th>Justificante (NRC)</th><th class="num">Importe</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+          <tbody>
+            @for (s of r.settlements; track s.id) {
+              <tr>
+                <td>{{ fmtDate(s.date) }}</td>
+                <td>{{ s.reference ?? '—' }}</td>
+                <td class="num money">{{ fmtEur(s.amount) }}</td>
+                <td class="actions">
+                  <button class="icon-btn" type="button" [attr.aria-label]="'Deshacer el ingreso del ' + fmtDate(s.date)" (click)="openUndo(s.id)">
+                    <app-icon name="refresh" [size]="14"></app-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <h3 class="section-title">Detalle de retenciones pagadas</h3>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Fecha de pago</th><th>Perceptor</th><th>NIF</th><th>Clave</th><th>Documento</th><th class="num">Percepción</th><th class="num">Retención</th></tr></thead>
+        <tbody>
+          @for (d of r.detail; track $index) {
+            <tr>
+              <td>{{ fmtDate(d.date) }}</td>
+              <td>{{ d.name }}</td>
+              <td [class.warn]="!d.nif">{{ d.nif ?? 'Falta NIF' }}</td>
+              <td>{{ keyLabels[d.key] }}</td>
+              <td>{{ d.documentRef }}</td>
+              <td class="num money">{{ fmtEur(d.perception) }}</td>
+              <td class="num money">{{ fmtEur(d.withholding) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="muted">Sin retenciones pagadas en el trimestre.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (model() === '190' && m190(); as r) {
+    <p class="intro">Resumen anual por perceptor. Se presenta del 1 al 31 de enero del año siguiente y debe cuadrar con los cuatro 111.</p>
+    @if (r.missingNif.length) {
+      <p class="warning" role="note">Falta el NIF de: {{ r.missingNif.join(', ') }}. Sin él no se puede presentar.</p>
+    }
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>NIF</th><th>Perceptor</th><th>Clave</th><th>Subclave</th><th class="num">Percepciones</th><th class="num">Retenciones</th></tr></thead>
+        <tbody>
+          @for (row of r.rows; track $index) {
+            <tr>
+              <td [class.warn]="!row.nif">{{ row.nif ?? 'Falta NIF' }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ keyLabels[row.key] }}</td>
+              <td>{{ row.subkey ?? '—' }}</td>
+              <td class="num money">{{ fmtEur(row.perceptions) }}</td>
+              <td class="num money">{{ fmtEur(row.withholdings) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="muted">Sin retenciones pagadas en {{ r.year }}.</td></tr>
+          }
+          @if (r.rows.length) {
+            <tr class="total">
+              <td colspan="4">{{ r.totals.recipients }} perceptores</td>
+              <td class="num money">{{ fmtEur(r.totals.perceptions) }}</td>
+              <td class="num money">{{ fmtEur(r.totals.withholdings) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (model() === '347' && m347(); as r) {
+    <p class="intro">
+      Proveedores con los que la comunidad ha operado por más de 3.005,06 € en el año, IVA incluido, por trimestres.
+      Se presenta en febrero del año siguiente.
+    </p>
+    @if (r.missingNif.length) {
+      <p class="warning" role="note">Falta el NIF de: {{ r.missingNif.join(', ') }}. Sin él no se puede presentar.</p>
+    }
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>NIF</th><th>Proveedor</th><th class="num">1T</th><th class="num">2T</th><th class="num">3T</th><th class="num">4T</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          @for (p of r.purchases; track p.supplierId) {
+            <tr>
+              <td [class.warn]="!p.nif">{{ p.nif ?? 'Falta NIF' }}</td>
+              <td>{{ p.name }}</td>
+              @for (q of p.quarters; track $index) { <td class="num money">{{ fmtEur(q) }}</td> }
+              <td class="num money"><strong>{{ fmtEur(p.total) }}</strong></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="muted">Ningún proveedor supera el umbral en {{ r.year }}.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (r.excluded.length) {
+      <h3 class="section-title">Proveedores que no se declaran</h3>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Proveedor</th><th>Motivo</th><th class="num">Importe</th></tr></thead>
+          <tbody>
+            @for (e of r.excluded; track e.supplierId) {
+              <tr><td>{{ e.name }}</td><td>{{ exclusionLabels[e.reason] }}</td><td class="num money">{{ fmtEur(e.total) }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="muted small">La marca "Fuera del 347" se cambia en la ficha del proveedor.</p>
+    }
+  }
+}
+
+@if (showSettle()) {
+  <div class="modal-overlay" (click)="showSettle.set(false)">
+    <div class="modal" role="dialog" aria-labelledby="settle-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Impuestos · Modelo 111</div>
+          <h3 class="modal__title" id="settle-title">Ingreso del {{ quarter() }}.º trimestre de {{ year() }}</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">Registra lo que la comunidad ha pagado a Hacienda por el modelo 111. Sale del banco y salda las retenciones pendientes.</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="settle-date">Fecha del cargo</label>
+            <input id="settle-date" class="form-input" type="date" [(ngModel)]="settleForm.date" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="settle-amount">Importe (€)</label>
+            <input id="settle-amount" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="settleForm.amount" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="settle-ref">Justificante (NRC)</label>
+            <input id="settle-ref" class="form-input" type="text" maxlength="40" placeholder="Opcional" [(ngModel)]="settleForm.reference" />
+          </div>
+          @if (banks().length > 1) {
+            <div class="form-field">
+              <label class="form-label" for="settle-bank">Cuenta</label>
+              <select id="settle-bank" class="form-input" [(ngModel)]="settleForm.bankAccountId">
+                @for (b of banks(); track b.id) { <option [value]="b.id">{{ b.alias }}</option> }
+              </select>
+            </div>
+          }
+        </div>
+        @if (settleError()) { <p class="form-error" role="alert">{{ settleError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="showSettle.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="settleSaving()" (clicked)="confirmSettle()">
+          {{ settleSaving() ? 'Registrando…' : 'Registrar ingreso' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (undoingId()) {
+  <div class="modal-overlay" (click)="undoingId.set(null)">
+    <div class="modal" role="dialog" aria-labelledby="undo-settle-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Impuestos · Modelo 111</div>
+          <h3 class="modal__title" id="undo-settle-title">Deshacer el ingreso</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">Se contabiliza un contraasiento y el trimestre vuelve a tener ese importe pendiente.</p>
+        <div class="form-field">
+          <label class="form-label" for="undo-settle-reason">Motivo</label>
+          <input id="undo-settle-reason" class="form-input" type="text" maxlength="200" [ngModel]="undoReason()" (ngModelChange)="undoReason.set($event)" />
+        </div>
+        @if (undoError()) { <p class="form-error" role="alert">{{ undoError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="undoingId.set(null)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" (clicked)="confirmUndo()">Deshacer ingreso</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast" role="status">{{ toastMessage() }}</div>
+}

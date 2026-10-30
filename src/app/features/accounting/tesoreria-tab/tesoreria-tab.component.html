@@ -1,0 +1,328 @@
+@if (loading()) {
+  <p class="muted">Cargando…</p>
+} @else if (banks().length === 0) {
+  <p class="muted">Esta finca no tiene cuentas bancarias. Dalas de alta en Configuración para registrar cobros, pagos y conciliar el extracto.</p>
+} @else {
+  <div class="toolbar">
+    <label class="field-inline" for="treasury-bank">
+      Cuenta
+      <select id="treasury-bank" class="form-input" [ngModel]="bankId()" (ngModelChange)="selectBank($event)">
+        @for (b of banks(); track b.id) {
+          <option [value]="b.id">{{ b.alias }} · {{ b.accountCode }}{{ b.ibanMasked ? ' · ' + b.ibanMasked : '' }}</option>
+        }
+      </select>
+    </label>
+    @if (mode() === 'ledger') {
+      <div class="toolbar__actions">
+        <app-btn variant="outline" size="sm" (clicked)="openQuick('in')">Cobro</app-btn>
+        <app-btn variant="outline" size="sm" (clicked)="openQuick('out')">Pago</app-btn>
+        <app-btn variant="outline" size="sm" (clicked)="openTransfer()">Traspaso</app-btn>
+        <label class="file-btn" [class.file-btn--busy]="importing()">
+          <app-icon name="upload" [size]="13"></app-icon>
+          {{ importing() ? 'Importando…' : 'Importar extracto' }}
+          <input type="file" hidden accept=".n43,.943,.c43,.aeb,.txt,.csv" [disabled]="importing()" (change)="onStatementFile($event)" />
+        </label>
+        <app-btn *appPageAction variant="primary" size="sm" (clicked)="enterReconcile()">Conciliar</app-btn>
+      </div>
+    }
+  </div>
+
+  <div class="kpis">
+    <div class="kpi">
+      <span class="kpi__label">Saldo en contabilidad</span>
+      <span class="kpi__value money">{{ fmtEur(ledger()?.closingBalance ?? 0) }}</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi__label">Saldo del último extracto</span>
+      @if (statement()?.lastStatement; as last) {
+        <span class="kpi__value money">{{ fmtEur(last.closingBalance) }}</span>
+        <span class="kpi__sub">{{ last.periodTo ? 'a ' + last.periodTo : last.fileName }}</span>
+      } @else {
+        <span class="kpi__value kpi__value--muted">Sin extracto</span>
+      }
+    </div>
+    <div class="kpi">
+      <span class="kpi__label">Apuntes sin conciliar</span>
+      <span class="kpi__value" [class.kpi__value--warn]="pendingLines().length > 0">{{ pendingLines().length }}</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi__label">Partidas del extracto sin conciliar</span>
+      <span class="kpi__value" [class.kpi__value--warn]="pendingEntries().length > 0">{{ pendingEntries().length }}</span>
+    </div>
+  </div>
+
+  @if (statementGap() !== null && statementGap() !== 0) {
+    <p class="notice" role="status">
+      La contabilidad y el último extracto difieren en <strong class="money">{{ fmtEur(statementGap()!) }}</strong>.
+      Suele deberse a movimientos del banco aún sin registrar o registrados después de la fecha del extracto.
+    </p>
+  }
+  @if (importWarnings().length) {
+    <ul class="notice notice--warn" role="status">
+      @for (w of importWarnings(); track $index) { <li>{{ w }}</li> }
+    </ul>
+  }
+
+  @if (mode() === 'ledger') {
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Asiento</th><th>Concepto</th><th>Contrapartida</th>
+            <th class="num">Importe</th><th class="num">Saldo</th><th>Extracto</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of ledgerLines(); track l.id) {
+            <tr>
+              <td class="nowrap">{{ l.date }}</td>
+              <td class="nowrap muted-cell">{{ l.fiscalYear }}/{{ l.entryNumber }}</td>
+              <td>{{ l.concept }}</td>
+              <td class="sub-cell">
+                @for (c of l.counterparts; track c) { <span class="sub">{{ c }}</span> }
+              </td>
+              <td class="num money" [class.positive]="l.amount > 0" [class.negative]="l.amount < 0">{{ fmtEur(l.amount) }}</td>
+              <td class="num money">{{ fmtEur(l.balance) }}</td>
+              <td>
+                @if (l.reconciliationGroupId) {
+                  <app-badge text="Conciliado" variant="secondary"></app-badge>
+                } @else {
+                  <app-badge text="Pendiente" variant="warning"></app-badge>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="muted">Sin movimientos en esta cuenta. Registra un cobro o un pago, o importa el extracto para conciliarlo.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="recon-header">
+      <button class="back-link" type="button" (click)="exitReconcile()">
+        <app-icon name="arrow-left" [size]="14"></app-icon>
+        Volver al mayor
+      </button>
+      <div class="toolbar__actions">
+        <app-btn variant="outline" size="sm" [disabled]="matching() || !pendingEntries().length || !pendingLines().length" (clicked)="autoMatch()">
+          Conciliar automáticamente
+        </app-btn>
+      </div>
+    </div>
+    <p class="intro">
+      Marca a la izquierda las partidas del extracto y a la derecha los apuntes de la contabilidad que se corresponden.
+      Puedes marcar varias de cada lado, por ejemplo una remesa cobrada en una sola partida del banco. La
+      conciliación automática solo empareja importes exactos con fechas cercanas.
+    </p>
+    @if (lastAuto(); as auto) {
+      <p class="notice" role="status">
+        {{ auto.matched }} conciliadas automáticamente · quedan {{ auto.pendingEntries }} partidas del extracto y {{ auto.pendingLines }} apuntes.
+      </p>
+    }
+
+    <div class="recon-columns">
+      <section class="recon-col" aria-labelledby="recon-bank-title">
+        <h3 class="recon-col__title" id="recon-bank-title">Extracto del banco <span class="count">{{ pendingEntries().length }}</span></h3>
+        <div class="recon-list">
+          @for (e of pendingEntries(); track e.id) {
+            <label class="recon-item" [class.recon-item--selected]="selectedEntries().has(e.id)">
+              <input type="checkbox" [checked]="selectedEntries().has(e.id)" (change)="toggleEntry(e.id)" />
+              <span class="recon-item__main">
+                <span class="recon-item__concept">{{ e.concept }}</span>
+                <span class="recon-item__date">{{ e.date }}@if (e.bankRef) { · {{ e.bankRef }} }</span>
+              </span>
+              <span class="recon-item__amount money" [class.positive]="e.amount > 0" [class.negative]="e.amount < 0">{{ fmtEur(e.amount) }}</span>
+            </label>
+          } @empty {
+            <p class="muted recon-empty">Nada pendiente. Importa el extracto del banco para conciliar.</p>
+          }
+        </div>
+      </section>
+      <section class="recon-col" aria-labelledby="recon-ledger-title">
+        <h3 class="recon-col__title" id="recon-ledger-title">Contabilidad <span class="count">{{ pendingLines().length }}</span></h3>
+        <div class="recon-list">
+          @for (l of pendingLines(); track l.id) {
+            <label class="recon-item" [class.recon-item--selected]="selectedLines().has(l.id)">
+              <input type="checkbox" [checked]="selectedLines().has(l.id)" (change)="toggleLine(l.id)" />
+              <span class="recon-item__main">
+                <span class="recon-item__concept">{{ l.concept }}</span>
+                <span class="recon-item__date">{{ l.date }} · asiento {{ l.fiscalYear }}/{{ l.entryNumber }}</span>
+              </span>
+              <span class="recon-item__amount money" [class.positive]="l.amount > 0" [class.negative]="l.amount < 0">{{ fmtEur(l.amount) }}</span>
+            </label>
+          } @empty {
+            <p class="muted recon-empty">Todos los apuntes de esta cuenta están conciliados.</p>
+          }
+        </div>
+      </section>
+    </div>
+
+    <div class="recon-footer">
+      <div class="recon-footer__sums">
+        <span>Extracto: <strong class="money">{{ fmtEur(selectedEntriesTotal()) }}</strong></span>
+        <span>Contabilidad: <strong class="money">{{ fmtEur(selectedLinesTotal()) }}</strong></span>
+        <span [class.negative]="selectionDiff() !== 0">Diferencia: <strong class="money">{{ fmtEur(selectionDiff()) }}</strong></span>
+      </div>
+      <div class="toolbar__actions">
+        <app-btn variant="outline" size="sm" [disabled]="!selectedEntries().size && !selectedLines().size" (clicked)="clearSelection()">Limpiar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="!canMatch() || matching()" (clicked)="matchSelection()">
+          {{ matching() ? 'Conciliando…' : 'Conciliar selección' }}
+        </app-btn>
+      </div>
+    </div>
+    @if (matchError()) { <p class="form-error" role="alert">{{ matchError() }}</p> }
+
+    <h3 class="section-title">Conciliaciones hechas</h3>
+    @if (reconciledGroups().length === 0) {
+      <p class="muted">Todavía no hay nada conciliado en esta cuenta.</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Extracto</th><th>Contabilidad</th><th class="num">Importe</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+          <tbody>
+            @for (g of reconciledGroups(); track g.id) {
+              <tr>
+                <td>@for (e of g.entries; track e.id) { <span class="sub-strong">{{ e.date }} · {{ e.concept }}</span> }</td>
+                <td>@for (l of g.lines; track l.id) { <span class="sub-strong">{{ l.date }} · {{ l.concept }}</span> }</td>
+                <td class="num money">{{ fmtEur(groupTotal(g)) }}</td>
+                <td class="actions">
+                  <button class="icon-btn" type="button" [attr.aria-label]="'Deshacer la conciliación del ' + (g.entries[0]?.date ?? '')" (click)="unmatch(g.id)">
+                    <app-icon name="x" [size]="14"></app-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+}
+
+@if (showQuick()) {
+  <div class="modal-overlay" (click)="showQuick.set(false)">
+    <div class="modal" role="dialog" aria-labelledby="quick-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Contabilidad · Tesorería</div>
+          <h3 class="modal__title" id="quick-title">{{ quickForm.direction === 'in' ? 'Registrar un cobro' : 'Registrar un pago' }}</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">
+          Para cobros de recibos y pagos de facturas usa Recibos y Proveedores: así quedan imputados a su documento.
+          Aquí van los movimientos sueltos, como una comisión bancaria o un ingreso por publicidad.
+        </p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="qe-direction">Tipo</label>
+            <select id="qe-direction" class="form-input" [(ngModel)]="quickForm.direction" (ngModelChange)="touchQuick()">
+              <option value="in">Cobro (entra dinero)</option>
+              <option value="out">Pago (sale dinero)</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="qe-date">Fecha</label>
+            <input id="qe-date" class="form-input" type="date" [(ngModel)]="quickForm.date" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="qe-place">{{ quickForm.direction === 'in' ? 'Entra en' : 'Sale de' }}</label>
+            <select id="qe-place" class="form-input" [(ngModel)]="quickForm.place">
+              @for (b of banks(); track b.id) { <option [value]="b.id">{{ b.alias }}</option> }
+              <option [value]="CASH">Caja</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="qe-amount">Importe (€)</label>
+            <input id="qe-amount" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="quickForm.amount" />
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label" for="qe-account">{{ quickForm.direction === 'in' ? 'Cuenta de ingreso' : 'Cuenta de gasto' }}</label>
+            <select id="qe-account" class="form-input" [(ngModel)]="quickForm.accountId" (ngModelChange)="touchQuick()">
+              <option value="" disabled>Elige la cuenta</option>
+              @for (a of quickAccounts(); track a.id) { <option [value]="a.id">{{ a.code }} · {{ a.name }}</option> }
+            </select>
+          </div>
+          @if (quickAllowsCostCentre() && costCentres().length) {
+            <div class="form-field form-field--full">
+              <label class="form-label" for="qe-centre">Centro de coste</label>
+              <select id="qe-centre" class="form-input" [(ngModel)]="quickForm.costCentreId">
+                <option value="">Sin centro de coste</option>
+                @for (c of costCentres(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+              </select>
+            </div>
+          }
+          <div class="form-field form-field--full">
+            <label class="form-label" for="qe-concept">Concepto</label>
+            <input id="qe-concept" class="form-input" type="text" maxlength="255" [(ngModel)]="quickForm.concept" />
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label" for="qe-reference">Referencia</label>
+            <input id="qe-reference" class="form-input" type="text" maxlength="100" placeholder="Opcional" [(ngModel)]="quickForm.reference" />
+          </div>
+        </div>
+        @if (quickError()) { <p class="form-error" role="alert">{{ quickError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="showQuick.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="quickSaving()" (clicked)="saveQuick()">
+          {{ quickSaving() ? 'Registrando…' : (quickForm.direction === 'in' ? 'Registrar cobro' : 'Registrar pago') }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showTransfer()) {
+  <div class="modal-overlay" (click)="showTransfer.set(false)">
+    <div class="modal" role="dialog" aria-labelledby="transfer-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Contabilidad · Tesorería</div>
+          <h3 class="modal__title" id="transfer-title">Traspaso entre cuentas</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="tr-from">Desde</label>
+            <select id="tr-from" class="form-input" [(ngModel)]="transferForm.from">
+              @for (b of banks(); track b.id) { <option [value]="b.id">{{ b.alias }}</option> }
+              <option [value]="CASH">Caja</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="tr-to">Hacia</label>
+            <select id="tr-to" class="form-input" [(ngModel)]="transferForm.to">
+              @for (b of banks(); track b.id) { <option [value]="b.id">{{ b.alias }}</option> }
+              <option [value]="CASH">Caja</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="tr-date">Fecha</label>
+            <input id="tr-date" class="form-input" type="date" [(ngModel)]="transferForm.date" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="tr-amount">Importe (€)</label>
+            <input id="tr-amount" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="transferForm.amount" />
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label" for="tr-concept">Concepto</label>
+            <input id="tr-concept" class="form-input" type="text" maxlength="255" placeholder="Opcional" [(ngModel)]="transferForm.concept" />
+          </div>
+        </div>
+        @if (transferError()) { <p class="form-error" role="alert">{{ transferError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="showTransfer.set(false)">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="transferSaving()" (clicked)="saveTransfer()">
+          {{ transferSaving() ? 'Registrando…' : 'Registrar traspaso' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast" role="status">{{ toastMessage() }}</div>
+}

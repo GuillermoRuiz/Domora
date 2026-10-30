@@ -1,0 +1,32 @@
+// Patrón de "step-indicator" de los wizards (nueva-remesa.component.scss y
+// migracion.component.scss ya lo duplicaban a mano, idéntico salvo detalles
+// cosméticos — el propio comentario de migracion lo admite). Esto NO
+// deduplica todo el CSS del wizard, solo el comportamiento responsive: una
+// fila de 4-5 "step-pill" (círculo + etiqueta + conector) con el nombre
+// completo de cada paso desborda un viewport de 375px. Bajo 'phone' se
+// esconde la etiqueta de los pasos que no están activos — quedan los
+// círculos numerados + conectores, mucho más compactos, y el nombre del
+// paso actual sigue visible — sin tocar el HTML de cada wizard.
+@use 'breakpoints' as bp;
+
+@mixin collapse-on-phone {
+  @include bp.respond-to('phone') {
+    .step-indicator {
+      flex-wrap: wrap;
+    }
+
+    .step-label:not(.step-label--active) {
+      display: none;
+    }
+
+    .step-circle {
+      width: 20px;
+      height: 20px;
+      font-size: 11px;
+    }
+
+    .step-connector {
+      width: 10px;
+    }
+  }
+}

@@ -1,0 +1,178 @@
+<div class="toolbar">
+  <form class="filters" (ngSubmit)="search()">
+    <label class="field-inline" for="jr-from">
+      Desde
+      <input id="jr-from" name="from" class="form-input" type="date" [(ngModel)]="filters.from" />
+    </label>
+    <label class="field-inline" for="jr-to">
+      Hasta
+      <input id="jr-to" name="to" class="form-input" type="date" [(ngModel)]="filters.to" />
+    </label>
+    <label class="field-inline" for="jr-source">
+      Origen
+      <select id="jr-source" name="sourceType" class="form-input" [(ngModel)]="filters.sourceType">
+        <option value="">Todos</option>
+        @for (o of sourceOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+      </select>
+    </label>
+    <label class="field-inline" for="jr-account">
+      Cuenta
+      <select id="jr-account" name="accountId" class="form-input" [(ngModel)]="filters.accountId">
+        <option value="">Todas</option>
+        @for (a of filterAccounts(); track a.id) { <option [value]="a.id">{{ a.code }} · {{ a.name }}</option> }
+      </select>
+    </label>
+    <label class="field-inline field-inline--grow" for="jr-q">
+      Concepto
+      <input id="jr-q" name="q" class="form-input" type="search" maxlength="100" placeholder="Buscar en el concepto" [(ngModel)]="filters.q" />
+    </label>
+    <div class="filters__actions">
+      <app-btn variant="outline" size="sm" type="submit">Filtrar</app-btn>
+      <app-btn variant="ghost" size="sm" (clicked)="clearFilters()">Limpiar</app-btn>
+    </div>
+  </form>
+  <app-btn *appPageAction variant="primary" size="sm" [disabled]="loading()" (clicked)="showManual.set(true)">
+    <app-icon name="plus" [size]="13"></app-icon>
+    Asiento manual
+  </app-btn>
+</div>
+
+@if (loading()) {
+  <p class="muted">Cargando…</p>
+} @else {
+  <p class="summary muted">{{ total() }} asientos · los más recientes primero</p>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nº</th><th>Fecha</th><th>Origen</th><th>Concepto</th><th class="num">Importe</th><th><span class="sr-only">Detalle</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of entries(); track e.id) {
+          <tr class="entry-row" [class.entry-row--open]="expandedId() === e.id" [class.row--cancelled]="e.reversedBy">
+            <td class="nowrap mono">{{ e.fiscalYear }}/{{ e.number }}</td>
+            <td class="nowrap">{{ e.date }}</td>
+            <td class="nowrap">{{ e.sourceLabel }}</td>
+            <td>
+              {{ e.concept }}
+              @if (e.reversedBy) { <app-badge [text]="'Anulado por ' + e.reversedBy.fiscalYear + '/' + e.reversedBy.number" variant="default"></app-badge> }
+              @if (e.reverses) { <app-badge [text]="'Anula el ' + e.reverses.fiscalYear + '/' + e.reverses.number" variant="warning"></app-badge> }
+              @if (e.attachments.length) { <span class="sub">{{ e.attachments.length }} justificante{{ e.attachments.length > 1 ? 's' : '' }}</span> }
+            </td>
+            <td class="num money">{{ fmtEur(e.total) }}</td>
+            <td class="actions">
+              <button class="icon-btn" type="button" [attr.aria-expanded]="expandedId() === e.id"
+                [attr.aria-label]="(expandedId() === e.id ? 'Ocultar' : 'Ver') + ' el asiento ' + e.fiscalYear + '/' + e.number" (click)="toggle(e.id)">
+                <app-icon name="chevron-down" [size]="14"></app-icon>
+              </button>
+            </td>
+          </tr>
+          @if (expandedId() === e.id) {
+            <tr class="detail-row">
+              <td colspan="6">
+                <table class="lines">
+                  <thead><tr><th>Cuenta</th><th>Detalle</th><th class="num">Debe</th><th class="num">Haber</th></tr></thead>
+                  <tbody>
+                    @for (l of e.lines; track l.lineNo) {
+                      <tr>
+                        <td><span class="mono">{{ l.accountCode }}</span> {{ l.accountName }}</td>
+                        <td>
+                          @if (l.concept && l.concept !== e.concept) { <span class="sub-strong">{{ l.concept }}</span> }
+                          <span class="sub">{{ lineDimensions(l) }}</span>
+                        </td>
+                        <td class="num money">{{ l.debit ? fmtEur(l.debit) : '' }}</td>
+                        <td class="num money">{{ l.credit ? fmtEur(l.credit) : '' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                <div class="detail-footer">
+                  <div class="attachments">
+                    @if (e.reference) { <span class="sub">Referencia: {{ e.reference }}</span> }
+                    @for (a of e.attachments; track a.id) {
+                      <button class="link-btn" type="button" (click)="downloadAttachment(e, a)">
+                        <app-icon name="download" [size]="13"></app-icon>
+                        {{ a.fileName }}
+                      </button>
+                    }
+                  </div>
+                  <div class="toolbar__actions">
+                    <label class="file-btn" [class.file-btn--busy]="uploadingId() === e.id">
+                      <app-icon name="upload" [size]="13"></app-icon>
+                      {{ uploadingId() === e.id ? 'Subiendo…' : 'Adjuntar justificante' }}
+                      <input type="file" hidden [disabled]="uploadingId() === e.id" (change)="onAttachmentFile(e, $event)" />
+                    </label>
+                    @if (e.canReverse) {
+                      <app-btn variant="outline" size="sm" (clicked)="openReverse(e)">Anular</app-btn>
+                    }
+                  </div>
+                </div>
+              </td>
+            </tr>
+          }
+        } @empty {
+          <tr><td colspan="6" class="muted">No hay asientos con estos filtros.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (pages() > 1) {
+    <nav class="pager" aria-label="Páginas del diario">
+      <app-btn variant="outline" size="sm" [disabled]="page() <= 1" (clicked)="goTo(page() - 1)">Anterior</app-btn>
+      <span class="muted">Página {{ page() }} de {{ pages() }}</span>
+      <app-btn variant="outline" size="sm" [disabled]="page() >= pages()" (clicked)="goTo(page() + 1)">Siguiente</app-btn>
+    </nav>
+  }
+}
+
+@if (showManual()) {
+  <app-asiento-manual-dialog
+    [estateId]="estateId"
+    [accounts]="accounts()"
+    [costCentres]="costCentres()"
+    (saved)="onManualSaved($event)"
+    (closed)="showManual.set(false)">
+  </app-asiento-manual-dialog>
+}
+
+@if (reversing(); as e) {
+  <div class="modal-overlay" (click)="reversing.set(null)">
+    <div class="modal" role="dialog" aria-labelledby="reverse-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Diario · asiento {{ e.fiscalYear }}/{{ e.number }}</div>
+          <h3 class="modal__title" id="reverse-title">Anular el asiento</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">
+          El asiento no se borra: se registra un contraasiento con los mismos importes en el lado contrario, y los dos
+          quedan en el diario. «{{ e.concept }}», {{ fmtEur(e.total) }}.
+        </p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="rv-date">Fecha del contraasiento</label>
+            <input id="rv-date" class="form-input" type="date" [(ngModel)]="reverseForm.date" />
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label" for="rv-reason">Motivo</label>
+            <input id="rv-reason" class="form-input" type="text" maxlength="200" [(ngModel)]="reverseForm.reason" />
+          </div>
+        </div>
+        @if (reverseError()) { <p class="form-error" role="alert">{{ reverseError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="reversing.set(null)">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="reverseSaving()" (clicked)="confirmReverse()">
+          {{ reverseSaving() ? 'Anulando…' : 'Anular asiento' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast" role="status">{{ toastMessage() }}</div>
+}

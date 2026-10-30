@@ -1,0 +1,24 @@
+<app-section-card [title]="'Gasto por proveedor · ' + year">
+  @if (rows().length === 0) {
+    <p class="spend__empty">Aún no hay gasto registrado en {{ year }}.</p>
+  } @else {
+    <p class="spend__total">Total facturado: <strong>{{ totalLabel() }}</strong></p>
+    <ol class="spend__list">
+      @for (row of rows(); track row.id ?? 'others') {
+        <li class="spend__row" [attr.data-supplier]="row.id ?? 'others'">
+          <div class="spend__head">
+            @if (row.id; as id) {
+              <button type="button" class="spend__name spend__name--link" (click)="selectSupplier.emit(id)">{{ row.name }}</button>
+            } @else {
+              <span class="spend__name">{{ row.name }}</span>
+            }
+            <span class="spend__amount">{{ row.amount }}</span>
+            <span class="spend__share">{{ row.share }}</span>
+          </div>
+          <div class="spend__track" aria-hidden="true"><span class="spend__bar" [style.width.%]="row.width"></span></div>
+          <span class="spend__detail">{{ row.detail }}</span>
+        </li>
+      }
+    </ol>
+  }
+</app-section-card>

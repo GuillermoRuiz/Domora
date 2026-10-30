@@ -1,0 +1,374 @@
+@if (loading()) {
+  <p class="settings-text">Cargando saldos iniciales…</p>
+} @else if (loadError()) {
+  <p class="action-error" role="alert">{{ loadError() }}</p>
+} @else {
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Estado</span>
+    </div>
+    <div class="settings-body">
+      <p class="settings-text">
+        Lo anterior a la fecha de inicio contable ({{ settings()?.cutoverDate | date:'d/M/yyyy' }}) entra como un
+        único asiento de apertura, exactamente en esa fecha: saldo bancario, deudas de cada propietario por año,
+        anticipos, facturas de proveedor pendientes y otros saldos (fondo de reserva, retenciones…).
+      </p>
+      @if (isPosted() && !editing()) {
+        <p class="settings-fixed">
+          <app-badge text="Contabilizado" variant="secondary"></app-badge>
+          <span class="td-muted"> · {{ view()?.postedAt | date:'d/M/yyyy, HH:mm' }}</span>
+        </p>
+        <app-btn variant="outline" size="sm" (clicked)="startCorrection()">Corregir saldos iniciales</app-btn>
+      } @else if (isCorrection()) {
+        <p class="settings-hint">
+          Corrigiendo un asiento ya contabilizado: al confirmar, se revierte el anterior con su contraasiento y se
+          contabiliza este en la misma operación.
+        </p>
+      } @else {
+        <p class="settings-hint">Borrador — nada de esto se contabiliza hasta pulsar "Contabilizar apertura".</p>
+      }
+      @if (settings()?.noPriorBalancesConfirmedAt; as confirmedAt) {
+        <p class="settings-fixed td-muted">
+          Confirmado el {{ confirmedAt | date:'d/M/yyyy' }}: esta finca no tenía saldos previos.
+        </p>
+      }
+    </div>
+  </div>
+
+  @if (editing() && !isPosted() && !hasAnyRow()) {
+    <div class="card card--spaced">
+      <div class="card__header"><span class="card__title">¿Esta finca ya llevaba contabilidad en otro programa?</span></div>
+      <div class="settings-body">
+        <p class="settings-text">
+          Si no, confírmalo aquí y el paso queda hecho sin necesidad de ningún asiento. Si sí, continúa más abajo con
+          los saldos que traía.
+        </p>
+        <div class="settings-row">
+          <label class="form-field">
+            Nota (opcional)
+            <input type="text" id="no-prior-note" placeholder="ej. Finca nueva, sin gestión previa"
+              [ngModel]="noPriorNote()" (ngModelChange)="noPriorNote.set($event)" />
+          </label>
+          <app-btn variant="outline" size="sm" [disabled]="noPriorSaving()" (clicked)="confirmNoPriorBalances()">
+            {{ noPriorSaving() ? 'Guardando…' : 'No tiene saldos previos' }}
+          </app-btn>
+        </div>
+        @if (noPriorError()) { <span class="field-error" role="alert">{{ noPriorError() }}</span> }
+      </div>
+    </div>
+  }
+
+  @if (editing()) {
+
+    <!-- Bancos -->
+    <div class="card card--spaced">
+      <div class="card__header"><span class="card__title">Bancos</span></div>
+      <p class="card__hint">El saldo contable de cada cuenta el día antes de la fecha de inicio.</p>
+      @if (banks().length === 0) {
+        <p class="settings-hint">No hay ninguna cuenta bancaria: crea una primero en Ajustes.</p>
+      } @else {
+        <div class="settings-row">
+          <label class="form-field">
+            Cuenta
+            <select id="bank-select" [ngModel]="bankAccountIdDraft()" (ngModelChange)="bankAccountIdDraft.set($event)">
+              <option value="" disabled>— Selecciona —</option>
+              @for (b of banks(); track b.id) { <option [value]="b.id">{{ b.alias }}</option> }
+            </select>
+          </label>
+          <label class="form-field">
+            Saldo
+            <input type="text" inputmode="decimal" placeholder="ej. 12.500,00" id="bank-balance"
+              [ngModel]="bankBalanceDraft()" (ngModelChange)="bankBalanceDraft.set($event)" />
+          </label>
+          <app-btn variant="outline" size="sm" (clicked)="addBank()">Añadir</app-btn>
+        </div>
+      }
+      @if (bankRows().length > 0) {
+        <table class="table">
+          <thead><tr><th>Cuenta</th><th class="th-money">Saldo</th><th class="th-actions"></th></tr></thead>
+          <tbody>
+            @for (r of bankRows(); track $index; let i = $index) {
+              <tr>
+                <td>{{ bankLabel().get(r.bankAccountId) ?? r.bankAccountId }}</td>
+                <td class="td-money">{{ r.balance | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="td-actions"><button type="button" class="link-btn link-btn--danger" (click)="removeBank(i)">Quitar</button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <!-- Deudas por propiedad y año -->
+    <div class="card card--spaced">
+      <div class="card__header"><span class="card__title">Deudas por propiedad y año</span></div>
+      <p class="card__hint">
+        Una fila por año de origen (art. 9.1.e LPH). Cada una crea su propio recibo "saldo anterior" al contabilizar.
+      </p>
+      <div class="settings-row">
+        <label class="form-field">
+          Propiedad
+          <select id="debt-property" [ngModel]="debtPropertyIdDraft()" (ngModelChange)="debtPropertyIdDraft.set($event)">
+            <option value="" disabled>— Selecciona —</option>
+            @for (p of properties(); track p.id) { <option [value]="p.id">{{ propertyLabelById().get(p.id) }}</option> }
+          </select>
+        </label>
+        <label class="form-field">
+          Año
+          <input type="number" id="debt-year" [ngModel]="debtOriginYearDraft()" (ngModelChange)="debtOriginYearDraft.set($event)" />
+        </label>
+        <label class="form-field">
+          Concepto
+          <input type="text" id="debt-concept" placeholder="ej. Cuotas 2024 pendientes" [ngModel]="debtConceptDraft()" (ngModelChange)="debtConceptDraft.set($event)" />
+        </label>
+        <label class="form-field">
+          Importe
+          <input type="text" inputmode="decimal" id="debt-amount" [ngModel]="debtAmountDraft()" (ngModelChange)="debtAmountDraft.set($event)" />
+        </label>
+        <label class="form-field">
+          Vencimiento (opcional)
+          <input type="date" id="debt-due-date" [ngModel]="debtDueDateDraft()" (ngModelChange)="debtDueDateDraft.set($event)" />
+        </label>
+        <app-btn variant="outline" size="sm" (clicked)="addDebt()">Añadir</app-btn>
+      </div>
+      @if (debtRows().length > 0) {
+        <table class="table">
+          <thead><tr><th>Propiedad</th><th>Año</th><th>Concepto</th><th class="th-money">Importe</th><th class="th-actions"></th></tr></thead>
+          <tbody>
+            @for (r of debtRows(); track $index; let i = $index) {
+              <tr>
+                <td>{{ propertyLabelById().get(r.propertyId) ?? r.propertyId }}</td>
+                <td>{{ r.originYear }}</td>
+                <td>{{ r.concept }}</td>
+                <td class="td-money">{{ r.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="td-actions"><button type="button" class="link-btn link-btn--danger" (click)="removeDebt(i)">Quitar</button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <!-- Anticipos -->
+    <div class="card card--spaced">
+      <div class="card__header"><span class="card__title">Anticipos de propietarios</span></div>
+      <p class="card__hint">Saldo a favor del propietario: nunca se compensa automáticamente con su deuda.</p>
+      <div class="settings-row">
+        <label class="form-field">
+          Propiedad
+          <select id="adv-property" [ngModel]="advPropertyIdDraft()" (ngModelChange)="advPropertyIdDraft.set($event)">
+            <option value="" disabled>— Selecciona —</option>
+            @for (p of properties(); track p.id) { <option [value]="p.id">{{ propertyLabelById().get(p.id) }}</option> }
+          </select>
+        </label>
+        <label class="form-field">
+          Concepto
+          <input type="text" id="adv-concept" placeholder="ej. Anticipo obras" [ngModel]="advConceptDraft()" (ngModelChange)="advConceptDraft.set($event)" />
+        </label>
+        <label class="form-field">
+          Importe
+          <input type="text" inputmode="decimal" id="adv-amount" [ngModel]="advAmountDraft()" (ngModelChange)="advAmountDraft.set($event)" />
+        </label>
+        <app-btn variant="outline" size="sm" (clicked)="addAdvance()">Añadir</app-btn>
+      </div>
+      @if (advanceRows().length > 0) {
+        <table class="table">
+          <thead><tr><th>Propiedad</th><th>Concepto</th><th class="th-money">Importe</th><th class="th-actions"></th></tr></thead>
+          <tbody>
+            @for (r of advanceRows(); track $index; let i = $index) {
+              <tr>
+                <td>{{ propertyLabelById().get(r.propertyId) ?? r.propertyId }}</td>
+                <td>{{ r.concept }}</td>
+                <td class="td-money">{{ r.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="td-actions"><button type="button" class="link-btn link-btn--danger" (click)="removeAdvance(i)">Quitar</button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <!-- Proveedores pendientes -->
+    <div class="card card--spaced">
+      <div class="card__header"><span class="card__title">Facturas de proveedor pendientes</span></div>
+      <p class="card__hint">El proveedor tiene que existir ya — dalo de alta primero en Proveedores.</p>
+      @if (suppliers().length === 0) {
+        <p class="settings-hint">No hay ningún proveedor dado de alta en esta finca.</p>
+      } @else {
+        <div class="settings-row">
+          <label class="form-field">
+            Proveedor
+            <select id="inv-supplier" [ngModel]="invSupplierIdDraft()" (ngModelChange)="invSupplierIdDraft.set($event)">
+              <option value="" disabled>— Selecciona —</option>
+              @for (s of suppliers(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+            </select>
+          </label>
+          <label class="form-field">
+            Nº factura
+            <input type="text" id="inv-number" [ngModel]="invNumberDraft()" (ngModelChange)="invNumberDraft.set($event)" />
+          </label>
+          <label class="form-field">
+            Concepto
+            <input type="text" id="inv-concept" [ngModel]="invConceptDraft()" (ngModelChange)="invConceptDraft.set($event)" />
+          </label>
+          <label class="form-field">
+            Fecha
+            <input type="date" id="inv-issue-date" [ngModel]="invIssueDateDraft()" (ngModelChange)="invIssueDateDraft.set($event)" />
+          </label>
+          <label class="form-field">
+            Vencimiento (opcional)
+            <input type="date" id="inv-due-date" [ngModel]="invDueDateDraft()" (ngModelChange)="invDueDateDraft.set($event)" />
+          </label>
+          <label class="form-field">
+            Pendiente de pago
+            <input type="text" inputmode="decimal" id="inv-amount" [ngModel]="invAmountDraft()" (ngModelChange)="invAmountDraft.set($event)" />
+          </label>
+          <app-btn variant="outline" size="sm" (clicked)="addInvoice()">Añadir</app-btn>
+        </div>
+      }
+      @if (invoiceRows().length > 0) {
+        <table class="table">
+          <thead><tr><th>Proveedor</th><th>Factura</th><th>Concepto</th><th class="th-money">Pendiente</th><th class="th-actions"></th></tr></thead>
+          <tbody>
+            @for (r of invoiceRows(); track $index; let i = $index) {
+              <tr>
+                <td>{{ supplierLabel().get(r.supplierId) ?? r.supplierId }}</td>
+                <td class="td-code">{{ r.number }}</td>
+                <td>{{ r.concept }}</td>
+                <td class="td-money">{{ r.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="td-actions"><button type="button" class="link-btn link-btn--danger" (click)="removeInvoice(i)">Quitar</button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <!-- Otros saldos -->
+    <div class="card card--spaced">
+      <div class="card__header"><span class="card__title">Otros saldos</span></div>
+      <p class="card__hint">Fondo de reserva ya existente, remanente, retenciones pendientes de ingresar…</p>
+      <div class="settings-row">
+        <label class="form-field">
+          Cuenta
+          <select id="other-role" [ngModel]="otherRoleDraft()" (ngModelChange)="otherRoleDraft.set($event)">
+            @for (o of otherRoleOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+          </select>
+        </label>
+        <label class="form-field">
+          Concepto
+          <input type="text" id="other-concept" [ngModel]="otherConceptDraft()" (ngModelChange)="otherConceptDraft.set($event)" />
+        </label>
+        <label class="form-field">
+          Lado
+          <select id="other-side" [ngModel]="otherSideDraft()" (ngModelChange)="otherSideDraft.set($event)">
+            <option value="debit">Debe</option>
+            <option value="credit">Haber</option>
+          </select>
+        </label>
+        <label class="form-field">
+          Importe
+          <input type="text" inputmode="decimal" id="other-amount" [ngModel]="otherAmountDraft()" (ngModelChange)="otherAmountDraft.set($event)" />
+        </label>
+        <app-btn variant="outline" size="sm" (clicked)="addOther()">Añadir</app-btn>
+      </div>
+      @if (otherRows().length > 0) {
+        <table class="table">
+          <thead><tr><th>Cuenta</th><th>Concepto</th><th>Lado</th><th class="th-money">Importe</th><th class="th-actions"></th></tr></thead>
+          <tbody>
+            @for (r of otherRows(); track $index; let i = $index) {
+              <tr>
+                <td>{{ otherRoleLabelByValue.get(r.role) ?? r.role }}</td>
+                <td>{{ r.concept }}</td>
+                <td>{{ r.side === 'debit' ? 'Debe' : 'Haber' }}</td>
+                <td class="td-money">{{ r.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="td-actions"><button type="button" class="link-btn link-btn--danger" (click)="removeOther(i)">Quitar</button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    @if (rowError()) {
+      <p class="action-error" role="alert">{{ rowError() }}</p>
+    }
+
+    <!-- Diferencia -->
+    <div class="card card--spaced">
+      <div class="card__header"><span class="card__title">Diferencia</span></div>
+      <div class="settings-body">
+        <p class="settings-text">Debe cuadrar al céntimo. Si no, hay que aceptar explícitamente a dónde va la diferencia.</p>
+        <app-btn variant="outline" size="sm" [disabled]="saving() || !hasAnyRow()" (clicked)="refreshDifference()">
+          {{ saving() ? 'Calculando…' : 'Guardar y calcular diferencia' }}
+        </app-btn>
+        @if (validateResult(); as r) {
+          <div class="info-card" style="margin-top:12px">
+            <div class="info-row"><span class="info-row__key">Debe</span><span class="info-row__val">{{ r.debit | currency:'EUR':'symbol':'1.2-2':'es' }}</span></div>
+            <div class="info-row"><span class="info-row__key">Haber</span><span class="info-row__val">{{ r.credit | currency:'EUR':'symbol':'1.2-2':'es' }}</span></div>
+            <div class="info-row"><span class="info-row__key">Diferencia</span><span class="info-row__val">{{ r.difference | currency:'EUR':'symbol':'1.2-2':'es' }}</span></div>
+          </div>
+          @for (m of r.bankMismatches; track m.bankAccountId) {
+            <p class="settings-hint">
+              {{ m.bankAccountAlias }}: introducido {{ m.entered | currency:'EUR':'symbol':'1.2-2':'es' }},
+              extracto {{ m.statementBalance | currency:'EUR':'symbol':'1.2-2':'es' }}.
+            </p>
+          }
+          @if (needsDifferenceRole()) {
+            <label class="form-field" style="margin-top:12px">
+              A dónde va la diferencia (y la contrapartida de deudas/facturas)
+              <select id="difference-role" [ngModel]="differenceRoleDraft()" (ngModelChange)="differenceRoleDraft.set($event)">
+                @for (o of differenceRoleOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+              </select>
+            </label>
+          }
+        }
+        @if (saveError()) { <span class="field-error" role="alert">{{ saveError() }}</span> }
+      </div>
+    </div>
+
+    <!-- Confirmar -->
+    <div class="card card--spaced">
+      <div class="card__header"><span class="card__title">Confirmar</span></div>
+      <div class="settings-body">
+        <p class="settings-text">
+          Al contabilizar, cada deuda crea su recibo de "saldo anterior" y cada factura su factura de proveedor —
+          ambos con su propio asiento, todo en la fecha de inicio contable.
+        </p>
+        <app-btn variant="primary" size="sm" [disabled]="posting() || !hasAnyRow()" (clicked)="confirmPost()">
+          {{ posting() ? 'Contabilizando…' : (isCorrection() ? 'Volver a contabilizar' : 'Contabilizar apertura') }}
+        </app-btn>
+        @if (postError()) { <span class="field-error" role="alert">{{ postError() }}</span> }
+      </div>
+    </div>
+
+  } @else {
+    <!-- Solo lectura: ya contabilizado -->
+    @if (view(); as v) {
+      <div class="card card--spaced">
+        <div class="card__header"><span class="card__title">Asiento de apertura</span></div>
+        <table class="table">
+          <thead><tr><th>Concepto</th><th class="th-money">Importe</th></tr></thead>
+          <tbody>
+            @for (r of v.bankBalances; track r.id) { <tr><td>Banco · {{ r.bankAccountAlias }}</td><td class="td-money">{{ r.balance | currency:'EUR':'symbol':'1.2-2':'es' }}</td></tr> }
+            @for (r of v.propertyDebts; track r.id) { <tr><td>Deuda {{ r.originYear }} · {{ r.propertyLabel }}</td><td class="td-money">{{ r.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td></tr> }
+            @for (r of v.propertyAdvances; track r.id) { <tr><td>Anticipo · {{ r.propertyLabel }}</td><td class="td-money">{{ r.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td></tr> }
+            @for (r of v.supplierInvoices; track r.id) { <tr><td>Factura · {{ r.supplierName }} ({{ r.number }})</td><td class="td-money">{{ r.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td></tr> }
+            @for (r of v.otherBalances; track r.id) { <tr><td>{{ otherRoleLabelByValue.get(r.role) ?? r.role }} · {{ r.concept }}</td><td class="td-money">{{ r.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td></tr> }
+          </tbody>
+        </table>
+        @if (v.difference !== null && v.difference !== 0) {
+          <p class="settings-hint">Diferencia aceptada: {{ v.difference | currency:'EUR':'symbol':'1.2-2':'es' }}.</p>
+        }
+      </div>
+    }
+  }
+
+  @if (toastMessage()) {
+    <div class="toast">
+      <app-icon name="check" [size]="14"></app-icon>
+      {{ toastMessage() }}
+    </div>
+  }
+}

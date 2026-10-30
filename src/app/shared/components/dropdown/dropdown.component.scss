@@ -1,0 +1,91 @@
+@use 'dropdown-panel' as dd;
+
+:host { display: block; position: relative; min-width: 0; }
+
+/* Mismas medidas, borde, radio y foco que los <select> de Domora; la fuente se hereda. */
+.dd__trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%;
+  padding: 7px 10px 7px 8px; min-height: 36px; font-size: 14px; font-family: inherit; text-align: left;
+  color: var(--color-text); background-color: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &:hover:not(:disabled) { border-color: var(--color-accent); }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+.dd__trigger--active {
+  border-color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+}
+
+/* Como `app-btn` primary: fondo primario, borde dorado de 1px, sin halo de foco. */
+.dd__trigger--cta {
+  justify-content: center; gap: 8px; width: auto; padding: 8px 16px; font-size: 15px; font-weight: 500; min-height: 0;
+  color: #fff; background-color: var(--color-primary); border-color: var(--color-accent);
+  &:hover:not(:disabled) { background-color: var(--color-primary-hover); }
+  &:focus-visible { outline: none; }
+  .dd__value { flex: 0 1 auto; }
+  .dd__chevron { color: inherit; }
+}
+.dd__trigger--cta.dd__trigger--active { background-color: var(--color-primary); }
+
+.dd__value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd__value--placeholder { color: var(--color-muted); }
+
+.dd__chevron { flex-shrink: 0; display: inline-flex; color: var(--color-muted); transition: transform 0.18s ease; }
+:host(.dropdown--open) .dd__chevron { transform: rotate(180deg); }
+
+.dd__panel {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 41;
+  min-width: 100%; width: max-content; max-width: min(360px, calc(100vw - 32px)); max-height: 280px; overflow-y: auto;
+  @include dd.dd-panel-surface;
+
+  /* Cerrado: más rápido y sin capturar clics; `visibility` espera a que acabe el fundido. */
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: translateY(-6px) scaleY(0.97); transform-origin: top;
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0s linear 0.12s,
+    max-height 0s linear 0.12s, padding-block 0s linear 0.12s, border-block-width 0s linear 0.12s;
+}
+/* Cerrado se pliega a alto 0 (tras el fundido): invisible no basta, un panel absoluto sigue ampliando el scroll del contenedor. */
+.dd__panel:not(.dd__panel--open) { max-height: 0 !important; overflow: hidden; padding-block: 0; border-block-width: 0; }
+.dd__panel--end { left: auto; right: 0; }
+.dd__panel--up { top: auto; bottom: calc(100% + 4px); transform-origin: bottom; transform: translateY(6px) scaleY(0.97); }
+.dd__panel--open {
+  opacity: 1; visibility: visible; pointer-events: auto; transform: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s;
+}
+
+.dd__option {
+  @include dd.dd-option;
+  @include dd.dd-option-states;
+}
+.dd__option-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Con descripción: etiqueta y explicación en dos líneas; la explicación puede partirse. */
+.dd__option-text--described { display: flex; flex-direction: column; gap: 2px; white-space: normal; }
+.dd__option-desc { font-size: 12px; font-weight: 400; color: var(--color-muted); line-height: 1.35; }
+.dd__empty { padding: 8px; font-size: 13px; color: var(--color-muted); }
+.dd__footer { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--color-border); }
+.dd__clear {
+  width: 100%; min-height: 32px; padding: 7px 8px; font: inherit; font-size: 14px; text-align: left;
+  color: var(--color-accent); border-radius: var(--radius-sm);
+  &:hover:not(:disabled) { background: var(--color-surface-hover); }
+  &:disabled { color: var(--color-muted); cursor: default; }
+}
+.dd__extra { margin-top: 4px; padding: 6px 4px 2px; border-top: 1px solid var(--color-border); &:empty { display: none; } }
+.dd__check { flex-shrink: 0; display: inline-flex; color: var(--color-accent); }
+
+/* En pantallas estrechas el menú no se ensancha más que el botón: así nunca se sale de la pantalla. */
+@media (max-width: 720px) {
+  .dd__panel { width: 100%; max-width: 100%; }
+}
+
+/* Pantallas táctiles: objetivos de al menos 40-44px. */
+@media (pointer: coarse) {
+  .dd__trigger { min-height: 40px; }
+  .dd__option { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dd__panel, .dd__panel--open, .dd__chevron { transition: none; }
+}

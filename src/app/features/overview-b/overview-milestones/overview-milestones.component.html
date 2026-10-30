@@ -1,0 +1,30 @@
+<app-section-card title="Próximos hitos" [padded]="false">
+  @if (error() && !data()) {
+    <p class="milestones__message milestones__message--error" role="alert">
+      No se pudieron cargar los hitos.
+      <button type="button" class="milestones__retry" (click)="retry()()">Reintentar</button>
+    </p>
+  } @else if (!data()) {
+    <p class="milestones__message" role="status">Cargando hitos…</p>
+  } @else if (rows().length === 0) {
+    <p class="milestones__message">No hay nada previsto en los próximos 30 días.</p>
+  } @else {
+    <ul class="milestones" [attr.aria-busy]="loading()" aria-label="Próximos hitos">
+      @for (row of rows(); track row.item.id) {
+        <li>
+          <button type="button" class="milestones__row" [attr.data-kind]="row.item.kind" (click)="open.emit(row.item)">
+            <span class="milestones__date" aria-hidden="true">
+              <span class="milestones__day">{{ row.day }}</span>
+              <span class="milestones__month">{{ row.month }}</span>
+            </span>
+            <span class="milestones__text">
+              <span class="milestones__title">{{ row.item.title }}</span>
+              <span class="milestones__detail">{{ row.item.estateName }} · {{ row.when }}</span>
+            </span>
+            <span class="milestones__kind"><app-icon [name]="row.icon" [size]="14"></app-icon>{{ row.kind }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-section-card>

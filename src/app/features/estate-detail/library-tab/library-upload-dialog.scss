@@ -1,0 +1,24 @@
+.drop {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 16px; cursor: pointer; text-align: center;
+  color: var(--color-muted); font-size: 14px;
+  border: 1.5px dashed var(--color-border); border-radius: var(--radius-md);
+  strong { color: var(--color-accent); }
+  small { font-size: 12.5px; }
+  &:focus-within { border-color: var(--color-accent); }
+}
+.drop--over { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
+
+.queue { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; max-height: 180px; overflow-y: auto; }
+.queue__item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 13.5px;
+  background: var(--color-surface-hover); border-radius: var(--radius-md);
+  app-icon { display: inline-flex; color: var(--color-muted); }
+}
+.queue__item--error { color: var(--color-error); app-icon { color: inherit; } }
+.queue__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text); }
+.queue__state { flex-shrink: 0; font-size: 12.5px; color: inherit; font-variant-numeric: tabular-nums; }
+.queue__item:not(.queue__item--error) .queue__state { color: var(--color-muted); }
+.queue__remove { display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer; color: var(--color-muted); }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }

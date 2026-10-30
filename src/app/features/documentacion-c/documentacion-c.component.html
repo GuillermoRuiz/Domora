@@ -1,0 +1,240 @@
+<app-topbar title="Documentación" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="docs__topbar-scope">
+    @if (scope.items().length > 0) {
+      <app-community-scope-selector [groups]="scope.groups()" [selectedId]="scope.selected()?.id ?? null" [showAll]="scope.showAll()"
+        (choose)="scope.select($event)" (addProperty)="openAddProperty()"></app-community-scope-selector>
+    }
+  </div>
+</app-topbar>
+
+<div class="page-content">
+  <header class="docs__header">
+    <div class="docs__intro">
+      <h1 class="docs__title">Documentación</h1>
+      <p class="docs__sub">Documentos de tu comunidad disponibles para su consulta y descarga.</p>
+      @if (scope.items().length > 0) {
+        <span class="docs__chip" data-scope-chip>
+          <app-icon name="file-text" [size]="14"></app-icon>
+          Ámbito actual: <strong>{{ scopeName() }}</strong>
+        </span>
+      }
+    </div>
+  </header>
+
+  @if (scope.failed()) {
+    <p class="docs__message docs__message--error" role="alert">No se pudieron cargar tus propiedades. Inténtalo de nuevo.</p>
+  } @else if (!scope.loaded()) {
+    <p class="docs__message">Cargando…</p>
+  } @else if (scope.items().length === 0) {
+    <section class="docs__empty" data-empty>
+      <h3>Todavía no tienes ninguna propiedad vinculada</h3>
+      <p>Añade tu propiedad o solicita vincularla a tu comunidad para consultar sus documentos.</p>
+      <button type="button" class="btn-accent" (click)="openAddProperty()">
+        <app-icon name="plus" [size]="14"></app-icon>
+        Añadir propiedad
+      </button>
+    </section>
+  } @else {
+    <div class="docs__toolbar">
+      <label class="docs__search">
+        <span class="visually-hidden">Buscar documentos</span>
+        <app-icon name="search" [size]="16"></app-icon>
+        <input class="field--bare" type="search" data-search placeholder="Buscar documentos por nombre, descripción o categoría…" [value]="searchText()"
+          (input)="onSearch($any($event.target).value)" />
+      </label>
+      <div class="filters" #filtersBox>
+        <button type="button" class="filters__btn" data-action="filters" aria-haspopup="dialog" [attr.aria-expanded]="filtersOpen()"
+          (click)="filtersOpen.set(!filtersOpen())">
+          <app-icon name="filter" [size]="15"></app-icon>
+          Filtros
+          @if (activeFilters() > 0) {
+            <span class="filters__count" data-filter-count [attr.aria-label]="activeFilters() + ' filtros activos'">{{ activeFilters() }}</span>
+          }
+        </button>
+        @if (filtersOpen()) {
+          <div class="filters__popover" role="dialog" aria-label="Filtros" data-filter-popover>
+            <fieldset class="filters__group">
+              <legend>Fecha</legend>
+              <div class="filters__dates">
+                <label class="filters__field">
+                  Desde
+                  <input type="date" data-filter="from" [value]="filters().from" [max]="filters().to || null"
+                    (change)="setFilter('from', $any($event.target).value)" />
+                </label>
+                <label class="filters__field">
+                  Hasta
+                  <input type="date" data-filter="to" [value]="filters().to" [min]="filters().from || null"
+                    (change)="setFilter('to', $any($event.target).value)" />
+                </label>
+              </div>
+            </fieldset>
+            <label class="filters__field">
+              Tipo de archivo
+              <select data-filter="fileType" (change)="setFilter('fileType', $any($event.target).value)">
+                <option value="" [selected]="!filters().fileType">Todos</option>
+                @for (t of fileTypes; track t.value) {
+                  <option [value]="t.value" [selected]="filters().fileType === t.value">{{ t.label }}</option>
+                }
+              </select>
+            </label>
+            @if (showPropertyFilter()) {
+              <label class="filters__field">
+                Propiedad
+                <select data-filter="property" (change)="setFilter('propertyId', $any($event.target).value)">
+                  <option value="" [selected]="!filters().propertyId">Todas</option>
+                  @for (p of scope.items(); track p.id) {
+                    <option [value]="p.id" [selected]="filters().propertyId === p.id">{{ propertyLabel(p) }}</option>
+                  }
+                </select>
+              </label>
+            }
+            <label class="filters__check">
+              <input type="checkbox" data-filter="onlyNew" [checked]="filters().onlyNew" (change)="setFilter('onlyNew', $any($event.target).checked)" />
+              Solo nuevos
+            </label>
+            <div class="filters__footer">
+              <button type="button" class="filters__clear" data-action="clear-filters" [disabled]="activeFilters() === 0" (click)="clearFilters()">Limpiar</button>
+              <button type="button" class="filters__done" (click)="filtersOpen.set(false)">Aplicar</button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="docs__chips" role="group" aria-label="Categorías">
+      <button type="button" class="chip" data-category="all" [class.chip--active]="!category()" [attr.aria-pressed]="!category()" (click)="chooseCategory('')">
+        Todos
+        @if (categoryCount('all') !== null) {
+          <span class="chip__count">{{ categoryCount('all') }}</span>
+        }
+      </button>
+      @for (c of categories; track c.value) {
+        <button type="button" class="chip" [attr.data-category]="c.value" [class.chip--active]="category() === c.value"
+          [attr.aria-pressed]="category() === c.value" (click)="chooseCategory(c.value)">
+          {{ c.label }}
+          @if (categoryCount(c.value) !== null) {
+            <span class="chip__count">{{ categoryCount(c.value) }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    @if (notice()) {
+      <p class="docs__notice" role="status" data-page-notice>{{ notice() }}</p>
+    }
+
+    <div class="docs__layout" [class.docs__layout--detail]="selectedId() && list()">
+      <section class="docs__card" aria-labelledby="docs-list-title" [attr.aria-busy]="loading()">
+        <div class="docs__card-head">
+          <h2 id="docs-list-title" class="docs__card-title">Documentos</h2>
+          @if (newIds().length > 0) {
+            <button type="button" class="docs__mark-read" data-action="mark-all-read" (click)="markAllRead()">
+              <app-icon name="check-check" [size]="15"></app-icon>
+              Marcar todo como leído
+            </button>
+          }
+        </div>
+
+        @if (failed()) {
+          <p class="docs__message docs__message--error" role="alert" data-list-error>No se pudieron cargar los documentos. Inténtalo de nuevo.</p>
+        } @else if (!list()) {
+          <div class="skeleton" data-list-loading aria-label="Cargando documentos">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <div class="skeleton__row"><span class="skeleton__icon"></span><span class="skeleton__line"></span></div>
+            }
+          </div>
+        } @else if (rows().length === 0) {
+          <div data-list-empty>
+            <app-empty-state icon="file-text" [title]="emptyTitle()" [description]="emptyHint()"></app-empty-state>
+          </div>
+        } @else {
+          <table class="doc-table">
+            <thead>
+              <tr>
+                <th scope="col" [attr.aria-sort]="ariaSort('name')">
+                  <button type="button" class="doc-table__sort" data-sort="name" (click)="sortBy('name')">
+                    Documento <app-icon name="sort" [size]="13"></app-icon>
+                  </button>
+                </th>
+                <th scope="col">Categoría</th>
+                <th scope="col" [attr.aria-sort]="ariaSort('date')">
+                  <button type="button" class="doc-table__sort" data-sort="date" (click)="sortBy('date')">
+                    Fecha <app-icon [name]="sort() === 'date_asc' ? 'chevron-down' : 'sort'" [size]="13"></app-icon>
+                  </button>
+                </th>
+                <th scope="col" [attr.aria-sort]="ariaSort('size')">
+                  <button type="button" class="doc-table__sort" data-sort="size" (click)="sortBy('size')">
+                    Tamaño <app-icon name="sort" [size]="13"></app-icon>
+                  </button>
+                </th>
+                <th scope="col"><span class="doc-table__action-head">Acción</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track row.id) {
+                <tr class="doc-row" tabindex="0" [attr.data-doc]="row.id" [class.doc-row--selected]="row.id === selectedId()"
+                  [attr.aria-current]="row.id === selectedId() ? 'true' : null"
+                  (click)="openDoc(row.id)" (keydown.enter)="onRowKey($event, row.id)" (keydown.space)="onRowKey($event, row.id)">
+                  <td class="doc-row__main">
+                    <span [class]="'doc-icon doc-icon--' + row.fileType" aria-hidden="true">
+                      <app-icon [name]="fileIcon(row.fileType)" [size]="18"></app-icon>
+                    </span>
+                    <span class="doc-row__text">
+                      <span class="doc-row__title-line">
+                        <span class="doc-row__title">{{ row.title }}</span>
+                        @if (row.isNew) {
+                          <span class="doc-row__new" data-new-pill>Nuevo</span>
+                        }
+                        @if (row.board) {
+                          <span class="doc-row__board" data-board-marker>Junta</span>
+                        }
+                      </span>
+                      @if (row.description) {
+                        <span class="doc-row__excerpt">{{ row.description }}</span>
+                      }
+                      @if (showEstate()) {
+                        <span class="doc-row__estate" data-estate>{{ row.estateName }}</span>
+                      }
+                    </span>
+                  </td>
+                  <td data-col="categoria">
+                    <span [class]="'cat-pill cat-pill--' + categoryInfo(row.category).tone">{{ categoryInfo(row.category).label }}</span>
+                  </td>
+                  <td data-col="fecha">{{ formatDay(row.date) }}</td>
+                  <td data-col="tamano">{{ row.size }}</td>
+                  <td data-col="accion" class="doc-row__actions">
+                    <button type="button" class="icon-btn" data-row-download [attr.aria-label]="'Descargar ' + row.title" [disabled]="busy()"
+                      (click)="$event.stopPropagation(); download(row)">
+                      <app-icon name="download" [size]="16"></app-icon>
+                    </button>
+                    <span class="row-menu">
+                      <button type="button" class="icon-btn" data-row-menu aria-haspopup="menu" [attr.aria-expanded]="menuId() === row.id"
+                        [attr.aria-label]="'Más acciones para ' + row.title" (click)="toggleMenu($event, row.id)">
+                        <app-icon name="ellipsis" [size]="16"></app-icon>
+                      </button>
+                      @if (menuId() === row.id) {
+                        <div class="row-menu__list" role="menu" data-doc-menu (click)="$event.stopPropagation()">
+                          <button type="button" role="menuitem" (click)="openDoc(row.id)"><app-icon name="eye" [size]="14"></app-icon>Ver</button>
+                          <button type="button" role="menuitem" (click)="download(row)"><app-icon name="download" [size]="14"></app-icon>Descargar</button>
+                          <button type="button" role="menuitem" (click)="openInNewTab(row)"><app-icon name="external-link" [size]="14"></app-icon>Abrir en una pestaña nueva</button>
+                          <button type="button" role="menuitem" (click)="copyLink(row)"><app-icon name="link" [size]="14"></app-icon>Copiar enlace</button>
+                        </div>
+                      }
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </section>
+
+      @if (selectedId() && list()) {
+        <div class="docs__detail">
+          <app-owner-document-detail [document]="selectedDoc()" [modal]="phone()" [busy]="busy()"
+            (closed)="closeDoc()" (download)="download($event)" (open)="openInNewTab($event)"></app-owner-document-detail>
+        </div>
+      }
+    </div>
+  }
+</div>

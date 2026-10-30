@@ -1,0 +1,266 @@
+<app-topbar title="Administradores" [breadcrumb]="['Panel de control', 'Administradores']">
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Administradores</h1>
+    <p class="page-intro__subtitle">Gestiona los administradores y las solicitudes de alta.</p>
+  </div>
+  <div class="page-intro__actions">@if (pageView() === 'admins') { <app-btn variant="primary" (clicked)="openNewAdmin()">
+      <app-icon name="plus" [size]="14"></app-icon>
+      Añadir administrador
+    </app-btn> }</div>
+</header>
+
+<div class="page-content">
+  <div class="page-tabs">
+    <button class="page-tab" [class.page-tab--active]="pageView() === 'admins'" (click)="pageView.set('admins')">Administradores</button>
+    <button class="page-tab" [class.page-tab--active]="pageView() === 'onboarding'" (click)="pageView.set('onboarding')">
+      Solicitudes de alta
+      @if (pendingOnboardingCount() > 0) { <span class="page-tab__badge">{{ pendingOnboardingCount() }}</span> }
+    </button>
+  </div>
+
+  @if (pageView() === 'admins') {
+
+
+  <div class="stats-row">
+    <app-stat-card label="MRR total" [value]="fmtEur(totalMrr())" icon="chart" [accent]="true"></app-stat-card>
+    <app-stat-card label="Total administradores" [value]="totalAdmins()" icon="users"></app-stat-card>
+    <app-stat-card label="En periodo de gracia" [value]="graceCount()" icon="exclamation"></app-stat-card>
+    <app-stat-card label="Cuentas vencidas" [value]="vencidaCount()" icon="x"></app-stat-card>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">Administradores registrados</h2>
+      <div class="search-wrapper">
+        <app-icon name="search" [size]="14" class="search-icon"></app-icon>
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Buscar por nombre, CIF o contacto..."
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+        />
+      </div>
+    </div>
+
+    <div class="filters-row">
+      <div class="filter-group">
+        <span class="filter-label">Plan</span>
+        @for (p of planFilters; track p) {
+          <button class="filter-chip" [class.filter-chip--active]="planFilter() === p" (click)="planFilter.set(p)">{{ p === 'TODOS' ? 'Todos' : p }}</button>
+        }
+      </div>
+      <div class="filter-group" data-filter="estado">
+        <span class="filter-label">Estado</span>
+        @for (s of statusFilters; track s) {
+          <button class="filter-chip" [class.filter-chip--active]="statusFilterValue() === s" (click)="statusFilterValue.set(s)">{{ s === 'TODOS' ? 'Todos' : s }}</button>
+        }
+      </div>
+      <div class="filter-group" data-filter="pago">
+        <span class="filter-label">Pago</span>
+        @for (p of paymentFilters; track p) {
+          <button class="filter-chip" [class.filter-chip--active]="paymentFilter() === p" (click)="paymentFilter.set(p)">{{ p === 'TODOS' ? 'Todos' : p }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Empresa + contacto</th>
+            <th>CIF</th>
+            <th>Plan</th>
+            <th>Vence</th>
+            <th>Usuarios</th>
+            <th>MRR</th>
+            <th>Estado</th>
+            <th>Pago</th>
+            <th>Completitud</th>
+            <th>Salud</th>
+            <th aria-label="Abrir ficha"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (admin of filtered(); track admin.id; let idx = $index) {
+            <tr tabindex="0" [attr.aria-label]="'Abrir la ficha de ' + admin.name" (click)="openAdmin(admin)" (keydown.enter)="openAdmin(admin)">
+              <td class="td--name">
+                <div class="admin-cell">
+                  <app-avatar [name]="admin.name" [size]="32" [bg]="avatarBg(idx)"></app-avatar>
+                  <div>
+                    <div class="admin-name">{{ admin.name }}</div>
+                    <div class="admin-phone">{{ admin.contactName }} · {{ admin.phone }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="td--mono">{{ admin.cif }}</td>
+              <td>
+                <app-badge [text]="admin.plan" [variant]="planVariant(admin.plan)"></app-badge>
+                @if (admin.discountPct > 0) {
+                  <app-badge [text]="'-' + admin.discountPct + '%'" variant="secondary" class="discount-pill"></app-badge>
+                }
+              </td>
+              <td class="td--muted" [class.td--due-soon]="daysRemaining(admin.endDate) <= 30 && daysRemaining(admin.endDate) >= 0" [class.td--due-past]="daysRemaining(admin.endDate) < 0">{{ admin.endDate }}</td>
+              <td class="td--users">
+                <div class="users-cell">
+                  <span class="users-text">{{ admin.usersActive }} / {{ admin.usersMax }}</span>
+                  <app-progress-bar [value]="admin.usersActive" [max]="admin.usersMax" [height]="5"></app-progress-bar>
+                </div>
+              </td>
+              <td class="td--muted">{{ fmtEur(admin.mrr) }}</td>
+              <td data-col="estado">
+                @if (admin.clientStatus) {
+                  <app-badge [text]="admin.clientStatus" [variant]="clientStatusVariant(admin.clientStatus)"></app-badge>
+                } @else { <span class="td--muted">—</span> }
+              </td>
+              <td data-col="pago">
+                @if (admin.paymentStatus) {
+                  <app-badge [text]="admin.paymentStatus" [variant]="paymentStatusVariant(admin.paymentStatus)"></app-badge>
+                  @if (admin.pendingInvoices && admin.pendingInvoices.count > 0) {
+                    <div class="pending-amount">{{ fmtEur(admin.pendingInvoices.amount) }} · {{ admin.pendingInvoices.count }} factura{{ admin.pendingInvoices.count === 1 ? '' : 's' }}</div>
+                  }
+                } @else { <span class="td--muted">—</span> }
+              </td>
+              <td data-col="completitud" class="td--users">
+                @if (healthOf(admin); as h) {
+                  <div class="users-cell">
+                    <span class="users-text">{{ fmtPct(h.completeness) }}</span>
+                    <app-progress-bar [value]="h.completeness" [max]="100" [height]="5"></app-progress-bar>
+                  </div>
+                } @else { <span class="td--muted">—</span> }
+              </td>
+              <td data-col="salud">
+                @if (healthOf(admin); as h) {
+                  @if (h.salud !== null) {
+                    <div class="salud-cell">
+                      <span class="salud-value">{{ fmtScore(h.salud) }}</span>
+                      @if (h.atRisk) { <app-risk-tag [motivo]="h.motivo?.label"></app-risk-tag> }
+                    </div>
+                  } @else { <span class="td--muted">—</span> }
+                } @else { <span class="td--muted">—</span> }
+              </td>
+              <td class="td--actions">
+                <button class="action-btn" type="button" tabindex="-1" aria-hidden="true" (click)="$event.stopPropagation(); openAdmin(admin)">
+                  <app-icon name="chevron-right" [size]="16"></app-icon>
+                </button>
+              </td>
+            </tr>
+          }
+          @empty {
+            <tr>
+              <td colspan="11" class="td--empty">No se encontraron administradores</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-footer">{{ filtered().length }} administradores · MRR filtrado: {{ fmtEur(filteredMrr()) }}</div>
+  </div>
+  }
+
+  @if (pageView() === 'onboarding') {
+    <div class="card">
+      <div class="card__header">
+        <h2 class="card__title">Solicitudes de alta de comunidad</h2>
+      </div>
+      <p class="td--muted" style="padding: 0 20px 12px;">
+        Solicitudes enviadas por propietarios desde "Añadir propiedad → Solicitar alta de comunidad". No se crea ninguna finca automáticamente — hay que contactar y darla de alta a mano desde "Añadir administrador" cuando corresponda.
+      </p>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Comunidad</th>
+              <th>Dirección</th>
+              <th>Contacto de la gestora</th>
+              <th>Solicitado por</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (req of onboardingRequests(); track req.id) {
+              <tr>
+                <td class="td--name">{{ req.communityName }}</td>
+                <td class="td--muted">{{ req.communityAddress || '—' }}</td>
+                <td class="td--muted">{{ req.adminName || '—' }}{{ req.adminEmail ? ' · ' + req.adminEmail : '' }}</td>
+                <td class="td--muted">{{ req.requestedByName }} · {{ req.requestedByEmail }}</td>
+                <td class="td--muted">{{ req.createdAt }}</td>
+                <td><app-badge [text]="onboardingStatusLabel(req.status)" [variant]="onboardingStatusVariant(req.status)"></app-badge></td>
+                <td class="td--actions">
+                  @if (req.status === 'pending') {
+                    <div class="inline-actions">
+                      <app-btn variant="outline" size="sm" (clicked)="resolveOnboarding(req.id, 'contacted')">Marcar contactada</app-btn>
+                      <app-btn variant="outline" size="sm" (clicked)="resolveOnboarding(req.id, 'dismissed')">Descartar</app-btn>
+                    </div>
+                  }
+                </td>
+              </tr>
+            }
+            @empty {
+              <tr>
+                <td colspan="7" class="td--empty">No hay solicitudes de alta pendientes</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}
+
+<!-- ── Modal: Nuevo administrador ─────────────────────────────────────────── -->
+@if (newAdminOpen()) {
+  <div class="modal-backdrop" (click)="closeNewAdmin()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Nuevo administrador</h3>
+        <button class="close-btn" (click)="closeNewAdmin()"><app-icon name="x" [size]="18"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-label">Nombre de la empresa</label>
+        <input class="form-input" type="text" [value]="newAdminName()" (input)="newAdminName.set($any($event.target).value)" />
+
+        <label class="form-label">CIF <span class="required">*</span></label>
+        <input class="form-input" type="text" placeholder="B12345678" required [value]="newAdminCif()" (input)="newAdminCif.set($any($event.target).value)" />
+        <span class="field-hint">Identificador fiscal</span>
+
+        <label class="form-label">Email de contacto</label>
+        <input class="form-input" type="email" [value]="newAdminEmail()" (input)="newAdminEmail.set($any($event.target).value)" />
+
+        <label class="form-label">Teléfono</label>
+        <input class="form-input" type="text" [value]="newAdminPhone()" (input)="newAdminPhone.set($any($event.target).value)" />
+
+        <label class="form-label">Plan</label>
+        <div class="plan-select-grid">
+          @for (p of planOrder; track p) {
+            <button class="plan-select-card" [class.plan-select-card--selected]="newAdminPlan() === p" (click)="newAdminPlan.set(p)">
+              <strong>{{ p }}</strong>
+              <span>{{ planFirstFeature[p] }}</span>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="closeNewAdmin()">Cancelar</app-btn>
+        <app-btn variant="primary" [disabled]="!newAdminName() || !newAdminCif().trim() || !newAdminEmail()" (clicked)="submitNewAdmin()">Crear administradora</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (inviteTarget(); as target) {
+  <app-admin-invite-dialog [administratorId]="target.id" [adminName]="target.name" (closed)="inviteTarget.set(null)"></app-admin-invite-dialog>
+}

@@ -1,0 +1,26 @@
+// Sistema de breakpoints centralizado (tarea "Responsive web", ID 27 del MVP
+// Tracker). Reemplaza los 6 media queries hand-rolled que existían sueltos
+// por el repo (560/640/720/900px, sin ningún mixin compartido).
+//
+// Variables SCSS en tiempo de compilación, NO custom properties CSS: a
+// diferencia del sistema de color (--color-*, resuelto en tiempo de pintado,
+// incluso dentro de un @media), una custom property no se puede sustituir
+// dentro de la CONDICIÓN de un media query — @media (max-width: var(--x)) no
+// es CSS válido. Los breakpoints nunca necesitan cambiar en runtime, así que
+// no hay pérdida práctica.
+$bp-tablet: 900px; // el sidebar pasa a drawer; grids de dashboard/KPI colapsan
+$bp-phone: 640px; // formularios/wizards a una columna; dropdowns a ancho completo
+
+@mixin respond-to($name) {
+  @if $name == 'tablet' {
+    @media (max-width: $bp-tablet) {
+      @content;
+    }
+  } @else if $name == 'phone' {
+    @media (max-width: $bp-phone) {
+      @content;
+    }
+  } @else {
+    @error "Breakpoint desconocido: #{$name}. Usá 'tablet' o 'phone'.";
+  }
+}

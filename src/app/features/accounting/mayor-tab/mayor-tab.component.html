@@ -1,0 +1,71 @@
+<div class="toolbar">
+  <div class="toolbar__actions">
+    <label class="year" for="mayor-account">
+      Cuenta
+      <select id="mayor-account" class="form-input" [ngModel]="accountCode()" (ngModelChange)="setAccountCode($event)">
+        <option value="">Elige una cuenta</option>
+        @for (a of accounts(); track a.id) {
+          <option [ngValue]="a.code">{{ a.label ?? (a.code + ' · ' + a.name) }}</option>
+        }
+      </select>
+    </label>
+    <label class="year" for="mayor-property">
+      Propiedad
+      <select id="mayor-property" class="form-input" [ngModel]="propertyId()" (ngModelChange)="setPropertyId($event)">
+        <option value="">Todas</option>
+        @for (p of propertyList(); track p.id) {
+          <option [ngValue]="p.id">{{ propertyLabel(p) }}</option>
+        }
+      </select>
+    </label>
+    <label class="year" for="mayor-supplier">
+      Proveedor
+      <select id="mayor-supplier" class="form-input" [ngModel]="supplierId()" (ngModelChange)="setSupplierId($event)">
+        <option value="">Todos</option>
+        @for (s of supplierList(); track s.id) {
+          <option [ngValue]="s.id">{{ s.name }}</option>
+        }
+      </select>
+    </label>
+    <label class="year" for="mayor-from">
+      Desde
+      <input id="mayor-from" class="form-input" type="date" [ngModel]="from()" (ngModelChange)="setFrom($event)" />
+    </label>
+    <label class="year" for="mayor-to">
+      Hasta
+      <input id="mayor-to" class="form-input" type="date" [ngModel]="to()" (ngModelChange)="setTo($event)" />
+    </label>
+    <app-btn variant="outline" size="sm" [disabled]="!accountCode()" (clicked)="download('xlsx')">
+      <app-icon name="download" [size]="13"></app-icon>
+      Excel
+    </app-btn>
+    <app-btn variant="outline" size="sm" [disabled]="!accountCode()" (clicked)="download('pdf')">
+      <app-icon name="download" [size]="13"></app-icon>
+      PDF
+    </app-btn>
+  </div>
+</div>
+
+@if (!accountCode()) {
+  <p class="muted">Elige una cuenta para ver su mayor.</p>
+} @else if (loadError()) {
+  <p class="form-error" role="alert">{{ loadError() }}</p>
+} @else if (loading()) {
+  <p class="muted">Calculando…</p>
+} @else if (report(); as r) {
+  <div class="summary">
+    <div>
+      <span class="summary__label">Periodo</span>
+      <span>{{ r.from ?? 'inicio' }} a {{ r.to ?? 'hoy' }}</span>
+    </div>
+    <div>
+      <span class="summary__label">Saldo de apertura</span>
+      <strong class="money">{{ fmtEur(r.openingBalance) }}</strong>
+    </div>
+    <div>
+      <span class="summary__label">Saldo final</span>
+      <strong class="money">{{ fmtEur(r.closingBalance) }}</strong>
+    </div>
+  </div>
+  <app-report-table [sections]="sections"></app-report-table>
+}

@@ -1,0 +1,299 @@
+<div class="detail">
+  <div class="detail__header">
+    <button class="back-btn" (click)="close()">
+      <app-icon name="chevron-left" [size]="16"></app-icon> Volver a juntas
+    </button>
+    @if (meeting(); as m) {
+      <h3>{{ m.title }}</h3>
+    }
+  </div>
+
+  @if (loading()) {
+    <p class="td--muted" style="margin: 20px;">Cargando…</p>
+  } @else {
+    @if (meeting(); as m) {
+      @if (m.includeJitsi && !m.telematicBackingConfirmedAt) {
+        <div class="card" style="padding: 16px 20px;">
+          <app-badge text="Sin respaldo estatutario confirmado" variant="error"></app-badge>
+          <p class="td--muted" style="margin-top: 8px;">
+            Esta junta se celebra por videollamada sin que se haya confirmado que la finca tiene respaldo
+            estatutario para asistencia telemática (art. 17.6 LPH). Los acuerdos que se tomen corren riesgo
+            de impugnación si la finca no lo tiene.
+          </p>
+        </div>
+      }
+    }
+
+    @if (!votingOnly) {
+      <!-- ── Quórum ─────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card__header">
+          <h4 class="card__title"><app-icon name="users" [size]="16"></app-icon> Quórum</h4>
+          <app-btn variant="outline" size="sm" (clicked)="reloadQuorumAndAttendance()">
+            <app-icon name="refresh" [size]="14"></app-icon> Refrescar
+          </app-btn>
+        </div>
+        @if (quorum(); as q) {
+          <div class="quorum">
+            <div class="quorum__row">
+              <app-badge [text]="q.convocatoria === 'primera' ? '1ª convocatoria' : '2ª convocatoria'" variant="default"></app-badge>
+              @if (q.quorumRequired) {
+                <app-badge [text]="q.quorumMet ? 'Quórum alcanzado' : 'Quórum NO alcanzado'" [variant]="q.quorumMet ? 'green' : 'error'"></app-badge>
+              } @else {
+                <app-badge text="Sin quórum exigible" variant="default"></app-badge>
+              }
+            </div>
+
+            <div class="quorum__bars">
+              <div class="quorum__bar">
+                <span class="quorum__bar-label">Propietarios presentes: {{ q.owners.present }} / {{ q.owners.total }} ({{ q.owners.percent }}%)</span>
+                <div class="quorum__bar-track"><div class="quorum__bar-fill" [style.width.%]="q.owners.percent"></div></div>
+              </div>
+              <div class="quorum__bar">
+                <span class="quorum__bar-label">Cuotas presentes: {{ q.quota.percent }}%</span>
+                <div class="quorum__bar-track"><div class="quorum__bar-fill" [style.width.%]="q.quota.percent"></div></div>
+              </div>
+            </div>
+
+            @if (q.missingParticipationQuotaCount > 0) {
+              <p class="quorum__warning">
+                <app-icon name="exclamation" [size]="13"></app-icon>
+                {{ q.missingParticipationQuotaCount }} {{ q.missingParticipationQuotaCount === 1 ? 'propiedad sin coeficiente de participación asignado no cuenta' : 'propiedades sin coeficiente de participación asignado no cuentan' }} en el % de cuotas.
+              </p>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- ── Pase de lista ──────────────────────────────────────────── -->
+      <div class="card">
+        <h4 class="card__title"><app-icon name="check" [size]="16"></app-icon> Pase de lista</h4>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr><th>Propiedad</th><th>Presente</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (p of properties(); track p.id) {
+                <tr>
+                  <td class="td--type">{{ p.ref ?? p.id }}</td>
+                  <td>
+                    @if (attendeesFor(p.id).length > 0) {
+                      @for (a of attendeesFor(p.id); track a.id) {
+                        <div class="attendee-chip">
+                          {{ a.displayName }}
+                          <span class="td--muted">({{ a.source === 'manual' ? 'pase de lista' : 'videollamada' }})</span>
+                          <button class="action-btn action-btn--sm" (click)="undoAttendance(a.id)" title="Deshacer">
+                            <app-icon name="x" [size]="12"></app-icon>
+                          </button>
+                        </div>
+                      }
+                    } @else {
+                      <span class="td--muted">Ausente</span>
+                    }
+                  </td>
+                  <td class="td--actions">
+                    @if (rollCallPropertyId() === p.id) {
+                      <select [ngModel]="rollCallSelectedUserId()" (ngModelChange)="rollCallSelectedUserId.set($event)">
+                        <option [ngValue]="null">Selecciona…</option>
+                        @for (e of rollCallEligible(); track e.userId) {
+                          <option [ngValue]="e.userId">{{ e.name }}{{ e.kind === 'delegated' ? ' (delegación)' : '' }}</option>
+                        }
+                      </select>
+                      <app-btn variant="primary" size="sm" [disabled]="!rollCallSelectedUserId() || rollCallBusy()" (clicked)="confirmRollCall()">Confirmar</app-btn>
+                      <app-btn variant="outline" size="sm" (clicked)="cancelRollCall()">Cancelar</app-btn>
+                    } @else {
+                      <button class="action-btn" (click)="startRollCall(p.id)" title="Marcar presente">
+                        <app-icon name="plus" [size]="16"></app-icon>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="3" class="empty-row">Esta finca todavía no tiene propiedades.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    <!-- ── Votación ───────────────────────────────────────────────── -->
+    @if (votableQuestions().length > 0) {
+      <div class="card">
+        <div class="card__header">
+          <h4 class="card__title"><app-icon name="check" [size]="16"></app-icon> Votación</h4>
+          <label class="require-2fa-toggle" [class.require-2fa-toggle--locked]="voteSessions().length > 0" [title]="voteSessions().length > 0 ? 'Ya hay votaciones en esta junta — no se puede cambiar' : ''">
+            <app-toggle [on]="meeting()!.require2faForVoting ?? false" (onChange)="toggleRequire2fa($event)"></app-toggle>
+            <span>Requerir 2FA para votar</span>
+          </label>
+        </div>
+        <div class="vote-list">
+          @for (q of votableQuestions(); track q.agendaItemId + '-' + q.questionIndex) {
+            <div class="vote-item">
+              <div class="vote-item__header">
+                <strong>{{ q.agendaTitle }}</strong>
+                <span class="td--muted">{{ q.questionTitle }}</span>
+              </div>
+
+              @if (sessionFor(q.agendaItemId, q.questionIndex); as session) {
+                <div class="vote-item__badges">
+                  <app-badge [text]="session.status === 'abierta' ? 'Votación abierta' : 'Votación cerrada'" [variant]="session.status === 'abierta' ? 'green' : 'default'"></app-badge>
+                  <app-badge [text]="majorityTypeLabel(session.majorityType)" variant="default"></app-badge>
+                  @if (session.status === 'cerrada' && session.resultSummary?.passed !== null) {
+                    <app-badge [text]="session.resultSummary?.passed ? 'Aprobado' : 'Rechazado'" [variant]="session.resultSummary?.passed ? 'green' : 'error'"></app-badge>
+                  }
+                </div>
+
+                <div class="vote-item__options">
+                  @for (opt of q.options; track $index) {
+                    <div class="vote-item__option">
+                      <span>{{ opt }} — {{ optionTallyFor(session, $index) }} ({{ optionTallyPercent(session, $index) }}%)</span>
+                      <div class="quorum__bar-track"><div class="quorum__bar-fill" [style.width.%]="optionTallyPercent(session, $index)"></div></div>
+                    </div>
+                  }
+                </div>
+
+                @if (session.status === 'cerrada') {
+                  <p class="td--muted">
+                    Propietarios: {{ session.resultSummary?.ownersFavorablePct }}% · Cuotas: {{ session.resultSummary?.quotaFavorablePct }}%
+                    (denominador: {{ session.resultSummary?.denominatorBasis === 'censo' ? 'censo total de la finca' : 'propiedades presentes' }})
+                  </p>
+                } @else {
+                  <app-btn variant="danger" size="sm" [disabled]="votingBusy()" (clicked)="closeVoteSession(session)">Cerrar votación</app-btn>
+                }
+              } @else {
+                <app-btn variant="outline" size="sm" [disabled]="votingBusy()" (clicked)="startOpenVote(q.agendaItemId, q.questionIndex, q.agendaTitle, q.questionTitle, q.majorityType)">Abrir votación</app-btn>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (!votingOnly) {
+      <!-- ── Delegaciones ───────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card__header">
+          <h4 class="card__title"><app-icon name="users" [size]="16"></app-icon> Delegaciones de voto</h4>
+          <app-btn variant="secondary" size="sm" (clicked)="showDelegationModal.set(true)">
+            <app-icon name="plus" [size]="14"></app-icon> Registrar delegación
+          </app-btn>
+        </div>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr><th>Propiedad</th><th>Delega</th><th>Representante</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (d of delegations(); track d.id) {
+                <tr>
+                  <td class="td--type">{{ d.property?.ref ?? d.propertyId }}</td>
+                  <td class="td--muted">{{ d.delegatorUser?.fullName ?? d.delegatorUserId }}</td>
+                  <td class="td--muted">{{ d.representativeUser?.fullName ?? d.representativeName ?? d.representativeUserId }}</td>
+                  <td>
+                    @if (d.revokedAt) {
+                      <app-badge text="Revocada" variant="error"></app-badge>
+                    } @else {
+                      <app-badge text="Activa" variant="secondary"></app-badge>
+                    }
+                  </td>
+                  <td class="td--actions">
+                    @if (!d.revokedAt) {
+                      <button class="action-btn" (click)="revokeDelegation(d)" title="Revocar">
+                        <app-icon name="x" [size]="16"></app-icon>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5" class="empty-row">Todavía no hay delegaciones registradas.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    <!-- ── Acta digital ───────────────────────────────────────────── -->
+    @if (meeting(); as m) {
+      @if (m.status === 'celebrada' || m.status === 'firmada') {
+        <div class="card">
+          <h4 class="card__title"><app-icon name="file" [size]="16"></app-icon> Acta</h4>
+          <div class="acta">
+            @if (actaDeadlineDaysLeft(); as daysLeft) {
+              @if (!m.actaSignedAt) {
+                <p class="td--muted">
+                  {{ daysLeft >= 0 ? 'Plazo para firmar el acta: ' + daysLeft + ' días naturales (art. 19 LPH).' : 'El plazo de 10 días naturales para firmar el acta (art. 19 LPH) ya venció.' }}
+                </p>
+              }
+            }
+
+            @if (!m.actaSignedAt) {
+              @if (!actaReadyForSignature()) {
+                <p class="td--muted">
+                  Para poder firmar, primero hay que crear el acta y pulsar «Revisar» en la pestaña Acta.
+                </p>
+              }
+              <div class="acta__signers">
+                <div class="acta__signer">
+                  <label class="field-hint">Presidente</label>
+                  @if (m.actaSignedByPresidenteUserId) {
+                    <app-badge text="Firmado" variant="secondary"></app-badge>
+                  } @else {
+                    <div class="acta__signer-input">
+                      <input type="email" placeholder="email@ejemplo.com" [ngModel]="presidenteEmail()" (ngModelChange)="presidenteEmail.set($event)" />
+                      <app-btn variant="outline" size="sm" [disabled]="!presidenteEmail().trim() || actaBusy() || !actaReadyForSignature()" (clicked)="signActa('presidente')">Firmar</app-btn>
+                    </div>
+                  }
+                </div>
+                <div class="acta__signer">
+                  <label class="field-hint">Secretario</label>
+                  @if (m.actaSignedBySecretarioUserId) {
+                    <app-badge text="Firmado" variant="secondary"></app-badge>
+                  } @else {
+                    <div class="acta__signer-input">
+                      <input type="email" placeholder="email@ejemplo.com" [ngModel]="secretarioEmail()" (ngModelChange)="secretarioEmail.set($event)" />
+                      <app-btn variant="outline" size="sm" [disabled]="!secretarioEmail().trim() || actaBusy() || !actaReadyForSignature() || !m.actaSignedByPresidenteUserId" (clicked)="signActa('secretario')">Firmar</app-btn>
+                    </div>
+                  }
+                </div>
+              </div>
+            } @else {
+              <div class="acta__signed">
+                <app-badge text="Acta firmada" variant="secondary"></app-badge>
+                <app-btn variant="outline" size="sm" (clicked)="downloadActa()">Descargar acta</app-btn>
+                @if (!m.actaDistributedAt) {
+                  <app-btn variant="primary" size="sm" [disabled]="actaBusy()" (clicked)="sendActaNotice()">Enviar a todos los propietarios</app-btn>
+                } @else {
+                  <span class="td--muted">
+                    Enviada.
+                    @if (impugnacionDeadlineDaysLeft(); as days) {
+                      Plazo de impugnación: {{ days >= 0 ? days + ' días restantes' : 'vencido' }} (art. 18 LPH).
+                    }
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  }
+</div>
+
+@if (showDelegationModal() && !votingOnly) {
+  <app-register-delegation-modal
+    [meetingId]="meetingId"
+    [properties]="properties()"
+    (closed)="showDelegationModal.set(false)"
+    (created)="onDelegationCreated()"
+  ></app-register-delegation-modal>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

@@ -1,0 +1,59 @@
+.suspense-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  font-size: 14px;
+
+  strong { font-size: 16px; }
+}
+
+.suspense-form {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+  }
+}
+
+.suspense-table-wrap { overflow-x: auto; }
+
+.suspense-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+
+  th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--color-light);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  td {
+    padding: 8px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+  }
+
+  .num { text-align: right; }
+  .nowrap { white-space: nowrap; }
+
+  &__meta {
+    display: block;
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+}

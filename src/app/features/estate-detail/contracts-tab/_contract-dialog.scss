@@ -1,0 +1,28 @@
+@use 'dialog-shell' as ds;
+
+/// Estilos comunes de los diálogos de contrato (formulario, renovar, cancelar): mismo aspecto que el resto de modales.
+@mixin dialog($width: 560px) {
+  .modal-backdrop { @include ds.backdrop-shell($padded: true); }
+  .modal { @include ds.modal-shell($width: $width); }
+  .modal__header { @include ds.dialog-header-chrome; }
+  .modal__titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .modal__subtitle { font-size: 13.5px; color: var(--color-muted); overflow-wrap: anywhere; }
+  .close-btn { @include ds.close-btn-chrome; }
+  .modal__body { @include ds.modal-body-chrome; margin-bottom: 0; }
+  .modal__footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+  .form-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--color-muted); }
+  .form-field input, .form-field select, .form-field textarea {
+    width: 100%;
+  }
+  .form-field textarea { resize: vertical; }
+  .form-field input:focus-visible, .form-field select:focus-visible, .form-field textarea:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  .field--error { border-color: var(--color-error) !important; }
+  .field-error { margin: 0; font-size: 13px; font-weight: 500; color: var(--color-error); }
+  .field-hint { margin: 0; font-size: 13px; font-weight: 400; color: var(--color-muted); }
+  .form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 520px) { .form-row { grid-template-columns: minmax(0, 1fr); } }
+}
+
+/// El diálogo recibe el foco como último recurso (`tabindex="-1"`): sin contorno, porque no es un control.
+@mixin dialog-focus { .modal:focus, .drawer:focus { outline: none; } }

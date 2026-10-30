@@ -1,0 +1,31 @@
+@if (visible()) {
+  <app-section-card class="office-setup" title="Puesta en marcha del despacho" [padded]="false">
+    <!-- Mismo punto que marca el menú de cuenta: indica de dónde viene el aviso. -->
+    <span slot="tools" class="office-setup__dot" role="img" aria-label="Pasos pendientes"></span>
+    <p class="office-setup__progress">
+      {{ counted() - pending() }} de {{ counted() }} pasos completados. Termina los pendientes para sacar todo el partido a Domora.
+    </p>
+    <ul class="office-setup__list" aria-label="Pasos de puesta en marcha del despacho">
+      @for (step of steps(); track step.key) {
+        <li class="office-setup__step" [attr.data-step]="step.key" [attr.data-status]="step.status">
+          <span class="office-setup__icon" [class.office-setup__icon--done]="step.status === 'done'" aria-hidden="true">
+            <app-icon [name]="step.status === 'done' ? 'check' : 'clock'" [size]="14"></app-icon>
+          </span>
+          <span class="office-setup__text">
+            <span class="office-setup__label">
+              {{ step.label }}
+              <span class="office-setup__weight" [attr.data-weight]="step.weight">{{ step.weightLabel }}</span>
+              <span class="visually-hidden">{{ step.status === 'done' ? 'Hecho' : 'Pendiente' }}</span>
+            </span>
+            @if (step.status !== 'done') {
+              <span class="office-setup__hint">{{ step.hint }}</span>
+            }
+          </span>
+          @if (step.status !== 'done' && step.route) {
+            <a class="office-setup__action" [routerLink]="step.route" [fragment]="step.fragment">Configurar</a>
+          }
+        </li>
+      }
+    </ul>
+  </app-section-card>
+}

@@ -1,0 +1,138 @@
+<section class="step" aria-labelledby="junta-step-3-heading">
+  <h3 class="sr-only" id="junta-step-3-heading" tabindex="-1" data-step-heading>Invitados y documentos</h3>
+
+  <div class="group">
+    <h4 class="group__title">Asistentes</h4>
+    <p class="field__hint">
+      Se han preseleccionado los propietarios de la finca. Quita los que no deban asistir o añade otros.
+    </p>
+    <app-attendee-picker
+      [attendees]="draft.attendees()"
+      [owners]="draft.owners()"
+      [loading]="draft.loadingOwners()"
+      [disabled]="draft.saving()"
+      (attendeesChange)="draft.attendees.set($event)"
+    ></app-attendee-picker>
+  </div>
+
+  <div class="row-2 row-2--top">
+    <div class="group">
+      <label class="field">
+        <span class="field__label">Videollamada</span>
+        <select
+          class="input"
+          aria-label="Videollamada"
+          [ngModel]="draft.includeJitsi() ? 'yes' : 'no'"
+          (ngModelChange)="draft.includeJitsi.set($event === 'yes')"
+        >
+          <option value="no">No incluir</option>
+          <option value="yes">Crear videollamada</option>
+        </select>
+      </label>
+      <p class="field__hint">Se compartirá la sala de espera de la junta; el administrador iniciará la sesión.</p>
+    </div>
+
+    <div class="group">
+      <label class="field">
+        <span class="field__label">Firma de la convocatoria</span>
+        <select
+          class="input"
+          aria-label="Quién firma la convocatoria"
+          [ngModel]="draft.signerRole()"
+          (ngModelChange)="draft.signerRole.set($event)"
+        >
+          @for (role of signerRoles; track role.value) {
+            <option [value]="role.value">{{ role.label }}</option>
+          }
+        </select>
+      </label>
+
+      @if (signerNameVisible()) {
+        <label class="field">
+          <span class="field__label">Nombre del firmante (opcional)</span>
+          <input
+            class="input"
+            type="text"
+            maxlength="200"
+            placeholder="Nombre y apellidos"
+            [ngModel]="draft.signerName()"
+            (ngModelChange)="draft.signerName.set($event)"
+          />
+        </label>
+      } @else {
+        <button type="button" class="link-btn" (click)="showSignerName()">
+          <app-icon name="plus" [size]="14" aria-hidden="true"></app-icon>
+          Indicar el nombre del firmante
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (draft.includeJitsi()) {
+    <div class="group">
+      <label class="check-row">
+        <input
+          type="checkbox"
+          [checked]="draft.telematicBackingConfirmed()"
+          (change)="draft.telematicBackingConfirmed.set($any($event.target).checked)"
+        />
+        <span>La finca tiene respaldo estatutario para asistencia telemática (art. 17.6 LPH)</span>
+      </label>
+      <p class="field__hint">
+        La reforma de la LPH que autorizaría juntas telemáticas sin este respaldo todavía no es ley. Sin él, los
+        estatutos deben contemplarlo por unanimidad — si no, los acuerdos corren riesgo de impugnación.
+      </p>
+    </div>
+  }
+
+  <div class="group convocatoria">
+    <div class="convocatoria__head">
+      <div>
+        <h4 class="group__title">Convocatoria</h4>
+        <p class="field__hint">
+          Se ha redactado con los datos de la junta. Revísala y edítala como quieras: es el texto que se descargará
+          como convocatoria.
+        </p>
+      </div>
+      @if (draft.convocatoria()) {
+        <app-btn variant="outline" size="sm" type="button" [disabled]="draft.saving() || draft.convocatoriaLoading()" (clicked)="rewriteConvocatoria()">
+          <app-icon name="refresh" [size]="14"></app-icon>
+          Volver a redactar
+        </app-btn>
+      }
+    </div>
+
+    @if (draft.convocatoriaError()) {
+      <p class="convocatoria__note convocatoria__note--error" role="alert">
+        {{ draft.convocatoriaError() }}
+        <button type="button" class="link-btn" (click)="loadConvocatoria()">Reintentar</button>
+      </p>
+    }
+    @if (draft.convocatoriaStale() && draft.convocatoriaEdited()) {
+      <p class="convocatoria__note" role="status">
+        Has cambiado datos de la junta (fechas, lugar, orden del día o firma) después de redactar la convocatoria.
+        <button type="button" class="link-btn" (click)="rewriteConvocatoria()">Volver a redactarla con los nuevos datos</button>
+      </p>
+    }
+
+    @if (draft.convocatoria(); as convocatoria) {
+      <app-junta-convocatoria-editor
+        [doc]="convocatoria"
+        [disabled]="draft.saving()"
+        (docChange)="setConvocatoria($event)"
+      ></app-junta-convocatoria-editor>
+    } @else if (draft.convocatoriaLoading()) {
+      <p class="convocatoria__note" role="status">Redactando la convocatoria…</p>
+    }
+  </div>
+
+  <div class="group">
+    <h4 class="group__title">Documentos adjuntos</h4>
+    <p class="field__hint">Opcional. Se suben al confirmar la creación de la junta.</p>
+    <app-file-dropzone
+      [files]="draft.attachments()"
+      [disabled]="draft.saving()"
+      (filesChange)="draft.attachments.set($event)"
+    ></app-file-dropzone>
+  </div>
+</section>

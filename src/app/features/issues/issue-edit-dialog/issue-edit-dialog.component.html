@@ -1,0 +1,81 @@
+<div class="backdrop" (click)="closed.emit()">
+  <form
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="issue-edit-title"
+    (click)="$event.stopPropagation()"
+    (keydown.escape)="closed.emit()"
+    (submit)="$event.preventDefault(); save()"
+  >
+    <header class="dialog__header">
+      <h4 id="issue-edit-title">{{ title() }}</h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </header>
+    <div class="dialog__body">
+      @switch (kind()) {
+        @case ('provider') {
+          <label class="field" data-field="provider-directory">
+            Proveedor de la comunidad
+            <select name="supplier" aria-label="Proveedor de la comunidad" [ngModel]="supplierId()" (ngModelChange)="chooseSupplier($event)">
+              <option value="">Otro profesional (solo su nombre)</option>
+              @for (s of directory(); track s.id) {
+                <option [value]="s.id">{{ s.name }} · {{ s.category }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            Nombre del proveedor
+            <input name="name" type="text" [disabled]="!!supplierId()" [ngModel]="providerName()" (ngModelChange)="providerName.set($event)" />
+          </label>
+          <label class="field">
+            Categoría
+            <input name="category" type="text" placeholder="Ej. Motores y automatismos" [disabled]="!!supplierId()" [ngModel]="providerCategory()" (ngModelChange)="providerCategory.set($event)" />
+          </label>
+          <label class="field">
+            Teléfono
+            <input name="phone" type="text" [ngModel]="providerPhone()" (ngModelChange)="providerPhone.set($event)" />
+          </label>
+          <label class="field">
+            Resolución estimada
+            <input name="resolution" type="date" aria-label="Resolución estimada" [ngModel]="providerResolution()" (ngModelChange)="providerResolution.set($event)" />
+          </label>
+        }
+        @case ('budget') {
+          <label class="field">
+            Importe (€)
+            <input name="amount" type="number" min="0" [ngModel]="amount()" (ngModelChange)="amount.set($event)" />
+          </label>
+          <label class="field">
+            Descripción
+            <input name="description" type="text" [ngModel]="budgetDescription()" (ngModelChange)="budgetDescription.set($event)" />
+          </label>
+          <label class="field field--checkbox">
+            <input name="approved" type="checkbox" [ngModel]="approved()" (ngModelChange)="approved.set($event)" />
+            Presupuesto aprobado
+          </label>
+        }
+        @case ('installation') {
+          <label class="field" data-field="installation">
+            Instalación afectada
+            <select name="asset" aria-label="Instalación afectada" [ngModel]="assetId()" (ngModelChange)="assetId.set($event)">
+              <option value="">Sin instalación (zona común)</option>
+              @for (o of installations(); track o.id) {
+                <option [value]="o.id">{{ o.name }}</option>
+              }
+            </select>
+          </label>
+        }
+      }
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+    </div>
+    <footer class="dialog__footer">
+      <app-btn variant="outline" size="sm" (clicked)="closed.emit()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" type="submit" [disabled]="saving()">Guardar</app-btn>
+    </footer>
+  </form>
+</div>

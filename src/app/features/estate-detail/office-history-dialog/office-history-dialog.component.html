@@ -1,0 +1,45 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="office-history-title" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <div>
+        <h4 id="office-history-title">Historial de cargos</h4>
+        <p class="modal__subtitle">Presidentes y vicepresidentes{{ estateName() ? ' de ' + estateName() : '' }}, con sus fechas</p>
+      </div>
+      <button #closeButton type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      @if (error()) {
+        <div class="state state--error" role="alert">
+          <p>No se pudo cargar el historial de cargos.</p>
+          <button type="button" class="retry" (click)="load()">Reintentar</button>
+        </div>
+      } @else if (terms() === null) {
+        <p class="state">Cargando historial…</p>
+      } @else if (rows().length === 0) {
+        <p class="state">Esta comunidad aún no tiene cargos registrados.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="history">
+            <thead>
+              <tr><th scope="col">Cargo</th><th scope="col">Titular</th><th scope="col">Propiedad</th><th scope="col">Desde</th><th scope="col">Hasta</th></tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track row.id) {
+                <tr [class.history__live]="row.live">
+                  <td data-label="Cargo">{{ row.role }}</td>
+                  <td data-label="Titular">{{ row.holder }}</td>
+                  <td data-label="Propiedad">{{ row.property }}</td>
+                  <td class="num" data-label="Desde">{{ row.from }}</td>
+                  <td class="num" data-label="Hasta">
+                    @if (row.to) { {{ row.to }} } @else { <span class="live-pill">Vigente</span> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+</div>

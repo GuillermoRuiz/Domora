@@ -1,0 +1,181 @@
+$gold: #d9a62e;
+$gold-hover: #c6941f;
+$bg: #0b0b0d;
+$surface: #1a1a1d;
+$input-bg: #141416;
+$border: rgba(255, 255, 255, 0.1);
+$text: #f5f5f0;
+$muted: #9a9a9e;
+
+.login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 3rem 1.5rem;
+  background: $bg;
+}
+
+.login__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 2rem;
+
+  h1 {
+    color: $text;
+    font-size: 1.75rem;
+    letter-spacing: 0.02em;
+    margin: 0.75rem 0 0.35rem;
+  }
+}
+
+.login__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: $surface;
+  border: 1px solid $border;
+  color: $gold;
+}
+
+.login__tagline {
+  margin: 0;
+  color: $muted;
+  font-size: 0.9rem;
+}
+
+.login__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 380px;
+  padding: 2rem;
+  border-radius: 20px;
+  background: $surface;
+  border: 1px solid $border;
+  text-align: center;
+
+  h2 {
+    color: $text;
+    font-size: 1.4rem;
+    margin: 0;
+  }
+}
+
+.login__subtitle {
+  margin: 0 0 1.25rem;
+  color: $muted;
+  font-size: 0.85rem;
+}
+
+label {
+  color: $text;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  margin-top: 0.5rem;
+}
+
+.login__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login__input-icon {
+  position: absolute;
+  left: 16px;
+  color: $gold;
+  pointer-events: none;
+}
+
+input {
+  width: 100%;
+  padding: 0.8rem 1rem 0.8rem 2.6rem;
+  margin-bottom: 0.4rem;
+  border-radius: 100px;
+  border: 1px solid $border;
+  background: $input-bg;
+  color: $text;
+  font-size: 0.9rem;
+
+  &::placeholder {
+    color: $muted;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: $gold;
+  }
+}
+
+.login__error {
+  color: #e0594a;
+  font-size: 0.875rem;
+  margin: 0.25rem 0;
+}
+
+.login__success {
+  color: #4caf6d;
+  font-size: 0.82rem;
+  margin: 0 0 0.5rem;
+}
+
+.login__submit {
+  margin-top: 0.75rem;
+  padding: 0.8rem;
+  border-radius: 100px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  background: $text;
+  color: #14120a;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background: #e0e0da;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.login__forgot-link {
+  margin-top: 0.9rem;
+  font-size: 0.82rem;
+  color: $text;
+  text-decoration: underline;
+  text-align: center;
+}
+
+.login__footer-links {
+  margin-top: 1.5rem;
+  text-align: center;
+
+  p {
+    margin: 0.4rem 0;
+    color: $muted;
+    font-size: 0.85rem;
+  }
+
+  a {
+    color: $text;
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  strong {
+    font-weight: 700;
+  }
+}

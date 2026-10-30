@@ -1,0 +1,44 @@
+<app-meeting-card title="Documentos adjuntos">
+  <button type="button" card-actions class="attach-btn" [disabled]="busy" (click)="picker.click()">
+    <app-icon name="paperclip" [size]="16" aria-hidden="true"></app-icon>Adjuntar documentos
+  </button>
+  <input #picker type="file" class="sr-only" multiple tabindex="-1" aria-hidden="true" [accept]="accept" (change)="onPick($event)" />
+
+  <ul class="docs">
+    @for (attachment of attachments; track attachment.id) {
+      <li class="doc">
+        <span [class]="'doc__icon doc__icon--' + kind(attachment).tone" aria-hidden="true">
+          <app-icon name="file-text" [size]="18"></app-icon>
+        </span>
+        <div class="doc__text">
+          <button type="button" class="doc__name" (click)="download.emit(attachment)" [attr.aria-label]="'Descargar ' + attachment.title">{{ attachment.title }}</button>
+          <span class="doc__meta">{{ meta(attachment) }}</span>
+        </div>
+        <div class="doc__menu">
+          <button
+            type="button"
+            class="doc__more"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="openMenuId() === attachment.id"
+            [attr.aria-label]="'Acciones de ' + attachment.title"
+            (click)="toggleMenu(attachment.id)"
+          >
+            <app-icon name="ellipsis" [size]="18"></app-icon>
+          </button>
+          @if (openMenuId() === attachment.id) {
+            <div class="doc__panel" role="menu">
+              <button type="button" role="menuitem" (click)="act('download', attachment)">
+                <app-icon name="download" [size]="16"></app-icon>Descargar
+              </button>
+              <button type="button" role="menuitem" class="danger" [disabled]="busy" (click)="act('remove', attachment)">
+                <app-icon name="trash" [size]="16"></app-icon>Eliminar
+              </button>
+            </div>
+          }
+        </div>
+      </li>
+    } @empty {
+      <li class="docs__empty">Todavía no hay documentos adjuntos.</li>
+    }
+  </ul>
+</app-meeting-card>

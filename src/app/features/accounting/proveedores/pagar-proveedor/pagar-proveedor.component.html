@@ -1,0 +1,75 @@
+<div class="modal-overlay modal-overlay--top" (click)="close()">
+  <div class="modal" role="dialog" aria-labelledby="pago-title" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <div>
+        <div class="modal__breadcrumb">Proveedores · {{ supplierName }}</div>
+        <h3 class="modal__title" id="pago-title">Pagar facturas</h3>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </div>
+
+    <div class="modal__body">
+      @if (open().length === 0) {
+        <p class="modal__intro">Este proveedor no tiene facturas pendientes de pago.</p>
+      } @else {
+        <fieldset class="invoices">
+          <legend class="form-label">Facturas que se pagan</legend>
+          @for (inv of open(); track inv.id) {
+            <label class="invoice" [for]="'pay-inv-' + inv.id">
+              <input [id]="'pay-inv-' + inv.id" type="checkbox" [checked]="selected().has(inv.id)"
+                (change)="toggle(inv.id, $any($event.target).checked)" />
+              <span class="invoice__main">
+                <span>Factura {{ inv.number }}</span>
+                <span class="invoice__meta">{{ inv.concept }}{{ inv.dueDate ? ' · vence ' + inv.dueDate : '' }}</span>
+              </span>
+              <span class="money">{{ fmtEur(inv.outstanding) }}</span>
+            </label>
+          }
+        </fieldset>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="pay-amount">Importe (€)</label>
+            <input id="pay-amount" class="form-input money" type="text" inputmode="decimal"
+              [ngModel]="amount()" (ngModelChange)="amount.set($event)" />
+            <span class="form-hint">Pendiente de lo elegido: {{ fmtEur(selectedPending()) }}. Puedes pagar una parte.</span>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="pay-date">Fecha del pago</label>
+            <input id="pay-date" class="form-input" type="date" [(ngModel)]="form.date" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="pay-method">Método</label>
+            <select id="pay-method" class="form-input" [(ngModel)]="form.method">
+              @for (m of methods; track m) { <option [value]="m">{{ m }}</option> }
+            </select>
+          </div>
+          @if (!isCash() && banks().length > 1) {
+            <div class="form-field">
+              <label class="form-label" for="pay-bank">Cuenta de la que sale</label>
+              <select id="pay-bank" class="form-input" [(ngModel)]="form.bankAccountId">
+                @for (b of banks(); track b.id) {
+                  <option [value]="b.id">{{ b.alias }}{{ b.ibanMasked ? ' · ' + b.ibanMasked : '' }}</option>
+                }
+              </select>
+            </div>
+          }
+          <div class="form-field form-field--full">
+            <label class="form-label" for="pay-notes">Nota</label>
+            <input id="pay-notes" class="form-input" type="text" maxlength="255" placeholder="Opcional" [(ngModel)]="form.notes" />
+          </div>
+        </div>
+      }
+      @if (error()) { <p class="form-error" role="alert">{{ error() }}</p> }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" (clicked)="close()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" [disabled]="saving() || open().length === 0" (clicked)="save()">
+        {{ saving() ? 'Registrando…' : 'Registrar pago' }}
+      </app-btn>
+    </div>
+  </div>
+</div>

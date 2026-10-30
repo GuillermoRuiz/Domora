@@ -1,0 +1,105 @@
+<div class="modal-overlay" (click)="closed.emit()">
+  <div class="modal modal--wide" role="dialog" aria-labelledby="manual-entry-title" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <div>
+        <div class="modal__breadcrumb">Contabilidad · Diario</div>
+        <h3 class="modal__title" id="manual-entry-title">Asiento manual</h3>
+      </div>
+    </div>
+    <div class="modal__body">
+      <p class="modal__intro">
+        Para ajustes que no nacen de un documento. Los recibos, cobros, facturas y pagos se registran desde su pestaña,
+        por eso aquí no aparecen las cuentas de propietarios, proveedores ni la 555. Un asiento registrado no se edita:
+        si hay un error, se anula con un contraasiento.
+      </p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label" for="me-date">Fecha</label>
+          <input id="me-date" class="form-input" type="date" [(ngModel)]="form.date" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="me-reference">Referencia</label>
+          <input id="me-reference" class="form-input" type="text" maxlength="100" placeholder="Opcional" [(ngModel)]="form.reference" />
+        </div>
+        <div class="form-field form-field--full">
+          <label class="form-label" for="me-concept">Concepto</label>
+          <input id="me-concept" class="form-input" type="text" maxlength="255" [(ngModel)]="form.concept" />
+        </div>
+      </div>
+
+      <div class="lines-wrap">
+        <table class="lines">
+          <thead>
+            <tr>
+              <th>Cuenta</th><th class="num">Debe (€)</th><th class="num">Haber (€)</th><th>Detalle</th><th><span class="sr-only">Quitar</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of lines; track $index; let i = $index) {
+              <tr>
+                <td class="col-account">
+                  <label class="sr-only" [for]="'me-acc-' + i">Cuenta de la línea {{ i + 1 }}</label>
+                  <select [id]="'me-acc-' + i" class="form-input" [(ngModel)]="line.accountId" (ngModelChange)="touch()">
+                    <option value="" disabled>Elige la cuenta</option>
+                    @for (a of usableAccounts(); track a.id) { <option [value]="a.id">{{ a.code }} · {{ a.name }}</option> }
+                  </select>
+                  @if (allowsCostCentre(line) && costCentres.length) {
+                    <label class="sr-only" [for]="'me-cc-' + i">Centro de coste de la línea {{ i + 1 }}</label>
+                    <select [id]="'me-cc-' + i" class="form-input form-input--sub" [(ngModel)]="line.costCentreId">
+                      <option value="">Sin centro de coste</option>
+                      @for (c of costCentres; track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+                    </select>
+                  }
+                </td>
+                <td class="col-money">
+                  <label class="sr-only" [for]="'me-debit-' + i">Debe de la línea {{ i + 1 }}</label>
+                  <input [id]="'me-debit-' + i" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="line.debit" (ngModelChange)="touch()" />
+                </td>
+                <td class="col-money">
+                  <label class="sr-only" [for]="'me-credit-' + i">Haber de la línea {{ i + 1 }}</label>
+                  <input [id]="'me-credit-' + i" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="line.credit" (ngModelChange)="touch()" />
+                </td>
+                <td>
+                  <label class="sr-only" [for]="'me-line-concept-' + i">Detalle de la línea {{ i + 1 }}</label>
+                  <input [id]="'me-line-concept-' + i" class="form-input" type="text" maxlength="255" placeholder="Opcional" [(ngModel)]="line.concept" />
+                </td>
+                <td>
+                  <button class="icon-btn" type="button" [disabled]="lines.length <= 2" [attr.aria-label]="'Quitar la línea ' + (i + 1)" (click)="removeLine(i)">
+                    <app-icon name="trash" [size]="14"></app-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>
+                <button class="link-btn" type="button" (click)="addLine()">
+                  <app-icon name="plus" [size]="13"></app-icon>
+                  Añadir línea
+                </button>
+              </td>
+              <td class="num money"><strong>{{ totals().valid ? fmtEur(totals().debit) : '—' }}</strong></td>
+              <td class="num money"><strong>{{ totals().valid ? fmtEur(totals().credit) : '—' }}</strong></td>
+              <td colspan="2">
+                @if (totals().valid && totals().diff !== 0) {
+                  <span class="diff">Descuadre {{ fmtEur(totals().diff) }}</span>
+                  <button class="link-btn" type="button" (click)="balanceLastLine()">Cuadrar con la última línea</button>
+                } @else if (totals().valid && totals().debit > 0) {
+                  <span class="ok">Cuadra</span>
+                }
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      @if (error()) { <p class="form-error" role="alert">{{ error() }}</p> }
+    </div>
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" (clicked)="closed.emit()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="save()">
+        {{ saving() ? 'Registrando…' : 'Registrar asiento' }}
+      </app-btn>
+    </div>
+  </div>
+</div>

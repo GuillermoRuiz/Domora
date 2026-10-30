@@ -1,0 +1,165 @@
+<div class="backdrop" (click)="close()">
+  <div #dialog class="modal" role="dialog" aria-modal="true" aria-labelledby="new-issue-title" (click)="$event.stopPropagation()" (keydown.escape)="onEscape($event)">
+    <header class="head">
+      <span class="head__icon" aria-hidden="true"><app-icon name="user" [size]="22"></app-icon></span>
+      <div class="head__text">
+        <h2 id="new-issue-title">Nueva incidencia</h2>
+        <p>Cuéntanos qué ha ocurrido. Te responderemos lo antes posible.</p>
+      </div>
+      <button type="button" class="head__close" aria-label="Cerrar" (click)="close()"><app-icon name="x" [size]="16"></app-icon></button>
+    </header>
+
+    @if (draftRestored()) {
+      <p class="note" data-draft-restored>
+        <app-icon name="refresh" [size]="14"></app-icon>
+        Hemos recuperado tu borrador.
+      </p>
+    }
+
+    <form class="form" novalidate (submit)="submit($event)">
+      <div class="field">
+        <label class="field__label" for="new-issue-estate">Comunidad <span class="req">*</span></label>
+        <span class="with-icon">
+          <app-icon name="building" [size]="16"></app-icon>
+          <select id="new-issue-estate" data-field="estate" [attr.data-autofocus]="askEstate() ? '' : null" [disabled]="!askEstate()"
+            [class.field--invalid]="submitted() && errors()['estate']" (change)="chosenEstate.set(value($event))">
+            <option value="" [selected]="!targetEstateId()">Selecciona una comunidad</option>
+            @for (c of communities(); track c.id) {
+              <option [value]="c.id" [selected]="c.id === targetEstateId()">{{ c.name }}</option>
+            }
+          </select>
+        </span>
+        @if (submitted() && errors()['estate']) { <span class="field__error" data-error="estate">{{ errors()['estate'] }}</span> }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="new-issue-title-field">¿Qué ha pasado? <span class="req">*</span></label>
+        <input id="new-issue-title-field" type="text" [attr.maxlength]="maxTitle" data-field="title" autocomplete="off" placeholder="Ej. No funciona la iluminación del portal"
+          [attr.data-autofocus]="askEstate() ? null : ''" [class.field--invalid]="submitted() && errors()['title']" [value]="title()" (input)="title.set(value($event))" />
+        <span class="field__foot">
+          @if (submitted() && errors()['title']) { <span class="field__error" data-error="title">{{ errors()['title'] }}</span> }
+          <span class="field__count">{{ title().length }} / {{ maxTitle }}</span>
+        </span>
+      </div>
+
+      @if (similar().length > 0) {
+        <section class="similar" data-similar aria-label="Incidencias parecidas">
+          <p class="similar__intro">¿Es alguna de estas? Si te afecta, márcala en lugar de abrir otra.</p>
+          <ul>
+            @for (s of similar(); track s.id) {
+              <li class="similar__item" [attr.data-similar-item]="s.id">
+                <span class="similar__text">
+                  <strong>{{ s.title }}</strong>
+                  <small>{{ s.location ?? 'Zona común' }} · {{ statusInfo[s.status].label }} · {{ s.affectedCount }} {{ s.affectedCount === 1 ? 'vecino afectado' : 'vecinos afectados' }}</small>
+                </span>
+                <button type="button" class="similar__btn" [disabled]="sending()" (click)="markAffected(s)">Me afecta también</button>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      <div class="field">
+        <label class="field__label" for="new-issue-description">Descripción <span class="req">*</span></label>
+        <textarea id="new-issue-description" rows="4" maxlength="5000" data-field="description" placeholder="Cuéntanos con más detalle qué ha ocurrido…"
+          [class.field--invalid]="submitted() && errors()['description']" [value]="description()" (input)="description.set(value($event))"></textarea>
+        <span class="field__foot">
+          @if (submitted() && errors()['description']) { <span class="field__error" data-error="description">{{ errors()['description'] }}</span> }
+          <span class="field__count">{{ description().length }} / 5000</span>
+        </span>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label class="field__label" for="new-issue-subtype">Tipo de incidencia <span class="opt">(opcional)</span></label>
+          <span class="with-icon">
+            <app-icon [name]="subtypeIcon()" [size]="16"></app-icon>
+            <select id="new-issue-subtype" data-field="subtype" (change)="subtype.set($any(value($event)))">
+              <option value="" [selected]="!subtype()">Sin especificar</option>
+              @for (s of subtypes; track s.value) {
+                <option [value]="s.value" [selected]="s.value === subtype()">{{ s.label }}</option>
+              }
+            </select>
+          </span>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="new-issue-location">¿Dónde ocurre? <span class="req">*</span></label>
+          <span class="with-icon">
+            <app-icon name="map-pin" [size]="16"></app-icon>
+            <select id="new-issue-location" data-field="location" [disabled]="!targetEstateId()" [class.field--invalid]="submitted() && errors()['location']"
+              (change)="chooseLocation(value($event))">
+              <option value="" [selected]="!location()">{{ targetEstateId() ? 'Selecciona una zona o instalación' : 'Elige antes la comunidad' }}</option>
+              @for (l of locations(); track l.label) {
+                <option [value]="l.label" [selected]="l.label === location()">{{ l.label }}</option>
+              }
+              @if (targetEstateId()) {
+                <option [value]="OTHER" [selected]="location() === OTHER">Otra…</option>
+              }
+            </select>
+          </span>
+          @if (locationsFailed()) { <span class="field__hint">No se pudieron cargar las ubicaciones; puedes elegir «Otra…».</span> }
+          @if (submitted() && errors()['location']) { <span class="field__error" data-error="location">{{ errors()['location'] }}</span> }
+        </div>
+      </div>
+
+      @if (location() === OTHER) {
+        <div class="field">
+          <label class="field__label" for="new-issue-other-location">¿Dónde? <span class="req">*</span></label>
+          <input id="new-issue-other-location" type="text" maxlength="120" data-field="other-location" [value]="otherLocation()" (input)="otherLocation.set(value($event))" />
+        </div>
+      } @else if (location()) {
+        @if (showDetail()) {
+          <div class="field">
+            <label class="field__label" for="new-issue-detail">Más detalles de la ubicación <span class="opt">(opcional)</span></label>
+            <input id="new-issue-detail" type="text" maxlength="60" data-field="location-detail" placeholder="Ej. 2.º piso, junto a la escalera" [value]="locationDetail()" (input)="locationDetail.set(value($event))" />
+          </div>
+        } @else {
+          <button type="button" class="link-btn" data-action="location-detail" (click)="showDetail.set(true)">
+            <app-icon name="plus" [size]="14"></app-icon>
+            Añadir más detalles de la ubicación (opcional)
+          </button>
+        }
+      }
+
+      <div class="field" data-urgency role="radiogroup" aria-labelledby="new-issue-urgency-label">
+        <span class="field__label" id="new-issue-urgency-label">¿Hay riesgo o daños activos (agua, electricidad, personas atrapadas)? <span class="req">*</span></span>
+        <div class="choice">
+          <button type="button" role="radio" class="choice__card" data-urgent="no" [attr.aria-checked]="urgent() === false" (click)="urgent.set(false)">
+            <span class="choice__dot" aria-hidden="true"></span>
+            <span class="choice__text"><strong>No</strong><small>Puede esperar unos días</small></span>
+          </button>
+          <button type="button" role="radio" class="choice__card choice__card--danger" data-urgent="yes" [attr.aria-checked]="urgent() === true" (click)="urgent.set(true)">
+            <span class="choice__dot" aria-hidden="true"></span>
+            <span class="choice__text"><strong>Sí</strong><small>Requiere atención inmediata</small></span>
+            @if (urgent() === true) { <app-icon class="choice__alert" name="exclamation" [size]="18" aria-hidden="true"></app-icon> }
+          </button>
+        </div>
+        @if (urgent() === true) {
+          <div class="notice" data-urgent-notice>
+            <app-icon name="clock" [size]="18"></app-icon>
+            <div>
+              <strong>Tiempo de respuesta estimado: {{ urgentResponse }}</strong>
+              <p>Para incidencias urgentes haremos lo posible por atenderte en las próximas {{ urgentResponse }}. Si hay peligro inmediato, llama al 112.</p>
+            </div>
+          </div>
+        }
+        @if (submitted() && errors()['urgent']) { <span class="field__error" data-error="urgent">{{ errors()['urgent'] }}</span> }
+      </div>
+
+      <div class="field">
+        <span class="field__label">Fotos <span class="opt">(opcional)</span></span>
+        <app-issue-photo-picker [(files)]="files"></app-issue-photo-picker>
+      </div>
+
+      @if (formError()) {
+        <p class="form__error" role="alert" data-form-error>{{ formError() }}</p>
+      }
+
+      <footer class="foot">
+        <app-btn variant="subtle" data-action="discard" (clicked)="discard()">Cancelar</app-btn>
+        <app-btn variant="accent" type="submit" [disabled]="sending()">{{ sending() ? 'Enviando…' : 'Enviar incidencia' }}</app-btn>
+      </footer>
+    </form>
+  </div>
+</div>

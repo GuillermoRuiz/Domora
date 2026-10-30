@@ -1,0 +1,52 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+
+.status-line {
+  margin: 0;
+  padding: 12px 20px;
+  font-size: 14px;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.precondition-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.precondition-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.precondition-item--blocker {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.precondition-item--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.precondition-item--ok {
+  background: var(--color-secondary-bg);
+  color: var(--color-secondary);
+}
+
+.precondition-item app-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}

@@ -1,0 +1,23 @@
+@if (error() && !kpis()) {
+  <div class="kpis-error" role="alert">
+    <span>No se pudieron cargar los indicadores.</span>
+    <button type="button" class="kpis-error__retry" (click)="retry()()">Reintentar</button>
+  </div>
+} @else {
+  <ul class="kpis" [attr.aria-busy]="loading()" aria-label="Indicadores generales">
+    @for (tile of tiles(); track tile.key) {
+      <li class="kpi" [attr.data-kpi]="tile.key" [attr.aria-label]="tile.aria">
+        <span class="kpi__icon" aria-hidden="true"><app-icon [name]="tile.icon" [size]="18"></app-icon></span>
+        <span class="kpi__label">{{ tile.label }}</span>
+        <span class="kpi__value">{{ tile.value }}</span>
+        <span class="kpi__change" [class]="'kpi__change kpi__change--' + tile.tone">
+          @if (tile.trendIcon) {
+            <app-icon [name]="tile.trendIcon" [size]="14"></app-icon>
+          }
+          {{ tile.change }}
+        </span>
+        <span class="kpi__comparison">{{ tile.comparison }}</span>
+      </li>
+    }
+  </ul>
+}

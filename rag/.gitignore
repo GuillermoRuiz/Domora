@@ -1,0 +1,6 @@
+.env
+__pycache__/
+.venv/
+.dependency-downloads/
+.local-storage/
+.verification/

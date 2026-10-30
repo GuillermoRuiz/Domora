@@ -1,0 +1,53 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cr-title" (click)="$event.stopPropagation()" appContractDialog (dismiss)="closed.emit()" tabindex="-1">
+    <div class="modal__header">
+      <div class="modal__titles">
+        <h4 id="cr-title">Renovar contrato</h4>
+        <span class="modal__subtitle">{{ contract.serviceType }} · {{ contract.supplier.name }}</span>
+      </div>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <form class="modal__body" (ngSubmit)="submit()" novalidate>
+      <p class="field-hint" data-current>Vencimiento actual: <strong>{{ currentEnd() }}</strong>. La renovación se registra en el histórico del contrato.</p>
+
+      <label class="form-field">
+        Nuevo vencimiento
+        <input id="cr-end" type="date" name="end" [class.field--error]="endInvalid()" [ngModel]="newEnd()" (ngModelChange)="newEnd.set($event)" />
+        @if (endInvalid()) { <span class="field-error" data-error="end">{{ endInvalid() }}</span> }
+      </label>
+
+      <div class="form-row">
+        <label class="form-field">
+          Importe (opcional)
+          <input id="cr-cost" type="number" name="cost" min="0" step="0.01" [ngModel]="costAmount()" (ngModelChange)="costAmount.set($event)" />
+        </label>
+        <label class="form-field">
+          Periodicidad del importe
+          <select id="cr-frequency" name="frequency" [ngModel]="costFrequency()" (ngModelChange)="costFrequency.set($event)">
+            <option [ngValue]="null">Sin especificar</option>
+            <option value="MONTHLY">Mensual</option>
+            <option value="QUARTERLY">Trimestral</option>
+            <option value="SEMIANNUAL">Semestral</option>
+            <option value="ANNUAL">Anual</option>
+            <option value="ONE_OFF">Pago único</option>
+            <option value="OTHER">Otra</option>
+          </select>
+        </label>
+      </div>
+      <p class="field-hint">Si no cambias el importe, el contrato lo conserva.</p>
+
+      <label class="form-field">
+        Notas de la renovación
+        <textarea id="cr-notes" name="notes" rows="2" maxlength="500" placeholder="Por ejemplo: subida del IPC" [ngModel]="notes()" (ngModelChange)="notes.set($event)"></textarea>
+      </label>
+
+      @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closed.emit()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="submit()">{{ saving() ? 'Renovando…' : 'Renovar contrato' }}</app-btn>
+      </div>
+    </form>
+  </div>
+</div>

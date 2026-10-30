@@ -1,0 +1,338 @@
+<app-topbar title="Incidencias" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="detail-heading">
+    <label class="scope-selector">
+      <app-icon class="community-control__building" name="building" [size]="18" aria-hidden="true"></app-icon>
+      <span class="sr-only">Comunidad</span>
+      <select
+        class="community-control__label"
+        aria-label="Comunidad"
+        [attr.title]="estate()?.name ?? null"
+        [ngModel]="issue()?.estateId ?? ''"
+        (ngModelChange)="changeCommunity($event)"
+      >
+        <option value="">Todas mis comunidades</option>
+        @for (option of estateOptions(); track option.id) {
+          <option [value]="option.id">{{ option.name }}</option>
+        }
+      </select>
+      <app-icon class="community-control__chevron" name="chevron-down" [size]="14" aria-hidden="true"></app-icon>
+    </label>
+    <span class="detail-heading__separator" aria-hidden="true">/</span>
+    <span class="detail-heading__section">Incidencias</span>
+  </div>
+</app-topbar>
+
+<div class="detail" (click)="closeMenus()" (keydown.escape)="closeMenus()">
+  <header class="head">
+    <a class="back" routerLink="/b/incidencias">
+      <app-icon name="arrow-left" [size]="16"></app-icon>
+      Volver a incidencias
+    </a>
+    @if (issue(); as issue) {
+      <div class="head__actions">
+        @if (linkedTask(); as task) {
+          @if (!reviewTask()) {
+          <app-btn variant="outline" class="gold-btn" data-action="view-task" (clicked)="openTask(task)">
+            <app-icon name="calendar" [size]="15"></app-icon> Ver tarea
+          </app-btn>
+          }
+        }
+        <div class="menu-wrap">
+          <button
+            type="button"
+            class="more-btn"
+            aria-haspopup="menu"
+            aria-label="Más acciones"
+            [attr.aria-expanded]="moreMenu()"
+            (click)="toggleMoreMenu($event)"
+          >
+            <app-icon name="ellipsis-vertical" [size]="18"></app-icon>
+          </button>
+          @if (moreMenu()) {
+            <div class="menu" role="menu" aria-label="Más acciones" (click)="$event.stopPropagation()">
+              <button type="button" role="menuitem" data-action="resolve-route" (click)="openRoute()">
+                <app-icon name="arrow-right" [size]="15"></app-icon>Resolver vía
+              </button>
+              <span class="menu__heading menu__heading--line" role="presentation">Datos</span>
+              <button type="button" role="menuitem" (click)="openEdit('installation')">
+                <app-icon name="building" [size]="15"></app-icon>Cambiar instalación
+              </button>
+              <span class="menu__heading menu__heading--line" role="presentation"></span>
+              <button type="button" role="menuitem" class="menu__danger" data-action="delete-issue" (click)="deleteIssue()">
+                <app-icon name="trash" [size]="15"></app-icon>Eliminar incidencia
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </header>
+
+  @if (loading() && !issue()) {
+    <p class="state" role="status">Cargando incidencia…</p>
+  } @else if (notFound()) {
+    <p class="state" role="alert">
+      No se ha encontrado la incidencia. Puede que ya no exista o que no tengas acceso.
+      <a routerLink="/b/incidencias">Volver a Incidencias</a>
+    </p>
+  } @else if (error()) {
+    <p class="state" role="alert">{{ error() }} <button type="button" class="link" (click)="load()">Reintentar</button></p>
+  } @else if (issue(); as issue) {
+    @if (notice()) {
+      <p class="notice" role="alert">{{ notice() }}</p>
+    }
+    <div class="layout">
+      <div class="main">
+        <!-- Resumen del expediente -->
+        <section class="card summary" aria-label="Resumen de la incidencia">
+          <div class="summary__top">
+            <div class="summary__id">
+              <span class="summary__ref">{{ issue.ref }}</span>
+              <h2 class="summary__title">{{ issue.title }}</h2>
+            </div>
+            <div class="summary__state" [attr.data-tone]="statusTone()" data-testid="status-row">
+              <span class="summary__state-label" id="status-label">Estado actual</span>
+              <app-dropdown
+                class="summary__state-select"
+                ariaLabel="Estado actual"
+                [items]="statusItems()"
+                [selectedId]="issue.status"
+                [disabled]="saving()"
+                (selectionChange)="changeStatus($any($event.id))"
+              ></app-dropdown>
+            </div>
+          </div>
+          <div class="summary__tags">
+            @if (estate(); as estate) {
+              <a class="summary__estate" [routerLink]="['/b/estates', estate.id]"
+                ><app-icon name="building" [size]="14"></app-icon>{{ estate.name }}</a
+              >
+            }
+            <span class="pill pill--gray" data-testid="route-pill"><app-icon name="shield" [size]="13"></app-icon>Vía: {{ routeText(issue.resolutionRoute) }}</span>
+            <span class="pill" [class]="'pill pill--' + (issue.priority === 'Urgente' ? 'red' : 'gold')">{{
+              issue.priority === 'Urgente' ? 'Urgente' : 'Prioridad normal'
+            }}</span>
+          </div>
+          <p class="summary__meta">
+            <span><app-icon name="calendar" [size]="14"></app-icon>Creada el {{ day(issue.date) }}</span>
+            <span data-testid="last-update"><app-icon name="clock" [size]="14"></app-icon>Actualizada el {{ lastUpdate() }}</span>
+            <span><app-icon name="map-pin" [size]="14"></app-icon>{{ location() }}</span>
+            @if (issue.rating) {
+              <span data-rating><app-icon name="check" [size]="14"></app-icon>Valoración de quien avisó: {{ issue.rating }}/5@if (issue.ratingComment) { · «{{ issue.ratingComment }}» }</span>
+            }
+          </p>
+          @if (issue.description) {
+            <h3 class="summary__desc-title">Descripción</h3>
+            <p class="summary__desc">{{ issue.description }}</p>
+          }
+          @if (photos().length > 0) {
+            <div class="summary__photos" data-photos>
+              @for (photo of visiblePhotos(); track photo.id) {
+                <a [href]="photo.url" target="_blank" rel="noopener"
+                  ><img [src]="photo.url" alt="Foto de la incidencia {{ issue.ref }}"
+                /></a>
+              }
+              @if (photos().length > 3) {
+                <button type="button" class="link" (click)="showAllPhotos.set(!showAllPhotos())">{{
+                  showAllPhotos() ? 'Ver menos fotos' : 'Ver todas las fotos (' + photos().length + ')'
+                }}</button>
+              }
+            </div>
+          }
+        </section>
+
+        
+        <!-- Se espera la respuesta de quien avisó -->
+        @if (waitingForRequester()) {
+          <section class="attention attention--info" role="group" aria-label="Información pedida" data-info-banner>
+            <span class="attention__icon" aria-hidden="true"><app-icon name="help-circle" [size]="18"></app-icon></span>
+            <div class="attention__text">
+              <strong>Esperando la respuesta del solicitante</strong>
+              <span>Has pedido información a quien reportó la incidencia. Cuando responda, volverá a «{{ issue.statusBeforeInfoRequest ?? 'Abierta' }}».</span>
+            </div>
+            <app-btn variant="outline" size="sm" (clicked)="openAskInfo()">Pedir de nuevo</app-btn>
+          </section>
+        }
+
+        <!-- Solicitante y proveedor, en paralelo -->
+        <div class="pair">
+        <section class="card" aria-labelledby="req-title">
+          <h3 id="req-title" class="card__title"><app-icon name="user" [size]="16"></app-icon>Solicitante</h3>
+          @if (requester(); as who) {
+            <p class="who">
+              <span class="who__avatar" aria-hidden="true"><app-icon name="user" [size]="18"></app-icon></span>
+              <span>
+                <strong>{{ who.name || 'Sin identificar' }}</strong>
+                @if (who.receivedAt) {
+                  <span class="muted">Aviso recibido el {{ day(who.receivedAt) }}</span>
+                }
+              </span>
+            </p>
+            @if (active()) {
+              <div class="who-actions">
+                @if (canInform()) {
+                  <app-btn variant="primary" [block]="true" (clicked)="openInform()">Informar</app-btn>
+                }
+                <app-btn variant="primary" [block]="true" (clicked)="openAskInfo()">Pedir información</app-btn>
+              </div>
+            }
+          }
+        </section>
+
+        <section class="card" aria-labelledby="prov-title">
+          <h3 id="prov-title" class="card__title"><app-icon name="wrench" [size]="16"></app-icon>Proveedor y presupuesto</h3>
+          @if (provider(); as provider) {
+            <strong>{{ provider.providerNameSnapshot }}</strong>
+            @if (provider.categorySnapshot) {
+              <span class="muted">{{ provider.categorySnapshot }}</span>
+            }
+            @if (provider.phoneSnapshot) {
+              <span class="muted"><app-icon name="phone" [size]="12"></app-icon> {{ provider.phoneSnapshot }}</span>
+            }
+            @if (providerDate(); as date) {
+              <span class="muted">Resolución estimada: {{ date }}</span>
+            }
+          } @else {
+            <span class="muted">Sin proveedor asignado</span>
+          }
+          @if (issue.budgetAmount) {
+            <span class="muted"
+              >Presupuesto: {{ issue.budgetAmount }},00 € · {{ issue.budgetApproved ? 'aprobado' : 'pendiente' }}</span
+            >
+          }
+          <div class="links">
+            <button type="button" class="link" (click)="openEdit('provider')">Editar proveedor</button>
+            <button type="button" class="link" (click)="openEdit('budget')">Editar presupuesto</button>
+          </div>
+        </section>
+        </div>
+
+        <!-- Seguro: solo con vía de seguro o con algún siniestro -->
+        @if (showClaims()) {
+          <app-issue-claims-block
+            [route]="issue.resolutionRoute ?? null"
+            [claims]="claims()"
+            [canRegister]="active()"
+            [busy]="claimBusy()"
+            (register)="openClaimRegister($event)"
+            (statusChange)="changeClaimStatus($event)"
+          ></app-issue-claims-block>
+        }
+
+        <!-- Visitas -->
+        @if (visits().length > 0) {
+          <app-issue-visits-block
+            [visits]="visits()"
+            [canManage]="active()"
+            [busy]="visitBusy()"
+            [error]="visitError()"
+            (outcome)="recordVisitOutcome($event)"
+            (reschedule)="rescheduleVisit($event)"
+          ></app-issue-visits-block>
+        }
+
+        <!-- Historial -->
+        <section class="card" aria-labelledby="hist-title">
+          <h3 id="hist-title" class="card__title"><app-icon name="file-text" [size]="16"></app-icon>Historial</h3>
+          <app-issue-timeline [entries]="issue.timeline"></app-issue-timeline>
+          <div class="note">
+            <input
+              type="text"
+              aria-label="Nueva nota"
+              [placeholder]="noteInternal() ? 'Nota interna: solo la ve la administración…' : 'Añade una nota al historial (también la ve quien reportó la incidencia)…'"
+              [ngModel]="noteText()"
+              (ngModelChange)="noteText.set($event)"
+              (keydown.enter)="addNote()"
+            />
+            <label class="note__internal">
+              <input type="checkbox" aria-label="Nota interna" [ngModel]="noteInternal()" (ngModelChange)="noteInternal.set($event)" />
+              Interna
+            </label>
+            <app-btn variant="outline" size="sm" (clicked)="addNote()">Enviar</app-btn>
+          </div>
+        </section>
+      </div>
+
+      <aside class="side" aria-label="Datos de la incidencia">
+        <!-- Situación actual -->
+        <section class="card" aria-labelledby="sit-title">
+          <h3 id="sit-title" class="card__title"><app-icon name="clock" [size]="16"></app-icon>Situación actual</h3>
+          <app-issue-journey [issueId]="issue.id" [refreshOn]="situation()" [reviewTaskId]="reviewTask()?.id ?? null" (act)="onJourneyAction($event)" (decide)="openRegister('other', false, { nextStep: $event })"></app-issue-journey>
+        </section>
+
+      </aside>
+    </div>
+  }
+</div>
+
+@if (showRoute()) {
+  <app-route-dialog
+    [current]="currentRoute()"
+    [busy]="routeSaving()"
+    (saved)="saveRoute($event)"
+    (closed)="showRoute.set(false)"
+  ></app-route-dialog>
+}
+@if (showAskInfo()) {
+  <app-request-info-dialog
+    [alreadyWaiting]="waitingForRequester()"
+    [busy]="askInfoBusy()"
+    [error]="askInfoError()"
+    (sent)="submitAskInfo($event)"
+    (closed)="showAskInfo.set(false)"
+  ></app-request-info-dialog>
+}
+@if (showRegister()) {
+  <app-register-interaction-dialog
+    [issueId]="issueId()"
+    [initialParty]="registerParty()"
+    [presetOpenClaim]="registerOpenClaim()"
+    [preset]="registerPreset()"
+    [claims]="claims()"
+    [hasAssignedProfessional]="!!provider()"
+    [suppliers]="directory()"
+    [openWaits]="openWaits()"
+    [assignees]="assignees()"
+    [milestones]="milestones()"
+    [canInformRequester]="canInform()"
+    [busy]="interactionBusy()"
+    [error]="interactionError()"
+    (submitted)="submitRegister($event)"
+    (closed)="showRegister.set(false)"
+  ></app-register-interaction-dialog>
+}
+@if (showDecision()) {
+  @if (reviewTask(); as review) {
+    <app-review-decision-dialog
+      [task]="review"
+      (decided)="showToast($event, 6000)"
+      (resolved)="onReviewResolved()"
+      (closed)="showDecision.set(false)"
+    ></app-review-decision-dialog>
+  }
+}
+@if (showInform()) {
+  <app-inform-requester-dialog
+    [issueId]="issueId()"
+    [visitAt]="plannedVisitAt()"
+    [partyLabel]="counterpart()"
+    [busy]="interactionBusy()"
+    [error]="interactionError()"
+    (submitted)="submitInform($event)"
+    (closed)="showInform.set(false)"
+  ></app-inform-requester-dialog>
+}
+@if (editing(); as kind) {
+  @if (issue(); as current) {
+    <app-issue-edit-dialog
+      [kind]="kind"
+      [issue]="current"
+      [provider]="provider()"
+      (saved)="editSaved($event)"
+      (closed)="editing.set(null)"
+    ></app-issue-edit-dialog>
+  }
+}
+@if (toast()) {
+  <div class="toast" role="status"><app-icon name="check" [size]="14"></app-icon>{{ toast() }}</div>
+}

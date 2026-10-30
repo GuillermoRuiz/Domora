@@ -1,0 +1,146 @@
+<div class="modal-overlay" (click)="close()">
+  <div class="modal modal--md" role="dialog" aria-labelledby="suspense-title" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <div>
+        <div class="modal__breadcrumb">Recibos · Cuenta 555</div>
+        <h3 class="modal__title" id="suspense-title">Ingresos sin identificar</h3>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </div>
+
+    <div class="modal__body">
+      <p class="modal__intro">
+        Registra aquí el dinero que aparece en el extracto sin que se sepa quién lo ha pagado. Así el banco cuadra.
+        Cuando lo identifiques, aplícalo a la propiedad: contará como su cobro.
+      </p>
+
+      @if (!loading()) {
+        <div class="suspense-summary">
+          <span>Pendiente de aplicar</span>
+          <strong class="money">{{ fmtEur(pendingTotal()) }}</strong>
+        </div>
+      }
+
+      @if (showNew()) {
+        <div class="suspense-form">
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="form-label" for="susp-date">Fecha en el extracto</label>
+              <input id="susp-date" class="form-input" type="date" [(ngModel)]="newForm.date" />
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="susp-amount">Importe (€)</label>
+              <input id="susp-amount" class="form-input money" type="text" inputmode="decimal" placeholder="0,00" [(ngModel)]="newForm.amount" />
+            </div>
+            <div class="form-field form-field--full">
+              <label class="form-label" for="susp-concept">Concepto del extracto</label>
+              <input id="susp-concept" class="form-input" type="text" maxlength="200" placeholder="p. ej. TRANSF. SIN REFERENCIA"
+                [(ngModel)]="newForm.concept" />
+            </div>
+            @if (banks().length > 1) {
+              <div class="form-field form-field--full">
+                <label class="form-label" for="susp-bank">Cuenta</label>
+                <select id="susp-bank" class="form-input" [(ngModel)]="newForm.bankAccountId">
+                  @for (b of banks(); track b.id) {
+                    <option [value]="b.id">{{ b.alias }}{{ b.ibanMasked ? ' · ' + b.ibanMasked : '' }}</option>
+                  }
+                </select>
+              </div>
+            }
+          </div>
+          <div class="suspense-form__actions">
+            <app-btn variant="outline" size="sm" (clicked)="showNew.set(false)">Cancelar</app-btn>
+            <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="register()">
+              {{ saving() ? 'Registrando…' : 'Registrar ingreso' }}
+            </app-btn>
+          </div>
+        </div>
+      }
+
+      @if (applying(); as item) {
+        <div class="suspense-form">
+          <p class="form-hint">Aplicar el ingreso del {{ item.date }} ({{ item.concept }}). Quedan {{ fmtEur(item.remaining) }}.</p>
+          <div class="form-grid">
+            <div class="form-field form-field--full">
+              <label class="form-label" for="apply-property">Propiedad que ha pagado</label>
+              <select id="apply-property" class="form-input" [(ngModel)]="applyForm.propertyId">
+                <option value="" disabled>Elige una propiedad</option>
+                @for (p of properties; track p.id) {
+                  <option [value]="p.id">{{ propertyLabel(p) }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="apply-amount">Importe (€)</label>
+              <input id="apply-amount" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="applyForm.amount" />
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="apply-date">Fecha</label>
+              <input id="apply-date" class="form-input" type="date" [(ngModel)]="applyForm.date" />
+            </div>
+          </div>
+          <p class="form-hint">Se imputa a los recibos pendientes de la propiedad, primero lo más antiguo. Lo que sobre queda como anticipo.</p>
+          <div class="suspense-form__actions">
+            <app-btn variant="outline" size="sm" (clicked)="applying.set(null)">Cancelar</app-btn>
+            <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="apply()">
+              {{ saving() ? 'Aplicando…' : 'Aplicar' }}
+            </app-btn>
+          </div>
+        </div>
+      }
+
+      @if (error()) {
+        <p class="form-error" role="alert">{{ error() }}</p>
+      }
+
+      @if (loading()) {
+        <p class="form-hint">Cargando…</p>
+      } @else if (items().length === 0) {
+        <p class="form-hint">No hay ingresos sin identificar.</p>
+      } @else {
+        <div class="suspense-table-wrap">
+          <table class="suspense-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th class="num">Importe</th>
+                <th class="num">Sin aplicar</th>
+                <th><span class="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (i of items(); track i.id) {
+                <tr>
+                  <td class="nowrap">{{ i.date }}</td>
+                  <td>
+                    {{ i.concept }}
+                    @for (a of i.applications; track a.id) {
+                      <span class="suspense-table__meta">Aplicado {{ fmtEur(a.amount) }} a {{ propertyName(a.propertyId) }} el {{ a.date }}</span>
+                    }
+                  </td>
+                  <td class="num money">{{ fmtEur(i.amount) }}</td>
+                  <td class="num money">{{ fmtEur(i.remaining) }}</td>
+                  <td class="num">
+                    @if (i.remaining > 0) {
+                      <app-btn variant="outline" size="sm" (clicked)="openApply(i)">Aplicar</app-btn>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <div class="modal__footer">
+      @if (!showNew()) {
+        <app-btn variant="outline" size="sm" (clicked)="showNew.set(true); applying.set(null)">Registrar ingreso</app-btn>
+      }
+      <app-btn variant="primary" size="sm" (clicked)="close()">Cerrar</app-btn>
+    </div>
+  </div>
+</div>

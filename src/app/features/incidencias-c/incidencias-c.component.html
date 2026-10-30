@@ -1,0 +1,166 @@
+<app-topbar title="Incidencias" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="issues__topbar-scope">
+    @if (scope.items().length > 0) {
+      <app-community-scope-selector [groups]="scope.groups()" [selectedId]="scope.selected()?.id ?? null" [showAll]="scope.showAll()"
+        (choose)="scope.select($event)" (addProperty)="openAddProperty()"></app-community-scope-selector>
+    }
+  </div>
+</app-topbar>
+
+<div class="page-content">
+  <header class="issues__header">
+    <div class="issues__intro">
+      <h1 class="issues__title">Incidencias</h1>
+      <p class="issues__sub">Comunica incidencias en tu comunidad y haz seguimiento de su estado. Las incidencias son de la comunidad, no de tu vivienda.</p>
+      @if (scope.items().length > 0) {
+        <span class="issues__chip" data-scope-chip>
+          <app-icon name="file-text" [size]="14"></app-icon>
+          Ámbito actual: <strong>{{ scopeName() }}</strong>
+        </span>
+      }
+    </div>
+    @if (scope.items().length > 0) {
+      <button type="button" class="issues__new" data-action="new-issue" (click)="openCreate()">
+        <app-icon name="plus" [size]="16"></app-icon>
+        Nueva incidencia
+      </button>
+    }
+  </header>
+
+  @if (scope.failed()) {
+    <p class="issues__message issues__message--error" role="alert">No se pudieron cargar tus propiedades. Inténtalo de nuevo.</p>
+  } @else if (!scope.loaded()) {
+    <p class="issues__message">Cargando…</p>
+  } @else if (scope.items().length === 0) {
+    <section class="issues__empty" data-empty>
+      <h3>Todavía no tienes ninguna propiedad vinculada</h3>
+      <p>Añade tu propiedad o solicita vincularla a tu comunidad para comunicar incidencias.</p>
+      <button type="button" class="issues__new" (click)="openAddProperty()">
+        <app-icon name="plus" [size]="14"></app-icon>
+        Añadir propiedad
+      </button>
+    </section>
+  } @else {
+    <section class="issues__kpis" aria-label="Resumen de incidencias">
+      @for (k of kpis; track k.id) {
+        <button type="button" class="kpi-btn" [attr.data-kpi]="k.id" [attr.aria-label]="k.label + ': ' + kpiValue(k.id)" (click)="applyKpi(k)">
+          <app-kpi-tile align="start" [label]="k.label" [value]="kpiValue(k.id)" [sub]="k.sub" [icon]="k.icon" [iconTone]="k.tone"></app-kpi-tile>
+          <app-icon class="kpi-btn__chevron" name="chevron-right" [size]="18" aria-hidden="true"></app-icon>
+        </button>
+      }
+    </section>
+
+    @if (notice()) {
+      <p class="issues__notice" role="status" data-page-notice>{{ notice() }}</p>
+    }
+
+    <div class="issues__layout" [class.issues__layout--detail]="selectedId()">
+      <section class="issues__card" aria-labelledby="issues-list-title">
+        <div class="issues__toolbar">
+          <h2 id="issues-list-title" class="issues__card-title">Mis incidencias</h2>
+          <div class="issues__tools">
+            <label class="issues__search">
+              <span class="visually-hidden">Buscar</span>
+              <app-icon name="search" [size]="15"></app-icon>
+              <input class="field--bare" type="search" data-search placeholder="Buscar por asunto o descripción…" [value]="searchText()" (input)="onSearch($any($event.target).value)" />
+            </label>
+            <div class="filters" #filtersBox>
+              <button type="button" class="filters__btn" data-action="filters" aria-haspopup="dialog" [attr.aria-expanded]="filtersOpen()" (click)="filtersOpen.set(!filtersOpen())">
+                <app-icon name="filter" [size]="15"></app-icon>
+                Filtrar
+                @if (activeFilters() > 0) {
+                  <span class="filters__count" data-filter-count [attr.aria-label]="activeFilters() + ' filtros activos'">{{ activeFilters() }}</span>
+                }
+              </button>
+              @if (filtersOpen()) {
+                <div class="filters__popover" role="dialog" aria-label="Filtros" data-filter-popover>
+                  <label class="filters__field">
+                    Estado
+                    <select data-filter="estado" (change)="setFilter('estado', $any($event.target).value)">
+                      <option value="" [selected]="!filters().estado">Todos</option>
+                      @for (s of statusFilters; track s.value) {
+                        <option [value]="s.value" [selected]="filters().estado === s.value">{{ s.label }}</option>
+                      }
+                    </select>
+                  </label>
+                  <div class="filters__footer">
+                    <button type="button" class="filters__clear" data-action="clear-filters" [disabled]="activeFilters() === 0" (click)="clearFilters()">Limpiar</button>
+                    <button type="button" class="filters__done" (click)="filtersOpen.set(false)">Aplicar</button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        @if (failed()) {
+          <p class="issues__message issues__message--error" role="alert" data-list-error>No se pudieron cargar las incidencias. Inténtalo de nuevo.</p>
+        } @else if (!list()) {
+          <p class="issues__message">Cargando…</p>
+        } @else if (rows().length === 0) {
+          <div data-list-empty>
+            <app-empty-state icon="file-text" title="No hay incidencias"
+              [description]="activeFilters() > 0 || searchText() ? 'Prueba con otra búsqueda o limpia los filtros.' : 'Cuando comuniques una incidencia, aparecerá aquí.'"></app-empty-state>
+          </div>
+        } @else {
+          <table class="issue-table" [class.issue-table--loading]="loading()" [attr.aria-busy]="loading()">
+            <thead>
+              <tr>
+                <th scope="col">Asunto</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Ubicación</th>
+                <th scope="col" [attr.aria-sort]="sortAsc() ? 'ascending' : 'descending'">
+                  <button type="button" class="issue-table__sort" data-sort="date" (click)="toggleSort()">
+                    Fecha
+                    <app-icon [name]="sortAsc() ? 'chevron-down' : 'sort'" [size]="13"></app-icon>
+                  </button>
+                </th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track row.id) {
+                <tr class="issue-row" tabindex="0" [attr.data-issue]="row.id" [class.issue-row--selected]="row.id === selectedId()"
+                  [attr.aria-current]="row.id === selectedId() ? 'true' : null"
+                  (click)="openIssue(row.id)" (keydown.enter)="openIssue(row.id)" (keydown.space)="$event.preventDefault(); openIssue(row.id)">
+                  <td class="issue-row__subject">
+                    <span class="issue-row__icon" [class]="'issue-row__icon issue-row__icon--' + statusTone(row.status)" aria-hidden="true">
+                      <app-icon name="wrench" [size]="15"></app-icon>
+                    </span>
+                    <span class="issue-row__text">
+                      <span class="issue-row__title">{{ row.title }}</span>
+                      <span class="issue-row__excerpt">{{ row.description }}</span>
+                      @if (scope.isAll()) {
+                        <span class="issue-row__community" data-community-name>{{ row.estateName }}</span>
+                      }
+                      @if (row.awaitingMyAnswer) {
+                        <span class="issue-row__marker issue-row__marker--ask" data-awaiting-answer>Te piden información</span>
+                      } @else if (!row.mine) {
+                        <span class="issue-row__marker" data-neighbour-marker>De un vecino</span>
+                      }
+                    </span>
+                  </td>
+                  <td data-col="tipo"><span class="issue-row__type"><app-icon name="wrench" [size]="14"></app-icon>{{ typeLabel(row.type) }}</span></td>
+                  <td data-col="ubicacion">{{ row.location ?? '—' }}</td>
+                  <td data-col="fecha">{{ calendarDay(row.date) }}</td>
+                  <td data-col="estado"><app-status-pill [text]="statusLabel(row.status)" [tone]="statusTone(row.status)"></app-status-pill></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </section>
+
+      @if (selectedId(); as issueId) {
+        <div class="issues__detail">
+          <app-issue-detail [issueId]="issueId" (closed)="closeIssue()" (changed)="reload()"></app-issue-detail>
+        </div>
+      }
+    </div>
+  }
+
+  @if (creating()) {
+    <app-new-issue-modal [communities]="communities()" [estateId]="estateId()" [userId]="userId()"
+      (closed)="creating.set(false)" (created)="onCreated($event)" (affected)="onAffected($event)"></app-new-issue-modal>
+  }
+</div>

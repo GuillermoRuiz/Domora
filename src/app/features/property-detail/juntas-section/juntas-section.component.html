@@ -1,0 +1,110 @@
+<div class="card__header-row">
+  <h4 class="card__title">Juntas convocadas</h4>
+</div>
+
+@if (loading()) {
+  <p class="text-muted">Cargando…</p>
+} @else if (rows().length === 0 && signatures().length === 0) {
+  <div class="empty-state">
+    <app-icon name="users" [size]="28"></app-icon>
+    <h3>Sin juntas pendientes</h3>
+    <p>No hay juntas convocadas en las que puedas votar o delegar tu voto ahora mismo.</p>
+  </div>
+} @else {
+  <div class="juntas-list">
+    @for (row of signatures(); track row.meeting.id) {
+      <div class="junta-item">
+        <div class="junta-row">
+          <div class="junta-row__info">
+            <strong>{{ row.meeting.title }}</strong>
+            <span class="text-muted">Acta pendiente de tu firma como presidente</span>
+          </div>
+          <app-btn variant="accent" size="sm" [disabled]="signingMeetingId() === row.meeting.id" (clicked)="signAsPresident(row)">Firmar</app-btn>
+        </div>
+      </div>
+    }
+    @for (row of rows(); track row.meeting.id) {
+      <div class="junta-item">
+        <div class="junta-row">
+          <div class="junta-row__info">
+            <strong>{{ row.meeting.title }}</strong>
+            <span class="text-muted">{{ dateLabel(row.meeting.scheduledAt1) }}</span>
+          </div>
+          @if (row.myDelegation; as d) {
+            <div class="junta-row__actions">
+              <app-badge text="Voto delegado" variant="default"></app-badge>
+              <span class="text-muted">{{ d.representativeUser?.fullName ?? d.representativeName ?? d.representativeUserId }}</span>
+              <button class="action-btn" (click)="revokeDelegation(row)" title="Revocar delegación">
+                <app-icon name="x" [size]="16"></app-icon>
+              </button>
+            </div>
+          } @else {
+            <app-btn variant="outline" size="sm" (clicked)="openDelegationModal(row.meeting.id)">
+              <app-icon name="users" [size]="14"></app-icon>
+              Delegar mi voto
+            </app-btn>
+          }
+        </div>
+
+        @if (row.openVotes.length > 0) {
+          <div class="votes-block">
+            @for (v of row.openVotes; track v.session.id) {
+              <div class="votes-block__question">
+                <strong>{{ v.questionTitle }}</strong>
+                <div class="votes-block__options">
+                  @for (opt of v.options; track $index) {
+                    <label class="votes-block__option" [style.--option-color]="v.optionColors[$index] || null">
+                      <input
+                        type="radio"
+                        [name]="v.session.id"
+                        [checked]="pendingVote()[v.session.id] === $index"
+                        (change)="selectVoteOption(v.session.id, $index)"
+                      />
+                      {{ opt }}
+                    </label>
+                  }
+                </div>
+                @if (v.session.require2fa) {
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="9"
+                    placeholder="Código 2FA"
+                    class="votes-block__totp"
+                    [ngModel]="totpCode()[v.session.id]"
+                    (ngModelChange)="setTotpCode(v.session.id, $event)"
+                  />
+                }
+                <app-btn
+                  [variant]="row.debtBlocked ? 'danger' : 'primary'" size="sm"
+                  [disabled]="row.debtBlocked || pendingVote()[v.session.id] == null || (v.session.require2fa && !totpCode()[v.session.id]?.trim()) || votingBusy() === v.session.id"
+                  [attr.title]="row.debtBlocked ? 'Tienes una deuda pendiente con la comunidad: según el art. 15.2 LPH no puedes votar hasta regularizarla' : null"
+                  (clicked)="castVote(row.meeting.id, v.session.id, v.session.require2fa)"
+                >
+                  {{ row.debtBlocked ? 'Deuda pendiente' : 'Votar' }}
+                </app-btn>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+
+@if (delegationTargetMeetingId(); as meetingId) {
+  <app-register-delegation-modal
+    [meetingId]="meetingId"
+    [lockedPropertyId]="propertyId"
+    [lockedDelegatorUserId]="auth.currentUser()?.id"
+    (closed)="closeDelegationModal()"
+    (created)="onDelegationCreated()"
+  ></app-register-delegation-modal>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

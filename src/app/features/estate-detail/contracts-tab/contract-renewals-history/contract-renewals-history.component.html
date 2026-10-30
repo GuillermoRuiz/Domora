@@ -1,0 +1,47 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rh-title" (click)="$event.stopPropagation()" appContractDialog (dismiss)="closed.emit()" tabindex="-1">
+    <div class="modal__header">
+      <div class="modal__titles">
+        <h4 id="rh-title">Histórico de renovaciones</h4>
+        <span class="modal__subtitle">{{ rows().length }} {{ rows().length === 1 ? 'renovación registrada' : 'renovaciones registradas' }}</span>
+      </div>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      @if (rows().length === 0) {
+        <p class="field-hint">Todavía no se ha registrado ninguna renovación.</p>
+      } @else {
+        <div class="history__scroll">
+          <table class="history" aria-label="Renovaciones de contratos">
+            <thead>
+              <tr>
+                <th scope="col">Contrato / Servicio</th>
+                <th scope="col">Fecha</th>
+                <th scope="col">Vencimiento anterior</th>
+                <th scope="col">Nuevo vencimiento</th>
+                <th scope="col" class="history__num">Importe anual</th>
+                <th scope="col">Tipo</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track row.id) {
+                <tr [attr.data-renewal]="row.id">
+                  <td>
+                    <span class="history__title">{{ row.service }}</span>
+                    <span class="history__sub">{{ row.supplier }}</span>
+                    @if (row.notes) { <span class="history__sub history__notes">{{ row.notes }}</span> }
+                  </td>
+                  <td class="history__date">{{ row.date }}</td>
+                  <td class="history__date">{{ row.previousEnd }}</td>
+                  <td class="history__date">{{ row.newEnd }}</td>
+                  <td class="history__num">{{ row.amount }}</td>
+                  <td>{{ row.kind }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+</div>

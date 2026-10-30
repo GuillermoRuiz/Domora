@@ -1,0 +1,27 @@
+  <fieldset class="scope-fieldset" [class.scope-fieldset--header]="header" [disabled]="disabled" (focusout)="closeOnBlur($event)">
+    @if (!header) { <legend>{{ single ? 'Comunidad' : 'Comunidades' }}</legend> }
+    <div class="scope-control">
+      <button #trigger type="button" class="scope-trigger" aria-haspopup="dialog" [attr.aria-label]="single ? 'Seleccionar comunidad' : 'Seleccionar comunidades'" [attr.aria-expanded]="open()" [attr.aria-controls]="open() ? 'report-estate-scope-panel' : null" (click)="toggle()">
+        @if (header) { <app-icon class="scope-building community-control__building" name="building" [size]="18" /> }
+        <span class="community-control__label">{{ selectionLabel }}</span><app-icon class="scope-chevron community-control__chevron" name="chevron-down" [size]="14" />
+      </button>
+    </div>
+    @if (open()) {
+      <div id="report-estate-scope-panel" class="scope-panel" role="dialog" aria-label="Seleccionar comunidades" (keydown)="onKeydown($event)">
+        <div class="scope-search"><app-icon name="search" [size]="16" /><input #searchInput type="search" aria-label="Buscar comunidad" [value]="search()" (input)="search.set($any($event.target).value)" placeholder="Buscar comunidad…" /></div>
+        @if (!single) {
+          <button type="button" class="scope-all" [class.scope-all--active]="allSelected" [attr.aria-pressed]="allSelected" [disabled]="!estates.length" (click)="toggleAll(true)"><app-icon name="check" [size]="16" />Todas mis comunidades</button>
+        }
+        <div class="scope-results">
+          @for (estate of visibleEstates(); track estate.id) {
+            <button type="button" class="scope-estate" [class.scope-estate--active]="isSelected(estate.id)" [attr.data-estate-id]="estate.id" [attr.aria-pressed]="isSelected(estate.id)" (click)="toggleEstate(estate.id, !isSelected(estate.id))">
+              <app-icon name="building" [size]="16" />
+              <span class="scope-estate__text"><strong>{{ estate.name }}</strong>@if (address(estate); as line) { <small>{{ line }}</small> }</span>
+              @if (isSelected(estate.id)) { <app-icon class="scope-estate__check" name="check" [size]="16" /> }
+            </button>
+          } @empty { <p class="scope-empty" role="status">No se encontraron comunidades.</p> }
+        </div>
+      </div>
+    }
+    @if (single && !header) { <p class="scope-hint">Este informe requiere una comunidad.</p> }
+  </fieldset>

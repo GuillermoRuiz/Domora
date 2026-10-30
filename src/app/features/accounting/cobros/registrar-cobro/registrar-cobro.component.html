@@ -1,0 +1,92 @@
+<div class="modal-overlay" (click)="close()">
+  <div class="modal" role="dialog" aria-labelledby="cobro-title" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <div>
+        <div class="modal__breadcrumb">Recibos · {{ receipt.owner }} · {{ receipt.unit }}</div>
+        <h3 class="modal__title" id="cobro-title">Registrar cobro del recibo {{ receipt.no }}</h3>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </div>
+
+    <div class="modal__body">
+      <p class="modal__intro">
+        Pendiente de este recibo: <strong class="money">{{ fmtEur(outstanding()) }}</strong>.
+        Puedes registrar un pago parcial: el recibo quedará a medias hasta completarlo.
+      </p>
+
+      @if (account(); as acc) {
+        @if (acc.advance > 0) {
+          <div class="advance-note">
+            <span>
+              Esta propiedad tiene <strong class="money">{{ fmtEur(acc.advance) }}</strong> de anticipo a su favor.
+              Puedes usarlo para pagar el recibo sin registrar dinero nuevo.
+            </span>
+            <app-btn variant="outline" size="sm" [disabled]="saving()" (clicked)="applyAdvance()">Aplicar anticipo</app-btn>
+          </div>
+        }
+      }
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label" for="cobro-amount">Importe (€)</label>
+          <input id="cobro-amount" class="form-input money" type="text" inputmode="decimal" [(ngModel)]="form.amount" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="cobro-date">Fecha del cobro</label>
+          <input id="cobro-date" class="form-input" type="date" [(ngModel)]="form.date" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="cobro-method">Método</label>
+          <select id="cobro-method" class="form-input" [(ngModel)]="form.method">
+            @for (m of methods; track m) {
+              <option [value]="m">{{ m }}</option>
+            }
+          </select>
+        </div>
+        @if (!isCash() && banks().length > 1) {
+          <div class="form-field">
+            <label class="form-label" for="cobro-bank">Cuenta donde entró</label>
+            <select id="cobro-bank" class="form-input" [(ngModel)]="form.bankAccountId">
+              @for (b of banks(); track b.id) {
+                <option [value]="b.id">{{ b.alias }}{{ b.ibanMasked ? ' · ' + b.ibanMasked : '' }}</option>
+              }
+            </select>
+          </div>
+        } @else if (isCash()) {
+          <p class="form-hint form-field">Se registra en la caja de la comunidad (570).</p>
+        }
+        <div class="form-field form-field--full">
+          <label class="form-label" for="cobro-notes">Nota</label>
+          <input id="cobro-notes" class="form-input" type="text" maxlength="255" placeholder="Opcional, p. ej. referencia de la transferencia"
+            [(ngModel)]="form.notes" />
+        </div>
+        <label class="form-check form-field--full" for="cobro-only-this">
+          <input id="cobro-only-this" type="checkbox" [(ngModel)]="form.onlyThis" />
+          <span>
+            Imputar solo a este recibo
+            <span class="form-hint">
+              Si lo desmarcas, el cobro se reparte entre los recibos pendientes de la propiedad: primero intereses y
+              después lo más antiguo (arts. 1173 y 1174 del Código Civil).
+            </span>
+          </span>
+        </label>
+      </div>
+
+      @if (excess() > 0) {
+        <p class="form-hint">Sobran <strong class="money">{{ fmtEur(excess()) }}</strong>: quedarán como anticipo de la propiedad.</p>
+      }
+      @if (error()) {
+        <p class="form-error" role="alert">{{ error() }}</p>
+      }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" (clicked)="close()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="save()">
+        {{ saving() ? 'Registrando…' : 'Registrar cobro' }}
+      </app-btn>
+    </div>
+  </div>
+</div>

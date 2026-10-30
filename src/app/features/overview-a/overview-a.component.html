@@ -1,0 +1,55 @@
+<app-topbar title="Vista general" [breadcrumb]="['Panel de control', 'Vista general']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Vista general</h1>
+    <p class="page-intro__subtitle">Cómo evoluciona el negocio, qué clientes necesitan atención, qué cobros están pendientes y cómo se usa la plataforma.</p>
+  </div>
+</header>
+
+<div class="page-content">
+  <ul class="kpis" aria-label="Indicadores de Domora">
+    @for (kpi of kpis(); track kpi.key) {
+      <li [attr.data-kpi]="kpi.key">
+        <app-stat-card
+          [label]="kpi.label"
+          [value]="kpi.value"
+          [icon]="kpi.icon"
+          [sub]="kpi.sub"
+          [change]="kpi.change"
+          [changeTone]="kpi.tone"
+          [trend]="kpi.trend"
+          [info]="kpi.info"
+        ></app-stat-card>
+      </li>
+    }
+  </ul>
+  @if (kpiFailed()) {
+    <p class="kpis-error" role="alert">
+      Algunos indicadores no se pudieron cargar.
+      <button type="button" class="kpis-error__retry" (click)="retryKpis()">Reintentar</button>
+    </p>
+  }
+
+  <div class="overview-grid overview-grid--wide">
+    <app-overview-a-mrr [data]="mrr.data()" [error]="mrr.error()" [retry]="retry(mrr)"></app-overview-a-mrr>
+    <app-overview-a-signups [data]="mrr.data()" [error]="mrr.error()" [retry]="retry(mrr)"></app-overview-a-signups>
+  </div>
+
+  <app-overview-a-attention [data]="attention.data()" [error]="attention.error()" [retry]="retry(attention)"></app-overview-a-attention>
+
+  <div class="overview-grid">
+    <app-overview-a-completeness [data]="completeness.data()" [error]="completeness.error()" [retry]="retry(completeness)"></app-overview-a-completeness>
+    <app-section-card title="Soporte pendiente">
+      <div class="support-soon">
+        <app-empty-state
+          icon="message-square"
+          title="Próximamente"
+          description="Aquí verás los tickets que los despachos abren a Domora, por prioridad y estado, cuando exista el módulo de soporte e incidencias."
+        ></app-empty-state>
+      </div>
+    </app-section-card>
+  </div>
+
+  <app-overview-a-activity [data]="activity.data()" [error]="activity.error()" [retry]="retry(activity)"></app-overview-a-activity>
+</div>

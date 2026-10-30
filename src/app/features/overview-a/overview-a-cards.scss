@@ -1,0 +1,62 @@
+// Shared by the role A Vista general cards: states, lists and the attention table.
+:host { display: block; min-width: 0; }
+
+.card-message { margin: 0; padding: 28px 20px; text-align: center; font-size: 14px; color: var(--color-muted); }
+.card-message--error { color: var(--color-error); }
+.card-retry { padding: 0 0 0 6px; font: inherit; font-weight: 600; color: var(--color-accent); background: none; border: none; cursor: pointer; }
+.card-retry:focus-visible, .card-link:focus-visible, .card-select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 2px; }
+.card-note { margin: 0; font-size: 13px; color: var(--color-muted); }
+
+.card-select {
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.card-select-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-muted); }
+
+.card-link { color: var(--color-text); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.card-link:hover { color: var(--color-accent); }
+
+// Lists (completitud, actividad)
+.rows { margin: 12px 0 0; padding: 0; list-style: none; }
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 10px 20px;
+}
+.row + .row { border-top: 1px solid var(--color-border-light); }
+.row__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+}
+.row__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14.5px; color: var(--color-text); }
+.row__meta { font-size: 13px; color: var(--color-muted); overflow-wrap: anywhere; }
+.row__side { font-size: 13px; color: var(--color-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.row--bar { grid-template-columns: minmax(0, 1fr) minmax(80px, 34%) 3.5em; }
+
+// Attention table
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--color-border-light); vertical-align: middle; }
+.table th { font-size: 12.5px; font-weight: 600; color: var(--color-muted); white-space: nowrap; }
+.table th:first-child, .table td:first-child { padding-left: 20px; }
+.table tbody tr { cursor: pointer; }
+.table tbody tr:hover { background: var(--color-bg); }
+.table__num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table__reasons { margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--color-muted); }
+.table__actions { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; font-size: 13px; white-space: nowrap; }
+.table__actions .card-link { text-decoration: underline; text-underline-offset: 2px; }
+.table th:last-child, .table td:last-child { padding-right: 20px; }

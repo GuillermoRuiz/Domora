@@ -1,0 +1,320 @@
+<ng-template appPageAction>
+  <app-btn variant="secondary" size="sm" (clicked)="openUpload()">
+    <app-icon name="upload" [size]="14"></app-icon>
+    Subir documentos
+  </app-btn>
+</ng-template>
+
+@if (pendingReview() && view() !== 'review' && !ownerPreview()) {
+  <div class="notice" role="status">
+    <app-icon name="eye" [size]="16"></app-icon>
+    <p>
+      <strong>{{ pendingReview() === 1 ? '1 documento dejó' : pendingReview() + ' documentos dejaron' }} de ser visible{{ pendingReview() === 1 ? '' : 's' }} para los propietarios</strong>
+      al activar la biblioteca: ahora solo los ve la gestora. Decide cuáles abrir a los propietarios.
+    </p>
+    <app-btn variant="outline" size="sm" (clicked)="openView('review')">Revisar</app-btn>
+  </div>
+}
+
+@if (ownerPreview()) {
+  <div class="notice notice--preview" role="status">
+    <app-icon name="users" [size]="16"></app-icon>
+    <p>
+      <strong>Vista de propietario.</strong>
+      Ves lo mismo que un propietario de la finca. Los documentos de «Una propiedad» solo los ven los propietarios de esa vivienda.
+    </p>
+    <app-btn variant="outline" size="sm" (clicked)="toggleOwnerPreview()">Salir</app-btn>
+  </div>
+}
+
+<div class="library">
+  <nav class="tree" aria-label="Carpetas">
+    <button type="button" class="tree__item" [class.tree__item--active]="view() === 'folder' && !folderId()" (click)="openFolder(null)">
+      <app-icon name="home" [size]="15"></app-icon>
+      <span class="tree__name">Todos los documentos</span>
+      @if (rootCount()) { <span class="tree__count">{{ rootCount() }}</span> }
+    </button>
+    @for (f of tree(); track f.id) {
+      <button type="button" class="tree__item" [style.padding-left.px]="12 + f.depth * 16"
+        [class.tree__item--active]="view() === 'folder' && folderId() === f.id"
+        [attr.aria-current]="view() === 'folder' && folderId() === f.id ? 'page' : null"
+        (click)="openFolder(f.id)">
+        <app-icon name="layers" [size]="15"></app-icon>
+        <span class="tree__name">{{ f.name }}</span>
+        @if (folderCount(f)) { <span class="tree__count">{{ folderCount(f) }}</span> }
+      </button>
+    }
+    @if (!ownerPreview()) {
+      <div class="tree__separator" role="separator"></div>
+      <button type="button" class="tree__item" [class.tree__item--active]="view() === 'review'" (click)="openView('review')">
+        <app-icon name="eye" [size]="15"></app-icon>
+        <span class="tree__name">Pendientes de revisar</span>
+        @if (pendingReview()) { <span class="tree__count tree__count--warn">{{ pendingReview() }}</span> }
+      </button>
+      <button type="button" class="tree__item" [class.tree__item--active]="view() === 'trash'" (click)="openView('trash')">
+        <app-icon name="trash" [size]="15"></app-icon>
+        <span class="tree__name">Papelera</span>
+        @if (inTrash()) { <span class="tree__count">{{ inTrash() }}</span> }
+      </button>
+    }
+  </nav>
+
+  <section class="panel" [attr.aria-busy]="loading()">
+    <header class="panel__header">
+      <div class="panel__title">
+        @if (view() === 'folder' && breadcrumbs().length) {
+          <ol class="crumbs" aria-label="Ruta">
+            <li><button type="button" (click)="openFolder(null)">Documentos</button></li>
+            @for (c of breadcrumbs(); track c.id; let last = $last) {
+              <li>
+                <app-icon name="chevron-right" [size]="12"></app-icon>
+                @if (last) { <span aria-current="page">{{ c.name }}</span> }
+                @else { <button type="button" (click)="openFolder(c.id)">{{ c.name }}</button> }
+              </li>
+            }
+          </ol>
+        } @else {
+          <h3>{{ heading() }}</h3>
+        }
+        @if (view() === 'folder' && currentFolder(); as folder) {
+          <p class="panel__meta">
+            Visible para: <strong>{{ visibilityLabel(folder.effectiveVisibility) }}</strong>
+            @if (!folder.visibility && folder.parentId) { <span class="muted">&nbsp;(heredado)</span> }
+          </p>
+        }
+      </div>
+      <div class="panel__tools">
+        <label class="search">
+          <app-icon name="search" [size]="14"></app-icon>
+          <span class="sr-only">Buscar documentos</span>
+          <input class="field--bare" id="library-search" type="search" placeholder="Buscar en toda la finca" [ngModel]="query()" (ngModelChange)="onSearch($event)" />
+        </label>
+        <app-btn variant="outline" size="sm" [class.is-on]="ownerPreview()" [attr.aria-pressed]="ownerPreview()" (clicked)="toggleOwnerPreview()">
+          <app-icon name="users" [size]="14"></app-icon>
+          Ver como propietario
+        </app-btn>
+        @if (view() === 'folder' && !ownerPreview()) {
+          <app-btn variant="outline" size="sm" (clicked)="newFolder()">
+            <app-icon name="plus" [size]="14"></app-icon>
+            Nueva carpeta
+          </app-btn>
+        }
+        @if (view() === 'review' && documents().length) {
+          <app-btn variant="outline" size="sm" (clicked)="keepManagerOnly('all')">Mantener todos solo para la gestora</app-btn>
+        }
+      </div>
+    </header>
+
+    <div class="filters" role="group" aria-label="Filtros">
+      <label class="filter">
+        <span>Tipo</span>
+        <select class="field--sm" id="library-filter-type" [ngModel]="filterType()" (ngModelChange)="filterType.set($event)">
+          <option value="">Todos</option>
+          @for (t of typeOptions(); track t) { <option [value]="t">{{ t }}</option> }
+        </select>
+      </label>
+      @if (view() !== 'trash') {
+        <label class="filter">
+          <span>Visible para</span>
+          <select class="field--sm" id="library-filter-audience" [ngModel]="filterAudience()" (ngModelChange)="filterAudience.set($event)">
+            <option value="">Todos</option>
+            @for (v of audienceOptions; track v) { <option [value]="v">{{ visibilityLabel(v) }}</option> }
+          </select>
+        </label>
+      }
+      <label class="filter">
+        <span>Origen</span>
+        <select class="field--sm" id="library-filter-source" [ngModel]="filterSource()" (ngModelChange)="filterSource.set($event)">
+          <option value="">Todos</option>
+          <option value="upload">Subido</option>
+          <option value="generated">Generado (acta)</option>
+        </select>
+      </label>
+      @if (filtering()) {
+        <button type="button" class="link" (click)="clearFilters()">Quitar filtros</button>
+      }
+    </div>
+
+    @if (view() === 'review') {
+      <p class="panel__intro">Estos documentos se subieron antes de la biblioteca y quedaron visibles solo para la gestora. Ábrelos a los propietarios o confirma que siguen siendo internos.</p>
+    }
+    @if (view() === 'trash') {
+      <p class="panel__intro">Los documentos de la papelera no los ve nadie más que la gestora. Restáuralos para devolverlos a su carpeta.</p>
+    }
+
+    @if (loadError()) {
+      <p class="empty" role="alert">{{ loadError() }} <button type="button" class="link" (click)="load()">Reintentar</button></p>
+    } @else if (loading() && !listing()) {
+      <p class="empty">Cargando…</p>
+    } @else {
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              @if (view() === 'trash') {
+                <th>Eliminado</th>
+              } @else {
+                <th class="col-kind">Tipo</th>
+                <th>Visible para</th>
+                @if (view() !== 'review') {
+                  <th class="col-source">Origen</th>
+                  <th class="col-date">Modificado</th>
+                }
+              }
+              <th class="col-size">Tamaño</th>
+              <th><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of shownFolders(); track f.id) {
+              <tr class="row--folder">
+                <td>
+                  <button type="button" class="name" (click)="openFolder(f.id)">
+                    <app-icon name="layers" [size]="16"></app-icon>
+                    <span>{{ f.name }}</span>
+                  </button>
+                </td>
+                <td class="col-kind muted">Carpeta</td>
+                <td>
+                  <span class="audience" [attr.data-level]="f.effectiveVisibility">{{ visibilityLabel(f.effectiveVisibility) }}</span>
+                  @if (f.visibility && f.parentId) { <span class="own">Visibilidad propia</span> }
+                </td>
+                <td class="col-source muted">{{ f.systemKey ? 'Plantilla' : '—' }}</td>
+                <td class="col-date muted">—</td>
+                <td class="col-size muted num">{{ folderCount(f) }} {{ folderCount(f) === 1 ? 'doc.' : 'docs.' }}</td>
+                <td class="actions">
+                  @if (!ownerPreview()) {
+                    <button type="button" class="action-btn" [attr.aria-label]="'Opciones de ' + f.name" (click)="openMenu($event, { kind: 'folder', item: f })">
+                      <app-icon name="ellipsis" [size]="16"></app-icon>
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+            @for (d of documents(); track d.id) {
+              <tr>
+                <td>
+                  <button type="button" class="name" (click)="view() === 'trash' ? null : canPreview(d) ? preview(d) : download(d)" [disabled]="view() === 'trash'">
+                    <app-icon [name]="d.source === 'generated' ? 'gavel' : kind(d) === 'Imagen' ? 'image' : 'file-text'" [size]="16"></app-icon>
+                    <span>{{ d.title }}</span>
+                  </button>
+                  @if (d.description) { <p class="name__desc">{{ d.description }}</p> }
+                </td>
+                @if (view() === 'trash') {
+                  <td class="muted">{{ d.deletedAt | date: 'dd/MM/yyyy' }}</td>
+                } @else {
+                  <td class="col-kind muted">{{ d.type || kind(d) }}</td>
+                  <td>
+                    <span class="audience" [attr.data-level]="d.effectiveVisibility">{{ audienceLabel(d) }}</span>
+                    @if (d.visibility) { <span class="own">Visibilidad propia</span> }
+                    @if (d.visibilityReviewPending && view() !== 'review') { <span class="own own--warn">Pendiente de revisar</span> }
+                  </td>
+                  @if (view() !== 'review') {
+                    <td class="col-source muted">{{ d.source === 'generated' ? 'Generado (acta)' : 'Subido' }}</td>
+                    <td class="col-date muted num">{{ d.updatedAt | date: 'dd/MM/yyyy' }}</td>
+                  }
+                }
+                <td class="col-size muted num">{{ d.size || '—' }}</td>
+                <td class="actions">
+                  @if (view() === 'trash') {
+                    <app-btn variant="outline" size="sm" (clicked)="restore(d)">Restaurar</app-btn>
+                  } @else if (view() === 'review') {
+                    <div class="review-actions">
+                      <app-btn variant="outline" size="sm" (clicked)="keepManagerOnly([d])">Solo gestora</app-btn>
+                      <app-btn variant="accent" size="sm" (clicked)="openToOwners(d)">Abrir a propietarios</app-btn>
+                    </div>
+                  } @else if (ownerPreview()) {
+                    <button type="button" class="action-btn" [attr.aria-label]="'Descargar ' + d.title" (click)="download(d)">
+                      <app-icon name="download" [size]="16"></app-icon>
+                    </button>
+                  } @else {
+                    <button type="button" class="action-btn" [attr.aria-label]="'Opciones de ' + d.title" (click)="openMenu($event, { kind: 'document', item: d })">
+                      <app-icon name="ellipsis" [size]="16"></app-icon>
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+            @if (isEmpty()) {
+              <tr>
+                <td colspan="7" class="empty">
+                  @if (filtering()) {
+                    Ningún documento coincide con los filtros. <button type="button" class="link" (click)="clearFilters()">Quitar filtros</button>
+                  } @else {
+                  @switch (view()) {
+                    @case ('search') { No hay documentos que coincidan con «{{ query().trim() }}». }
+                    @case ('trash') { La papelera está vacía. }
+                    @case ('review') { No queda ningún documento por revisar. }
+                    @default {
+                      @if (ownerPreview()) { Un propietario no ve nada en esta carpeta. }
+                      @else { Esta carpeta está vacía. <button type="button" class="link" (click)="openUpload()">Sube el primer documento</button> }
+                    }
+                  }
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>
+
+@if (menu(); as m) {
+  <div class="menu-backdrop" (click)="closeMenu()"></div>
+  <div class="row-menu" role="menu" [style.top.px]="menuPosition().top" [style.left.px]="menuPosition().left">
+    @if (m.kind === 'document') {
+      @if (canPreview(m.item)) {
+        <button type="button" role="menuitem" (click)="preview(m.item)"><app-icon name="eye" [size]="14"></app-icon> Vista previa</button>
+      }
+      <button type="button" role="menuitem" (click)="download(m.item)"><app-icon name="download" [size]="14"></app-icon> Descargar</button>
+      <div class="row-menu__separator" role="separator"></div>
+      <button type="button" role="menuitem" (click)="documentVisibility(m.item)"><app-icon name="users" [size]="14"></app-icon> Quién lo ve</button>
+      @if (m.item.source !== 'generated') {
+        <button type="button" role="menuitem" (click)="renameDocument(m.item)"><app-icon name="edit" [size]="14"></app-icon> Renombrar</button>
+      }
+      <button type="button" role="menuitem" (click)="moveDocument(m.item)"><app-icon name="arrow-right" [size]="14"></app-icon> Mover a…</button>
+      @if (m.item.source !== 'generated') {
+        <div class="row-menu__separator" role="separator"></div>
+        <button type="button" role="menuitem" class="row-menu__danger" (click)="trash(m.item)"><app-icon name="trash" [size]="14"></app-icon> Enviar a la papelera</button>
+      }
+    } @else {
+      <button type="button" role="menuitem" (click)="openFolder(m.item.id); closeMenu()"><app-icon name="layers" [size]="14"></app-icon> Abrir</button>
+      <button type="button" role="menuitem" (click)="newFolder(m.item.id)"><app-icon name="plus" [size]="14"></app-icon> Nueva subcarpeta</button>
+      <div class="row-menu__separator" role="separator"></div>
+      <button type="button" role="menuitem" (click)="folderVisibility(m.item)"><app-icon name="users" [size]="14"></app-icon> Quién la ve</button>
+      <button type="button" role="menuitem" (click)="renameFolder(m.item)"><app-icon name="edit" [size]="14"></app-icon> Renombrar</button>
+      @if (!m.item.systemKey) {
+        <button type="button" role="menuitem" (click)="moveFolder(m.item)"><app-icon name="arrow-right" [size]="14"></app-icon> Mover a…</button>
+        <div class="row-menu__separator" role="separator"></div>
+        <button type="button" role="menuitem" class="row-menu__danger" (click)="deleteFolder(m.item)"><app-icon name="trash" [size]="14"></app-icon> Eliminar carpeta</button>
+      }
+    }
+  </div>
+}
+
+@if (dialog(); as d) {
+  @switch (d.kind) {
+    @case ('upload') {
+      <app-library-upload-dialog [estateId]="estateId()" [folders]="folders()" [initialFolderId]="view() === 'folder' ? folderId() : null"
+        [properties]="propertyOptions()" (uploaded)="onUploaded($event)" (closed)="closeDialog()"></app-library-upload-dialog>
+    }
+    @case ('name') {
+      <app-library-name-dialog [mode]="$any(d).mode" [folders]="folders()" [busy]="dialogBusy()" [error]="dialogError()"
+        (saved)="submitDialog($event)" (closed)="closeDialog()"></app-library-name-dialog>
+    }
+    @case ('visibility') {
+      <app-library-visibility-dialog [target]="$any(d).target" [properties]="propertyOptions()"
+        (saved)="submitDialog($event)" (closed)="closeDialog()"></app-library-visibility-dialog>
+    }
+    @case ('preview') {
+      <app-library-preview-dialog [document]="$any(d).document" (download)="download($event)" (closed)="closeDialog()"></app-library-preview-dialog>
+    }
+  }
+}
+
+@if (toast()) {
+  <div class="toast" role="status"><app-icon name="check" [size]="14"></app-icon> {{ toast() }}</div>
+}

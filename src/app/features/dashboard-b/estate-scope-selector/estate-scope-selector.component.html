@@ -1,0 +1,67 @@
+<button
+  #trigger
+  class="scope-trigger"
+  type="button"
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="open()"
+  [attr.aria-controls]="open() ? 'estate-scope-menu' : null"
+  (click)="toggle()"
+>
+  <app-icon class="community-control__building" name="building" [size]="18"></app-icon
+  ><span class="community-control__label">{{ selected()?.name ?? "Todas mis comunidades" }}</span
+  ><app-icon class="community-control__chevron" name="chevron-down" [size]="14"></app-icon>
+</button>
+@if (open()) {
+  <div
+    id="estate-scope-menu"
+    class="scope-menu"
+    role="dialog"
+    aria-label="Seleccionar comunidad"
+    (keydown)="onKeydown($event)"
+  >
+    <div class="scope-search">
+      <app-icon name="search" [size]="16"></app-icon
+      ><input class="field--bare"
+        #search
+        type="search"
+        aria-label="Buscar comunidad"
+        placeholder="Buscar comunidad…"
+        [value]="query()"
+        (input)="query.set($any($event.target).value)"
+      />
+    </div>
+    <button
+      type="button"
+      class="scope-all"
+      [attr.aria-pressed]="selected() === null"
+      (click)="select(null)"
+    >
+      <app-icon name="check" [size]="16"></app-icon>Todas mis comunidades
+    </button>
+    <div class="scope-results" [attr.aria-busy]="loading()">
+      @if (loading()) {
+        <p role="status">Cargando comunidades…</p>
+      } @else if (error()) {
+        <p role="alert">No se pudieron cargar las comunidades.</p>
+        <button type="button" (click)="load()">Reintentar</button>
+      } @else {
+        @for (estate of filtered(); track estate.id) {
+          <button
+            type="button"
+            [attr.data-estate-id]="estate.id"
+            [attr.aria-pressed]="selected()?.id === estate.id"
+            (click)="select(estate)"
+          >
+            <app-icon name="building" [size]="16"></app-icon
+            ><span
+              ><strong>{{ estate.name }}</strong
+              ><small>{{ address(estate) }}</small></span
+            >
+          </button>
+        } @empty {
+          <p role="status">No se encontraron comunidades.</p>
+        }
+      }
+    </div>
+  </div>
+}

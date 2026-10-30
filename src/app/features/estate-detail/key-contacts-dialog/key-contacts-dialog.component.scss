@@ -1,0 +1,46 @@
+@use 'dialog-shell' as ds;
+
+.modal-backdrop { @include ds.backdrop-shell($padded: true); }
+.modal { @include ds.modal-shell; }
+.modal__header { @include ds.dialog-header-chrome; }
+.modal__subtitle { margin-top: 2px; font-size: 13px; color: var(--color-muted); }
+.close-btn { @include ds.close-btn-chrome; }
+.modal__body { @include ds.modal-body-chrome; }
+.modal__footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+.hint, .empty { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--color-muted); }
+.error { margin: 0; font-size: 13.5px; color: var(--color-error); }
+
+.holders { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.holder {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name switch' 'state switch';
+  align-items: center; gap: 2px 14px; padding: 10px 0;
+  border-bottom: 1px solid var(--color-border-light);
+  &:last-child { border-bottom: none; }
+}
+.holder__name { grid-area: name; font-size: 14.5px; font-weight: 600; color: var(--color-text); overflow-wrap: anywhere; }
+.holder__state { grid-area: state; font-size: 12.5px; color: var(--color-muted); }
+
+.switch {
+  grid-area: switch;
+  position: relative; width: 44px; height: 26px; padding: 3px; flex-shrink: 0;
+  background: var(--color-light); border: none; border-radius: 13px; cursor: pointer;
+  transition: background 0.2s;
+  &:disabled { opacity: 0.6; cursor: wait; }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+}
+.switch--on { background: var(--color-secondary); }
+.switch__knob {
+  display: block; width: 20px; height: 20px;
+  background: var(--color-surface); border-radius: 50%; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s;
+}
+.switch--on .switch__knob { transform: translateX(18px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .switch, .switch__knob { transition: none; }
+}
+@media (forced-colors: active) {
+  .switch { border: 1px solid CanvasText; }
+  .switch--on { background: Highlight; }
+}

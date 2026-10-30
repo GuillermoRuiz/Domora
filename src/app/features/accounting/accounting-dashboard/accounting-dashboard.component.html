@@ -1,0 +1,307 @@
+<app-topbar title="Contabilidad" [customHeading]="true">
+  <div slot="heading" class="accounting-header">
+    <app-accounting-community-selector></app-accounting-community-selector>
+    <label class="accounting-header__search">
+      <app-icon name="search" [size]="18" aria-hidden="true"></app-icon>
+      <input class="field--bare"
+        type="search"
+        placeholder="Buscar comunidades..."
+        aria-label="Buscar comunidades"
+        [value]="searchName()"
+        (input)="searchName.set($any($event.target).value)"
+      />
+    </label>
+  </div>
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title" id="accounting-title">Contabilidad</h1>
+    <p class="page-intro__subtitle">Consulta las cuentas de tus comunidades y accede a su gestión contable.</p>
+  </div>
+  <div class="page-intro__actions"><app-btn
+      variant="outline"
+      class="generate-receipts"
+      [disabled]="!loaded() || loadError() || !estates().length"
+      (clicked)="openGenerarRecibos()"
+    >
+      <app-icon name="plus" [size]="17" aria-hidden="true"></app-icon>Generar
+      recibos
+    </app-btn></div>
+</header>
+
+<div class="page-content">
+
+
+  <div class="compact-summary" aria-live="polite">
+    @if (!loaded()) {
+      <span role="status">Cargando contabilidad…</span>
+    } @else if (!loadError()) {
+      <span
+        ><app-icon name="building" [size]="17" aria-hidden="true"></app-icon
+        ><strong>{{ estates().length }}</strong> comunidades</span
+      >
+      <span
+        ><app-icon name="card" [size]="17" aria-hidden="true"></app-icon
+        ><strong class="summary-value">{{
+          consolidatedBalance | currency: 'EUR' : 'symbol' : '1.2-2' : 'es'
+        }}</strong>
+        saldo consolidado</span
+      >
+      <span
+        ><app-icon name="exclamation" [size]="17" aria-hidden="true"></app-icon
+        ><strong class="summary-value">{{
+          totalDelinquency | currency: 'EUR' : 'symbol' : '1.2-2' : 'es'
+        }}</strong>
+        morosidad</span
+      >
+    }
+  </div>
+
+  @if (debtors().length > 0) {
+    <div class="alert-card">
+      <div class="alert-card__header">
+        <app-icon name="exclamation" [size]="16"></app-icon>
+        <span>Morosos</span>
+        <app-badge [text]="debtors().length" variant="error"></app-badge>
+      </div>
+      <div class="debtors-list">
+        @for (debtor of debtors(); track debtor.id) {
+          <div class="debtor-item">
+            <div class="debtor-info">
+              <div class="debtor-name">{{ debtor.name }}</div>
+              <div class="debtor-property">{{ debtor.property }} · {{ debtor.monthsOverdue }} meses</div>
+            </div>
+            <div class="debtor-amount">{{ debtor.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="toolbar">
+    <label class="local-search">
+      <app-icon name="search" [size]="18" aria-hidden="true"></app-icon>
+      <input class="field--bare"
+        type="search"
+        aria-label="Buscar comunidades por nombre o dirección"
+        placeholder="Buscar por nombre o dirección…"
+        [value]="searchName()"
+        (input)="searchName.set($any($event.target).value)"
+      />
+    </label>
+    <div class="toolbar-controls">
+      <div #filterControl class="filter-control">
+        <button
+          #filterTrigger
+          type="button"
+          class="filter-trigger"
+          [class.filter-trigger--active]="
+            filterType() !== 'Todos' || filterDelinquency() !== 'Todos'
+          "
+          [attr.aria-expanded]="showFilters()"
+          aria-controls="accounting-filters"
+          (click)="showFilters.set(!showFilters())"
+        >
+          <app-icon name="filter" [size]="16" aria-hidden="true"></app-icon
+          >Filtrar<app-icon
+            name="chevron-down"
+            [size]="14"
+            aria-hidden="true"
+          ></app-icon>
+        </button>
+        @if (showFilters()) {
+          <div
+            id="accounting-filters"
+            class="filters-menu"
+            role="region"
+            aria-label="Filtros contables"
+          >
+            <label
+              >Tipo de comunidad
+              <select
+                aria-label="Tipo de comunidad"
+                [ngModel]="filterType()"
+                (ngModelChange)="filterType.set($event)"
+              >
+                <option value="Todos">Todos los tipos</option>
+                @for (type of estateTypeFilters; track type) {
+                  <option [value]="type">{{ type }}</option>
+                }
+              </select>
+            </label>
+            <label
+              >Situación contable
+              <select
+                aria-label="Situación contable"
+                [ngModel]="filterDelinquency()"
+                (ngModelChange)="filterDelinquency.set($event)"
+              >
+                <option value="Todos">Cualquier situación</option>
+                <option value="Al corriente">Al corriente</option>
+                <option value="Con morosidad">Con morosidad</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              class="clear-filters"
+              (click)="clearFilters()"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        }
+      </div>
+      <button
+        type="button"
+        class="download-btn"
+        aria-label="Descargar contabilidad en CSV"
+        title="Descargar CSV"
+        [disabled]="!loaded() || loadError() || !sortedEstates().length"
+        (click)="downloadCsv()"
+      >
+        <app-icon name="download" [size]="18" aria-hidden="true"></app-icon>
+      </button>
+      <div class="view-toggle" role="group" aria-label="Vista de contabilidad">
+        <button
+          type="button"
+          aria-label="Vista tabla"
+          [attr.aria-pressed]="view() === 'table'"
+          (click)="setView('table')"
+        >
+          <app-icon name="table" [size]="18" aria-hidden="true"></app-icon>
+        </button>
+        <button
+          type="button"
+          aria-label="Vista tarjetas"
+          [attr.aria-pressed]="view() === 'cards'"
+          (click)="setView('cards')"
+        >
+          <app-icon name="grid" [size]="18" aria-hidden="true"></app-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (loadError()) {
+    <div class="feedback-card" role="alert">
+      <app-icon name="exclamation" [size]="24" aria-hidden="true"></app-icon>
+      <p>No se pudo cargar la contabilidad de las comunidades.</p>
+      <app-btn variant="outline" size="sm" (clicked)="ngOnInit()"
+        >Reintentar</app-btn
+      >
+    </div>
+  } @else if (!loaded()) {
+    <div class="feedback-card" role="status" aria-busy="true">
+      <app-icon name="refresh" [size]="24" aria-hidden="true"></app-icon>
+      <p>Cargando datos contables…</p>
+    </div>
+  } @else if (!estates().length) {
+    <div class="feedback-card" role="status">
+      <app-icon name="building" [size]="24" aria-hidden="true"></app-icon>
+      <p>No hay comunidades disponibles para consultar su contabilidad.</p>
+    </div>
+  } @else if (!sortedEstates().length) {
+    <div class="feedback-card" role="status">
+      <app-icon name="search" [size]="24" aria-hidden="true"></app-icon>
+      <p>No hay comunidades que coincidan con tu búsqueda o filtros.</p>
+      <app-btn variant="outline" size="sm" (clicked)="clearFilters()"
+        >Limpiar filtros</app-btn
+      >
+    </div>
+  } @else {
+    <app-accounting-overview-views
+      [items]="sortedEstates()"
+      [view]="view()"
+      [sortColumn]="sortColumn()"
+      [direction]="sortDirection()"
+      (sort)="setSort($event)"
+      (openEstate)="openDetail($event)"
+    ></app-accounting-overview-views>
+    <div class="list-footer">
+      Mostrando {{ sortedEstates().length }} de
+      {{ estates().length }} comunidades
+    </div>
+  }
+</div>
+
+@if (showGenerarRecibos()) {
+  <div class="modal-backdrop" (click)="closeGenerarRecibos()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Generar recibos</h4>
+        <button class="close-btn" (click)="closeGenerarRecibos()">
+          <app-icon name="x" [size]="16"></app-icon>
+        </button>
+      </div>
+
+      @if (grResult(); as result) {
+        <div class="modal__body">
+          <div class="gr-result">
+            <app-icon name="check" [size]="18"></app-icon>
+            <div>
+              <strong>{{ result.created }}</strong> recibo{{
+                result.created !== 1 ? 's' : ''
+              }}
+              generado{{ result.created !== 1 ? 's' : '' }}.
+              @if (result.skipped > 0) {
+                <span class="td-muted"
+                  >{{ result.skipped }} ya existían para este periodo.</span
+                >
+              }
+            </div>
+          </div>
+        </div>
+        <div class="modal__footer">
+          <app-btn variant="primary" size="sm" (clicked)="closeGenerarRecibos()"
+            >Cerrar</app-btn
+          >
+        </div>
+      } @else {
+        <div class="modal__body">
+          <label class="form-field">
+            Finca
+            <select
+              [ngModel]="grEstateId()"
+              (ngModelChange)="grEstateId.set($event)"
+            >
+              <option value="">Selecciona una finca</option>
+              @for (e of estates(); track e.id) {
+                <option [value]="e.id">{{ e.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            Periodo (AAAA-MM)
+            <input
+              type="month"
+              [ngModel]="grPeriodKey()"
+              (ngModelChange)="grPeriodKey.set($event)"
+            />
+          </label>
+          <p class="td-muted">
+            Se generará un recibo de cuota ordinaria por cada propiedad activa
+            de la finca. Las propiedades que ya tengan recibo en este periodo se
+            omiten.
+          </p>
+          @if (grError()) {
+            <span class="field-error">{{ grError() }}</span>
+          }
+        </div>
+        <div class="modal__footer">
+          <app-btn variant="outline" size="sm" (clicked)="closeGenerarRecibos()"
+            >Cancelar</app-btn
+          >
+          <app-btn
+            variant="primary"
+            size="sm"
+            [disabled]="grSaving()"
+            (clicked)="submitGenerarRecibos()"
+          >
+            {{ grSaving() ? 'Generando…' : 'Generar recibos' }}
+          </app-btn>
+        </div>
+      }
+    </div>
+  </div>
+}

@@ -1,0 +1,55 @@
+<div class="modal-backdrop" (click)="close()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h4>Instrucciones de transferencia</h4>
+      <button class="close-btn" (click)="close()">
+        <app-icon name="x" [size]="14"></app-icon>
+      </button>
+    </div>
+
+    <div class="modal__body">
+      <p class="modal__hint">
+        Domora todavía no procesa pagos online — realiza la transferencia directamente a la cuenta de la comunidad con estos datos.
+      </p>
+
+      <div class="pay-field">
+        <span class="pay-field__label">Importe</span>
+        <span class="pay-field__value pay-field__value--amount">{{ amount | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+      </div>
+      @if (concept) {
+        <div class="pay-field">
+          <span class="pay-field__label">Concepto</span>
+          <span class="pay-field__value">{{ concept }}</span>
+        </div>
+      }
+      @if (estateName) {
+        <div class="pay-field">
+          <span class="pay-field__label">Beneficiario</span>
+          <span class="pay-field__value">{{ estateName }}</span>
+        </div>
+      }
+
+      @if (iban) {
+        <div class="iban-box">
+          <div class="iban-box__value">{{ formattedIban() }}</div>
+          <app-btn variant="outline" size="sm" (clicked)="copyIban()">
+            @if (copied()) {
+              <app-icon name="check" [size]="13"></app-icon>
+              Copiado
+            } @else {
+              Copiar IBAN
+            }
+          </app-btn>
+        </div>
+      } @else {
+        <div class="iban-box iban-box--missing">
+          La finca todavía no tiene un IBAN configurado. Contacta con tu administrador.
+        </div>
+      }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="primary" size="sm" (clicked)="close()">Entendido</app-btn>
+    </div>
+  </div>
+</div>

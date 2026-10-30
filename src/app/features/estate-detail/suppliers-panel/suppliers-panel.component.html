@@ -1,0 +1,177 @@
+@if (failed()) {
+  <p class="panel__message panel__message--error" role="alert">No se pudieron cargar los proveedores de la finca.</p>
+} @else if (data() === null) {
+  <p class="panel__message">Cargando…</p>
+} @else {
+  <section class="panel__kpis" aria-label="Resumen de proveedores">
+    <button type="button" class="kpi-btn" data-kpi="total" (click)="showAll()">
+      <app-kpi-tile align="start" label="Total proveedores" [value]="kpis().totalSuppliers" sub="proveedores" icon="store"></app-kpi-tile>
+    </button>
+    <button type="button" class="kpi-btn" [class.kpi-btn--active]="contractFilter() === 'live'" [attr.aria-pressed]="contractFilter() === 'live'" data-kpi="contracts" (click)="toggleLiveContracts()">
+      <app-kpi-tile align="start" label="Contratos activos" [value]="kpis().activeContracts" sub="contratos vigentes" icon="file-text"></app-kpi-tile>
+    </button>
+    <button type="button" class="kpi-btn" [class.kpi-btn--active]="contractFilter() === 'expiring'" [attr.aria-pressed]="contractFilter() === 'expiring'" data-kpi="expiring" (click)="toggleExpiring()">
+      <app-kpi-tile align="start" label="Pendientes de renovar" [value]="kpis().expiringContracts" sub="vencen en 30 días" icon="clock"
+        [tone]="kpis().expiringContracts > 0 ? 'warning' : 'default'"></app-kpi-tile>
+    </button>
+    <button type="button" class="kpi-btn" [class.kpi-btn--active]="issuesOnly()" [attr.aria-pressed]="issuesOnly()" data-kpi="issues" (click)="toggleIssues()">
+      <app-kpi-tile align="start" label="Incidencias abiertas" [value]="kpis().openIssues" sub="con proveedor asignado" icon="exclamation"
+        [tone]="kpis().openIssues > 0 ? 'danger' : 'default'"></app-kpi-tile>
+    </button>
+  </section>
+
+  <div class="filters" role="search">
+    <div class="filters__search-wrap">
+      <label class="sr-only" for="sup-search">Buscar proveedor</label>
+      <app-icon name="search" [size]="15"></app-icon>
+      <input id="sup-search" class="filters__search" type="search" placeholder="Buscar proveedores..."
+        [ngModel]="search()" (ngModelChange)="search.set($event)" />
+    </div>
+    <label class="filters__field" for="sup-category">
+      <span>Categoría</span>
+      <select id="sup-category" [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)">
+        @for (o of categoryOptions(); track o.key) { <option [value]="o.key">{{ o.label }}</option> }
+      </select>
+    </label>
+    <label class="filters__field" for="sup-status">
+      <span>Estado</span>
+      <select id="sup-status" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
+        @for (o of statusOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+      </select>
+    </label>
+    <label class="filters__field" for="sup-sort">
+      <span>Ordenar por</span>
+      <select id="sup-sort" [ngModel]="sortKey()" (ngModelChange)="sortKey.set($event)">
+        @for (o of sortOptions(); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+      </select>
+    </label>
+    @if (hasFilters()) {
+      <button type="button" class="filters__clear" (click)="clearFilters()">Limpiar filtros</button>
+    }
+    <button type="button" class="new-btn" data-action="new" (click)="openForm(null)">
+      <app-icon name="plus" [size]="14"></app-icon> Nuevo proveedor
+    </button>
+  </div>
+
+  @if (actionError()) {
+    <p class="panel__message panel__message--error" role="alert">{{ actionError() }}</p>
+  }
+
+  @if (suppliers().length === 0) {
+    <p class="panel__message">Esta finca aún no tiene proveedores.</p>
+  } @else {
+    <div class="layout">
+    <div class="layout__main">
+    <div class="sup-card" [class.sup-card--saving]="saving()">
+      <div class="sup-scroll">
+        <table class="sup-table">
+          <thead>
+            <tr>
+              @for (col of columns; track col.field) {
+                <th [attr.aria-sort]="ariaSort(col.field)" [class.th--num]="col.field === 'issues'">
+                  <button type="button" class="th-sort" [attr.data-sort]="col.field" (click)="toggleSort(col.field)">
+                    {{ col.label }} <app-icon name="sort" [size]="12"></app-icon>
+                  </button>
+                </th>
+              }
+              <th class="th--num">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of visible(); track s.id) {
+              <tr class="sup-row" [class.sup-row--selected]="selected()?.id === s.id" [attr.data-supplier]="s.id" tabindex="0"
+                [attr.aria-selected]="selected()?.id === s.id" (click)="select(s.id)" (keydown.enter)="select(s.id)">
+                <td>
+                  <span class="sup-name">
+                    <span class="sup-icon"><app-icon [name]="categoryInfo(s).icon" [size]="18"></app-icon></span>
+                    <span class="sup-name__text">
+                      <span class="sup-name__title">{{ s.name }}</span>
+                      <span class="sup-name__sub">{{ s.category }}</span>
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  @if (s.contactName) {
+                    <span class="sup-contact">{{ s.contactName }}</span>
+                    @if (s.phone) { <span class="sup-sub">{{ s.phone }}</span> }
+                  } @else {
+                    <span class="td--muted">—</span>
+                  }
+                </td>
+                <td class="td--date">
+                  @if (s.nextVisit; as visit) {
+                    <span class="sup-visit">{{ dateLabel(visit.scheduledAt) }}</span>
+                    <span class="sup-sub">{{ timeLabel(visit.scheduledAt) }} · {{ visit.purpose }}</span>
+                  } @else {
+                    <span class="td--muted">Sin visitas</span>
+                  }
+                </td>
+                <td>
+                  <span class="sup-contract" [class.sup-contract--danger]="contractTone(s) === 'danger'" [class.sup-contract--warning]="contractTone(s) === 'warning'">{{ contractLabel(s) }}</span>
+                  @if (s.contract) { <span class="sup-sub">{{ s.contract.serviceType }}</span> }
+                </td>
+                <td><app-status-pill [text]="pill(s).text" [tone]="pill(s).tone" [dot]="true"></app-status-pill></td>
+                <td class="td--num">
+                  @if (s.openIssues > 0) {
+                    <span class="sup-issues"><span class="sup-issues__dot" aria-hidden="true"></span>{{ s.openIssues }}</span>
+                  } @else {
+                    <span class="td--muted">0</span>
+                  }
+                </td>
+                <td class="td--num">
+                  <button type="button" class="action-btn" aria-haspopup="menu" [attr.aria-expanded]="menuId() === s.id"
+                    [attr.aria-label]="'Acciones de ' + s.name" (click)="toggleMenu($event, s.id)">
+                    <app-icon name="ellipsis" [size]="16"></app-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (visible().length === 0) {
+        <div class="sup-empty">
+          <p>Ningún proveedor coincide con los filtros.</p>
+          <button type="button" class="filters__clear" (click)="clearFilters()">Limpiar filtros</button>
+        </div>
+      }
+    </div>
+    @if (hasFilters() && visible().length > 0) {
+      <p class="panel__count" aria-live="polite">Mostrando {{ visible().length }} de {{ suppliers().length }} proveedores</p>
+    }
+    </div>
+    <aside class="layout__aside" aria-label="Contacto rápido e intervenciones">
+      <app-supplier-quick-contact [supplier]="selected()"></app-supplier-quick-contact>
+      <app-supplier-interventions [interventions]="interventions()" (openSupplier)="focusSupplier($event)"></app-supplier-interventions>
+    </aside>
+    </div>
+  }
+
+  @if (menuSupplier(); as s) {
+    <div class="menu-backdrop" (click)="closeMenu()"></div>
+    <div class="sup-menu" role="menu" [style.top.px]="menuPosition().top" [style.left.px]="menuPosition().left"
+      (keydown.escape)="closeMenu()" (click)="$event.stopPropagation()">
+      <button type="button" role="menuitem" data-action="schedule" (click)="openVisits(s, true)">
+        <app-icon name="calendar" [size]="14"></app-icon> Programar visita
+      </button>
+      <button type="button" role="menuitem" data-action="visits" (click)="openVisits(s, false)">
+        <app-icon name="clock" [size]="14"></app-icon> Ver visitas
+      </button>
+      <button type="button" role="menuitem" data-action="edit" (click)="openForm(s)">
+        <app-icon name="edit" [size]="14"></app-icon> Editar proveedor
+      </button>
+      <button type="button" role="menuitem" data-action="toggle-active" (click)="toggleActive(s)">
+        <app-icon [name]="s.status === 'Activo' ? 'x' : 'refresh'" [size]="14"></app-icon> {{ s.status === 'Activo' ? 'Dar de baja' : 'Reactivar' }}
+      </button>
+    </div>
+  }
+
+  @if (visitsTarget(); as target) {
+    <app-supplier-visits-modal [estateId]="estateId" [supplier]="target" [startWithForm]="visitsStartWithForm()"
+      (changed)="reload()" (closed)="closeVisits()"></app-supplier-visits-modal>
+  }
+
+  @if (formOpen()) {
+    <app-supplier-form-modal [estateId]="estateId" [supplier]="formTarget()" (saved)="onSaved()" (closed)="closeForm()"></app-supplier-form-modal>
+  }
+}

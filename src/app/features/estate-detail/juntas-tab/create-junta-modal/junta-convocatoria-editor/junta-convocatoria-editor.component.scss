@@ -1,0 +1,167 @@
+:host {
+  display: block;
+}
+
+// Hoja blanca con el aspecto de la convocatoria impresa; los bloques de texto se editan en su sitio.
+.paper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 36px 32px;
+  color: #141414;
+  background: #fff;
+  border-radius: var(--radius-md);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  // Proporción de un A4 para que "pie de hoja" tenga sentido aunque haya poco contenido.
+  min-height: 1075px;
+
+  &__kicker {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  &__field {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 3px 6px;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px dashed transparent;
+    border-radius: 4px;
+    resize: none;
+    field-sizing: content;
+    transition: border-color 0.12s, background 0.12s;
+
+    &:hover:not(:disabled) {
+      border-color: #c8c8c8;
+    }
+    &:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      background: #fffbe9;
+    }
+    &::placeholder {
+      color: #8a8a8a;
+    }
+    &:disabled {
+      opacity: 0.7;
+    }
+
+    &--center {
+      text-align: center;
+      font-weight: 700;
+    }
+    &--community {
+      font-size: 18px;
+    }
+    &--title {
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    &--notice {
+      margin-bottom: 18px;
+      font-style: italic;
+      font-size: 14px;
+    }
+    &--right {
+      text-align: right;
+    }
+    &--intro {
+      min-height: 3em;
+      text-align: justify;
+    }
+    &--point {
+      font-weight: 700;
+    }
+    &--signature {
+      width: 55%;
+      margin: 14px 0 0 auto;
+    }
+  }
+
+  &__heading {
+    margin: 6px 0 0;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: underline;
+  }
+
+  &__point {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding-left: 24px;
+  }
+
+  &__number {
+    flex: none;
+    width: 22px;
+    padding-top: 3px;
+    font-weight: 700;
+  }
+
+  &__empty {
+    margin: 0;
+    text-align: center;
+    color: #6b6b6b;
+  }
+
+  &__toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 6px 8px;
+    font-size: 12px;
+    color: #4a4a4a;
+    background: #f3f3f3;
+    border-radius: 4px;
+    cursor: pointer;
+    input {
+      accent-color: var(--color-accent);
+    }
+  }
+
+  // La autorización a recortar va siempre a pie de hoja (como en el documento impreso), no a media página.
+  &__footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 24px;
+  }
+
+  &__cut {
+    overflow: hidden;
+    font-size: 11px;
+    color: #6b6b6b;
+    white-space: nowrap;
+  }
+
+  &__blank {
+    margin: 0;
+    padding: 0 6px;
+    color: #4a4a4a;
+    &--sign {
+      padding-left: 40%;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .paper {
+    padding: 20px 16px;
+    &__field--signature {
+      width: 100%;
+    }
+  }
+}

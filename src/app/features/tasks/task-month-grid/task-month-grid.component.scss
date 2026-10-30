@@ -1,0 +1,75 @@
+:host { display: block; min-width: 0; container-type: inline-size; }
+
+.month {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+
+  &__head, &__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  &__head { border-bottom: 1px solid var(--color-border); }
+  &__dow { padding: 8px 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; color: var(--color-muted); text-align: center; }
+}
+
+.cell {
+  min-height: 112px;
+  padding: 4px;
+  border-right: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+
+  &:nth-child(7n) { border-right: none; }
+  &--muted { background: color-mix(in srgb, var(--color-bg) 60%, transparent); .cell__num { color: var(--color-muted); } }
+  &--today .cell__num { background: var(--color-primary); color: #fff; box-shadow: 0 0 0 1px var(--color-accent); }
+  &--drop { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+
+  &__top { display: flex; align-items: center; gap: 4px; }
+  &__num {
+    width: 26px; height: 26px; border-radius: 50%; font-size: 13px; font-weight: 600; color: var(--color-text);
+    display: inline-flex; align-items: center; justify-content: center;
+    &:hover { background: var(--color-surface-hover); }
+    &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  }
+  &__count { display: none; font-size: 11px; font-weight: 700; color: var(--color-accent); }
+  &__add {
+    margin-left: auto; width: 22px; height: 22px; border-radius: 50%; color: var(--color-muted);
+    display: inline-flex; align-items: center; justify-content: center; opacity: 0;
+    &:hover { background: var(--color-surface-hover); color: var(--color-text); }
+    &:focus-visible { opacity: 1; outline: 2px solid var(--color-accent); }
+  }
+  &:hover &__add, &:focus-within &__add { opacity: 1; }
+  &__tasks { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+}
+
+.mchip {
+  --prio: var(--color-blue);
+  &--urgente { --prio: var(--color-error); }
+  &--alta { --prio: var(--color-warning); }
+  &--media { --prio: var(--color-blue); }
+  &--baja { --prio: var(--color-muted); }
+
+  display: flex; align-items: center; gap: 4px; width: 100%; padding: 2px 5px; min-height: 22px;
+  font-size: 12px; text-align: left; color: var(--color-text);
+  border: 1px solid var(--color-border); border-left: 3px solid var(--prio); border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--prio) 14%, var(--color-surface));
+
+  &[draggable='true'] { cursor: grab; }
+  &:hover { box-shadow: var(--shadow-sm); }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  &__time { color: var(--color-muted); font-variant-numeric: tabular-nums; }
+  &--selected { box-shadow: 0 0 0 2px var(--color-accent); }
+  &--done { opacity: 0.6; .truncate { text-decoration: line-through; } }
+  &--cancelled { opacity: 0.5; border-style: dashed; .truncate { text-decoration: line-through; } }
+  &--overdue { border-color: var(--color-error); }
+}
+
+.more { align-self: flex-start; padding: 1px 6px; font-size: 12px; color: var(--color-accent); border-radius: var(--radius-sm); &:hover { background: var(--color-surface-hover); } &:focus-visible { outline: 2px solid var(--color-accent); } }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+// Contenedor estrecho (no la ventana: el menú lateral también ocupa sitio): sin chips, solo el número y un recuento por día.
+@container (max-width: 640px) {
+  .cell { min-height: 56px; align-items: center; &__tasks { display: none; } &__count { display: inline; } &__add { display: none; } }
+}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- El banco rechaza la remesa entera (formato de fichero). Datos ficticios. -->
+<p:Document xmlns:p="urn:iso:std:iso:20022:tech:xsd:pain.002.001.03">
+  <p:CstmrPmtStsRpt>
+    <p:GrpHdr>
+      <p:MsgId>BANCO-STS-20260305-0002</p:MsgId>
+      <p:CreDtTm>2026-03-03T10:00:00</p:CreDtTm>
+    </p:GrpHdr>
+    <p:OrgnlGrpInfAndSts>
+      <p:OrgnlMsgId>REM-2026-03-ABCDEF</p:OrgnlMsgId>
+      <p:OrgnlMsgNmId>pain.008.001.02</p:OrgnlMsgNmId>
+      <p:GrpSts>RJCT</p:GrpSts>
+      <p:StsRsnInf><p:Rsn><p:Cd>FF01</p:Cd></p:Rsn></p:StsRsnInf>
+    </p:OrgnlGrpInfAndSts>
+  </p:CstmrPmtStsRpt>
+</p:Document>

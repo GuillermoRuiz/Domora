@@ -1,0 +1,185 @@
+@if (loadError()) {
+  <p class="action-error" role="alert">{{ loadError() }}</p>
+}
+
+@if (!loading()) {
+  <div class="toolbar">
+    <select class="toolbar__year-select" [ngModel]="year()" (ngModelChange)="onYearChange($event)">
+      @for (fy of fiscalYears(); track fy.year) { <option [value]="fy.year">{{ fy.year }}</option> }
+    </select>
+    @if (currentFiscalYear(); as fy) {
+      <app-badge [text]="fy.status === 'Cerrado' ? 'Cerrado' : 'Abierto'" [variant]="fy.status === 'Cerrado' ? 'default' : 'green'"></app-badge>
+      <span class="td-muted">Dotación de reserva: {{ reserveModeLabel() }}</span>
+    }
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Estado del ejercicio {{ year() }}</span>
+    </div>
+    @if (currentFiscalYear(); as fy) {
+      @if (fy.status === 'Cerrado') {
+        <p class="status-line">
+          Cerrado el {{ fmtDate(fy.closedAt) }}.
+          @if (fy.reopenedAt) {
+            Reabierto el {{ fmtDate(fy.reopenedAt) }}@if (fy.reopenReason) {: {{ fy.reopenReason }}}.
+          }
+        </p>
+      } @else {
+        <p class="status-line">
+          Abierto.
+          @if (fy.approvedAt) { Cuentas aprobadas el {{ fmtDate(fy.approvedAt) }}. } @else { Cuentas todavía sin aprobar en junta. }
+        </p>
+      }
+    }
+  </div>
+
+  @if (currentFiscalYear()?.status !== 'Cerrado') {
+    <div class="card card--spaced">
+      <div class="card__header">
+        <span class="card__title">Antes de cerrar</span>
+      </div>
+      <div class="settings-body">
+        @if (preconditionsError()) {
+          <p class="action-error" role="alert">{{ preconditionsError() }}</p>
+        } @else if (loadingPreconditions()) {
+          <p class="settings-hint">Comprobando…</p>
+        } @else if (preconditions(); as p) {
+          @if (p.blockers.length === 0 && p.warnings.length === 0) {
+            <div class="precondition-list">
+              <div class="precondition-item precondition-item--ok">
+                <app-icon name="check" [size]="14"></app-icon>
+                Todo listo para cerrar el ejercicio.
+              </div>
+            </div>
+          } @else {
+            <div class="precondition-list">
+              @for (b of p.blockers; track b.code) {
+                <div class="precondition-item precondition-item--blocker">
+                  <app-icon name="exclamation" [size]="14"></app-icon>
+                  {{ b.message }}
+                </div>
+              }
+              @for (w of p.warnings; track w.code) {
+                <div class="precondition-item precondition-item--warning">
+                  <app-icon name="exclamation" [size]="14"></app-icon>
+                  {{ w.message }}
+                </div>
+              }
+            </div>
+          }
+          <p class="settings-hint">
+            Al cerrar se regulariza el resultado del ejercicio, se dota la reserva si corresponde, se cierran todas
+            las cuentas de balance y se abre el ejercicio {{ year() + 1 }} con los mismos saldos. Puede revisarse el
+            asiento en el Diario justo después, y deshacerse con "Reabrir" si hiciera falta.
+          </p>
+          <div>
+            <app-btn *appPageAction variant="primary" [disabled]="!p.canClose" (clicked)="openCloseConfirm()">
+              Cerrar ejercicio {{ year() }}
+            </app-btn>
+          </div>
+        }
+      </div>
+    </div>
+  } @else {
+    <div class="card card--spaced">
+      <div class="card__header">
+        <span class="card__title">Acciones</span>
+      </div>
+      <div class="settings-body">
+        <p class="settings-text">
+          Reabrir revierte el cierre (y la apertura de {{ year() + 1 }}) con un contraasiento por cada uno —
+          solo es posible si {{ year() + 1 }} no está también cerrado. Aplicar el resultado reclasifica lo que
+          quedó pendiente en la 129 a remanente o al fondo de reserva, tras la aprobación en junta.
+        </p>
+        <div class="settings-row">
+          <app-btn variant="outline" (clicked)="openReopenModal()">Reabrir ejercicio</app-btn>
+          <app-btn variant="outline" (clicked)="openApplyModal()">Aplicar resultado</app-btn>
+        </div>
+      </div>
+    </div>
+  }
+}
+
+@if (showCloseConfirm()) {
+  <div class="modal-backdrop" (click)="closeCloseConfirm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Cerrar el ejercicio {{ year() }}</h4>
+        <button class="close-btn" (click)="closeCloseConfirm()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <p class="modal__hint">
+          Esto contabiliza la regularización, la dotación de reserva si corresponde, el cierre de todas las cuentas
+          de balance y la apertura del ejercicio {{ year() + 1 }}. Es reversible con "Reabrir" mientras
+          {{ year() + 1 }} siga abierto.
+        </p>
+        @if (closeError()) { <span class="field-error" role="alert">{{ closeError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeCloseConfirm()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="closing()" (clicked)="confirmClose()">
+          {{ closing() ? 'Cerrando…' : 'Cerrar ejercicio' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showReopenModal()) {
+  <div class="modal-backdrop" (click)="closeReopenModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Reabrir el ejercicio {{ year() }}</h4>
+        <button class="close-btn" (click)="closeReopenModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Motivo de la reapertura
+          <input type="text" placeholder="ej. se detectó un recibo mal emitido, hay que corregirlo"
+            [ngModel]="reopenReason()" (ngModelChange)="reopenReason.set($event)" />
+        </label>
+        @if (reopenError()) { <span class="field-error" role="alert">{{ reopenError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeReopenModal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="reopening()" (clicked)="submitReopen()">
+          {{ reopening() ? 'Reabriendo…' : 'Reabrir' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showApplyModal()) {
+  <div class="modal-backdrop" (click)="closeApplyModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Aplicar el resultado de {{ year() }}</h4>
+        <button class="close-btn" (click)="closeApplyModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Destino
+          <select [ngModel]="applyTarget()" (ngModelChange)="applyTarget.set($event)">
+            @for (t of applyTargets; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+          </select>
+        </label>
+        @if (applyError()) { <span class="field-error" role="alert">{{ applyError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeApplyModal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="applying()" (clicked)="submitApply()">
+          {{ applying() ? 'Aplicando…' : 'Aplicar' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

@@ -1,0 +1,20 @@
+@use 'dialog-shell' as ds;
+
+.modal-backdrop { @include ds.backdrop-shell($padded: true); }
+.modal { @include ds.modal-shell($width: 520px); }
+.modal__header { @include ds.dialog-header-chrome; }
+.close-btn { @include ds.close-btn-chrome; }
+.modal__body { @include ds.modal-body-chrome; margin-bottom: 0; }
+.modal__footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+.form-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--color-muted); }
+.form-field input, .form-field select, .form-field textarea {
+  width: 100%;
+}
+.form-field textarea { resize: vertical; }
+.form-field input:focus-visible, .form-field select:focus-visible, .form-field textarea:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.field--error { border-color: var(--color-error) !important; }
+.field-error { margin: 0; font-size: 13px; font-weight: 500; color: var(--color-error); }
+
+.form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 520px) { .form-row { grid-template-columns: minmax(0, 1fr); } }

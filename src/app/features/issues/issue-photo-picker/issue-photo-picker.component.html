@@ -1,0 +1,41 @@
+<div class="picker">
+  <label class="picker__zone" [class.picker__zone--over]="dragging()" (dragover)="onDragOver($event)" (dragleave)="dragging.set(false)" (drop)="onDrop($event)">
+    <input type="file" multiple accept="image/*,application/pdf" data-field="files" (change)="onPick($event)" />
+    <app-icon name="upload" [size]="22"></app-icon>
+    <strong>Arrastra aquí tus fotos o haz clic para seleccionar</strong>
+    <small>Puedes añadir varias imágenes o PDF (JPG, PNG, HEIC). Máx. 10 MB por archivo.</small>
+  </label>
+
+  @if (previews().length > 0) {
+    <div class="picker__thumbs">
+      @for (p of previews(); track $index) {
+        <div class="picker__tile" data-file-chip>
+          @if (p.url) {
+            <img [src]="p.url" alt="" />
+            <span class="chip__name visually-hidden">{{ p.file.name }}</span>
+          } @else {
+            <app-icon name="file-text" [size]="22"></app-icon>
+            <span class="chip__name">{{ p.file.name }}</span>
+          }
+          <button type="button" class="picker__remove" (click)="remove($index)">
+            <span class="visually-hidden">Quitar {{ p.file.name }}</span>
+            <app-icon name="x" [size]="12"></app-icon>
+          </button>
+        </div>
+      }
+      <label class="picker__tile picker__tile--add" aria-label="Añadir más archivos">
+        <input type="file" multiple accept="image/*,application/pdf" (change)="onPick($event)" />
+        <app-icon name="plus" [size]="22"></app-icon>
+      </label>
+    </div>
+  }
+
+  @if (touch) {
+    <label class="picker__camera" data-take-photo>
+      <input type="file" accept="image/*" capture="environment" (change)="onPick($event)" />
+      <app-icon name="camera" [size]="14"></app-icon>
+      Hacer foto
+    </label>
+  }
+</div>
+@if (error()) { <span class="picker__error" data-error="files">{{ error() }}</span> }

@@ -1,0 +1,89 @@
+<app-topbar title="Mi comunidad" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="community__topbar-scope">
+    @if (scope.items().length > 0) {
+      <app-community-scope-selector [groups]="scope.groups()" [selectedId]="scope.selected()?.id ?? null" [showAll]="scope.showAll()"
+        (choose)="scope.select($event)" (addProperty)="openAddProperty()"></app-community-scope-selector>
+    }
+  </div>
+</app-topbar>
+
+<div class="page-content">
+  <header class="community__header">
+    <h1 class="community__title">Mi comunidad</h1>
+    <p class="community__sub">Consulta el estado de tu comunidad, tus recibos, incidencias y documentos</p>
+    @if (scope.isAll()) {
+      <span class="community__chip" data-scope-chip>
+        <app-icon name="file-text" [size]="14"></app-icon>
+        Ámbito actual: <strong>Todas mis propiedades</strong>
+      </span>
+    } @else if (scope.selected(); as s) {
+      <span class="community__chip" data-scope-chip>
+        <app-icon name="file-text" [size]="14"></app-icon>
+        Ámbito actual: <strong>{{ s.estateName ?? 'Sin comunidad vinculada' }}</strong>
+      </span>
+    }
+  </header>
+
+  @if (scope.failed()) {
+    <p class="community__message community__message--error" role="alert">No se pudieron cargar tus propiedades. Inténtalo de nuevo.</p>
+  } @else if (!scope.loaded()) {
+    <p class="community__message">Cargando…</p>
+  } @else if (scope.items().length === 0) {
+    <section class="community__empty" data-empty>
+      <h3>Todavía no tienes ninguna propiedad vinculada</h3>
+      <p>Añade tu propiedad o solicita vincularla a tu comunidad para ver aquí tus recibos, incidencias, documentos y próximas juntas.</p>
+      <app-btn variant="secondary" (clicked)="openAddProperty()">
+        <app-icon name="plus" [size]="14"></app-icon>
+        Añadir propiedad
+      </app-btn>
+    </section>
+  } @else {
+    <app-community-kpis [overview]="vm.overview()" [failed]="vm.overviewFailed()" (open)="openKpi($event)"></app-community-kpis>
+
+    <div class="community__main">
+      @if (scope.isAll()) {
+        <app-section-card title="Mis comunidades" [padded]="false" class="community__list-card">
+          <ul class="community__list" data-list="communities">
+            @for (c of communities(); track c.key) {
+              <li>
+                <button type="button" class="community__list-item" [attr.data-community]="c.key" (click)="openCommunity(c.firstPropertyId)">
+                  <span class="community__list-icon"><app-icon name="building" [size]="16"></app-icon></span>
+                  <span class="community__list-text">
+                    <strong>{{ c.name }}</strong>
+                    <small>{{ c.address }}</small>
+                  </span>
+                  <span class="community__list-count">{{ c.count }} {{ c.count === 1 ? 'propiedad' : 'propiedades' }}</span>
+                  <app-icon name="chevron-right" [size]="14"></app-icon>
+                </button>
+              </li>
+            }
+          </ul>
+        </app-section-card>
+      } @else {
+        <app-community-summary [summary]="vm.summary()" [failed]="vm.summaryFailed()" [unlinked]="!scope.selected()?.estateId"
+          (details)="openPropertyDetails()" (requestLink)="openAddProperty()"></app-community-summary>
+      }
+      <app-community-receipts [receipts]="vm.receipts()" [failed]="vm.receiptsFailed()" [propertyNames]="scope.isAll() ? propertyNames() : null"
+        (viewAll)="openSection('receipts')" (pay)="paying.set($event)"></app-community-receipts>
+    </div>
+  }
+
+  @if (scope.items().length > 0 && scope.loaded()) {
+    <div class="community__trio">
+      <app-community-activity [items]="vm.activity()" [failed]="vm.activityFailed()" (viewAll)="openActivityFeed()" (openItem)="openActivityItem($event)"></app-community-activity>
+      <app-community-events [events]="vm.events()" [failed]="vm.eventsFailed()" (open)="openEvent($event)"></app-community-events>
+      <app-community-documents [documents]="vm.documents()" [failed]="vm.documentsFailed()" (viewAll)="openDocuments()" (open)="openDocument($event)" (download)="downloadDocument($event)"></app-community-documents>
+    </div>
+
+    @if (actionError()) {
+      <p class="community__message community__message--error" role="alert" data-action-error>{{ actionError() }}</p>
+    }
+
+    <app-community-quick-actions [actaAvailable]="vm.lastActaMeetingId() !== null" (run)="runQuickAction($event)"></app-community-quick-actions>
+  }
+
+  @if (paying(); as payment) {
+    <app-transfer-instructions-modal [iban]="payingProperty()?.estateIban ?? null" [estateName]="payingProperty()?.estateName ?? null"
+      [amount]="payment.amount" [concept]="payment.concept" (closed)="paying.set(null)"></app-transfer-instructions-modal>
+  }
+</div>

@@ -1,0 +1,24 @@
+<app-section-card title="Próximos hitos" [padded]="false">
+  @if (failed()) {
+    <p class="milestones__message milestones__message--error" role="alert">No se pudieron cargar los próximos hitos.</p>
+  } @else if (items() === null) {
+    <p class="milestones__message">Cargando…</p>
+  } @else if (rows().length === 0) {
+    <p class="milestones__message">No hay hitos próximos: ninguna junta convocada, inspección pendiente ni contrato por vencer.</p>
+  } @else {
+    <ul class="milestones">
+      @for (row of rows(); track row.key) {
+        <li>
+          <button type="button" class="milestones__row" [attr.data-milestone]="row.key" (click)="openTab.emit(row.tab)">
+            <span class="milestones__icon"><app-icon [name]="row.icon" [size]="15"></app-icon></span>
+            <span class="milestones__text">
+              <span class="milestones__title">{{ row.title }}</span>
+              <span class="milestones__date">{{ row.date }}</span>
+            </span>
+            <app-status-pill [text]="row.pill.text" [tone]="row.pill.tone"></app-status-pill>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-section-card>

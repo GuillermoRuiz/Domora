@@ -1,0 +1,21 @@
+<app-section-card title="Últimas intervenciones" [padded]="false">
+  @if (rows().length === 0) {
+    <p class="interventions__empty">Todavía no hay visitas realizadas. Aparecerán aquí al marcarlas como hechas.</p>
+  } @else {
+    <ul class="interventions" data-list="interventions">
+      @for (row of rows(); track row.id) {
+        <li>
+          <button type="button" class="intervention" [attr.data-intervention]="row.id" (click)="openSupplier.emit(row.supplierId)">
+            <span class="intervention__date"><strong>{{ row.day }}</strong><small>{{ row.month }}</small></span>
+            <span class="intervention__icon"><app-icon [name]="row.icon" [size]="16"></app-icon></span>
+            <span class="intervention__text">
+              <span class="intervention__purpose">{{ row.purpose }}</span>
+              <span class="intervention__sub">{{ row.supplierName }}</span>
+              @if (row.links) { <span class="intervention__sub">{{ row.links }}</span> }
+            </span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-section-card>

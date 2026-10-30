@@ -1,0 +1,40 @@
+@if (despacho(); as current) {
+  <div class="scope-band" [class.scope-band--support]="!!session()" role="status">
+    @if (session()) {
+      <span class="scope-band__text">
+        <strong>Modo soporte activo</strong>
+        <span class="scope-band__sep" aria-hidden="true">·</span>
+        <span>{{ current.name }}</span>
+        <span class="scope-band__sep" aria-hidden="true">·</span>
+        <span>caduca a las {{ expiresAt() }}</span>
+      </span>
+      <button type="button" class="scope-band__action" [disabled]="ending()" (click)="endSession()">Finalizar</button>
+    } @else {
+      <span class="scope-band__text">Viendo: <strong>{{ current.name }}</strong></span>
+      <span class="scope-band__actions">
+        <button type="button" class="scope-band__action" (click)="openDialog()">Modo soporte</button>
+        <button type="button" class="scope-band__action" (click)="leave()">Salir</button>
+      </span>
+    }
+  </div>
+
+  @if (endError(); as message) {
+    <div class="scope-band__denial" role="alert">
+      <span>{{ message }}</span>
+    </div>
+  }
+
+  @if (denial(); as message) {
+    <div class="scope-band__denial" role="alert">
+      <span>{{ message }}</span>
+      <span class="scope-band__actions">
+        <button type="button" class="scope-band__action" (click)="startFromDenial()">{{ startLabel() }}</button>
+        <button type="button" class="scope-band__action scope-band__action--quiet" aria-label="Cerrar aviso" (click)="dismissDenial()">×</button>
+      </span>
+    </div>
+  }
+
+  @if (dialogOpen()) {
+    <app-support-session-dialog (closed)="closeDialog()"></app-support-session-dialog>
+  }
+}

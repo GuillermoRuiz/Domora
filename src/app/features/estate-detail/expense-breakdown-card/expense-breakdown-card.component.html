@@ -1,0 +1,20 @@
+<app-section-card title="Distribución de gastos">
+  <div class="breakdown__body" [class.breakdown__body--loading]="loading()" [attr.aria-busy]="loading()">
+    @if (data(); as d) {
+      <app-donut-chart
+        [slices]="slices()"
+        [valueFormatter]="formatter"
+        [caption]="caption()"
+        totalLabel="Total"
+        emptyText="Todavía no hay gastos en este ejercicio"
+      ></app-donut-chart>
+    } @else if (failed()) {
+      <p class="breakdown__error" role="alert">No se pudo cargar la distribución de gastos.</p>
+    } @else {
+      <p class="breakdown__placeholder">Cargando…</p>
+    }
+    @if (failed() && data()) {
+      <p class="breakdown__error" role="alert">No se pudo actualizar la distribución; se muestra el último ejercicio cargado.</p>
+    }
+  </div>
+</app-section-card>

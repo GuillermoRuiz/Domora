@@ -1,0 +1,84 @@
+<aside class="sidebar" [class.sidebar--open]="state.sidebarOpen()">
+  <div class="sidebar__logo">
+    <div class="sidebar__logo-icon">
+      <img src="domora-sidebar-logo.svg" width="34" height="34" alt="" />
+    </div>
+    <span class="sidebar__logo-text">Domora</span>
+  </div>
+  @if (state.currentRole() === 'A') {
+    <span class="sidebar__role-badge">SUPERADMIN</span>
+  }
+
+  <nav class="sidebar__nav">
+    @for (section of navSections; track section.section) {
+      @if (section.section) {
+        <div class="sidebar__section-label">{{ section.section }}</div>
+      }
+      @for (item of section.items; track item.label) {
+        @if (item.route === '/b/accounting' && accountingNavigation.context()?.estate()) {
+          <button
+            class="sidebar__item sidebar__item--active sidebar__accounting-toggle"
+            type="button"
+            [attr.aria-expanded]="accountingExpanded()"
+            aria-controls="accounting-sidebar-sections"
+            (click)="accountingExpanded.set(!accountingExpanded())"
+          >
+            <app-icon [name]="item.icon" [size]="16"></app-icon>
+            <span class="sidebar__item-label">{{ item.label }}</span>
+            <app-icon class="sidebar__chevron" [class.sidebar__chevron--open]="accountingExpanded()" name="chevron-right" [size]="14" aria-hidden="true"></app-icon>
+          </button>
+          @if (accountingNavigation.context(); as accounting) {
+            <div
+              id="accounting-sidebar-sections"
+              class="accounting-collapse"
+              [class.accounting-collapse--open]="accountingExpanded()"
+              [attr.aria-hidden]="!accountingExpanded()"
+              [attr.inert]="accountingExpanded() ? null : ''"
+            >
+              <div class="accounting-collapse__content">
+                <div class="accounting-nav" aria-label="Secciones de contabilidad">
+                  <button
+                    class="accounting-nav__item"
+                    type="button"
+                    data-accounting-tab="summary"
+                    [class.accounting-nav__item--active]="accounting.activeTab() === 'summary'"
+                    [attr.aria-current]="accounting.activeTab() === 'summary' ? 'page' : null"
+                    (click)="accounting.activeTab.set('summary'); state.closeSidebar()"
+                  >Resumen</button>
+                  @for (group of accountingNavigation.groups; track group.id) {
+                    <button
+                      class="accounting-nav__item"
+                      type="button"
+                      [attr.data-accounting-group]="group.id"
+                      [class.accounting-nav__item--active]="accountingNavigation.activeGroup()?.id === group.id"
+                      [attr.aria-current]="accountingNavigation.activeGroup()?.id === group.id ? 'page' : null"
+                      (click)="accountingNavigation.selectGroup(group.id); state.closeSidebar()"
+                    >{{ group.label }}</button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        } @else {
+          <a
+            class="sidebar__item"
+            [routerLink]="item.route"
+            [queryParams]="item.queryParams"
+            [routerLinkActive]="item.inactive ? '' : 'sidebar__item--active'"
+            (click)="state.closeSidebar()"
+          >
+            <app-icon [name]="item.icon" [size]="16"></app-icon>
+            <span class="sidebar__item-label">{{ item.label }}</span>
+            @if (item.badge) {
+              <app-badge [text]="item.badge" variant="nav"></app-badge>
+            }
+          </a>
+        }
+      }
+    }
+  </nav>
+
+</aside>
+@if (state.sidebarOpen()) {
+  <div class="sidebar__backdrop" (click)="state.closeSidebar()"></div>
+}

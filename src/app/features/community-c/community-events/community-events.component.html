@@ -1,0 +1,26 @@
+<app-section-card title="Próximos eventos" [padded]="false">
+  @if (events() === null && !failed()) {
+    <p class="evt__message">Cargando…</p>
+  } @else if (failed()) {
+    <p class="evt__message evt__message--error" role="alert">No se pudieron cargar los próximos eventos.</p>
+  } @else if (rows().length === 0) {
+    <p class="evt__message" data-empty>No hay eventos previstos en los próximos 90 días.</p>
+  } @else {
+    <ul class="evt" data-list="events">
+      @for (row of rows(); track row.event.id) {
+        <li>
+          <button type="button" class="evt__item" [attr.data-event]="row.event.id" [attr.data-kind]="row.event.kind" [disabled]="!row.target"
+            (click)="row.target && open.emit(row.target)">
+            <span class="evt__date"><strong>{{ row.day }}</strong><small>{{ row.month }}</small></span>
+            <span class="evt__icon" [class]="'evt__icon evt__icon--' + row.event.kind"><app-icon [name]="row.icon" [size]="16"></app-icon></span>
+            <span class="evt__text">
+              <span class="evt__title">{{ row.event.title }}</span>
+              @if (row.detail) { <span class="evt__sub">{{ row.detail }}</span> }
+            </span>
+            @if (row.target) { <app-icon name="chevron-right" [size]="14"></app-icon> }
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-section-card>

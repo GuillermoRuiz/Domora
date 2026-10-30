@@ -1,0 +1,48 @@
+<app-section-card title="Mis recibos y pagos" [actionLabel]="rows().length > 0 ? 'Ver todos' : ''" [padded]="false" (action)="viewAll.emit()">
+  @if (receipts() === null && !failed()) {
+    <p class="rec__message">Cargando…</p>
+  } @else if (failed()) {
+    <p class="rec__message rec__message--error" role="alert">No se pudieron cargar tus recibos.</p>
+  } @else if (rows().length === 0) {
+    <p class="rec__message" data-empty>Todavía no tienes recibos en esta propiedad.</p>
+  } @else {
+    <div class="rec__scroll">
+      <table class="rec__table">
+        <thead>
+          <tr><th>Concepto</th><th>Periodo</th><th class="rec__num">Importe</th><th>Estado</th><th class="rec__num">Acción</th></tr>
+        </thead>
+        <tbody>
+          @for (r of rows(); track r.id) {
+            <tr [attr.data-receipt]="r.id">
+              <td class="rec__concept">
+                {{ r.concept }}
+                @if (r.property) { <span class="rec__property">{{ r.property }}</span> }
+              </td>
+              <td class="rec__muted">{{ r.period }}</td>
+              <td class="rec__num rec__amount">{{ r.amount }}</td>
+              <td><app-status-pill [text]="r.status.text" [tone]="r.status.tone" [dot]="true"></app-status-pill></td>
+              <td class="rec__num">
+                <span class="rec__actions">
+                  @if (r.payable) {
+                    <button type="button" class="rec__btn rec__btn--primary" data-action="pay" (click)="pay.emit(r.payment)">Pagar</button>
+                  }
+                  <button type="button" class="rec__btn" data-action="view" (click)="viewAll.emit()">Ver</button>
+                </span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (pendingTotal() > 0) {
+      <div class="rec__pending" data-pending>
+        <span class="rec__pending-text">Pendiente de pago <strong>{{ pendingLabel() }}</strong></span>
+        <!-- With several properties each estate has its own IBAN: pay receipt by receipt. -->
+        @if (!propertyNames()) {
+          <button type="button" class="rec__btn rec__btn--primary" data-action="pay-all" (click)="pay.emit({ amount: pendingTotal(), concept: 'Saldo pendiente' })">Pagar ahora</button>
+        }
+      </div>
+    }
+  }
+</app-section-card>

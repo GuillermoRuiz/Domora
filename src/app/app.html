@@ -1,0 +1,35 @@
+@if (demoBanner) {
+  <ng-container *ngComponentOutlet="demoBanner"></ng-container>
+}
+
+@if (!isAuthenticated()) {
+  <router-outlet></router-outlet>
+} @else {
+  <div class="app-shell">
+    <app-sidebar></app-sidebar>
+
+    <main class="app-main">
+      @if (subscriptionBanner(); as banner) {
+        <div class="subscription-banner" [class.subscription-banner--danger]="banner.tone === 'danger'">
+          <span>{{ banner.text }}</span>
+          <button class="subscription-banner__action" (click)="goToSubscription()">Ver suscripción</button>
+        </div>
+      }
+      <app-despacho-scope-band></app-despacho-scope-band>
+      <router-outlet></router-outlet>
+    </main>
+
+    <!-- Role Switcher (solo con environment.mockRoleSwitch, es decir, desarrollo) -->
+    @if (showRoleSwitcher) {
+      <button class="role-switcher" (click)="state.cycleRole()" [title]="'Cambiar rol (actual: ' + state.currentRole() + ')'">
+        <span class="role-switcher__label">Rol</span>
+        <span class="role-switcher__role">{{ state.currentRole() }}</span>
+      </button>
+    }
+
+    <!-- Add Property Modal -->
+    @if (state.showAddPropertyModal()) {
+      <app-add-property></app-add-property>
+    }
+  </div>
+}

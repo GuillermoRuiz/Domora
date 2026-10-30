@@ -1,0 +1,249 @@
+@use '../dropdown/dropdown-panel' as dd;
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.dtf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dtf__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.dtf__hint {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.dtf--date-only .dtf__row { grid-template-columns: minmax(0, 1fr); }
+.dtf__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+// Campos de fecha (botón) y de hora (input): misma caja que los campos compartidos (styles.scss).
+.dtf__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 38px;
+  padding: 0 11px;
+  font: inherit;
+  text-align: left;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+
+  &:focus-within,
+  &--open {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+
+  &--invalid {
+    border-color: var(--color-error);
+  }
+}
+
+button.dtf__control {
+  width: 100%;
+  cursor: pointer;
+
+  &:hover:not(.dtf__control--invalid) {
+    border-color: var(--color-light);
+  }
+  &:focus-visible {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+}
+
+.dtf__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &--empty {
+    color: var(--color-light);
+  }
+}
+
+.dtf__chevron {
+  flex-shrink: 0;
+  color: var(--color-muted);
+}
+
+.dtf__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  font: inherit;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+
+  &::placeholder {
+    color: var(--color-light);
+  }
+}
+
+// ── Popover con el calendario (fijo: no lo recorta el cuerpo con scroll del modal) ──
+.dtf-pop {
+  @include dd.dd-panel-surface;
+  position: fixed;
+  z-index: 2600;
+  width: max-content;
+  padding: 12px;
+  animation: dtf-pop-in 0.16s ease;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding-bottom: 4px;
+}
+
+.cal-title {
+  flex-grow: 1;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.cal-nav {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--color-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+
+  &:hover {
+    color: var(--color-text);
+    background: var(--color-surface-hover);
+  }
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+.cal-weekdays,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 36px);
+}
+
+.cal-weekdays span {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.cal-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font: inherit;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  white-space: nowrap;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+
+  &:hover {
+    background: var(--color-surface-hover);
+  }
+
+  // Hoy: puntito bajo el número (como en la referencia).
+  &--today::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  &--selected,
+  &--selected:hover {
+    color: #14120a;
+    background: var(--color-accent);
+  }
+  &--selected::after {
+    background: currentColor;
+  }
+
+  &:focus-visible {
+    z-index: 1;
+    outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+:host-context([data-theme='light']) .cal-day--selected,
+:host-context([data-theme='light']) .cal-day--selected:hover {
+  color: #fff;
+}
+
+@keyframes dtf-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dtf-pop {
+    animation: none;
+  }
+}

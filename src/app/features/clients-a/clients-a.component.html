@@ -1,0 +1,271 @@
+<app-topbar title="Clientes" [breadcrumb]="['Negocio Domora', 'Clientes']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Clientes</h1>
+    <p class="page-intro__subtitle">Gestión comercial de los administradores de fincas como clientes de Domora: contrato, contacto, plan, renovaciones y seguimiento.</p>
+  </div>
+  <div class="page-intro__actions">
+    <app-btn variant="primary" data-action="new-lead" (clicked)="newLead()">
+      <app-icon name="plus" [size]="14"></app-icon>
+      Nuevo cliente
+    </app-btn>
+  </div>
+</header>
+
+<div class="page-content">
+  @if (loadError()) {
+    <p class="load-error" role="status" data-load-error>
+      <app-icon name="exclamation" [size]="14"></app-icon>
+      No se pudieron cargar todos los datos de clientes. Lo que falta se muestra como «—».
+    </p>
+  }
+
+  <div class="stats-row">
+    @for (k of kpis(); track k.label) {
+      <app-stat-card [label]="k.label" [value]="k.value" [icon]="k.icon" [info]="k.info" [sub]="k.sub ?? ''"></app-stat-card>
+    }
+  </div>
+
+  <div class="panels">
+    <section class="card panel" data-panel="leads" aria-labelledby="leads-title">
+      <div class="card__header">
+        <h2 class="card__title" id="leads-title">Nuevas oportunidades <span class="count">{{ openLeadCount() }}</span></h2>
+        <label class="inline-check">
+          <input type="checkbox" [checked]="showClosedLeads()" (change)="showClosedLeads.set($any($event.target).checked)" />
+          Ver convertidas y descartadas
+        </label>
+      </div>
+      <ul class="panel-list">
+        @for (lead of panelLeads(); track lead.id) {
+          <li>
+            <button type="button" class="panel-item" [attr.data-lead]="lead.id" (click)="openLead(lead.id)">
+              <span class="panel-item__main">
+                <span class="panel-item__title">{{ lead.name }}</span>
+                <span class="panel-item__meta">
+                  {{ originLabel[lead.origin] }}
+                  @if (lead.onboardingRequest) { · {{ lead.onboardingRequest.communityName }} }
+                  @if (lead.city) { · {{ lead.city }} }
+                </span>
+                @if (lead.nextAction) {
+                  <span class="panel-item__meta" [class.is-due]="isDue(lead.nextActionAt)">Próxima acción: {{ lead.nextAction }}@if (lead.nextActionAt) { · {{ fmtDay(lead.nextActionAt) }} }</span>
+                }
+              </span>
+              <span class="panel-item__side">
+                @if (lead.planOfInterest) { <app-badge [text]="lead.planOfInterest" [variant]="planVariant(lead.planOfInterest)"></app-badge> }
+                <app-badge [text]="leadStatusLabel[lead.status]" [variant]="leadStatusVariant(lead.status)"></app-badge>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          <li class="panel-empty">{{ leadsError() ? 'No se pudieron cargar las oportunidades.' : 'No hay oportunidades abiertas.' }}</li>
+        }
+      </ul>
+    </section>
+
+    <section class="card panel" data-panel="risk" aria-labelledby="risk-title">
+      <div class="card__header">
+        <h2 class="card__title" id="risk-title">Clientes en riesgo <span class="count">{{ atRisk().length }}</span></h2>
+      </div>
+      <ul class="panel-list">
+        @for (row of atRisk(); track row.admin.id) {
+          <li>
+            <button type="button" class="panel-item" [attr.data-risk]="row.admin.id" (click)="openClient(row.admin.id)">
+              <span class="panel-item__main">
+                <span class="panel-item__title">{{ row.admin.name }}</span>
+                <span class="panel-item__meta">Motivo: {{ row.health?.motivo?.label ?? '—' }}</span>
+                <span class="panel-item__meta">
+                  @if (row.commercial?.nextRenewal; as renewal) {
+                    Renueva el {{ fmtDay(renewal.date) }} · {{ fmtEur(renewal.amount) }}
+                  } @else {
+                    Sin renovación próxima
+                  }
+                </span>
+              </span>
+              <span class="panel-item__side">
+                <span class="salud-value" aria-label="Salud">{{ row.health?.salud !== null && row.health?.salud !== undefined ? fmtScore(row.health!.salud!) : '—' }}</span>
+                <app-icon name="chevron-right" [size]="16"></app-icon>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          <li class="panel-empty">{{ healthError() ? 'No se pudo calcular la salud de los clientes.' : 'Ningún cliente en riesgo.' }}</li>
+        }
+      </ul>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="clients-title">
+    <div class="card__header">
+      <h2 class="card__title" id="clients-title">Cartera de clientes</h2>
+      <div class="search-wrapper">
+        <app-icon name="search" [size]="14" class="search-icon"></app-icon>
+        <input
+          class="search-input"
+          type="search"
+          data-search
+          aria-label="Buscar clientes"
+          placeholder="Buscar por nombre, CIF o contacto..."
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+        />
+      </div>
+    </div>
+
+    <div class="filters-row">
+      <div class="filter-group" data-filter="estado">
+        <span class="filter-label">Estado</span>
+        @for (s of statusFilters; track s) {
+          <button type="button" class="filter-chip" [class.filter-chip--active]="statusFilter() === s" [attr.aria-pressed]="statusFilter() === s" (click)="statusFilter.set(s)">{{ s === 'TODOS' ? 'Todos' : s }}</button>
+        }
+      </div>
+      <div class="filter-group" data-filter="plan">
+        <span class="filter-label">Plan</span>
+        @for (p of planFilters; track p) {
+          <button type="button" class="filter-chip" [class.filter-chip--active]="planFilter() === p" [attr.aria-pressed]="planFilter() === p" (click)="planFilter.set(p)">{{ p === 'TODOS' ? 'Todos' : p }}</button>
+        }
+      </div>
+      <label class="filter-group" data-filter="alta">
+        <span class="filter-label">Fecha de alta</span>
+        <select class="filter-select" [value]="signupFilter()" (change)="signupFilter.set($any($event.target).value)">
+          @for (w of signupWindows; track w.value) { <option [value]="w.value" [selected]="signupFilter() === w.value">{{ w.label }}</option> }
+        </select>
+      </label>
+      <div class="filter-group" data-sort>
+        <label class="filter-label" for="clients-sort">Ordenar por</label>
+        <select id="clients-sort" class="filter-select" [value]="sortKey()" (change)="setSort($any($event.target).value)">
+          @for (o of sortOptions; track o.value) { <option [value]="o.value" [selected]="sortKey() === o.value">{{ o.label }}</option> }
+        </select>
+        <button type="button" class="sort-dir" data-sort-dir [attr.aria-label]="sortDir() === 'asc' ? 'Orden ascendente; cambiar a descendente' : 'Orden descendente; cambiar a ascendente'" (click)="toggleSortDir()">
+          {{ sortDir() === 'asc' ? '↑' : '↓' }}
+        </button>
+      </div>
+      <div class="filter-group" data-columns>
+        <span class="filter-label">Columnas</span>
+        @for (c of optionalColumns; track c.key) {
+          <label class="inline-check" [attr.data-optional]="c.key">
+            <input type="checkbox" [checked]="hasColumn(c.key)" (change)="toggleColumn(c.key)" />
+            {{ c.label }}
+          </label>
+        }
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table" data-table="clients">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Contacto principal</th>
+            <th>Plan</th>
+            <th>MRR</th>
+            <th>Estado</th>
+            <th>Salud</th>
+            <th>Próxima acción</th>
+            @if (hasColumn('signupAt')) { <th>Fecha de alta</th> }
+            @if (hasColumn('nextRenewal')) { <th>Próxima renovación</th> }
+            @if (hasColumn('lastActivity')) { <th>Última actividad</th> }
+            <th aria-label="Abrir ficha"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of visibleRows(); track row.admin.id) {
+            <tr tabindex="0" [attr.data-id]="row.admin.id" [attr.aria-label]="'Abrir la ficha de ' + row.admin.name" (click)="openClient(row.admin.id)" (keydown.enter)="openClient(row.admin.id)">
+              <td data-col="cliente">
+                <div class="td--name">{{ row.admin.name }}</div>
+                <div class="td--sub">{{ row.admin.cif }}</div>
+              </td>
+              <td data-col="contacto">
+                <div>{{ row.admin.contactName || '—' }}</div>
+                <div class="td--sub">{{ row.admin.contactEmail }}@if (row.admin.phone) { · {{ row.admin.phone }} }</div>
+              </td>
+              <td data-col="plan"><app-badge [text]="row.admin.plan" [variant]="planVariant(row.admin.plan)"></app-badge></td>
+              <td data-col="mrr" class="td--num">{{ fmtEur(row.admin.mrr) }}</td>
+              <td data-col="estado">
+                <div class="status-cell">
+                  @if (row.admin.clientStatus) {
+                    <app-badge [text]="row.admin.clientStatus" [variant]="clientStatusVariant(row.admin.clientStatus)"></app-badge>
+                  } @else { <span class="td--muted">—</span> }
+                  @if (row.health?.atRisk) { <app-risk-tag [motivo]="row.health?.motivo?.label"></app-risk-tag> }
+                </div>
+              </td>
+              <td data-col="salud" class="td--num">
+                @if (row.health && row.health.salud !== null) { <span class="salud-value">{{ fmtScore(row.health.salud) }}</span> } @else { <span class="td--muted">—</span> }
+              </td>
+              <td data-col="accion">
+                <div class="next-action">
+                  @if (row.commercial?.nextAction) {
+                    <span>
+                      <span class="next-action__text">{{ row.commercial!.nextAction }}</span>
+                      @if (row.commercial!.nextActionAt) { <span class="td--sub" [class.is-due]="isDue(row.commercial!.nextActionAt)">{{ fmtDay(row.commercial!.nextActionAt) }}</span> }
+                    </span>
+                  } @else if (row.commercial) {
+                    <span class="td--muted">Sin próxima acción</span>
+                  } @else {
+                    <span class="td--muted">—</span>
+                  }
+                  <button type="button" class="action-btn" data-action="edit-next-action" [attr.aria-label]="'Seguimiento comercial de ' + row.admin.name" (click)="openNextAction(row, $event)" (keydown.enter)="$event.stopPropagation()">
+                    <app-icon name="edit" [size]="14"></app-icon>
+                  </button>
+                </div>
+              </td>
+              @if (hasColumn('signupAt')) { <td data-col="alta" class="td--muted">{{ fmtDay(row.commercial?.signupAt) }}</td> }
+              @if (hasColumn('nextRenewal')) {
+                <td data-col="renovacion" class="td--muted">
+                  @if (row.commercial?.nextRenewal; as renewal) {
+                    <div>{{ fmtDay(renewal.date) }}</div>
+                    <div class="td--sub">{{ fmtEur(renewal.amount) }}</div>
+                  } @else { — }
+                </td>
+              }
+              @if (hasColumn('lastActivity')) { <td data-col="actividad" class="td--muted">{{ fmtDay(row.commercial?.lastActiveDay) }}</td> }
+              <td class="td--actions">
+                <app-icon name="chevron-right" [size]="16"></app-icon>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="columnCount()" class="td--empty">
+                {{ loading() ? 'Cargando clientes…' : adminsError() ? 'No se pudieron cargar los clientes.' : 'No hay clientes con estos filtros.' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-footer">{{ visibleRows().length }} clientes · MRR filtrado: {{ fmtEur(visibleMrr()) }}</div>
+  </section>
+</div>
+
+@if (toastMessage()) {
+  <div class="toast" role="status">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}
+
+@if (leadDialog(); as leadId) {
+  <app-lead-dialog
+    [leadId]="leadId === 'new' ? null : leadId"
+    (closed)="leadDialog.set(null)"
+    (saved)="onLeadSaved()"
+    (converted)="onLeadConverted($event)"
+    (openClient)="openClient($event)"
+  ></app-lead-dialog>
+}
+
+@if (clientDialog(); as row) {
+  <app-client-dialog
+    [administratorId]="row.admin.id"
+    [clientName]="row.admin.name"
+    [nextAction]="row.commercial?.nextAction ?? null"
+    [nextActionAt]="row.commercial?.nextActionAt ?? null"
+    (closed)="clientDialog.set(null)"
+    (saved)="onNextActionSaved()"
+  ></app-client-dialog>
+}
+
+@if (inviteTarget(); as target) {
+  <app-admin-invite-dialog [administratorId]="target.id" [adminName]="target.name" (closed)="inviteTarget.set(null)"></app-admin-invite-dialog>
+}

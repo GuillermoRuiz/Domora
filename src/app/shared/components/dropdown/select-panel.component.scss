@@ -1,0 +1,28 @@
+@use 'dropdown-panel' as dd;
+
+:host {
+  position: fixed; z-index: 2500; display: block; width: max-content; overflow-y: auto;
+  @include dd.dd-panel-surface;
+  animation: dd-panel-in 0.18s ease;
+}
+
+.dd__option {
+  @include dd.dd-option;
+  @include dd.dd-option-states;
+}
+.dd__option-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd__check { flex-shrink: 0; display: inline-flex; color: var(--color-accent); }
+.dd__group {
+  padding: 8px 8px 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-muted);
+}
+
+@keyframes dd-panel-in {
+  from { opacity: 0; transform: translateY(-6px) scaleY(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@include dd.dd-touch-targets;
+
+@media (prefers-reduced-motion: reduce) {
+  :host { animation: none; }
+}

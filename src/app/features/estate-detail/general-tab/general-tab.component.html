@@ -1,0 +1,225 @@
+<label class="search">
+  <app-icon name="search" [size]="16"></app-icon>
+  <span class="visually-hidden">Buscar en datos generales</span>
+  <input class="field--bare" id="general-search" type="search" autocomplete="off" placeholder="Buscar en datos generales (campos, notas, documentos…)"
+    [value]="search()" (input)="search.set($any($event.target).value)" />
+</label>
+
+@if (loadError()) {
+  <div class="load-error" role="alert">
+    <span>No se pudieron cargar los cargos, contactos, documentos y seguros de la finca.</span>
+    <button type="button" class="link-btn" (click)="load()">Reintentar</button>
+  </div>
+}
+@if (noMatches()) {
+  <p class="no-matches" role="status">Ningún dato coincide con «{{ search().trim() }}».</p>
+}
+
+<ng-template #fieldList let-fields>
+  <dl class="fields">
+    @for (field of fields; track field.label) {
+      <div class="field">
+        <dt>{{ field.label }}</dt>
+        <dd [class.field--empty]="!field.value">{{ field.value ?? 'Sin informar' }}</dd>
+      </div>
+    }
+  </dl>
+</ng-template>
+
+<div class="grid">
+  <!-- Datos de la comunidad -->
+  <section class="card" data-card="community" [hidden]="!shows('community')" aria-labelledby="gc-community">
+    <h3 class="card__title" id="gc-community"><app-icon name="building" [size]="18"></app-icon> Datos de la comunidad</h3>
+    <ng-container *ngTemplateOutlet="fieldList; context: { $implicit: community() }"></ng-container>
+  </section>
+
+  <!-- Dirección y ubicación -->
+  <section class="card card--address" data-card="address" [hidden]="!shows('address')" aria-labelledby="gc-address">
+    <h3 class="card__title" id="gc-address"><app-icon name="map-pin" [size]="18"></app-icon> Dirección y ubicación</h3>
+    <div class="address">
+      <ng-container *ngTemplateOutlet="fieldList; context: { $implicit: address() }"></ng-container>
+      @if (estate().latitude != null && estate().longitude != null) {
+        <app-estate-map class="address__map" [latitude]="estate().latitude!" [longitude]="estate().longitude!" [label]="estate().name"></app-estate-map>
+      }
+    </div>
+    <a class="map-link" [href]="mapLink()" target="_blank" rel="noopener noreferrer">
+      Ver en mapa <app-icon name="arrow-right" [size]="13"></app-icon><span class="visually-hidden"> (se abre en una pestaña nueva)</span>
+    </a>
+  </section>
+
+  <!-- Contactos clave -->
+  <section class="card" data-card="contacts" [hidden]="!shows('contacts')" aria-labelledby="gc-contacts">
+    <h3 class="card__title" id="gc-contacts"><app-icon name="users" [size]="18"></app-icon> Contactos clave</h3>
+    @if (overview(); as o) {
+      @if (o.keyContacts.length) {
+        <ul class="people">
+          @for (c of o.keyContacts; track c.name + c.propertyRefs.join()) {
+            <li class="person">
+              <span class="avatar" aria-hidden="true">{{ initials(c.name) }}</span>
+              <div class="person__body">
+                <span class="person__name">{{ c.name }}</span>
+                <span class="person__role">{{ c.office ?? 'Propietario' }} · {{ c.propertyRefs.join(', ') }}</span>
+                <span class="person__contact">
+                  @if (c.phone) { <a [href]="'tel:' + c.phone"><app-icon name="phone" [size]="13"></app-icon> {{ c.phone }}</a> }
+                  @if (c.email) { <a [href]="'mailto:' + c.email"><app-icon name="mail" [size]="13"></app-icon> {{ c.email }}</a> }
+                  @if (!c.phone && !c.email) { <span class="field--empty">Sin teléfono ni correo</span> }
+                </span>
+              </div>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="empty">Sin contactos clave. Se marcan desde el menú de cada propiedad, en la pestaña Propiedades.</p>
+      }
+    } @else if (!loadError()) { <p class="empty">Cargando…</p> }
+  </section>
+
+  <!-- Datos fiscales / administrativos -->
+  <section class="card" data-card="fiscal" [hidden]="!shows('fiscal')" aria-labelledby="gc-fiscal">
+    <h3 class="card__title" id="gc-fiscal"><app-icon name="file-text" [size]="18"></app-icon> Datos fiscales / administrativos</h3>
+    <ng-container *ngTemplateOutlet="fieldList; context: { $implicit: fiscal() }"></ng-container>
+  </section>
+
+  <!-- Cuenta bancaria -->
+  <section class="card" data-card="bank" [hidden]="!shows('bank')" aria-labelledby="gc-bank">
+    <h3 class="card__title" id="gc-bank"><app-icon name="card" [size]="18"></app-icon> Cuenta bancaria</h3>
+    @if (overview()?.bank; as b) {
+      <dl class="fields">
+        @for (field of bank(); track field.label) {
+          <div class="field">
+            <dt>{{ field.label }}</dt>
+            <dd [class.field--empty]="!field.value">
+              {{ field.value ?? 'Sin informar' }}
+              @if (field.label === 'IBAN' && !b.masked) {
+                <button type="button" class="icon-btn" [attr.aria-label]="copied() ? 'IBAN copiado' : 'Copiar IBAN'" [title]="copied() ? 'Copiado' : 'Copiar IBAN'" (click)="copyIban()">
+                  <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14"></app-icon>
+                </button>
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+    } @else if (overview()) {
+      <p class="empty">Sin cuenta bancaria. Se configura en Contabilidad.</p>
+    } @else if (!loadError()) { <p class="empty">Cargando…</p> }
+  </section>
+
+  <!-- Documentos esenciales -->
+  <section class="card card--tall" data-card="documents" [hidden]="!shows('documents')" aria-labelledby="gc-documents">
+    <h3 class="card__title" id="gc-documents"><app-icon name="file" [size]="18"></app-icon> Documentos esenciales</h3>
+    @if (overview(); as o) {
+      <ul class="docs">
+        @for (d of o.essentialDocuments; track d.type) {
+          <li class="doc" [attr.data-doc]="d.type">
+            <app-icon class="doc__icon" name="file-text" [size]="18"></app-icon>
+            <div class="doc__body">
+              <span class="doc__title">{{ d.document?.title ?? d.type }}</span>
+              <span class="doc__meta">
+                @if (d.document; as doc) { {{ doc.title === d.type ? '' : d.type + ' · ' }}{{ day(doc.date) ?? 'sin fecha' }}{{ doc.size ? ' · ' + doc.size : '' }} }
+                @else { <span class="field--empty">Sin subir</span> }
+              </span>
+            </div>
+            @if (d.document; as doc) {
+              <button type="button" class="icon-btn" [attr.aria-label]="'Descargar ' + doc.title" title="Descargar" (click)="download(doc.id, doc.title)">
+                <app-icon name="download" [size]="16"></app-icon>
+              </button>
+            }
+          </li>
+        }
+      </ul>
+      @if (downloadError()) { <p class="card__error" role="alert">{{ downloadError() }}</p> }
+      <button type="button" class="link-btn docs__open" (click)="openDocuments.emit()">Ver todos los documentos</button>
+    } @else if (!loadError()) { <p class="empty">Cargando…</p> }
+  </section>
+
+  <!-- Presidente y cargos -->
+  <section class="card" data-card="offices" [hidden]="!shows('offices')" aria-labelledby="gc-offices">
+    <h3 class="card__title" id="gc-offices"><app-icon name="star" [size]="18"></app-icon> Presidente y cargos</h3>
+    @if (overview(); as o) {
+      <dl class="fields">
+        <div class="field">
+          <dt>Presidente</dt>
+          <dd [class.field--empty]="!o.offices.president">
+            @if (o.offices.president; as p) { {{ p.name }}{{ p.propertyRef ? ' (' + p.propertyRef + ')' : '' }} <span class="since">desde {{ day(p.since) }}</span> }
+            @else { Sin presidente registrado }
+          </dd>
+        </div>
+        @for (v of o.offices.vicePresidents; track v.label) {
+          <div class="field">
+            <dt>{{ v.label }}</dt>
+            <dd>{{ v.name }}{{ v.propertyRef ? ' (' + v.propertyRef + ')' : '' }} <span class="since">desde {{ day(v.since) }}</span></dd>
+          </div>
+        }
+      </dl>
+      <button type="button" class="link-btn" (click)="officeHistory.emit()">Ver historial de cargos</button>
+    } @else if (!loadError()) { <p class="empty">Cargando…</p> }
+  </section>
+
+  <!-- Administrador asignado -->
+  <section class="card" data-card="administrator" [hidden]="!shows('administrator')" aria-labelledby="gc-administrator">
+    <h3 class="card__title" id="gc-administrator"><app-icon name="user" [size]="18"></app-icon> Administrador asignado</h3>
+    @if (overview()?.administrator; as a) {
+      <div class="person person--single">
+        <span class="avatar avatar--large" aria-hidden="true">{{ initials(a.contactName ?? a.name) }}</span>
+        <div class="person__body">
+          <span class="person__name">{{ a.contactName ?? a.name }}</span>
+          @if (a.contactName) { <span class="person__role">{{ a.name }}</span> }
+          <span class="person__contact">
+            @if (a.phone) { <a [href]="'tel:' + a.phone"><app-icon name="phone" [size]="13"></app-icon> {{ a.phone }}</a> }
+            @if (a.email) { <a [href]="'mailto:' + a.email"><app-icon name="mail" [size]="13"></app-icon> {{ a.email }}</a> }
+          </span>
+        </div>
+      </div>
+    } @else if (!loadError()) { <p class="empty">{{ overview() ? 'Sin administrador asignado.' : 'Cargando…' }}</p> }
+  </section>
+</div>
+
+<div class="grid grid--four">
+  <!-- Referencia catastral -->
+  <section class="card" data-card="cadastral" [hidden]="!shows('cadastral')" aria-labelledby="gc-cadastral">
+    <h3 class="card__title" id="gc-cadastral"><app-icon name="layers" [size]="18"></app-icon> Referencia catastral</h3>
+    <ng-container *ngTemplateOutlet="fieldList; context: { $implicit: cadastral() }"></ng-container>
+  </section>
+
+  <!-- Coeficientes -->
+  <section class="card" data-card="coefficients" [hidden]="!shows('coefficients')" aria-labelledby="gc-coefficients">
+    <h3 class="card__title" id="gc-coefficients"><app-icon name="chart" [size]="18"></app-icon> Coeficientes</h3>
+    @if (coefficients(); as c) {
+      <ng-container *ngTemplateOutlet="fieldList; context: { $implicit: c.fields }"></ng-container>
+      @if (c.warning) { <p class="warning"><app-icon name="exclamation" [size]="14"></app-icon> {{ c.warning }}</p> }
+    } @else if (!loadError()) { <p class="empty">Cargando…</p> }
+  </section>
+
+  <!-- Seguros básicos -->
+  <section class="card" data-card="insurance" [hidden]="!shows('insurance')" aria-labelledby="gc-insurance">
+    <h3 class="card__title" id="gc-insurance"><app-icon name="shield" [size]="18"></app-icon> Seguros básicos</h3>
+    @if (overview(); as o) {
+      @for (i of o.insurance; track i.contractId) {
+        <dl class="fields policy">
+          <div class="field"><dt>Tipo de seguro</dt><dd>{{ i.type }}</dd></div>
+          <div class="field"><dt>Aseguradora</dt><dd>{{ i.insurer }}</dd></div>
+          <div class="field"><dt>Nº de póliza</dt><dd [class.field--empty]="!i.contractNumber">{{ i.contractNumber ?? 'Sin informar' }}</dd></div>
+          <div class="field">
+            <dt>Vencimiento</dt>
+            <dd>{{ i.endDate ? day(i.endDate) : 'Sin vencimiento' }}{{ i.renewalType === 'tacita' ? ' · renovación tácita' : '' }}</dd>
+          </div>
+          @if (i.coverage) { <div class="field"><dt>Cobertura</dt><dd>{{ i.coverage }}</dd></div> }
+        </dl>
+      } @empty {
+        <p class="empty">Sin pólizas vigentes. Se registran como contrato con la aseguradora en la pestaña Contratos.</p>
+      }
+    } @else if (!loadError()) { <p class="empty">Cargando…</p> }
+  </section>
+
+  <!-- Observaciones -->
+  <section class="card" data-card="notes" [hidden]="!shows('notes')" aria-labelledby="gc-notes">
+    <h3 class="card__title" id="gc-notes"><app-icon name="edit" [size]="18"></app-icon> Observaciones</h3>
+    @if (estate().notes?.trim()) {
+      <p class="notes">{{ estate().notes }}</p>
+    } @else {
+      <p class="empty">Sin observaciones.</p>
+    }
+  </section>
+</div>
+
+<app-sepa-tab class="sepa" [estateId]="estateId" (saved)="sepaSaved.emit()"></app-sepa-tab>

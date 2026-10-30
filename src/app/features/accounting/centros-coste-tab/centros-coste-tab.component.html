@@ -1,0 +1,91 @@
+<div class="card">
+  <div class="card__header">
+    <span class="card__title">Centros de coste</span>
+    <div class="card__actions">
+      <app-btn *appPageAction variant="primary" size="sm" (clicked)="openNuevo()">
+        <app-icon name="plus" [size]="13"></app-icon>
+        Nuevo centro de coste
+      </app-btn>
+    </div>
+  </div>
+  <p class="card__hint">
+    Etiqueta transversal para trackear el gasto de una zona o amenidad (piscina, ascensor, jardín...) cruzando varias cuentas contables — no sustituye al plan contable.
+  </p>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Descripción</th>
+        <th class="th-right">Presupuestado (año en curso)</th>
+        <th class="th-right">Ejecutado</th>
+        <th>Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @if (centres().length === 0) {
+        <tr>
+          <td colspan="6" class="td-empty">Todavía no hay centros de coste en esta finca.</td>
+        </tr>
+      }
+      @for (c of centres(); track c.id) {
+        <tr>
+          <td class="td-strong">{{ c.name }}</td>
+          <td class="td-muted">{{ c.description || '—' }}</td>
+          <td class="td-right">{{ c.budgeted != null ? fmtEur0(c.budgeted) : '—' }}</td>
+          <td class="td-right">
+            {{ fmtEur0(c.executed ?? 0) }}
+            @if (c.budgeted) { <span class="pct" [style.color]="pctColor(pct(c))">{{ pct(c) }}%</span> }
+          </td>
+          <td><app-badge [text]="c.status" [variant]="c.status === 'Activo' ? 'green' : 'default'"></app-badge></td>
+          <td class="td-actions">
+            <button class="icon-btn" title="Editar" (click)="openEditar(c)">
+              <app-icon name="edit" [size]="14"></app-icon>
+            </button>
+            @if (c.status === 'Activo') {
+              <button class="icon-btn" title="Archivar" (click)="archivar(c)">
+                <app-icon name="trash" [size]="14"></app-icon>
+              </button>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (showModal()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>{{ editingId() ? 'Editar centro de coste' : 'Nuevo centro de coste' }}</h4>
+        <button class="close-btn" (click)="closeModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Nombre
+          <input type="text" placeholder="ej. Piscina" [ngModel]="ccName()" (ngModelChange)="ccName.set($event)" [class.field--error]="ccErrors().name" />
+          @if (ccErrors().name) { <span class="field-error">El nombre es obligatorio</span> }
+        </label>
+        <label class="form-field">
+          Descripción (opcional)
+          <input type="text" placeholder="ej. Piscina comunitaria y zona de solárium" [ngModel]="ccDescription()" (ngModelChange)="ccDescription.set($event)" />
+        </label>
+        @if (ccError()) { <span class="field-error">{{ ccError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeModal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="ccSaving()" (clicked)="submit()">
+          {{ ccSaving() ? 'Guardando…' : (editingId() ? 'Guardar cambios' : 'Crear centro de coste') }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

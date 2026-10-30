@@ -1,0 +1,177 @@
+<div class="beacon">
+  @if (loading()) {
+    <div class="beacon__card">
+      <p class="beacon__loading"><app-icon name="refresh" [size]="16"></app-icon> Cargando…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="beacon__card">
+      <p class="beacon__error">{{ loadError() }}</p>
+      <a routerLink="/b/estates" class="beacon__link">Volver al panel</a>
+    </div>
+  } @else {
+    <div class="beacon__card">
+      <div class="beacon__header">
+        <div>
+          <h1>Panel del anfitrión</h1>
+          <p class="beacon__subtitle">{{ meeting()?.title }}</p>
+        </div>
+        <div class="beacon__header-actions">
+          <span class="beacon__badge">Conectados: {{ polling.presence().length }}</span>
+          <a routerLink="/b/estates" class="beacon__link">Volver al panel</a>
+        </div>
+      </div>
+
+      <div class="beacon__grid">
+        <div class="beacon__panel">
+          <h3><app-icon name="bell" [size]="14"></app-icon> Estado del anfitrión</h3>
+          <p class="beacon__muted">
+            Listo: {{ polling.state()?.adminReady ? 'Sí' : 'No' }}
+            @if (polling.state()?.scheduledStartAt; as scheduledStartAt) {
+              · Programado: {{ scheduledStartAt | date: 'dd/MM/yyyy HH:mm' }}
+            }
+          </p>
+          <div class="beacon__panel-actions">
+            <app-btn [variant]="polling.state()?.adminReady ? 'danger' : 'secondary'" size="sm" [disabled]="savingReady()" (clicked)="toggleReady()">
+              {{ polling.state()?.adminReady ? 'No listo' : 'Estoy listo' }}
+            </app-btn>
+            <app-btn variant="outline" size="sm" (clicked)="redirectNow()">Redirigir ahora</app-btn>
+            @if (!enteredJitsi()) {
+              <app-btn variant="primary" size="sm" (clicked)="enterJitsi()">Entrar a la videollamada</app-btn>
+            }
+          </div>
+        </div>
+
+        <div class="beacon__panel">
+          <h3><app-icon name="calendar" [size]="14"></app-icon> Reprogramar inicio</h3>
+          <div class="beacon__panel-actions">
+            <input type="datetime-local" [ngModel]="newStart()" (ngModelChange)="newStart.set($event)" />
+            <app-btn variant="outline" size="sm" [disabled]="savingSchedule()" (clicked)="updateSchedule()">Guardar</app-btn>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    @if (meeting()?.includeJitsi && !meeting()?.telematicBackingConfirmedAt) {
+      <div class="beacon__card">
+        <app-badge text="Sin respaldo estatutario confirmado" variant="error"></app-badge>
+        <p class="beacon__muted" style="margin-top: 8px;">
+          Esta junta se celebra por videollamada sin que se haya confirmado que la finca tiene respaldo
+          estatutario para asistencia telemática (art. 17.6 LPH). Los acuerdos que se tomen corren riesgo
+          de impugnación si la finca no lo tiene.
+        </p>
+      </div>
+    }
+
+    @if (quorum(); as q) {
+      <div class="beacon__card">
+        <h3><app-icon name="users" [size]="14"></app-icon> Quórum en vivo</h3>
+        <div class="beacon__quorum-row">
+          <app-badge [text]="q.convocatoria === 'primera' ? '1ª convocatoria' : '2ª convocatoria'" variant="default"></app-badge>
+          @if (q.quorumRequired) {
+            <app-badge [text]="q.quorumMet ? 'Quórum alcanzado' : 'Quórum NO alcanzado'" [variant]="q.quorumMet ? 'green' : 'error'"></app-badge>
+          } @else {
+            <app-badge text="Sin quórum exigible" variant="default"></app-badge>
+          }
+        </div>
+        <div class="beacon__quorum-bars">
+          <div class="beacon__quorum-bar">
+            <span class="beacon__muted">Propietarios: {{ q.owners.present }} / {{ q.owners.total }} ({{ q.owners.percent }}%)</span>
+            <div class="beacon__quorum-track"><div class="beacon__quorum-fill" [style.width.%]="q.owners.percent"></div></div>
+          </div>
+          <div class="beacon__quorum-bar">
+            <span class="beacon__muted">Cuotas presentes: {{ q.quota.percent }}%</span>
+            <div class="beacon__quorum-track"><div class="beacon__quorum-fill" [style.width.%]="q.quota.percent"></div></div>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (!attendanceConfirmed() && attendanceOptions().length > 0) {
+      <div class="beacon__card">
+        <h3><app-icon name="check" [size]="14"></app-icon> ¿Por cuál propiedad estás presente?</h3>
+        <p class="beacon__muted">Solo aplica si además eres propietaria/o de esta finca o llevas una delegación de voto.</p>
+        <div class="beacon__panel-actions">
+          @for (opt of attendanceOptions(); track opt.propertyId) {
+            <label>
+              <input
+                type="checkbox"
+                [checked]="selectedPropertyIds().includes(opt.propertyId)"
+                (change)="toggleAttendanceProperty(opt.propertyId)"
+              />
+              {{ opt.label }}{{ opt.kind === 'delegated' ? ' (delegación)' : '' }}
+            </label>
+          }
+        </div>
+        <app-btn variant="primary" size="sm" [disabled]="selectedPropertyIds().length === 0" (clicked)="confirmAttendance()">
+          Confirmar asistencia
+        </app-btn>
+      </div>
+    }
+
+    @defer (when enteredJitsi()) {
+      <div class="beacon__card beacon__card--jitsi">
+        <app-jitsi-embed
+          [roomName]="meeting()!.jitsiRoomName!"
+          [displayName]="displayName()"
+          [subject]="meeting()?.title"
+          (joined)="onJitsiJoined()"
+        ></app-jitsi-embed>
+        <button type="button" class="beacon__fallback-link" (click)="openJitsi()">
+          ¿Problemas con la videollamada? Ábrela en una pestaña nueva
+        </button>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="beacon__card">
+        <p class="beacon__loading"><app-icon name="refresh" [size]="16"></app-icon> Cargando videollamada…</p>
+      </div>
+    }
+
+    <div class="beacon__card">
+      <h3>Chat en directo</h3>
+      <div class="chat-log">
+        @if (polling.chatMessages().length === 0) {
+          <p class="beacon__muted">Aún no hay mensajes.</p>
+        } @else {
+          @for (m of polling.chatMessages(); track m.id) {
+            <div class="chat-message">
+              <span class="chat-message__meta">{{ m.senderName }}</span>
+              <p>{{ m.text }}</p>
+            </div>
+          }
+        }
+      </div>
+      <div class="chat-input">
+        <input
+          type="text"
+          placeholder="Escribe un mensaje…"
+          [ngModel]="chatText()"
+          (ngModelChange)="chatText.set($event)"
+          (keydown.enter)="sendMessage()"
+        />
+        <app-btn variant="primary" size="sm" (clicked)="sendMessage()">
+          <app-icon name="send" [size]="14"></app-icon>
+        </app-btn>
+      </div>
+    </div>
+
+    <div class="beacon__card">
+      <h3><app-icon name="users" [size]="14"></app-icon> Presentes ({{ polling.presence().length }})</h3>
+      <div class="presence-list">
+        @if (polling.presence().length === 0) {
+          <p class="beacon__muted">Aún no hay nadie conectado.</p>
+        } @else {
+          @for (p of polling.presence(); track p.userId) {
+            <div class="presence-row">
+              <span>{{ p.username }}</span>
+              @if (p.building || p.floor || p.unit) {
+                <span class="beacon__muted">
+                  {{ p.building }}{{ p.building && (p.floor || p.unit) ? ' · ' : '' }}{{ p.floor ? 'Planta ' + p.floor : '' }}{{ p.floor && p.unit ? ' · ' : '' }}{{ p.unit ? 'Unidad ' + p.unit : '' }}
+                </span>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

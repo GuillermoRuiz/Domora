@@ -1,0 +1,42 @@
+<div class="modal-backdrop" (click)="cancel()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="support-dialog-title"
+       (click)="$event.stopPropagation()" (keydown.escape)="cancel()">
+    <div class="modal__header">
+      <h4 id="support-dialog-title">Iniciar modo soporte</h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="cancel()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </div>
+
+    <form class="modal__body" novalidate (submit)="submit($event)">
+      <p class="support-dialog__intro">
+        Podrás modificar datos de <strong>{{ despacho()?.name }}</strong> durante 2 horas.
+        Todo lo que hagas quedará registrado en la auditoría.
+      </p>
+
+      <label class="support-dialog__field">
+        <span class="support-dialog__label">Motivo <span aria-hidden="true">*</span></span>
+        <textarea rows="3" required [attr.maxlength]="reasonMax" aria-describedby="support-reason-hint"
+                  [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
+        <span id="support-reason-hint" class="support-dialog__hint">
+          No incluyas datos personales (nombres, DNI, teléfonos…): describe qué vas a revisar o corregir.
+          {{ reason().length }}/{{ reasonMax }}
+        </span>
+      </label>
+
+      <label class="support-dialog__field">
+        <span class="support-dialog__label">Ticket o referencia <span class="support-dialog__optional">(opcional)</span></span>
+        <input type="text" [attr.maxlength]="ticketMax" [value]="ticketRef()" (input)="ticketRef.set($any($event.target).value)" />
+      </label>
+
+      @if (error(); as message) {
+        <p class="support-dialog__error" role="alert">{{ message }}</p>
+      }
+
+      <div class="support-dialog__actions">
+        <button type="button" class="support-dialog__btn" (click)="cancel()">Cancelar</button>
+        <button type="submit" class="support-dialog__btn support-dialog__btn--primary" [disabled]="saving()">Iniciar modo soporte</button>
+      </div>
+    </form>
+  </div>
+</div>

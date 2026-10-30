@@ -1,0 +1,99 @@
+<div class="toolbar">
+  <select class="year-select" [ngModel]="fiscalYear()" (ngModelChange)="onFiscalYearChange($event)">
+    @for (fy of fiscalYears(); track fy.year) { <option [value]="fy.year">{{ fy.year }}</option> }
+  </select>
+  <span class="toolbar__hint">Liquidación del ejercicio — comparación con el año anterior</span>
+</div>
+
+@if (analysis(); as a) {
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <span class="kpi-card__label">Fondo de reserva actual</span>
+      <span class="kpi-card__value">{{ fmtEur0(estate.reserve) }}</span>
+      <span class="kpi-card__sub">Art. 9.1.f LPH</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-card__label">Mínimo legal (10% presupuesto)</span>
+      <span class="kpi-card__value">{{ a.reserveLegalMinimum != null ? fmtEur0(a.reserveLegalMinimum) : '—' }}</span>
+      @if (reserveOk() !== null) {
+        <span class="kpi-card__sub" [class.kpi-card__sub--ok]="reserveOk()" [class.kpi-card__sub--warn]="!reserveOk()">
+          {{ reserveOk() ? 'Cumple el mínimo legal' : 'Por debajo del mínimo legal' }}
+        </span>
+      } @else {
+        <span class="kpi-card__sub">Sin presupuesto cargado para evaluar</span>
+      }
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__title">Por cuenta contable — {{ a.fiscalYear }} vs. {{ a.fiscalYear - 1 }}</div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Cuenta</th>
+          <th class="th-right">Presupuestado {{ a.fiscalYear }}</th>
+          <th class="th-right">Ejecutado {{ a.fiscalYear }}</th>
+          <th class="th-right">Ejecutado {{ a.fiscalYear - 1 }}</th>
+          <th class="th-right">Variación</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (a.budget.length === 0) {
+          <tr><td colspan="5" class="td-empty">Sin partidas presupuestadas para este ejercicio.</td></tr>
+        }
+        @for (b of a.budget; track b.id) {
+          <tr>
+            <td><span class="td-code">{{ b.code }}</span> {{ b.category }}</td>
+            <td class="td-right">{{ fmtEur0(b.budgeted) }}</td>
+            <td class="td-right td-strong">{{ fmtEur0(b.executed) }}</td>
+            <td class="td-right td-muted">{{ fmtEur0(b.executedPriorYear ?? 0) }}</td>
+            <td class="td-right">
+              @if (varianceDisplay(b.executed, b.executedPriorYear ?? 0); as vd) {
+                <span [style.color]="varianceColor(vd.pct)">{{ vd.pct > 0 ? '+' : '' }}{{ vd.pct }}%</span>
+              } @else {
+                <span class="td-muted">—</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card__title">Por centro de coste — {{ a.fiscalYear }} vs. {{ a.fiscalYear - 1 }}</div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Centro de coste</th>
+          <th class="th-right">Presupuestado {{ a.fiscalYear }}</th>
+          <th class="th-right">Ejecutado {{ a.fiscalYear }}</th>
+          <th class="th-right">Ejecutado {{ a.fiscalYear - 1 }}</th>
+          <th class="th-right">Variación</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (a.costCentreBudget.length === 0) {
+          <tr><td colspan="5" class="td-empty">Sin centros de coste presupuestados para este ejercicio.</td></tr>
+        }
+        @for (c of a.costCentreBudget; track c.id) {
+          <tr>
+            <td>{{ c.costCentreName }}</td>
+            <td class="td-right">{{ fmtEur0(c.budgeted) }}</td>
+            <td class="td-right td-strong">{{ fmtEur0(c.executed) }}</td>
+            <td class="td-right td-muted">{{ fmtEur0(c.executedPriorYear ?? 0) }}</td>
+            <td class="td-right">
+              @if (varianceDisplay(c.executed, c.executedPriorYear ?? 0); as vd) {
+                <span [style.color]="varianceColor(vd.pct)">{{ vd.pct > 0 ? '+' : '' }}{{ vd.pct }}%</span>
+              } @else {
+                <span class="td-muted">—</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+} @else if (loading()) {
+  <p class="td-muted">Cargando análisis…</p>
+}

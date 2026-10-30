@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Informe de estado de una remesa con dos rechazos y una aceptada. Datos ficticios. -->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.002.001.03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <CstmrPmtStsRpt>
+    <GrpHdr>
+      <MsgId>BANCO-STS-20260305-0001</MsgId>
+      <CreDtTm>2026-03-04T08:15:00</CreDtTm>
+      <InitgPty><Id><OrgId><BICOrBEI>BANCESMMXXX</BICOrBEI></OrgId></Id></InitgPty>
+    </GrpHdr>
+    <OrgnlGrpInfAndSts>
+      <OrgnlMsgId>REM-2026-03-ABCDEF</OrgnlMsgId>
+      <OrgnlMsgNmId>pain.008.001.02</OrgnlMsgNmId>
+      <GrpSts>PART</GrpSts>
+    </OrgnlGrpInfAndSts>
+    <OrgnlPmtInfAndSts>
+      <OrgnlPmtInfId>REM-2026-03-ABCDEF-RCUR-1</OrgnlPmtInfId>
+      <PmtInfSts>PART</PmtInfSts>
+      <TxInfAndSts>
+        <StsId>STS-1</StsId>
+        <OrgnlEndToEndId>REM-2026-03-ABCDEF-0001</OrgnlEndToEndId>
+        <TxSts>RJCT</TxSts>
+        <StsRsnInf>
+          <Orgtr><Id><OrgId><BICOrBEI>BANCESMMXXX</BICOrBEI></OrgId></Id></Orgtr>
+          <Rsn><Cd>AC04</Cd></Rsn>
+        </StsRsnInf>
+        <OrgnlTxRef>
+          <Amt><InstdAmt Ccy="EUR">100.00</InstdAmt></Amt>
+          <ReqdColltnDt>2026-03-05</ReqdColltnDt>
+        </OrgnlTxRef>
+      </TxInfAndSts>
+      <TxInfAndSts>
+        <StsId>STS-2</StsId>
+        <OrgnlEndToEndId>REM-2026-03-ABCDEF-0002</OrgnlEndToEndId>
+        <TxSts>ACCP</TxSts>
+      </TxInfAndSts>
+      <TxInfAndSts>
+        <StsId>STS-3</StsId>
+        <OrgnlEndToEndId>REM-2026-03-ABCDEF-0003</OrgnlEndToEndId>
+        <TxSts>RJCT</TxSts>
+        <StsRsnInf><Rsn><Prtry>X99</Prtry></Rsn></StsRsnInf>
+        <OrgnlTxRef>
+          <Amt><InstdAmt Ccy="EUR">150.5</InstdAmt></Amt>
+          <ReqdColltnDt>2026-03-05</ReqdColltnDt>
+        </OrgnlTxRef>
+      </TxInfAndSts>
+    </OrgnlPmtInfAndSts>
+  </CstmrPmtStsRpt>
+</Document>

@@ -1,0 +1,145 @@
+<section class="step" aria-labelledby="junta-step-1-heading">
+  <h3 class="sr-only" id="junta-step-1-heading" tabindex="-1" data-step-heading>Datos de la junta</h3>
+
+  <div [class.row-2]="draft.estateOptions().length > 0">
+    @if (draft.estateOptions().length) {
+      <label class="field">
+        <span class="field__label">Comunidad</span>
+        <select
+          class="input"
+          aria-label="Comunidad de la junta"
+          [attr.aria-invalid]="draft.errorField() === 'estate' ? 'true' : null"
+          [attr.aria-describedby]="draft.errorField() === 'estate' ? 'junta-wizard-error' : null"
+          [ngModel]="draft.estateId()"
+          (ngModelChange)="estateChosen.emit($event)"
+        >
+          <option value="" disabled>Selecciona una comunidad</option>
+          @for (estate of draft.estateOptions(); track estate.id) {
+            <option [value]="estate.id">{{ estate.name }}</option>
+          }
+        </select>
+      </label>
+    }
+
+    <label class="field">
+      <span class="field__label">Título de la junta</span>
+      <input
+        class="input"
+        type="text"
+        maxlength="36"
+        placeholder="Ej: Junta Ordinaria de Enero 2027"
+        [attr.aria-invalid]="draft.errorField() === 'title' ? 'true' : null"
+        [attr.aria-describedby]="draft.errorField() === 'title' ? 'junta-wizard-error' : null"
+        [ngModel]="draft.title()"
+        (ngModelChange)="draft.title.set($event)"
+      />
+    </label>
+  </div>
+
+  <div class="row-2">
+    <label class="field">
+      <span class="field__label">Tipo de junta</span>
+      <select class="input" [ngModel]="draft.type()" (ngModelChange)="draft.setType($event)">
+        <option value="ordinaria">Ordinaria</option>
+        <option value="extraordinaria">Extraordinaria</option>
+      </select>
+    </label>
+    <label class="field">
+      <span class="field__label">Convocada por</span>
+      <select class="input" [ngModel]="draft.convokedBy()" (ngModelChange)="draft.convokedBy.set($event)">
+        @for (o of convokedByOptions; track o.value) {
+          <option [value]="o.value">{{ o.label }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  <fieldset class="group">
+    <legend class="group__title">Fecha y hora</legend>
+    <div class="row-2">
+      <app-datetime-field
+        label="1ª convocatoria"
+        [value]="draft.scheduledAt1()"
+        [invalid]="draft.errorField() === 'dates'"
+        [describedBy]="draft.errorField() === 'dates' ? 'junta-wizard-error' : null"
+        (valueChange)="draft.setFirstConvocation($event)"
+      ></app-datetime-field>
+      <app-datetime-field
+        label="2ª convocatoria"
+        [hint]="draft.secondConvocationSuggested() ? 'Sugerida 30 min después de la 1ª. Puedes cambiarla.' : null"
+        [value]="draft.scheduledAt2()"
+        [invalid]="draft.errorField() === 'dates'"
+        [describedBy]="draft.errorField() === 'dates' ? 'junta-wizard-error' : null"
+        (valueChange)="draft.setSecondConvocation($event)"
+      ></app-datetime-field>
+    </div>
+  </fieldset>
+
+  <fieldset class="group">
+    <legend class="group__title">Lugar</legend>
+    <label class="field">
+      <span class="sr-only">Calle y número</span>
+      <span class="input-icon">
+        <app-icon name="map-pin" [size]="16" aria-hidden="true"></app-icon>
+        <input
+          class="input"
+          type="text"
+          placeholder="Calle y número, p. ej. Calle Ejemplo, 123"
+          [ngModel]="draft.street()"
+          (ngModelChange)="draft.street.set($event)"
+          (blur)="onStreetBlur()"
+        />
+      </span>
+    </label>
+    <div class="place-row">
+      <label class="field">
+        <span class="sr-only">Código postal</span>
+        <input
+          class="input"
+          type="text"
+          inputmode="numeric"
+          maxlength="5"
+          placeholder="Código postal"
+          [ngModel]="draft.postalCode()"
+          (ngModelChange)="draft.postalCode.set($event)"
+        />
+      </label>
+      <label class="field">
+        <span class="sr-only">Ciudad</span>
+        <input
+          class="input"
+          type="text"
+          placeholder="Ciudad"
+          [ngModel]="draft.city()"
+          (ngModelChange)="draft.city.set($event)"
+          (blur)="onCityBlur()"
+        />
+      </label>
+      <button
+        type="button"
+        class="map-btn"
+        [disabled]="!draft.fullAddress()"
+        [attr.aria-expanded]="draft.showMap()"
+        (click)="toggleMap()"
+      >
+        <app-icon name="map-pin" [size]="14" aria-hidden="true"></app-icon>
+        {{ draft.showMap() ? "Ocultar mapa" : "Revisar en mapa" }}
+      </button>
+    </div>
+
+    @if (draft.showMap()) {
+      <div class="map-preview">
+        @if (mapEmbedUrl()) {
+          <iframe
+            title="Mapa de la dirección de la junta"
+            [src]="mapEmbedUrl()"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+        } @else {
+          <p class="field__hint">Introduce una dirección para previsualizar el mapa.</p>
+        }
+      </div>
+    }
+  </fieldset>
+</section>

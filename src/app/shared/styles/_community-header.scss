@@ -1,0 +1,42 @@
+@use './community-control' as control;
+@mixin styles {
+  .community-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    width: 100%;
+  }
+  .community-heading__selector {
+    display: block;
+    flex: 0 1 280px;
+    width: 280px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .community-heading__separator,
+  .community-heading__section {
+    color: var(--topbar-muted, var(--color-muted));
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .community-heading__section {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .community-heading__control { @include control.trigger; }
+  @media (max-width: 768px) {
+    .community-heading__separator,
+    .community-heading__section {
+      display: none;
+    }
+  }
+  @media (max-width: 640px) {
+    .community-heading__selector {
+      width: 100%;
+      flex-basis: 100%;
+    }
+  }
+}

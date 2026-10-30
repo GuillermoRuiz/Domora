@@ -1,0 +1,66 @@
+<section class="intel" aria-labelledby="intelligence-title" [attr.aria-busy]="loading()">
+  <header class="intel__head">
+    <div class="intel__heading">
+      <span class="intel__logo" aria-hidden="true"><app-icon name="chart" [size]="16"></app-icon></span>
+      <div>
+        <h3 id="intelligence-title">Domora Intelligence</h3>
+        @if (view()?.latest; as latest) {
+          <p class="intel__meta">Resumen semanal · {{ latest.snapshotAt | date:'dd/MM/yyyy' }}</p>
+        } @else {
+          <p class="intel__meta">Resumen semanal de tu comunidad</p>
+        }
+      </div>
+    </div>
+    <button type="button" class="intel__refresh" aria-label="Actualizar resumen" [disabled]="loading()" (click)="refresh()">
+      <app-icon name="refresh" [size]="16"></app-icon>
+    </button>
+  </header>
+
+  @if (error()) {
+    <p class="intel__error" role="alert">{{ error() }}</p>
+  }
+  @if (view()?.processing; as processing) {
+    <p class="intel__notice" role="status">{{ processing.status === 'failed' ? 'La nueva revisión requiere un reintento.' : 'Preparando la revisión de esta semana…' }}</p>
+  }
+
+  @if (loading() && !view()) {
+    <div class="intel__grid" aria-hidden="true">
+      @for (n of [1, 2, 3]; track n) { <div class="intel__skeleton"></div> }
+    </div>
+  } @else if (view()?.latest; as latest) {
+    <div class="intel__overview">
+      <span class="intel__eyebrow">Resumen ejecutivo</span>
+      <p class="intel__summary">{{ latest.summary }}</p>
+    </div>
+
+    @if (cards().length) {
+      <ul class="intel__grid">
+        @for (item of cards(); track item.signal_id) {
+          <li>
+            <a class="card card--{{ item.priority }}" [routerLink]="item.link.split('?')[0]" [queryParams]="query(item.link)">
+              <span class="card__top">
+                <span class="card__category">
+                  <span class="card__icon" aria-hidden="true"><app-icon [name]="category(item.entity_type).icon" [size]="16"></app-icon></span>
+                  <span class="card__cat">{{ category(item.entity_type).label }}</span>
+                </span>
+                <span class="prio prio--{{ item.priority }}">{{ priorityLabel(item.priority) }}</span>
+              </span>
+              <span class="card__body">
+                <h4 class="card__title">{{ item.title }}</h4>
+                <p class="card__text">{{ item.explanation }}</p>
+              </span>
+              <span class="card__footer">
+                <span class="card__action-label">Acción recomendada</span>
+                <span class="card__action"><span>{{ item.recommended_action }}</span><app-icon name="chevron-right" [size]="16"></app-icon></span>
+              </span>
+            </a>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="intel__empty" role="status">Esta semana no hay avisos para tu comunidad.</p>
+    }
+  } @else if (!loading() && !error()) {
+    <p class="intel__empty" role="status">Todavía no hay una revisión semanal completada.</p>
+  }
+</section>

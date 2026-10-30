@@ -1,0 +1,47 @@
+<div class="toolbar">
+  <div class="toolbar__actions">
+    <label class="year" for="liquidacion-from">
+      Desde
+      <input id="liquidacion-from" class="form-input" type="date" [ngModel]="from()" (ngModelChange)="setFrom($event)" />
+    </label>
+    <label class="year" for="liquidacion-to">
+      Hasta
+      <input id="liquidacion-to" class="form-input" type="date" [ngModel]="to()" (ngModelChange)="setTo($event)" />
+    </label>
+    <app-btn variant="outline" size="sm" (clicked)="download('xlsx')">
+      <app-icon name="download" [size]="13"></app-icon>
+      Excel
+    </app-btn>
+    <app-btn variant="outline" size="sm" (clicked)="download('pdf')">
+      <app-icon name="download" [size]="13"></app-icon>
+      PDF
+    </app-btn>
+  </div>
+</div>
+
+<p class="intro">
+  Lo que de verdad entró y salió del banco o la caja en el periodo — a diferencia de "Resultados", que cuenta por
+  devengo. No incluye nóminas, impuestos ni tesorería suelta.
+</p>
+
+@if (loadError()) {
+  <p class="form-error" role="alert">{{ loadError() }}</p>
+} @else if (loading()) {
+  <p class="muted">Calculando…</p>
+} @else if (report(); as r) {
+  <div class="summary">
+    <div>
+      <span class="summary__label">Cobrado</span>
+      <strong class="money">{{ fmtEur(r.income.total) }}</strong>
+    </div>
+    <div>
+      <span class="summary__label">Pagado</span>
+      <strong class="money">{{ fmtEur(r.expense.total) }}</strong>
+    </div>
+    <div>
+      <span class="summary__label">Resultado de caja</span>
+      <strong class="money" [class.warn]="r.net < 0">{{ fmtEur(r.net) }}</strong>
+    </div>
+  </div>
+  <app-report-table [sections]="sections"></app-report-table>
+}

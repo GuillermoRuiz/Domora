@@ -1,0 +1,34 @@
+// Dorado de marca propio (tokens --demo-banner-* definidos en styles.scss para
+// oscuro y claro). Texto oscuro sobre dorado, contraste > 8:1 en ambos temas
+// (verificado en el spec). El banner pone su propio fondo, así que se ve igual
+// sobre el login (fondo oscuro fijo) y sobre el shell claro/oscuro.
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000; // por encima del sidebar (100)
+  box-sizing: border-box;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0 1rem;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--demo-banner-fg);
+  background: var(--demo-banner-bg);
+  border-bottom: 1px solid var(--demo-banner-border);
+}
+
+// "Entorno de demostración · datos ficticios" mide ~260px a 12px: cabe en 390px.
+// Solo en pantallas muy estrechas se oculta el detalle; la parte en negrita
+// siempre se ve completa.
+@media (max-width: 320px) {
+  .demo-banner__detail {
+    display: none;
+  }
+}

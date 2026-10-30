@@ -1,0 +1,650 @@
+<!-- Toast notification -->
+@if (toastMessage()) {
+  <div class="toast">{{ toastMessage() }}</div>
+}
+
+<!-- ── Toolbar ───────────────────────────────────────────────────────────── -->
+<div class="recibos-toolbar">
+  <div class="period-selector">
+    <app-icon name="calendar" [size]="15" class="period-icon"></app-icon>
+    <select [ngModel]="selectedPeriodKey()" (ngModelChange)="selectedPeriodKey.set($event)" class="period-select">
+      <option [value]="ALL_PERIODS_KEY">Todos los periodos</option>
+      @for (p of periods(); track p.key) {
+        <option [value]="p.key">{{ p.label }}{{ p.current ? ' (actual)' : '' }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="toolbar-right">
+    <app-btn variant="outline" size="sm" (click)="showSepaModal.set(true)">
+      <app-icon name="download" [size]="13"></app-icon>
+      Descargar SEPA
+    </app-btn>
+
+    <app-btn variant="outline" size="sm" (click)="openManualModal()">
+      <app-icon name="plus" [size]="13"></app-icon>
+      Recibo manual
+    </app-btn>
+
+    <app-btn variant="outline" size="sm" (click)="showSuspense.set(true)">
+      <app-icon name="file-text" [size]="13"></app-icon>
+      Ingresos sin identificar
+    </app-btn>
+
+    <app-btn *appPageAction variant="primary" size="sm" (click)="showRemesaWizard.set(true)">
+      <app-icon name="send" [size]="13"></app-icon>
+      Nueva remesa
+    </app-btn>
+  </div>
+</div>
+
+<!-- ── KPI row ───────────────────────────────────────────────────────────── -->
+<div class="kpi-row">
+  <div class="kpi">
+    <span class="kpi__label">Total emitido</span>
+    <span class="kpi__value">{{ fmtEur(kpis().total) }}</span>
+    <span class="kpi__sub">{{ receiptsForPeriod().length }} recibos</span>
+  </div>
+  <div class="kpi kpi--green">
+    <span class="kpi__label">Cobrado</span>
+    <span class="kpi__value">{{ fmtEur(kpis().cobrado) }}</span>
+    <span class="kpi__sub">{{ countPagada() }} recibos</span>
+  </div>
+  <div class="kpi kpi--warning">
+    <span class="kpi__label">Pendiente</span>
+    <span class="kpi__value">{{ fmtEur(kpis().pendiente) }}</span>
+    <span class="kpi__sub">{{ countPendiente() }} recibos</span>
+  </div>
+  <div class="kpi kpi--error">
+    <span class="kpi__label">Devuelto</span>
+    <span class="kpi__value">{{ fmtEur(kpis().devuelto) }}</span>
+    <span class="kpi__sub">{{ countDevuelto() }} recibos</span>
+  </div>
+</div>
+
+<!-- ── Filters ───────────────────────────────────────────────────────────── -->
+<div class="filters-row">
+  <div class="search-wrap">
+    <app-icon name="search" [size]="14" class="search-icon"></app-icon>
+    <input
+      class="search-input"
+      type="text"
+      placeholder="Propietario, unidad o nº de recibo…"
+      [ngModel]="searchQuery()"
+      (ngModelChange)="searchQuery.set($event)"
+    />
+  </div>
+
+  <div class="status-chips">
+    @for (chip of [
+      { key: 'all',       label: 'Todos',     count: countAll() },
+      { key: 'Pagada',    label: 'Cobrados',  count: countPagada() },
+      { key: 'Pendiente', label: 'Pendientes',count: countPendiente() },
+      { key: 'Devuelto',  label: 'Devueltos', count: countDevuelto() },
+      { key: 'Anulado',   label: 'Anulados',  count: countAnulado() }
+    ]; track chip.key) {
+      <button
+        class="chip"
+        [class.chip--active]="statusFilter() === chip.key"
+        [class.chip--paid]="chip.key === 'Pagada' && statusFilter() === chip.key"
+        [class.chip--pending]="chip.key === 'Pendiente' && statusFilter() === chip.key"
+        [class.chip--returned]="chip.key === 'Devuelto' && statusFilter() === chip.key"
+        (click)="statusFilter.set($any(chip.key))"
+      >
+        {{ chip.label }}
+        <span class="chip__count">{{ chip.count }}</span>
+      </button>
+    }
+  </div>
+
+  <select class="method-select" [ngModel]="methodFilter()" (ngModelChange)="methodFilter.set($event)">
+    <option value="">Todos los métodos</option>
+    @for (m of payMethods; track m) {
+      <option [value]="m">{{ m }}</option>
+    }
+  </select>
+</div>
+
+<!-- ── Table ─────────────────────────────────────────────────────────────── -->
+<div class="receipts-table-wrap">
+  <table class="receipts-table">
+    <thead>
+      <tr>
+        <th>Nº recibo</th>
+        <th>Propietario</th>
+        <th>Unidad</th>
+        <th>Concepto</th>
+        @if (isAllPeriods) { <th>Periodo</th> }
+        <th>Vencimiento</th>
+        <th class="th--right">Importe</th>
+        <th>Método</th>
+        <th>Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (r of filteredReceipts(); track r.id) {
+        <tr [class.tr--returned]="r.status === 'Devuelto'">
+          <td class="td--mono td--no">
+            {{ r.no }}
+            @if (r.manual) { <span class="badge-manual">MANUAL</span> }
+          </td>
+          <td class="td--owner">{{ r.owner }}</td>
+          <td class="td--muted td--unit">{{ r.unit }}</td>
+          <td class="td--concept">{{ r.concept }}</td>
+          @if (isAllPeriods) { <td class="td--muted">{{ r.period }}</td> }
+          <td class="td--muted">{{ r.date }}</td>
+          <td class="td--money">{{ fmtEur(r.amount) }}</td>
+          <td class="td--muted">{{ r.method }}</td>
+          <td>
+            <app-badge [text]="r.status" [variant]="statusBadgeVariant(r.status)"></app-badge>
+          </td>
+          <td class="td--actions">
+            <button class="icon-btn" (click)="openMenu($event, r.id)">
+              <app-icon name="ellipsis" [size]="16"></app-icon>
+            </button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td [attr.colspan]="isAllPeriods ? 10 : 9" class="td--empty">
+            No hay recibos con los filtros actuales
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<div class="table-footer">
+  {{ filteredReceipts().length }} recibo{{ filteredReceipts().length !== 1 ? 's' : '' }}
+  @if (filteredReceipts().length !== receiptsForPeriod().length) {
+    <span class="text-muted"> (filtrado de {{ receiptsForPeriod().length }} totales)</span>
+  }
+</div>
+
+<!-- Menú de acciones por recibo — fuera de .receipts-table-wrap (overflow-x:
+     auto para el scroll horizontal) para que no quede recortado; posición
+     fija calculada en openMenu() a partir del botón "···" clicado. -->
+@if (openMenuId(); as menuId) {
+  @if (filteredReceipts().find(r => r.id === menuId); as menuReceipt) {
+    <div class="ctx-menu"
+      [style.top.px]="menuPosition().top"
+      [style.left.px]="menuPosition().left"
+      (click)="$event.stopPropagation()">
+      @for (group of contextActions(menuReceipt); track $index; let last = $last) {
+        @for (action of group; track action.label) {
+          <button class="ctx-item" [class.ctx-item--danger]="action.danger" (click)="action.action()">
+            <app-icon [name]="action.icon" [size]="13"></app-icon>
+            {{ action.label }}
+          </button>
+        }
+        @if (!last) { <div class="ctx-divider"></div> }
+      }
+    </div>
+  }
+}
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     MODAL: Detalle del recibo
+     ═══════════════════════════════════════════════════════════════════════ -->
+@if (selectedReceipt(); as r) {
+  <div class="modal-overlay" (click)="closeDetail()">
+    <div class="modal modal--md" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Contabilidad · Recibos</div>
+          <h3 class="modal__title">Recibo {{ r.no }}</h3>
+        </div>
+        <button class="icon-btn" (click)="closeDetail()">
+          <app-icon name="x" [size]="16"></app-icon>
+        </button>
+      </div>
+
+      <div class="modal__body">
+        <div class="detail-header">
+          <app-badge [text]="r.status" [variant]="statusBadgeVariant(r.status)"></app-badge>
+          @if (r.manual) { <span class="badge-manual">MANUAL</span> }
+          <span class="detail-header__amount">{{ fmtEur(r.amount) }}</span>
+        </div>
+
+        <div class="sepa-meta">
+          <div class="sepa-meta__row"><span class="sepa-meta__key">Propietario</span><span class="sepa-meta__val">{{ r.owner }}</span></div>
+          <div class="sepa-meta__row"><span class="sepa-meta__key">Unidad</span><span class="sepa-meta__val">{{ r.unit }}</span></div>
+          <div class="sepa-meta__row"><span class="sepa-meta__key">Concepto</span><span class="sepa-meta__val">{{ r.concept }}</span></div>
+          <div class="sepa-meta__row"><span class="sepa-meta__key">Tipo</span><span class="sepa-meta__val">{{ r.kind }}</span></div>
+          <div class="sepa-meta__row"><span class="sepa-meta__key">Periodo</span><span class="sepa-meta__val">{{ r.period }}</span></div>
+          <div class="sepa-meta__row"><span class="sepa-meta__key">Fecha</span><span class="sepa-meta__val">{{ r.date }}</span></div>
+          @if (r.dueDate) {
+            <div class="sepa-meta__row"><span class="sepa-meta__key">Vencimiento</span><span class="sepa-meta__val">{{ r.dueDate }}</span></div>
+          }
+          <div class="sepa-meta__row"><span class="sepa-meta__key">Método de cobro</span><span class="sepa-meta__val">{{ r.method }}</span></div>
+          @if (r.ibanSnapshot) {
+            <div class="sepa-meta__row"><span class="sepa-meta__key">IBAN</span><span class="sepa-meta__val sepa-meta__val--mono">{{ r.ibanSnapshot }}</span></div>
+          }
+        </div>
+
+        @if (r.status === 'Devuelto' && (r.returnCode || r.returnReason)) {
+          <div class="return-notice">
+            <app-icon name="exclamation" [size]="14"></app-icon>
+            <span>
+              @if (r.returnCode) { <strong>{{ r.returnCode }}</strong> }
+              @if (r.returnCode && r.returnReason) { — }
+              {{ r.returnReason }}
+            </span>
+          </div>
+        }
+
+        @if (r.ownerNameSnapshot) {
+          <div class="detail-note">
+            Datos fiscales al emitir: {{ r.ownerNameSnapshot }}{{ r.ownerTaxIdSnapshot ? ' · ' + r.ownerTaxIdSnapshot : '' }}
+          </div>
+        }
+
+        <app-historial-cobros [receiptId]="r.id" (changed)="onHistoryChanged($event, r.id)"></app-historial-cobros>
+      </div>
+
+      <div class="modal__footer">
+        @if (r.proofFileName) {
+          <app-btn variant="outline" size="sm" (click)="downloadProof(r)">
+            <app-icon name="file-text" [size]="13"></app-icon>
+            Ver justificante
+          </app-btn>
+        }
+        @for (action of detailActions(r); track action.label) {
+          <app-btn variant="outline" size="sm" (click)="action.action()">
+            <app-icon [name]="action.icon" [size]="13"></app-icon>
+            {{ action.label }}
+          </app-btn>
+        }
+        <app-btn variant="primary" size="sm" (click)="closeDetail()">Cerrar</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (collecting(); as cr) {
+  <app-registrar-cobro [estateId]="estate.id" [receipt]="cr" (closed)="onCollectClosed($event)"></app-registrar-cobro>
+}
+
+@if (showSuspense()) {
+  <app-ingresos-sin-identificar [estateId]="estate.id" [properties]="properties()" (closed)="onSuspenseClosed($event)"></app-ingresos-sin-identificar>
+}
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     MODAL: Descargar SEPA
+     ═══════════════════════════════════════════════════════════════════════ -->
+@if (showSepaModal()) {
+  <div class="modal-overlay" (click)="showSepaModal.set(false)">
+    <div class="modal modal--md" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Contabilidad · Recibos</div>
+          <h3 class="modal__title">Descargar fichero SEPA</h3>
+        </div>
+        <button class="icon-btn" (click)="showSepaModal.set(false)">
+          <app-icon name="x" [size]="16"></app-icon>
+        </button>
+      </div>
+
+      <div class="modal__body">
+        @if (isAllPeriods) {
+          <!-- No period selected -->
+          <div class="sepa-no-period">
+            <div class="sepa-no-period__icon">
+              <app-icon name="calendar" [size]="24"></app-icon>
+            </div>
+            <h4>Selecciona un periodo concreto</h4>
+            <p>Para descargar el fichero SEPA debes tener seleccionado un periodo específico. Vuelve al selector de periodo y elige uno antes de continuar.</p>
+            <app-btn variant="outline" size="sm" (click)="showSepaModal.set(false)">Volver</app-btn>
+          </div>
+        } @else if (!remesaForCurrentPeriod()) {
+          <!-- No hay remesa generada todavía para este periodo -->
+          <div class="sepa-no-period">
+            <div class="sepa-no-period__icon">
+              <app-icon name="file-text" [size]="24"></app-icon>
+            </div>
+            <h4>Todavía no hay remesa para este periodo</h4>
+            <p>No se generó ninguna remesa SEPA para <strong>{{ currentPeriod()?.label }}</strong>. Usa "Nueva remesa" para crearla — ahí puedes revisar y excluir recibos antes de presentarla.</p>
+            <app-btn variant="primary" size="sm" (click)="showSepaModal.set(false); showRemesaWizard.set(true)">Ir a Nueva remesa</app-btn>
+          </div>
+        } @else {
+          <!-- Remesa ya presentada: descarga del XML EXACTO persistido -->
+          <div class="sepa-file-header">
+            <div class="sepa-file-header__icon">
+              <app-icon name="file-text" [size]="20"></app-icon>
+            </div>
+            <div>
+              <div class="sepa-file-header__name">pain.008.001.02 · Cuaderno 19.14</div>
+              <div class="sepa-file-header__sub">Fichero ya presentado — se descarga el XML exacto, nunca se regenera</div>
+            </div>
+          </div>
+
+          <!-- File metadata -->
+          <div class="sepa-meta">
+            @for (row of [
+              { k: 'Remesa',           v: remesaForCurrentPeriod()!.id.slice(0, 8),  mono: true  },
+              { k: 'Periodo',          v: remesaForCurrentPeriod()!.period,           mono: false },
+              { k: 'Fecha de emisión', v: remesaForCurrentPeriod()!.presented,        mono: false },
+              { k: 'Nº de adeudos',    v: remesaForCurrentPeriod()!.count + ' adeudos domiciliados', mono: false },
+              { k: 'Importe total',    v: fmtEur(remesaForCurrentPeriod()!.amount),   mono: false, bold: true },
+              { k: 'Cuenta de abono',  v: estate.iban ?? 'No configurada', mono: true }
+            ]; track row.k) {
+              <div class="sepa-meta__row">
+                <span class="sepa-meta__key">{{ row.k }}</span>
+                <span class="sepa-meta__val"
+                  [class.sepa-meta__val--mono]="row.mono"
+                  [class.sepa-meta__val--bold]="row.bold">{{ row.v }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Format chips -->
+          <div class="sepa-formats">
+            <span class="format-chip">pain.008.001.02</span>
+            <span class="format-chip">Cuaderno 19.14</span>
+            <span class="format-chip">{{ remesaForCurrentPeriod()!.scheme }}</span>
+          </div>
+
+          <!-- Per-receipt preview -->
+          <div class="sepa-lines">
+            <div class="sepa-lines__header">Recibos incluidos en la remesa</div>
+            @for (r of receiptsForPeriod(); track r.id) {
+              @if (r.method === 'Domiciliación') {
+                <div class="sepa-line">
+                  <app-avatar [name]="r.owner" [size]="28"></app-avatar>
+                  <div class="sepa-line__info">
+                    <span class="sepa-line__owner">{{ r.owner }}</span>
+                    <span class="sepa-line__unit">{{ r.unit }}</span>
+                  </div>
+                  <span class="sepa-line__iban">{{ r.iban }}</span>
+                  <span class="sepa-line__amount">{{ fmtEur(r.amount) }}</span>
+                </div>
+              }
+            } @empty {
+              <p class="sepa-lines__empty">No hay adeudos domiciliados para este periodo.</p>
+            }
+          </div>
+
+          <!-- Notice -->
+          <div class="sepa-notice">
+            <app-icon name="exclamation" [size]="14"></app-icon>
+            <span>
+              Este fichero contiene los adeudos del periodo <strong>{{ currentPeriod()?.label }}</strong>.
+              Súbelo a la banca electrónica de la comunidad para ejecutar los cobros en la fecha indicada.
+            </span>
+          </div>
+        }
+      </div>
+
+      @if (!isAllPeriods && remesaForCurrentPeriod()) {
+        <div class="modal__footer">
+          <app-btn variant="outline" size="sm" (click)="showSepaModal.set(false)">Cancelar</app-btn>
+          <app-btn variant="outline" size="sm" (click)="showToast('Generando PDF…'); showSepaModal.set(false)">
+            <app-icon name="file-text" [size]="13"></app-icon>
+            Resumen PDF
+          </app-btn>
+          <app-btn variant="primary" size="sm" (click)="downloadSepaFile()">
+            <app-icon name="download" [size]="13"></app-icon>
+            Descargar XML
+          </app-btn>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     MODAL: +Recibo manual
+     ═══════════════════════════════════════════════════════════════════════ -->
+@if (showManualModal()) {
+  <div class="modal-overlay" (click)="closeManualModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Recibos · Nuevo recibo manual</div>
+          <h3 class="modal__title">Crear recibo manual</h3>
+        </div>
+        <button class="icon-btn" (click)="closeManualModal()">
+          <app-icon name="x" [size]="16"></app-icon>
+        </button>
+      </div>
+
+      <div class="modal__body">
+        <p class="modal__intro">
+          Los recibos manuales se crean fuera del ciclo de remesa automática.
+          Puedes incluirlos opcionalmente en la próxima remesa SEPA.
+        </p>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label">Propiedad <span class="required">*</span></label>
+            <select class="form-input form-select" [(ngModel)]="manualForm.propertyId">
+              <option value="">Selecciona una propiedad</option>
+              @for (p of properties(); track p.id) {
+                <option [value]="p.id">{{ propertyLabel(p) }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Tipo de recibo</label>
+            <select class="form-input form-select" [(ngModel)]="manualForm.kind">
+              @for (k of receiptKinds; track k.value) {
+                <option [value]="k.value">{{ k.label }}</option>
+              }
+            </select>
+            <span class="form-hint-inline">
+              Decide la cuenta de ingreso: cuota (700), derrama (701), fondo de reserva (117) u otros (759).
+            </span>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Periodo <span class="required">*</span></label>
+            <input class="form-input" type="month" [(ngModel)]="manualForm.periodKey" />
+            <span class="form-hint-inline">Si el periodo todavía no existe para esta finca, se crea automáticamente.</span>
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label">Concepto <span class="required">*</span></label>
+            <input class="form-input" type="text" [(ngModel)]="manualForm.concept"
+              placeholder="Descripción que aparecerá en el recibo" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">Importe (€) <span class="required">*</span></label>
+            <input class="form-input" type="number" [(ngModel)]="manualForm.amount"
+              placeholder="0,00" step="0.01" min="0" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">Fecha de vencimiento <span class="required">*</span></label>
+            <input class="form-input" type="date" [(ngModel)]="manualForm.dueDate" />
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label">Método de cobro</label>
+            <div class="method-cards">
+              @for (m of payMethods; track m) {
+                <button class="method-card"
+                  [class.method-card--active]="manualForm.method === m"
+                  (click)="manualForm.method = m">
+                  {{ m }}
+                </button>
+              }
+            </div>
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label form-label--checkbox">
+              <input type="checkbox" [(ngModel)]="manualForm.includeInRemesa" />
+              <span>
+                Incluir en la próxima remesa SEPA
+                <span class="form-hint-inline">(solo si el método es Domiciliación y hay IBAN registrado)</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Preview card -->
+        <div class="preview-card">
+          <div class="preview-card__label">Vista previa del recibo</div>
+          <div class="preview-card__body">
+            <div class="preview-row">
+              <span class="preview-key">Nº</span>
+              <span class="preview-val mono">{{ manualForm.periodKey.replace('-', '/') }}-M---</span>
+            </div>
+            <div class="preview-row">
+              <span class="preview-key">Propiedad</span>
+              <span class="preview-val">{{ selectedPropertyLabel() }}</span>
+            </div>
+            <div class="preview-row">
+              <span class="preview-key">Concepto</span>
+              <span class="preview-val">{{ manualForm.concept || '—' }}</span>
+            </div>
+            <div class="preview-row">
+              <span class="preview-key">Importe</span>
+              <span class="preview-val preview-val--amount">
+                {{ manualForm.amount ? fmtEur(+manualForm.amount) : '— €' }}
+              </span>
+            </div>
+            <div class="preview-row">
+              <span class="preview-key">Estado</span>
+              <app-badge text="Pendiente" variant="warning"></app-badge>
+            </div>
+            <div class="preview-row">
+              <span class="preview-key">Tipo</span>
+              <app-badge text="MANUAL" variant="primary"></app-badge>
+            </div>
+          </div>
+        </div>
+
+        @if (manualError()) {
+          <p class="form-hint-inline" style="color: var(--color-error); margin-top: 10px;">{{ manualError() }}</p>
+        }
+      </div>
+
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (click)="closeManualModal()">Cancelar</app-btn>
+        <app-btn
+          variant="primary" size="sm"
+          (click)="submitManualReceipt()"
+          [disabled]="manualSaving() || !manualForm.propertyId || !manualForm.concept || !manualForm.amount || !manualForm.dueDate">
+          <app-icon name="plus" [size]="13"></app-icon>
+          {{ manualSaving() ? 'Creando…' : 'Crear recibo' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     MODAL: Editar recibo
+     ═══════════════════════════════════════════════════════════════════════ -->
+@if (cancelling(); as cr) {
+  <div class="modal-overlay" (click)="closeCancel()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Recibos · Anular</div>
+          <h3 class="modal__title">Anular el recibo {{ cr.no }}</h3>
+        </div>
+        <button class="icon-btn" (click)="closeCancel()">
+          <app-icon name="x" [size]="16"></app-icon>
+        </button>
+      </div>
+
+      <div class="modal__body">
+        <p class="modal__intro">
+          Se revierte su asiento de emisión y deja de ser deuda de {{ cr.owner }}. El recibo no se borra:
+          queda anulado, con el motivo, como documento. Si hay que cobrar otro importe, emite un recibo nuevo.
+        </p>
+        <div class="form-field form-field--full">
+          <label class="form-label" for="cancel-reason">Motivo <span class="required">*</span></label>
+          <input id="cancel-reason" class="form-input" type="text" maxlength="255"
+            placeholder="p. ej. Emitido a la propiedad equivocada"
+            [ngModel]="cancelReason()" (ngModelChange)="cancelReason.set($event)" />
+        </div>
+        @if (cancelError()) {
+          <p class="form-hint-inline" role="alert" style="color: var(--color-error); margin-top: 10px;">{{ cancelError() }}</p>
+        }
+      </div>
+
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (click)="closeCancel()">Volver</app-btn>
+        <app-btn variant="primary" size="sm" (click)="confirmCancel()" [disabled]="cancelSaving()">
+          {{ cancelSaving() ? 'Anulando…' : 'Anular recibo' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (editingReceipt(); as er) {
+  <div class="modal-overlay" (click)="closeEditModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Recibos · Editar</div>
+          <h3 class="modal__title">Recibo {{ er.no }}</h3>
+        </div>
+        <button class="icon-btn" (click)="closeEditModal()">
+          <app-icon name="x" [size]="16"></app-icon>
+        </button>
+      </div>
+
+      <div class="modal__body">
+        <p class="modal__intro">
+          Solo el método de cobro{{ er.status === 'Devuelto' ? ' y el motivo de la devolución' : '' }}
+          se pueden editar aquí. El importe, el concepto y el vencimiento vienen del ciclo de
+          facturación y no son editables.
+        </p>
+
+        <div class="form-grid">
+          <div class="form-field form-field--full">
+            <label class="form-label">Método de cobro</label>
+            <div class="method-cards">
+              @for (m of payMethods; track m) {
+                <button class="method-card"
+                  [class.method-card--active]="editForm.method === m"
+                  (click)="editForm.method = m">
+                  {{ m }}
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (er.status === 'Devuelto') {
+            <div class="form-field">
+              <label class="form-label">Código de devolución</label>
+              <input class="form-input" type="text" [(ngModel)]="editForm.returnCode"
+                placeholder="p. ej. MD01" maxlength="10" />
+            </div>
+            <div class="form-field form-field--full">
+              <label class="form-label">Motivo de devolución</label>
+              <input class="form-input" type="text" [(ngModel)]="editForm.returnReason"
+                placeholder="Descripción del motivo" maxlength="150" />
+            </div>
+          }
+        </div>
+
+        @if (editError()) {
+          <p class="form-hint-inline" style="color: var(--color-error); margin-top: 10px;">{{ editError() }}</p>
+        }
+      </div>
+
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (click)="closeEditModal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" (click)="submitEditReceipt()" [disabled]="editSaving()">
+          {{ editSaving() ? 'Guardando…' : 'Guardar cambios' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     WIZARD: Nueva remesa SEPA (standalone component)
+     ═══════════════════════════════════════════════════════════════════════ -->
+@if (showRemesaWizard()) {
+  <app-nueva-remesa
+    [estate]="estate"
+    (closed)="onWizardClosed($event)">
+  </app-nueva-remesa>
+}

@@ -1,0 +1,28 @@
+<app-section-card title="Propiedad destacada" [actionLabel]="property() ? 'Ver propiedad' : ''" [padded]="true" (action)="view.emit(property()!.id)">
+  @if (property(); as p) {
+    <div class="featured">
+      <div class="featured__photo">
+        <app-estate-facade-thumbnail [url]="facadeUrl()" [estateId]="estateId()" [photoVersion]="photoVersion()" [name]="estateName()" variant="wide"></app-estate-facade-thumbnail>
+      </div>
+      <div class="featured__body">
+        <div class="featured__head">
+          <h4 class="featured__ref">{{ p.ref }}</h4>
+          @if (p.status) {
+            <app-status-pill [text]="p.status.text" [tone]="p.status.tone" [dot]="true"></app-status-pill>
+          }
+        </div>
+        <p class="featured__subtitle">{{ p.subtitle }}</p>
+        <dl class="featured__details">
+          @for (d of details(); track d.id) {
+            <div class="featured__row" [attr.data-detail]="d.id">
+              <dt>{{ d.label }}</dt>
+              <dd [class.featured__owes]="d.owes">{{ d.value }}</dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+  } @else {
+    <p class="featured__empty">Selecciona una propiedad de la tabla para ver su ficha rápida.</p>
+  }
+</app-section-card>

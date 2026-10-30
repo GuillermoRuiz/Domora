@@ -1,0 +1,32 @@
+{
+  "aliases": [
+    {
+      "evidence": "Original SQL checksum verified; AI tables, columns, indexes and constraints compared with a fresh replay. Canonical alignment is required before resolve.",
+      "historicalChecksum": "aad59dac6060a905a47d08a7b74ded2083758ac5926d22f4422ad8862a6e7145",
+      "historicalName": "20261003120000_ai_workflows",
+      "sourceCommit": "bc64b89",
+      "canonicalName": "20261010140000_ai_workflows",
+      "alignmentMigration": "20261015180000_reconcile_legacy_schema",
+      "preservationMigration": "20261015190000_restore_ai_tenant_guards"
+    },
+    {
+      "evidence": "Original and current SQL checksums match; all agenda columns, constraints and indexes match a fresh replay.",
+      "historicalChecksum": "f9102c3711a4e272a37d84e4c346d62d79254ba9f772c2bbf3de02d86f4bc85d",
+      "historicalName": "20261014100000_agenda_tasks",
+      "sourceCommit": "697a611",
+      "canonicalName": "20261015130000_agenda_tasks",
+      "alignmentMigration": null,
+      "enumOrderMigration": "20261015200000_align_notification_category_order"
+    },
+    {
+      "evidence": "Historical source checksum verified, same ALTER TABLE operation; nullable status_before_completion enum column exists and matches fresh replay.",
+      "historicalChecksum": "6100d5b3920578c8372d3212489972eb072ce83f0b6ae7ad77b7365492e130b6",
+      "historicalName": "20261015100000_agenda_task_status_before_completion",
+      "sourceCommit": "697a611",
+      "canonicalName": "20261015140000_agenda_task_status_before_completion",
+      "alignmentMigration": null
+    }
+  ],
+  "policy": "Keep original successful records unchanged. Use Prisma migrate resolve only after proving canonical effects exist. SQL migrations remain the executable history; this manifest documents historical aliases.",
+  "version": 1
+}

@@ -1,0 +1,183 @@
+:host { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding: 20px 24px 24px; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+// ── Buscador ──────────────────────────────────────────────────────────
+.search {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px; min-height: 44px;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  &:focus-within { border-color: var(--color-accent); }
+  input {
+    flex: 1; min-width: 0; padding: 10px 0;
+    font-size: 15px; color: var(--color-text);
+    background: none; border: none; outline: none;
+    &::placeholder { color: var(--color-muted); }
+  }
+}
+
+.load-error {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  padding: 10px 14px; font-size: 14px; color: var(--color-error);
+  background: var(--color-error-bg); border: 1px solid var(--color-error-border); border-radius: var(--radius-md);
+}
+.no-matches { margin: 0; font-size: 14px; color: var(--color-muted); }
+
+// ── Rejillas ──────────────────────────────────────────────────────────
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    'community address contacts'
+    'fiscal bank documents'
+    'offices administrator documents';
+  gap: 16px;
+  // Cards of a row share its height: no blank holes under the short ones.
+  align-items: stretch;
+}
+[data-card='community'] { grid-area: community; }
+[data-card='address'] { grid-area: address; }
+[data-card='contacts'] { grid-area: contacts; }
+[data-card='fiscal'] { grid-area: fiscal; }
+[data-card='bank'] { grid-area: bank; }
+[data-card='documents'] { grid-area: documents; align-self: stretch; }
+[data-card='offices'] { grid-area: offices; }
+[data-card='administrator'] { grid-area: administrator; }
+
+.grid--four { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-areas: none; }
+.grid--four > .card { grid-area: auto; }
+
+// While searching, hidden cards leave no holes: plain flow instead of fixed areas.
+.grid:has(> .card[hidden]) { grid-template-areas: none; }
+.grid:has(> .card[hidden]) > .card { grid-area: auto; }
+.grid:not(:has(> .card:not([hidden]))) { display: none; }
+
+@media (max-width: 1200px) {
+  .grid, .grid--four { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: none; }
+  .grid > .card { grid-area: auto; }
+}
+@media (max-width: 700px) {
+  :host { padding: 16px; }
+  .grid, .grid--four { grid-template-columns: minmax(0, 1fr); }
+}
+
+// ── Tarjeta ───────────────────────────────────────────────────────────
+.card {
+  display: flex; flex-direction: column; gap: 14px; min-width: 0;
+  padding: 18px 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  &[hidden] { display: none; }
+}
+.card__title {
+  display: flex; align-items: center; gap: 10px; margin: 0;
+  font-size: 16px; font-weight: 600; color: var(--color-text);
+  text-wrap: balance;
+  app-icon { display: inline-flex; color: var(--color-accent); }
+}
+.card__error { margin: 0; font-size: 13px; color: var(--color-error); }
+
+.fields { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.field {
+  display: grid; grid-template-columns: minmax(110px, 40%) minmax(0, 1fr); gap: 12px;
+  font-size: 14px;
+  dt { color: var(--color-muted); }
+  dd { margin: 0; color: var(--color-text); overflow-wrap: anywhere; white-space: pre-line; }
+}
+.field--empty { color: var(--color-muted) !important; font-style: italic; }
+.empty, .hint { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--color-muted); }
+.hint { margin-top: auto; padding-top: 4px; font-size: 12.5px; }
+.docs__open { margin-top: auto; padding-top: 4px; }
+.since { font-size: 12.5px; color: var(--color-muted); white-space: nowrap; }
+.notes { margin: 0; font-size: 14px; line-height: 1.5; color: var(--color-text); white-space: pre-line; overflow-wrap: anywhere; }
+.warning {
+  display: flex; align-items: center; gap: 6px; margin: 0;
+  font-size: 13px; color: var(--color-warning);
+  app-icon { display: inline-flex; }
+}
+.policy + .policy { padding-top: 12px; border-top: 1px solid var(--color-border-light); }
+
+.link-btn {
+  align-self: flex-start; padding: 0;
+  font-size: 13.5px; font-weight: 600; color: var(--color-accent);
+  background: none; border: none; cursor: pointer;
+  &:hover { text-decoration: underline; }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; border-radius: 2px; }
+}
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; flex-shrink: 0; vertical-align: middle;
+  color: var(--color-muted); background: none; border: 1px solid transparent; border-radius: var(--radius-sm); cursor: pointer;
+  &:hover { color: var(--color-text); border-color: var(--color-border); }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+}
+
+// ── Dirección y mapa ──────────────────────────────────────────────────
+// The map sits beside the fields only when the card itself is wide enough.
+.card--address { container-type: inline-size; }
+.address { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.address .field { grid-template-columns: minmax(90px, 42%) minmax(0, 1fr); }
+@container (min-width: 560px) {
+  .address:has(.address__map) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: stretch; }
+}
+.map-link {
+  display: inline-flex; align-items: center; gap: 4px; align-self: flex-end;
+  font-size: 13px; font-weight: 600; color: var(--color-accent); text-decoration: none;
+  &:hover { text-decoration: underline; }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; border-radius: 2px; }
+  app-icon { display: inline-flex; }
+}
+
+// ── Personas (contactos y administrador) ──────────────────────────────
+.people { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.person { display: flex; gap: 12px; min-width: 0; }
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 40px; height: 40px; font-size: 14px; font-weight: 700;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
+  border-radius: 50%;
+}
+.avatar--large { width: 52px; height: 52px; font-size: 17px; }
+.person__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.person__name { font-size: 14.5px; font-weight: 600; color: var(--color-text); overflow-wrap: anywhere; }
+.person__role { font-size: 13px; color: var(--color-muted); }
+.person__contact {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 2px; font-size: 13px;
+  a {
+    display: inline-flex; align-items: center; gap: 5px; min-width: 0;
+    color: var(--color-text); text-decoration: none; overflow-wrap: anywhere;
+    &:hover { color: var(--color-accent); }
+    &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 2px; }
+  }
+  app-icon { display: inline-flex; color: var(--color-muted); }
+}
+
+// ── Documentos ────────────────────────────────────────────────────────
+.docs { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.doc {
+  display: flex; align-items: center; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid var(--color-border-light);
+  &:first-child { padding-top: 0; }
+  &:last-child { border-bottom: none; }
+}
+.doc__icon { display: inline-flex; flex-shrink: 0; color: var(--color-error); }
+.doc:has(.field--empty) .doc__icon { color: var(--color-muted); }
+.doc__body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.doc__title { font-size: 14px; font-weight: 600; color: var(--color-text); overflow-wrap: anywhere; }
+.doc__meta { font-size: 12.5px; color: var(--color-muted); }
+
+// ── Acreedor SEPA (tarjeta propia con su margen) ─────────────────────
+.sepa { display: block; margin: 4px -24px 0; }
+@media (max-width: 700px) { .sepa { margin: 4px -16px 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

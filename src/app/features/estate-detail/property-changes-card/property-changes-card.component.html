@@ -1,0 +1,24 @@
+<app-section-card title="Últimas altas y cambios" [actionLabel]="actionLabel()" [padded]="false" (action)="toggle()">
+  @if (failed()) {
+    <p class="changes__message changes__message--error" role="alert">No se pudieron cargar las altas y cambios.</p>
+  } @else if (items() === null) {
+    <p class="changes__message">Cargando…</p>
+  } @else if (rows().length === 0) {
+    <p class="changes__message">Todavía no hay altas ni cambios de titulares en esta finca.</p>
+  } @else {
+    <ul class="changes" [class.changes--loading]="loading()">
+      @for (row of rows(); track row.id) {
+        <li class="changes__row" [attr.data-change]="row.id">
+          <span class="changes__icon"><app-icon [name]="row.icon" [size]="15"></app-icon></span>
+          <span class="changes__text">
+            <span class="changes__summary">{{ row.summary }}</span>
+            @if (row.detail) {
+              <span class="changes__detail">{{ row.detail }}</span>
+            }
+          </span>
+          <span class="changes__time">{{ row.time }}</span>
+        </li>
+      }
+    </ul>
+  }
+</app-section-card>

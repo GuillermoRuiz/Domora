@@ -1,0 +1,71 @@
+@if (open) {
+  <div class="modal-backdrop" (click)="close()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4><app-icon name="building" [size]="16"></app-icon> Recalcular coeficientes por m²</h4>
+        <button class="close-btn" (click)="close()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+
+      <div class="modal__body">
+        @if (loading()) {
+          <p class="hint">Calculando…</p>
+        } @else if (errorMsg()) {
+          <div class="alert alert--error">{{ errorMsg() }}</div>
+        } @else if (preview(); as p) {
+          @if (p.missingArea.length > 0) {
+            <div class="alert alert--warning">
+              {{ p.missingArea.length }} {{ p.missingArea.length === 1 ? 'propiedad no tiene' : 'propiedades no tienen' }}
+              superficie construida informada. Complétala en cada una antes de recalcular — repartir solo sobre una
+              parte de la finca daría coeficientes que no significan lo que dicen significar.
+            </div>
+            <ul class="missing-list">
+              @for (m of p.missingArea; track m.propertyId) {
+                <li>{{ m.type }} {{ m.ref || '(sin referencia)' }}</li>
+              }
+            </ul>
+          } @else if (p.rows.length > 0) {
+            <p class="hint">
+              Reparto proporcional a la superficie construida (LPH art. 5). La suma siempre da exactamente 100 %.
+              Revisa y confirma antes de aplicar — esto reemplaza el coeficiente actual de cada propiedad.
+            </p>
+            <div class="table-wrapper">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Propiedad</th>
+                    <th class="td--right">m²</th>
+                    <th class="td--right">Actual</th>
+                    <th class="td--right">Propuesto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of p.rows; track row.propertyId) {
+                    <tr>
+                      <td>{{ row.type }} {{ row.ref || '—' }}</td>
+                      <td class="td--right td--mono">{{ row.builtAreaM2 | number:'1.0-2':'es' }}</td>
+                      <td class="td--right td--mono td--muted">{{ row.currentQuota != null ? formatQuota(row.currentQuota) + ' %' : '—' }}</td>
+                      <td class="td--right td--mono"><strong>{{ formatQuota(row.proposedQuota) }} %</strong></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="modal__footer">
+        @if (preview()?.missingArea?.length) {
+          <app-btn variant="outline" size="sm" (clicked)="goToProperties()">Ir a propiedades</app-btn>
+          <app-btn variant="outline" size="sm" (clicked)="close()">Cerrar</app-btn>
+        } @else {
+          <app-btn variant="outline" size="sm" (clicked)="close()">Cancelar</app-btn>
+          <app-btn variant="primary" size="sm" [disabled]="loading() || applying() || !preview()?.rows?.length"
+            (clicked)="apply()">
+            {{ applying() ? 'Aplicando…' : 'Aplicar reparto' }}
+          </app-btn>
+        }
+      </div>
+    </div>
+  </div>
+}

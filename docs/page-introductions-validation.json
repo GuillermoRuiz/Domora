@@ -1,0 +1,37 @@
+{
+  "kind": "execution-summary",
+  "date": "2026-10-17",
+  "branch": "bru_sidemenu",
+  "build": "passed",
+  "frontend": { "suites": 158, "tests": 1611, "result": "passed" },
+  "browser": {
+    "engine": "Chromium",
+    "roles": [
+      { "role": "A", "screens": 4, "measurements": 48, "result": "passed" },
+      { "role": "B", "screens": 99, "measurements": 1194, "result": "passed" },
+      { "role": "C", "screens": 14, "measurements": 168, "result": "passed" }
+    ],
+    "widths": [1440, 1024, 900, 768, 640, 320],
+    "themes": ["dark", "light"],
+    "headingChecks": 1392,
+    "subscriptionNoticeMeasurements": 18,
+    "maximumBorderDifferencePx": 0,
+    "titleFontPx": 28,
+    "subtitleFontPx": 14,
+    "desktopTitleOffsetPx": 24,
+    "desktopActionOffsetPx": 37.5,
+    "desktopActionRightPx": 24,
+    "mobileTitleOffsetPx": 16,
+    "mobileActionGapAfterTextPx": 16
+  },
+  "functional": {
+    "subsectionFormsOpened": ["Subir documento", "Nuevo comunicado", "Nueva inspección", "Nuevo proveedor", "Nuevo miembro del personal", "Nueva cuenta", "Nuevo centro de coste", "Asiento manual"],
+    "operationsForms": "passed",
+    "messagesComposerVisible": "passed",
+    "duplicatePrimaryActions": "none",
+    "businessFormsSubmitted": false
+  },
+  "review": "No Required or Critical findings",
+  "concurrentFixedHeaderVerification": { "frontendSuites": 158, "frontendTests": 1611, "roleCScreens": 14, "roleCMeasurements": 168, "scroll": "passed", "result": "passed" },
+  "artifactNote": "Temporary test-results files were cleared by a separate Playwright invocation using its default output directory. This summary records the completed tool outputs; role C captures are retained separately under ignored tmp/page-intro-qa."
+}

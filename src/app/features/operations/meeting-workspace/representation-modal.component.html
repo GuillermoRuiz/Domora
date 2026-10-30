@@ -1,0 +1,67 @@
+<div class="modal-backdrop" (click)="close()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="representation-title" (click)="$event.stopPropagation()" (keydown.escape)="close()">
+    <div class="modal__header">
+      <h4 id="representation-title">
+        <app-icon [name]="changing() ? 'repeat' : 'users'" [size]="16"></app-icon>
+        {{ changing() ? 'Cambiar representante' : 'Registrar representación' }}
+      </h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="close()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      <p class="modal__hint">
+        Representación de <strong>{{ row.owner }}</strong> ({{ row.unit }}).
+        @if (changing()) {
+          Hoy le representa {{ row.representedBy }}.
+        }
+        El representante puede ser otro propietario o una persona externa a la comunidad (art. 15.1 LPH).
+      </p>
+
+      <div class="switch">
+        <app-toggle [on]="isOwner()" [disabled]="busy || ownerOptions()?.length === 0" (onChange)="isOwner.set($event)"></app-toggle>
+        <span>El representante es propietario de la comunidad</span>
+      </div>
+
+      @if (isOwner()) {
+        <label class="form-field">
+          Propietario
+          <select [ngModel]="ownerEmail()" (ngModelChange)="ownerEmail.set($event)" [disabled]="busy || !ownerOptions()">
+            <option value="">{{ ownerOptions() ? 'Selecciona un propietario…' : 'Cargando propietarios…' }}</option>
+            @for (owner of ownerOptions() ?? []; track owner.email) {
+              <option [value]="owner.email">{{ owner.fullName }}</option>
+            }
+          </select>
+          @if (touched() && !ownerEmail()) {
+            <span class="field-error">Elige quién le representa.</span>
+          }
+        </label>
+      } @else {
+        <label class="form-field">
+          Nombre completo
+          <input type="text" maxlength="200" autocomplete="off" placeholder="Nombre y apellidos" [ngModel]="name()" (ngModelChange)="name.set($event)" [disabled]="busy" />
+          @if (touched() && name().trim().length < 3) {
+            <span class="field-error">Indica el nombre completo del representante.</span>
+          }
+        </label>
+        <label class="form-field">
+          DNI / NIE
+          <input type="text" maxlength="20" autocomplete="off" placeholder="12345678Z" [ngModel]="dni()" (ngModelChange)="dni.set($event)" [disabled]="busy" />
+          @if (touched() && dniError()) {
+            <span class="field-error">{{ dniError() }}</span>
+          }
+        </label>
+      }
+
+      @if (error) {
+        <p class="field-error" role="alert">{{ error }}</p>
+      }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" [disabled]="busy" (clicked)="close()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" [disabled]="busy" (clicked)="submit()">
+        {{ busy ? 'Guardando…' : changing() ? 'Cambiar representante' : 'Registrar representación' }}
+      </app-btn>
+    </div>
+  </div>
+</div>

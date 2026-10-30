@@ -1,0 +1,23 @@
+@use 'dialog-shell' as ds;
+
+.backdrop { @include ds.backdrop-shell($padded: true); }
+.dialog { @include ds.modal-shell; }
+.dialog__header { @include ds.dialog-header-chrome; }
+.close-btn { @include ds.close-btn-chrome; }
+.dialog__body { @include ds.modal-body-chrome; }
+.dialog__footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+.hint { margin: 0; font-size: 13px; color: var(--color-muted); line-height: 1.45; }
+.suggestion { margin: 0; font-size: 13px; color: var(--color-text); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.link {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
+}

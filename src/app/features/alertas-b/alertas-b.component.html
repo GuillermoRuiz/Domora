@@ -1,0 +1,70 @@
+<app-topbar title="Alertas" [breadcrumb]="['Notificaciones y avisos']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Alertas</h1>
+    <p class="page-intro__subtitle">Consulta los avisos y el seguimiento de tus comunidades.</p>
+  </div>
+  <div class="page-intro__actions">@if (unread() > 0) { <app-btn variant="outline" (clicked)="markAllRead()">Marcar todas como leídas</app-btn> }</div>
+</header>
+
+<div class="page-content">
+
+
+
+  <div class="summary-banner" [class.summary-banner--ok]="unread() === 0">
+    @if (unread() > 0) {
+      <app-icon name="bell" [size]="16"></app-icon>
+      <span>Tienes <strong>{{ unread() }} notificación{{ unread() !== 1 ? 'es' : '' }} sin leer</strong> en tus fincas</span>
+    } @else {
+      <app-icon name="check" [size]="16"></app-icon>
+      <span>Estás al día — no tienes notificaciones pendientes</span>
+    }
+  </div>
+
+  <div class="filter-pills">
+    <button class="pill" [class.pill--active]="filter() === 'all'" (click)="filter.set('all')">Todas</button>
+    <button class="pill" [class.pill--active]="filter() === 'unread'" (click)="filter.set('unread')">Sin leer ({{ unread() }})</button>
+    <button class="pill" [class.pill--active]="filter() === 'pago'" (click)="filter.set('pago')">Recibos</button>
+    <button class="pill" [class.pill--active]="filter() === 'comunidad'" (click)="filter.set('comunidad')">Comunidad</button>
+  </div>
+
+  <div class="alert-list">
+    @if (filtered().length === 0) {
+      <div class="alert-empty">No hay alertas en esta categoría</div>
+    } @else {
+      @for (a of filtered(); track a.id) {
+        <div class="alert-row" [class.alert-row--unread]="!a.read" (click)="toggleExpanded(a)">
+          @if (!a.read) { <span class="unread-dot"></span> }
+          <div class="alert-row__icon" [class]="typeClass(a.type)">
+            <app-icon [name]="typeIcon(a.type)" [size]="16"></app-icon>
+          </div>
+          <div class="alert-row__body">
+            <div class="alert-row__meta">
+              <span class="alert-row__label" [class]="typeClass(a.type)">{{ typeLabel(a.type) }}</span>
+              @if (a.urgent) { <span class="urgent-dot"></span> }
+            </div>
+            <div class="alert-row__title" [class.alert-row__title--unread]="!a.read">{{ a.title }}</div>
+            <div class="alert-row__desc">{{ a.description }}</div>
+
+            @if (expanded() === a.id && hasSourceLink(a)) {
+              <div class="alert-row__detail">
+                <div class="detail-actions">
+                  <app-btn variant="primary" size="sm" (clicked)="goToSource(a); $event.stopPropagation()">{{ sourceLinkLabel(a) }}</app-btn>
+                </div>
+              </div>
+            }
+          </div>
+          <div class="alert-row__date">{{ a.date }}</div>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

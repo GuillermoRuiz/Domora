@@ -1,0 +1,401 @@
+<app-topbar title="Ajustes" [breadcrumb]="['Configuración de la cuenta']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Ajustes</h1>
+    <p class="page-intro__subtitle">Gestiona tu perfil profesional y la configuración de tu cuenta.</p>
+  </div>
+</header>
+
+<div class="page-content">
+  <div class="settings-wrap">
+
+    <!-- Perfil profesional -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Perfil profesional</h4>
+          <p>Tus datos personales y de contacto</p>
+        </div>
+        @if (editPerfil()) {
+          <div class="header-actions">
+            <app-btn variant="outline" size="sm" (clicked)="editPerfil.set(false)">Cancelar</app-btn>
+            <app-btn variant="primary" size="sm" (clicked)="saveProfile()">Guardar cambios</app-btn>
+          </div>
+        } @else {
+          <app-btn variant="outline" size="sm" (clicked)="editPerfil.set(true)">Editar</app-btn>
+        }
+      </div>
+
+      <div class="profile-row">
+        <app-avatar [name]="nombre()" [size]="56" bg="var(--color-secondary)"></app-avatar>
+        <div>
+          <div class="profile-row__name">{{ nombre() }}</div>
+          <div class="profile-row__sub">Administrador de fincas · {{ empresa()?.name ?? '' }}</div>
+        </div>
+      </div>
+
+      @if (editPerfil()) {
+        <div class="form-grid">
+          <label class="form-field">Nombre completo<input type="text" [ngModel]="nombre()" (ngModelChange)="nombre.set($event)" /></label>
+          <label class="form-field">Email profesional<input type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" /></label>
+          <label class="form-field">Teléfono<input type="text" [ngModel]="phone()" (ngModelChange)="phone.set($event)" /></label>
+          <label class="form-field">NIF / NIE<input type="text" [ngModel]="nif()" (ngModelChange)="nif.set($event)" /></label>
+          <label class="form-field">Nº de colegiado<input type="text" [ngModel]="colegiado()" (ngModelChange)="colegiado.set($event)" /></label>
+        </div>
+      } @else {
+        <div class="field-row"><span>Nombre completo</span><strong>{{ nombre() }}</strong></div>
+        <div class="field-row"><span>Email profesional</span><strong>{{ email() }}</strong></div>
+        <div class="field-row"><span>Teléfono</span><strong>{{ phone() }}</strong></div>
+        <div class="field-row"><span>NIF / NIE</span><strong class="mono">{{ nif() }}</strong></div>
+        <div class="field-row">
+          <span>Nº de colegiado</span>
+          <div>
+            <strong class="mono">{{ colegiado() }}</strong>
+            <div class="field-row__sub">Colegio de Administradores de Fincas · Barcelona</div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <app-office-setup [data]="office()"></app-office-setup>
+
+    <!-- Empresa administradora -->
+    <div class="card" id="ajustes-empresa">
+      <div class="card__header">
+        <div>
+          <h4>Empresa administradora</h4>
+          <p>Datos de la gestoría que aparecen en comunicaciones y documentos</p>
+        </div>
+        @if (editEmpresa()) {
+          <div class="header-actions">
+            <app-btn variant="outline" size="sm" (clicked)="editEmpresa.set(false)">Cancelar</app-btn>
+            <app-btn variant="primary" size="sm" [disabled]="empresaSaving() || empContactEmailInvalid()" (clicked)="saveEmpresa()">
+              {{ empresaSaving() ? 'Guardando…' : 'Guardar cambios' }}
+            </app-btn>
+          </div>
+        } @else if (empresa()) {
+          <app-btn variant="outline" size="sm" (clicked)="startEditEmpresa()">Editar</app-btn>
+        }
+      </div>
+
+      <div class="logo-row">
+        <div class="logo-placeholder"><app-icon name="building" [size]="22"></app-icon></div>
+        <div>
+          <div class="profile-row__name">Logotipo de empresa</div>
+          <div class="field-row__sub">Aparece en comunicados, convocatorias y documentos PDF</div>
+          <button class="link-btn" (click)="showToast('Función disponible próximamente')">Subir logotipo →</button>
+        </div>
+      </div>
+
+      @if (empresaError()) {
+        <p class="field-row__sub">{{ empresaError() }}</p>
+      } @else if (empresa(); as e) {
+        <div class="field-row"><span>Razón social</span><strong>{{ e.name }}</strong></div>
+        <div class="field-row"><span>CIF</span><strong class="mono">{{ e.cif }}</strong></div>
+        <div class="field-row"><span>Dirección fiscal</span><strong>{{ e.fiscalAddress || '—' }}</strong></div>
+        @if (editEmpresa()) {
+          <p class="field-row__sub">Para cambiar la razón social, el CIF o la dirección fiscal de la empresa, contacta con Domora. Los datos con los que te facturamos los editas en «Datos de facturación».</p>
+          <div class="form-grid">
+            <label class="form-field">NIF-IVA (intracomunitario)<input id="emp-vat" type="text" [ngModel]="empVatNumber()" (ngModelChange)="empVatNumber.set($event)" /></label>
+            <label class="form-field">Teléfono empresa<input id="emp-phone" type="tel" [ngModel]="empPhone()" (ngModelChange)="empPhone.set($event)" /></label>
+            <label class="form-field">Persona de contacto<input id="emp-contact-name" type="text" [ngModel]="empContactName()" (ngModelChange)="empContactName.set($event)" /></label>
+            <label class="form-field">
+              Email de contacto
+              <input id="emp-contact-email" type="email" [ngModel]="empContactEmail()" (ngModelChange)="empContactEmail.set($event)" />
+              @if (empContactEmailInvalid()) { <span class="form-error">Email no válido.</span> }
+            </label>
+          </div>
+        } @else {
+          <div class="field-row"><span>NIF-IVA</span><strong class="mono">{{ e.vatNumber || '—' }}</strong></div>
+          <div class="field-row"><span>Teléfono empresa</span><strong>{{ e.phone || '—' }}</strong></div>
+          <div class="field-row"><span>Persona de contacto</span><strong>{{ e.contactName || '—' }}</strong></div>
+          <div class="field-row"><span>Email de contacto</span><strong>{{ e.contactEmail || '—' }}</strong></div>
+        }
+      } @else {
+        <p class="field-row__sub">Cargando…</p>
+      }
+    </div>
+    <app-billing-card></app-billing-card>
+
+    <!-- Equipo -->
+    <div class="card" id="ajustes-equipo">
+      <div class="card__header">
+        <div>
+          <h4>Equipo</h4>
+          <p>Invita a compañeros de tu gestora — comparten acceso a las mismas fincas, sin volver a pedir el CIF de la empresa.</p>
+        </div>
+        <app-btn variant="outline" size="sm" [disabled]="generatingTeamInvite()" (clicked)="generateTeamInvite()">
+          {{ generatingTeamInvite() ? 'Generando…' : 'Invitar a un compañero' }}
+        </app-btn>
+      </div>
+
+      @if (teamInviteError()) {
+        <p class="field-hint" style="color: var(--color-error);">{{ teamInviteError() }}</p>
+      } @else if (teamInviteLink()) {
+        <p class="field-hint">
+          Domora todavía no envía emails — comparte este enlace de un solo uso por el canal que prefieras. Quien lo abra fija su contraseña y queda como usuario de tu gestora.
+        </p>
+        <div class="invite-link-box">
+          <span class="invite-link-box__value">{{ teamInviteLink() }}</span>
+          <app-btn variant="outline" size="sm" (clicked)="copyTeamInviteLink()">
+            {{ teamInviteCopied() ? 'Copiado' : 'Copiar' }}
+          </app-btn>
+        </div>
+      }
+    </div>
+
+    <!-- Notificaciones -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Preferencias de notificación</h4>
+          <p>La bandeja de avisos siempre está activa — esto solo controla si además te llega un email por categoría</p>
+        </div>
+      </div>
+
+      @if (notifPrefsLoading()) {
+        <p>Cargando…</p>
+      } @else {
+        <div class="notif-head">
+          <span>Evento</span>
+          <span>Email</span>
+        </div>
+        @for (p of notifPrefs(); track p.category) {
+          <div class="notif-row">
+            <div>
+              <div class="notif-row__label">{{ notifLabel(p.category) }}</div>
+              <div class="notif-row__sub">{{ notifSub(p.category) }}</div>
+            </div>
+            <app-toggle [on]="p.emailEnabled" (onChange)="toggleNotifEmail(p.category)"></app-toggle>
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Notificaciones push -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Notificaciones push</h4>
+          <p>Recibe un aviso del sistema en este dispositivo, aunque no tengas Domora abierto</p>
+        </div>
+      </div>
+
+      @if (!pushSupported) {
+        <p class="field-hint">Tu navegador no soporta notificaciones push.</p>
+      } @else {
+        <div class="notif-row">
+          <div>
+            <div class="notif-row__label">Este dispositivo</div>
+            <div class="notif-row__sub">{{ pushSubscribed() ? 'Activadas' : 'Desactivadas' }}</div>
+          </div>
+          <app-toggle [on]="pushSubscribed()" [disabled]="pushBusy()" (onChange)="togglePush()"></app-toggle>
+        </div>
+      }
+    </div>
+
+    <!-- Privacidad y mensajería -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Privacidad y mensajería</h4>
+          <p>Cómo pueden contactarte los propietarios de tus fincas</p>
+        </div>
+      </div>
+
+      @if (messagingSettingsLoading()) {
+        <p>Cargando ajustes…</p>
+      } @else if (messagingSettings(); as ms) {
+        <div class="field-row">
+          <span>Quién puede escribirme directamente</span>
+          <select [ngModel]="ms.allowDirectMessages" (ngModelChange)="setMessagingPolicy($event)">
+            @for (opt of directMessageOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field-row">
+          <span>Cómo me ven otros usuarios</span>
+          <select [ngModel]="ms.displayNamePolicy" (ngModelChange)="setDisplayNamePolicy($event)">
+            @for (opt of displayNameOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        @if (ms.displayNamePolicy === 'alias') {
+          <div class="field-row">
+            <span>Alias a mostrar</span>
+            <input
+              type="text"
+              placeholder="Ej. Administración"
+              [ngModel]="displayAliasDraft()"
+              (ngModelChange)="displayAliasDraft.set($event)"
+              (blur)="saveDisplayAlias()"
+            />
+          </div>
+        }
+      } @else {
+        <p>No se han podido cargar los ajustes de mensajería.</p>
+      }
+    </div>
+
+    <!-- Preferencias de la aplicación -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Preferencias de la aplicación</h4>
+          <p>Región, idioma, formato de datos y apariencia</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <label class="form-field">
+          Idioma
+          <select [ngModel]="idioma()" (ngModelChange)="idioma.set($event)">
+            @for (o of idiomas; track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label class="form-field">
+          Zona horaria
+          <select [ngModel]="zona()" (ngModelChange)="zona.set($event)">
+            @for (o of zonas; track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label class="form-field">
+          Moneda
+          <select [ngModel]="moneda()" (ngModelChange)="moneda.set($event)">
+            @for (o of monedas; track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+        <label class="form-field">
+          Formato de fecha
+          <select [ngModel]="fmtDate()" (ngModelChange)="fmtDate.set($event)">
+            @for (o of fmtDates; track o) { <option [value]="o">{{ o }}</option> }
+          </select>
+        </label>
+      </div>
+
+      <div class="theme-row">
+        <div>
+          <div class="notif-row__label">Modo oscuro</div>
+          <div class="notif-row__sub">Cambia la apariencia de toda la aplicación</div>
+        </div>
+        <app-toggle [on]="state.darkMode()" (onChange)="toggleDarkMode()"></app-toggle>
+      </div>
+
+      <div class="actions-end">
+        <app-btn variant="primary" size="sm" (clicked)="savePreferences()">Guardar preferencias</app-btn>
+      </div>
+    </div>
+
+    <!-- Integraciones -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Integraciones</h4>
+          <p>Conecta Domora con tus herramientas externas</p>
+        </div>
+      </div>
+
+      @for (i of integrations(); track i.id) {
+        <div class="integration-row">
+          <div class="integration-row__icon"><app-icon [name]="i.icon" [size]="18"></app-icon></div>
+          <div class="integration-row__info">
+            <div class="integration-row__name">{{ i.label }}</div>
+            <div class="integration-row__sub">{{ i.sub }}</div>
+          </div>
+          <div class="integration-row__actions">
+            @if (i.status === 'connected') {
+              <span class="integration-status integration-status--connected">Conectado</span>
+            } @else {
+              <span class="integration-status integration-status--disconnected">No conectado</span>
+            }
+            <app-btn variant="outline" size="sm" (clicked)="manageIntegration(i)">{{ i.actionLabel }}</app-btn>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Seguridad -->
+    <div class="card" id="ajustes-seguridad">
+      <div class="card__header">
+        <div>
+          <h4>Seguridad</h4>
+          <p>Contraseña, doble factor y sesiones activas</p>
+        </div>
+      </div>
+
+      <div class="sec-row">
+        <div>
+          <div class="notif-row__label">Contraseña</div>
+          <div class="notif-row__sub">Última modificación: hace 5 semanas</div>
+        </div>
+        <app-btn variant="outline" size="sm" (clicked)="changePassword()">Cambiar contraseña</app-btn>
+      </div>
+
+      <app-two-factor-enrollment></app-two-factor-enrollment>
+
+      <div class="sec-row">
+        <div>
+          <div class="notif-row__label">Acceso por API</div>
+          <div class="notif-row__sub">Permite integraciones externas mediante token personal</div>
+        </div>
+        <app-toggle [on]="apiAccess()" (onChange)="toggleApiAccess()"></app-toggle>
+      </div>
+
+      <div class="sessions-block">
+        <div class="sessions-title">Sesiones activas</div>
+        @for (s of sessions; track s.device) {
+          <div class="session-row" [class.session-row--current]="s.current">
+            <div class="session-row__left">
+              <span class="session-dot" [class.session-dot--current]="s.current"></span>
+              <div>
+                <div class="notif-row__label">{{ s.device }}</div>
+                <div class="notif-row__sub">{{ s.location }} · {{ s.time }}</div>
+              </div>
+            </div>
+            @if (s.current) {
+              <span class="session-current">Actual</span>
+            } @else {
+              <button class="link-btn link-btn--danger" (click)="closeSession()">Cerrar</button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Suscripción -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Suscripción</h4>
+          <p>Plan activo, uso y facturación de Domora</p>
+        </div>
+        <a routerLink="/b/subscription" class="link-cta">Ver detalles →</a>
+      </div>
+    </div>
+
+    <!-- Zona de riesgo -->
+    <div class="card card--danger">
+      <div class="card__header">
+        <div><h4>Zona de riesgo</h4></div>
+      </div>
+      <div class="sec-row">
+        <div>
+          <div class="notif-row__label" style="color:var(--color-error)">Eliminar cuenta y todos los datos</div>
+          <div class="notif-row__sub">Esta acción es irreversible. Se eliminarán todas las fincas, contabilidad, propietarios y documentos asociados a tu cuenta.</div>
+        </div>
+        <app-btn variant="danger" size="sm" (clicked)="deleteAccount()">Eliminar cuenta</app-btn>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

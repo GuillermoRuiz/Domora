@@ -1,0 +1,232 @@
+<div class="agenda" [class.agenda--dragging]="draggingId() !== null">
+  @if (removalWarning() && meetingType === 'ordinaria') {
+    <p role="alert">{{ removalWarning() }}</p>
+  }
+  <ol class="agenda__list">
+    @for (item of items; track item.id; let i = $index; let n = $count) {
+      <li
+        class="agenda-card"
+        [class.agenda-card--dragging]="draggingId() === item.id"
+        [attr.data-agenda-id]="item.id"
+      >
+        <div class="agenda-card__row">
+          <button
+            type="button"
+            class="drag-handle"
+            [disabled]="n < 2"
+            [attr.data-handle-for]="item.id"
+            [attr.aria-label]="'Reordenar punto ' + (i + 1) + '. Usa las flechas arriba y abajo.'"
+            (pointerdown)="startDrag($event, item.id)"
+            (keydown)="onHandleKeydown($event, item.id)"
+          >
+            <svg width="12" height="18" viewBox="0 0 12 18" fill="currentColor" aria-hidden="true">
+              <circle cx="3" cy="3" r="1.5" /><circle cx="9" cy="3" r="1.5" />
+              <circle cx="3" cy="9" r="1.5" /><circle cx="9" cy="9" r="1.5" />
+              <circle cx="3" cy="15" r="1.5" /><circle cx="9" cy="15" r="1.5" />
+            </svg>
+          </button>
+          <span class="agenda-card__index" aria-hidden="true">{{ i + 1 }}</span>
+          <input
+            type="text"
+            class="input"
+            placeholder="Título del punto"
+            [attr.aria-label]="'Título del punto ' + (i + 1)"
+            [attr.data-title-for]="item.id"
+            [attr.aria-invalid]="showErrors && !item.title.trim() ? 'true' : null"
+            [ngModel]="item.title"
+            (ngModelChange)="updateTitle(item.id, $event)"
+          />
+          <button
+            type="button"
+            class="fold-btn"
+            [class.fold-btn--closed]="!isItemOpen(item.id)"
+            [attr.aria-expanded]="isItemOpen(item.id)"
+            [attr.aria-label]="(isItemOpen(item.id) ? 'Plegar' : 'Desplegar') + ' punto ' + (i + 1)"
+            (click)="toggleItem(item.id)"
+          >
+            <app-icon name="chevron-down" [size]="16"></app-icon>
+          </button>
+          @if (n > 1) {
+            <button
+              type="button"
+              class="icon-btn"
+              [attr.aria-label]="'Eliminar punto ' + (i + 1)"
+              (click)="removeItem(item.id)"
+            >
+              <app-icon name="trash" [size]="16"></app-icon>
+            </button>
+          }
+        </div>
+
+        @if (isItemOpen(item.id)) {
+        <div class="agenda-card__body">
+          <textarea
+            class="input input--description"
+            rows="1"
+            placeholder="Descripción (opcional)"
+            [attr.aria-label]="'Descripción del punto ' + (i + 1)"
+            [ngModel]="item.description"
+            (ngModelChange)="updateDescription(item.id, $event)"
+          ></textarea>
+
+          <label class="check">
+            <input
+              type="checkbox"
+              [ngModel]="item.hasVote"
+              (ngModelChange)="toggleVote(item.id, $event)"
+            />
+            <span class="check__box" aria-hidden="true">
+              <app-icon name="check" [size]="12"></app-icon>
+            </span>
+            Incluye votación
+          </label>
+
+          @if (item.hasVote && item.voteTemplate) {
+            <div class="vote-questions">
+              @for (q of item.voteTemplate.questions; track $index; let qi = $index) {
+                <div class="vote-question">
+                  <div class="vote-question__row">
+                    <input
+                      type="text"
+                      class="input input--sm"
+                      placeholder="Pregunta"
+                      [attr.aria-label]="'Pregunta ' + (qi + 1) + ' del punto ' + (i + 1)"
+                      [ngModel]="q.title"
+                      (ngModelChange)="updateQuestionTitle(item.id, qi, $event)"
+                    />
+                    <select
+                      class="input input--sm vote-question__type"
+                      [attr.aria-label]="'Tipo de la pregunta ' + (qi + 1)"
+                      [ngModel]="q.type"
+                      (ngModelChange)="updateQuestionType(item.id, qi, $event)"
+                    >
+                      <option value="single_choice">Opción única</option>
+                      <option value="multiple_choice">Opción múltiple</option>
+                      <option value="text">Texto libre</option>
+                    </select>
+                    @if (q.type !== 'text') {
+                      <button
+                        type="button"
+                        class="fold-btn"
+                        [class.fold-btn--closed]="!isQuestionOpen(item.id, qi)"
+                        [attr.aria-expanded]="isQuestionOpen(item.id, qi)"
+                        [attr.aria-label]="(isQuestionOpen(item.id, qi) ? 'Plegar' : 'Desplegar') + ' pregunta ' + (qi + 1)"
+                        (click)="toggleQuestion(item.id, qi)"
+                      >
+                        <app-icon name="chevron-down" [size]="16"></app-icon>
+                      </button>
+                    }
+                    @if (item.voteTemplate.questions.length > 1) {
+                      <button
+                        type="button"
+                        class="icon-btn"
+                        [attr.aria-label]="'Eliminar pregunta ' + (qi + 1)"
+                        (click)="removeQuestion(item.id, qi)"
+                      >
+                        <app-icon name="x" [size]="14"></app-icon>
+                      </button>
+                    }
+                  </div>
+
+                  @if (q.type !== 'text' && isQuestionOpen(item.id, qi)) {
+                    <div class="vote-majority">
+                      <label class="vote-majority__label">
+                        Tipo de mayoría
+                        <select
+                          class="input input--sm"
+                          [attr.aria-label]="'Tipo de mayoría de la pregunta ' + (qi + 1) + ' del punto ' + (i + 1)"
+                          [attr.aria-invalid]="showErrors && !q.majorityType ? 'true' : null"
+                          [ngModel]="q.majorityType ?? ''"
+                          (ngModelChange)="updateQuestionMajority(item.id, qi, $event)"
+                        >
+                          @if (!q.majorityType) {
+                            <option value="" disabled>Selecciona…</option>
+                          }
+                          @for (option of majorityOptions; track option.value) {
+                            <option [value]="option.value">{{ option.label }}</option>
+                          }
+                        </select>
+                      </label>
+                      @if (q.majorityType) {
+                        <p class="vote-majority__legend">{{ majorityLegend(q.majorityType) }}</p>
+                      }
+                    </div>
+                    <div class="vote-options">
+                      @for (opt of q.options; track $index; let oi = $index) {
+                        <div class="vote-option" [style.--option-color]="colorOf(q, oi)">
+                          <input
+                            type="text"
+                            class="input input--sm"
+                            [placeholder]="'Opción ' + (oi + 1)"
+                            [attr.aria-label]="'Opción ' + (oi + 1) + ' de la pregunta ' + (qi + 1)"
+                            [ngModel]="opt"
+                            (ngModelChange)="updateOption(item.id, qi, oi, $event)"
+                          />
+                          <div class="color-pick">
+                            <button
+                              type="button"
+                              class="color-dot"
+                              aria-haspopup="true"
+                              [attr.aria-expanded]="isColorPickerOpen(item.id, qi, oi)"
+                              [attr.aria-label]="'Color de la opción ' + (oi + 1) + ' de la pregunta ' + (qi + 1)"
+                              (click)="toggleColorPicker(item.id, qi, oi)"
+                            ></button>
+                            @if (isColorPickerOpen(item.id, qi, oi)) {
+                              <div class="color-palette" role="group" aria-label="Paleta de colores">
+                                @for (swatch of palette; track swatch.value) {
+                                  <button
+                                    type="button"
+                                    class="color-swatch"
+                                    [class.color-swatch--chosen]="isColorChosen(q, oi, swatch.value)"
+                                    [style.background]="swatch.value"
+                                    [attr.aria-label]="swatch.name"
+                                    [attr.aria-pressed]="isColorChosen(q, oi, swatch.value)"
+                                    [attr.title]="swatch.name"
+                                    (click)="setOptionColor(item.id, qi, oi, swatch.value)"
+                                  ></button>
+                                }
+                                @if (hasCustomColor(q, oi)) {
+                                  <button type="button" class="color-reset" (click)="setOptionColor(item.id, qi, oi, '')">
+                                    Color por defecto
+                                  </button>
+                                }
+                              </div>
+                            }
+                          </div>
+                          @if ((q.options?.length ?? 0) > 2) {
+                            <button
+                              type="button"
+                              class="icon-btn"
+                              [attr.aria-label]="'Eliminar opción ' + (oi + 1)"
+                              (click)="removeOption(item.id, qi, oi)"
+                            >
+                              <app-icon name="x" [size]="14"></app-icon>
+                            </button>
+                          }
+                        </div>
+                      }
+                      <button type="button" class="link-btn" (click)="addOption(item.id, qi)">
+                        + Añadir opción
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+              <button type="button" class="link-btn" (click)="addQuestion(item.id)">
+                + Añadir pregunta
+              </button>
+            </div>
+          }
+        </div>
+        }
+      </li>
+    }
+  </ol>
+
+  <app-btn variant="outline" size="sm" type="button" (clicked)="addItem()">
+    <app-icon name="plus" [size]="14"></app-icon>
+    Añadir punto
+  </app-btn>
+
+  <p class="sr-only" aria-live="polite">{{ liveMessage() }}</p>
+</div>

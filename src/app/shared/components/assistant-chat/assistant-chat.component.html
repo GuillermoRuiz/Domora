@@ -1,0 +1,62 @@
+<div class="assistant-chat">
+  @if (showEstateSelector() && estates().length > 1) {
+    <div class="assistant-chat__scope">
+      <label for="assistant-estate">Comunidad</label>
+      <select id="assistant-estate" [ngModel]="estateId()" (ngModelChange)="onEstateChange($event)">
+        @for (e of estates(); track e.id) {
+          <option [value]="e.id">{{ e.name }}</option>
+        }
+      </select>
+    </div>
+  }
+
+  <div #messageList class="assistant-chat__messages">
+    @if (loading()) {
+      <p class="muted-text">Cargando…</p>
+    } @else {
+      <div class="assistant-line assistant-line--bot">
+        <app-avatar [name]="assistantName()" [src]="avatarSrc()" [size]="28"></app-avatar>
+        <div class="assistant-line__bubble">{{ welcome() }}</div>
+      </div>
+      @for (line of lines(); track $index) {
+        <div class="assistant-line" [class.assistant-line--mine]="line.role === 'user'" [class.assistant-line--bot]="line.role === 'assistant'">
+          @if (line.role === 'assistant') {
+            <app-avatar [name]="assistantName()" [src]="avatarSrc()" [size]="28"></app-avatar>
+          }
+          <div class="assistant-line__bubble">{{ plain(line.content) }}</div>
+        </div>
+      }
+      @if (sending()) {
+        <div class="assistant-line assistant-line--bot">
+          <app-avatar [name]="assistantName()" [src]="avatarSrc()" [size]="28"></app-avatar>
+          <div class="assistant-line__bubble assistant-line__bubble--typing" role="status" [attr.aria-label]="assistantName() + ' está escribiendo'">
+            <span>{{ assistantName() }} está escribiendo</span>
+            <span class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+          </div>
+        </div>
+      }
+      @if (error()) {
+        <p class="assistant-chat__error" role="alert">{{ error() }}</p>
+      }
+    }
+  </div>
+
+  <div class="assistant-chat__composer">
+    <textarea
+      #composer
+      rows="1"
+      maxlength="5000"
+      [attr.aria-label]="'Mensaje para ' + assistantName()"
+      title="Enter para enviar · Shift+Enter para añadir una línea"
+      [placeholder]="'Pregunta a ' + assistantName() + '…'"
+      [ngModel]="text()"
+      (ngModelChange)="updateDraft($event)"
+      (keydown)="onComposerKeydown($event)"
+    ></textarea>
+    <app-btn variant="primary" size="sm" [disabled]="!canSend()" (clicked)="send()">
+      <app-icon name="send" [size]="14"></app-icon>
+      <span class="assistant-chat__send-label">Enviar mensaje</span>
+    </app-btn>
+  </div>
+  <p class="assistant-chat__disclaimer">Respuestas orientativas basadas en la ley y los documentos de tu comunidad. No sustituyen el asesoramiento profesional.</p>
+</div>

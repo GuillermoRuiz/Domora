@@ -1,0 +1,89 @@
+// Role A scope band (odd/tasks/role-a-panel.md S1, S5): blue while reading, warning while a
+// support session is open, error tokens for support denials. Tokens exist in both themes.
+// The page topbar is `position: fixed` (z-index 90) at the top of `.app-main`, with the
+// subscription banner above it when present; TopbarComponent publishes the bottom of that header
+// stack as `--shell-header-bottom`. The band sticks right under it (pushed down from its in-flow
+// slot, which sits behind the header) and paints below it, so it never covers the title,
+// breadcrumb, search, notifications, avatar or «Abrir menú» at any scroll position.
+:host {
+  position: sticky;
+  top: var(--shell-header-bottom, var(--topbar-height));
+  z-index: 89;
+  flex-shrink: 0;
+  display: block;
+}
+
+.scope-band,
+.scope-band__denial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 8px 24px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.scope-band {
+  color: var(--color-blue);
+  background: var(--color-blue-bg);
+  border-bottom: 1px solid var(--color-blue-border);
+
+  &--support {
+    color: var(--color-warning);
+    background: var(--color-warning-bg);
+    border-bottom: 2px solid var(--color-warning-border);
+  }
+}
+
+.scope-band__denial {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border-bottom: 1px solid var(--color-error-border);
+}
+
+.scope-band__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.scope-band__sep {
+  margin: 0 6px;
+}
+
+.scope-band__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scope-band__action {
+  flex-shrink: 0;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  border-radius: var(--radius-md, 8px);
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { opacity: 0.85; }
+  &:disabled { opacity: 0.6; cursor: default; }
+  &:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+  &--quiet {
+    border-color: transparent;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .scope-band,
+  .scope-band__denial {
+    padding: 8px 16px;
+  }
+}

@@ -1,0 +1,74 @@
+<app-topbar [title]="title()" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="community-heading">
+    <app-report-estate-scope-selector class="community-heading__selector" [header]="true" [estates]="estates()" [value]="selection()" [disabled]="loading() || !!error()" (valueChange)="changeScope($event)" />
+    <span class="community-heading__separator" aria-hidden="true">/</span>
+    <nav class="community-heading__section" aria-label="Ruta de navegación"><span>Informes</span>@if (category()) { <span aria-hidden="true"> › </span><span>{{ title() }}</span> }</nav>
+  </div>
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title" id="reports-catalog-title">{{ title() }}</h1>
+    <p class="page-intro__subtitle">{{ category()?.description || 'Consulta, analiza y exporta la información de tus comunidades.' }}</p>
+  </div>
+</header>
+<div class="page-content">
+  @if (categoryKey) { <a class="back-link" routerLink="/b/reports" [queryParams]="scopeParams()">← Todas las categorías</a> }
+  @if (loading()) {
+    <div class="report-loading" role="status" aria-busy="true"><span></span><span></span><span></span><p>Cargando informes…</p></div>
+  } @else if (error()) {
+    <div class="feedback-panel" role="alert">
+      <h3>{{ errorTitle }}</h3>
+      <p>Vuelve a intentarlo. Si el problema continúa, comprueba que el servicio está disponible.</p>
+      @if (error() !== errorTitle) { <p>{{ error() }}</p> }
+      <app-btn variant="outline" (clicked)="load()">Reintentar</app-btn>
+    </div>
+  } @else if (categoryKey && !category()) {
+    <app-empty-state icon="chart" title="Categoría no disponible" description="Vuelve al centro para consultar las categorías disponibles." />
+  } @else if (!categoryKey && catalog().categories.length === 0) {
+    <app-empty-state icon="chart" title="No hay informes disponibles" description="El catálogo está vacío. Vuelve a consultar los informes más adelante." />
+  } @else {
+    <div class="report-search">
+      <app-icon name="search" [size]="18" />
+      <input type="search" aria-label="Buscar informes" placeholder="Buscar un informe…" [value]="search()" (input)="search.set($any($event.target).value)" />
+    </div>
+    @if (!categoryKey && !search().trim()) {
+      <div class="category-explorer">
+      <p class="category-explorer__title">Explorar por categoría</p>
+      <div class="report-grid" aria-label="Categorías de informes">
+        @for (category of catalog().categories; track category.key) {
+          <a class="report-card catalog-card category-card" [attr.data-category]="category.key" [class.catalog-card--featured]="category.key === 'intelligence'" [routerLink]="['/b/reports/category', category.key]" [queryParams]="scopeParams()">
+            <span class="report-card__icon"><app-icon [name]="category.icon" [size]="category.key === 'intelligence' ? 32 : 28" /></span>
+            <div class="catalog-card__content">
+              @if (category.key === 'intelligence') { <span class="catalog-card__eyebrow">Resumen ejecutivo</span> }
+              <h3>{{ category.title }}</h3>
+              <p>{{ category.key === 'intelligence' ? 'Una visión ejecutiva de tu comunidad: qué ha cambiado, qué requiere atención y dónde actuar.' : category.description }}</p>
+            </div>
+            <span class="report-card__footer"><span>{{ count(category.key) }} {{ count(category.key) === 1 ? 'informe' : 'informes' }}</span><app-icon name="chevron-right" [size]="18" /></span>
+          </a>
+        }
+      </div>
+      </div>
+    } @else {
+      <p class="results-count" role="status">{{ matching().length }} {{ matching().length === 1 ? 'informe disponible' : 'informes disponibles' }}</p>
+      @for (group of groups(); track group.category.key) {
+        <section class="report-group" [attr.aria-label]="group.category.title">
+          @if (!categoryKey) { <h3 class="group-title">{{ group.category.title }}</h3> }
+          <div class="report-grid">
+            @for (report of group.reports; track report.key) {
+              <a class="report-card catalog-card report-option" [attr.data-category]="report.category" [class.catalog-card--featured]="report.category === 'intelligence'" [routerLink]="['/b/reports/view', report.key]" [queryParams]="scopeParams()">
+                <span class="report-card__icon"><app-icon [name]="report.icon" [size]="28" /></span>
+                <div class="catalog-card__content">
+                  <h3>{{ report.title }}</h3><p>{{ report.description }}</p>
+                </div>
+                <span class="report-card__footer"><span>Abrir informe</span><app-icon name="chevron-right" [size]="18" /></span>
+              </a>
+            }
+          </div>
+        </section>
+      } @empty {
+        <app-empty-state icon="search" title="No hay informes que coincidan" description="Prueba con otro término o consulta las categorías del centro." />
+      }
+    }
+  }
+</div>

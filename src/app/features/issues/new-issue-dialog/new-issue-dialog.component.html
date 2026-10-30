@@ -1,0 +1,179 @@
+<div class="backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="new-issue-title" (click)="$event.stopPropagation()" (keydown.escape)="closed.emit()">
+    <header class="head">
+      <span class="head__icon" aria-hidden="true"><app-icon name="building" [size]="22"></app-icon></span>
+      <div class="head__text">
+        <h2 id="new-issue-title">Nueva incidencia</h2>
+        <p>Registra una incidencia en nombre de la comunidad.</p>
+      </div>
+      <button type="button" class="head__close" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </header>
+
+    <nav class="steps" aria-label="Secciones del formulario">
+      <button type="button" class="steps__item" data-step-tab="main" [class.steps__item--active]="step() === 'main'" [attr.aria-current]="step() === 'main' ? 'page' : null" (click)="step.set('main')">Incidencia</button>
+      <button type="button" class="steps__item" data-step-tab="extra" [class.steps__item--active]="step() === 'extra'" [attr.aria-current]="step() === 'extra' ? 'page' : null" (click)="step.set('extra')">Información adicional</button>
+    </nav>
+
+    <form class="form" novalidate (submit)="$event.preventDefault(); step() === 'extra' && submit()">
+      <div class="step" data-step="main" [hidden]="step() !== 'main'">
+      <div class="field">
+        <label class="field__label" for="ni-estate">Comunidad <span class="req">*</span></label>
+        <span class="with-icon">
+          <app-icon name="building" [size]="16"></app-icon>
+          <select id="ni-estate" name="estate" data-field="estate" [class.field--invalid]="errors().estate" [ngModel]="targetEstateId()" (ngModelChange)="chooseEstate($event)">
+            <option value="">Selecciona una comunidad</option>
+            @for (e of estates(); track e.id) {
+              <option [value]="e.id">{{ e.name }}{{ e.address ? ' · ' + e.address : '' }}</option>
+            }
+          </select>
+        </span>
+        @if (errors().estate) { <span class="field__error">Elige la comunidad</span> }
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label class="field__label" for="ni-type">Tipo de incidencia <span class="req">*</span></label>
+          <span class="with-icon">
+            <app-icon [name]="typeIcon()" [size]="16"></app-icon>
+            <select id="ni-type" name="type" data-field="type" [ngModel]="type()" (ngModelChange)="type.set($event)">
+              @for (t of types; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+          </span>
+        </div>
+        <div class="field">
+          <label class="field__label" for="ni-priority">Prioridad <span class="req">*</span></label>
+          <span class="with-icon">
+            <app-icon [name]="priorityIcon()" [size]="16"></app-icon>
+            <select id="ni-priority" name="priority" data-field="priority" [ngModel]="priority()" (ngModelChange)="priority.set($event)">
+              <option value="Normal">Normal</option>
+              <option value="Urgente">Urgente</option>
+            </select>
+          </span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="ni-title">Título <span class="req">*</span></label>
+        <input id="ni-title" name="title" type="text" [attr.maxlength]="maxTitle" data-field="title" autocomplete="off" placeholder="Ej. Fuga de agua en el garaje"
+          [class.field--invalid]="errors().title" [ngModel]="title()" (ngModelChange)="title.set($event)" />
+        <span class="field__foot">
+          @if (errors().title) { <span class="field__error">Campo obligatorio</span> }
+          <span class="field__count">{{ title().length }} / {{ maxTitle }}</span>
+        </span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="ni-description">Descripción <span class="req">*</span></label>
+        <textarea id="ni-description" name="description" rows="4" maxlength="5000" data-field="description" placeholder="Describe qué ha ocurrido, cuándo y cualquier detalle relevante…"
+          [class.field--invalid]="errors().description" [ngModel]="description()" (ngModelChange)="description.set($event)"></textarea>
+        <span class="field__foot">
+          @if (errors().description) { <span class="field__error">Campo obligatorio</span> }
+          <span class="field__count">{{ description().length }} / 5000</span>
+        </span>
+      </div>
+
+      <div class="row">
+        <div class="field" data-field="installation">
+          <label class="field__label" for="ni-asset">Instalación @if (assetRequired()) { <span class="req">*</span> } @else { <span class="opt">(opcional)</span> }</label>
+          <span class="with-icon">
+            <app-icon name="package" [size]="16"></app-icon>
+            <select id="ni-asset" name="asset" data-field="asset" [class.field--invalid]="errors().asset" [ngModel]="assetId()" (ngModelChange)="assetId.set($event); errors.update(e => ({ ...e, asset: false }))">
+              <option value="">{{ installationsLoaded() && installations().length === 0 ? 'La comunidad no tiene instalaciones' : 'Selecciona una instalación' }}</option>
+              @for (o of installations(); track o.id) {
+                <option [value]="o.id">{{ o.name }}</option>
+              }
+            </select>
+          </span>
+          @if (errors().asset) { <span class="field__error" data-error="asset">Elige la instalación afectada</span> }
+        </div>
+        <div class="field">
+          <label class="field__label" for="ni-location">Zona <span class="opt">(opcional)</span></label>
+          <span class="with-icon">
+            <app-icon name="map-pin" [size]="16"></app-icon>
+            <input id="ni-location" name="location" type="text" maxlength="120" data-field="location" autocomplete="off" placeholder="Ej. Zona de la piscina, bloque 1…"
+              [ngModel]="location()" (ngModelChange)="location.set($event)" />
+          </span>
+        </div>
+      </div>
+
+      </div>
+
+      <div class="step" data-step="extra" [hidden]="step() !== 'extra'">
+      <section class="fold" aria-labelledby="ni-extra-title">
+        <h3 class="fold__title" id="ni-extra-title">Información adicional <span class="req">*</span></h3>
+        <div class="fold__body">
+          <div class="row">
+            <div class="field">
+              <label class="field__label" for="ni-channel">Canal de origen <span class="req">*</span></label>
+              <span class="with-icon">
+                <app-icon [name]="channelIcon()" [size]="16"></app-icon>
+                <select id="ni-channel" name="channel" data-field="channel" [ngModel]="channel()" (ngModelChange)="channel.set($event)">
+                  @for (c of channels; track c.value) {
+                    <option [value]="c.value">{{ c.label }}</option>
+                  }
+                </select>
+              </span>
+            </div>
+            <div class="field">
+              <label class="field__label" for="ni-reporter">Quién avisa <span class="req">*</span></label>
+              <span class="with-icon">
+                <app-icon name="user" [size]="16"></app-icon>
+                <select id="ni-reporter" name="reporter" data-field="reporter" [class.field--invalid]="errors().reporter" [ngModel]="reporterKey()"
+                  (ngModelChange)="chooseReporter($event); errors.update(e => ({ ...e, reporter: false }))">
+                  <option value="">Selecciona quién avisa</option>
+                  @for (g of reporterGroups(); track g.title) {
+                    <optgroup [label]="g.title">
+                      @for (r of g.items; track r.key) {
+                        <option [value]="r.key">{{ r.label }}</option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+              </span>
+              @if (errors().reporter) { <span class="field__error" data-error="reporter">Elige quién avisa</span> }
+            </div>
+          </div>
+          <div class="field">
+            <label class="field__label" for="ni-contact">Contacto de quien avisa <span class="req">*</span></label>
+            <span class="with-icon">
+              <app-icon [name]="channelIcon()" [size]="16"></app-icon>
+              <input id="ni-contact" name="reporterContact" type="text" maxlength="200" data-field="reporter-contact" autocomplete="off" placeholder="Teléfono o correo electrónico"
+                [class.field--invalid]="errors().contact" [ngModel]="reporterContact()" (ngModelChange)="reporterContact.set($event); errors.update(e => ({ ...e, contact: false }))" />
+            </span>
+            @if (errors().contact) { <span class="field__error" data-error="contact">Indica un teléfono o correo de contacto</span> }
+          </div>
+        </div>
+      </section>
+
+      <section class="fold" aria-labelledby="ni-route-title" data-section="route">
+        <h3 class="fold__title" id="ni-route-title">¿Cómo se va a gestionar? <span class="req">*</span></h3>
+        <div class="fold__body">
+          <app-route-guide [(route)]="route" [(reason)]="routeReason" [invalid]="!!errors().route" (routeChange)="errors.update(e => ({ ...e, route: false }))"></app-route-guide>
+          @if (errors().route) { <span class="field__error" data-error="route">Elige la vía de gestión</span> }
+        </div>
+      </section>
+
+      <div class="field">
+        <span class="field__label">Fotos <span class="opt">(opcional)</span></span>
+        <app-issue-photo-picker [(files)]="files"></app-issue-photo-picker>
+      </div>
+      </div>
+
+      @if (failure()) {
+        <p class="form__error" role="alert">{{ failure() }}</p>
+      }
+
+      <footer class="foot">
+        <app-btn variant="subtle" (clicked)="closed.emit()">Cancelar</app-btn>
+        @if (step() === 'main') {
+          <app-btn variant="outline" data-action="next" (clicked)="step.set('extra')">Siguiente</app-btn>
+        } @else {
+          <app-btn variant="outline" data-action="back" (clicked)="step.set('main')">Atrás</app-btn>
+          <app-btn variant="accent" type="submit" [disabled]="saving()">{{ saving() ? 'Creando…' : 'Crear incidencia' }}</app-btn>
+        }
+      </footer>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,106 @@
+@use 'breakpoints' as bp;
+
+// --demo-banner-h la publica DemoBannerComponent (solo build demo); sin ella
+// cae a 0px y el layout es el de siempre.
+.app-shell {
+  display: flex;
+  height: calc(100vh - var(--demo-banner-h, 0px));
+  margin-top: var(--demo-banner-h, 0px);
+  overflow: hidden;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  margin-left: var(--sidebar-width);
+  // `scroll` y no `auto`: el carril de la barra (6px, track transparente, ver styles.scss) existe
+  // siempre, así la cabecera y el contenido no cambian de ancho al pasar de una página corta a una
+  // larga con barras clásicas. `scrollbar-gutter: stable` no basta: WebKit lo ignora con barras
+  // personalizadas. Con barras superpuestas (macOS, móvil) no ocupa nada.
+  overflow-y: scroll;
+  scroll-padding-top: var(--shell-header-bottom, var(--topbar-height));
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+
+  @include bp.respond-to('tablet') {
+    margin-left: 0;
+  }
+}
+
+.subscription-banner {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border-bottom: 1px solid var(--color-warning-border);
+  text-align: center;
+
+  &--danger {
+    color: var(--color-error);
+    background: var(--color-error-bg);
+    border-bottom-color: var(--color-error-border);
+  }
+}
+
+.subscription-banner__action {
+  flex-shrink: 0;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  border-radius: var(--radius-md, 8px);
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { opacity: 0.85; }
+}
+
+// Role switcher (demo only)
+.role-switcher {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 52px;
+  height: 52px;
+  background: var(--color-secondary);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(45, 106, 79, 0.4);
+  z-index: 500;
+  transition: background 0.15s, transform 0.15s;
+
+  &:hover {
+    background: var(--color-secondary-hover);
+    transform: scale(1.06);
+  }
+}
+
+.role-switcher__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.75);
+}
+
+.role-switcher__role {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1;
+}

@@ -1,0 +1,29 @@
+<div class="backdrop" (click)="closed.emit()">
+  <form
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="route-dialog-title"
+    (click)="$event.stopPropagation()"
+    (keydown.escape)="closed.emit()"
+    (submit)="$event.preventDefault(); save()"
+  >
+    <header class="dialog__header">
+      <h4 id="route-dialog-title">Resolver vía</h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </header>
+    <div class="dialog__body">
+      <p class="hint">La vía decide quién se encarga de resolver la incidencia y qué pasos se abren a continuación.</p>
+      <app-route-guide [showQuestions]="guided()" [route]="selected() ?? null" (routeChange)="setRoute($event)" [(reason)]="reason"></app-route-guide>
+      @if (!guided()) {
+        <button type="button" class="link" data-action="guide" (click)="guided.set(true)">Ayúdame a elegir</button>
+      }
+    </div>
+    <footer class="dialog__footer">
+      <app-btn variant="outline" size="sm" (clicked)="closed.emit()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" type="submit" [disabled]="!canSave()">Guardar</app-btn>
+    </footer>
+  </form>
+</div>

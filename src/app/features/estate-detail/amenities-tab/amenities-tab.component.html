@@ -1,0 +1,221 @@
+<div class="card">
+  <div class="card__header">
+    <h4 class="card__title">Instalaciones</h4>
+    <app-btn *appPageAction variant="primary" size="sm" (clicked)="openNuevaAmenidad()">
+      <app-icon name="plus" [size]="14"></app-icon>
+      Nueva instalación
+    </app-btn>
+  </div>
+
+  @if (!amenitiesLoaded()) {
+    <p class="td--muted" style="margin: 20px;">Cargando…</p>
+  } @else if (amenities().length === 0) {
+    <div class="no-requests">Esta finca todavía no tiene instalaciones configuradas.</div>
+  } @else {
+    <div class="amenity-list">
+      @for (am of amenities(); track am.id) {
+        <div class="amenity-row" [class.amenity-row--inactive]="!am.active">
+          <div class="amenity-row__main" (click)="toggleAmenityExpanded(am.id)">
+            <div class="amenity-row__icon" [style.background]="am.bg" [style.color]="am.color">
+              <span>{{ am.icon || '📍' }}</span>
+            </div>
+            <div class="amenity-row__info">
+              <div class="amenity-row__name">
+                {{ am.name }}
+                @if (!am.active) { <app-badge text="Inactiva" variant="default"></app-badge> }
+                @if (am.seasonal) { <app-badge [text]="am.seasonLabel || 'Temporada'" variant="warning"></app-badge> }
+              </div>
+              <div class="amenity-row__meta">
+                Aforo {{ am.capacity }} · Máx. {{ am.maxHours }}h · {{ am.slots.length }} franjas/día
+              </div>
+            </div>
+            <app-icon [name]="expandedAmenityId() === am.id ? 'chevron-down' : 'chevron-right'" [size]="16"></app-icon>
+          </div>
+
+          @if (expandedAmenityId() === am.id) {
+            <div class="amenity-row__detail">
+              @if (am.rules) {
+                <p class="td--muted">{{ am.rules }}</p>
+              }
+              <div class="amenity-row__actions">
+                <app-btn variant="outline" size="sm" (clicked)="openEditAmenidad(am)">
+                  <app-icon name="settings" [size]="13"></app-icon> Editar
+                </app-btn>
+                <app-btn [variant]="am.active ? 'outline' : 'secondary'" size="sm" (clicked)="toggleAmenityActive(am)">
+                  {{ am.active ? 'Desactivar' : 'Reactivar' }}
+                </app-btn>
+                <app-btn variant="outline" size="sm" (clicked)="openNuevoBloqueo(am)">
+                  <app-icon name="calendar" [size]="13"></app-icon> Nuevo mantenimiento
+                </app-btn>
+              </div>
+
+              <div class="amenity-blackouts">
+                <div class="amenity-blackouts__title">Periodos de mantenimiento</div>
+                @for (bk of blackoutsFor(am.id); track bk.id) {
+                  <div class="amenity-blackout-row">
+                    <span>{{ bk.startDate }} → {{ bk.endDate }}</span>
+                    <span class="td--muted">{{ bk.reason || 'Sin motivo especificado' }}</span>
+                    <button type="button" class="link-btn" (click)="deleteBloqueo(am.id, bk.id)">Eliminar</button>
+                  </div>
+                } @empty {
+                  <p class="td--muted">Sin periodos de mantenimiento registrados.</p>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<div class="card">
+  <div class="card__header">
+    <h4 class="card__title">Próximas reservas</h4>
+  </div>
+  @if (estateBookings().length === 0) {
+    <div class="no-requests">No hay reservas próximas.</div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr><th>Instalación</th><th>Fecha</th><th>Horario</th><th>Propietario</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (bk of estateBookings(); track bk.id) {
+            <tr>
+              <td>{{ bk.amenityName }}</td>
+              <td>{{ bk.date }}</td>
+              <td>{{ bk.startSlot }} - {{ bk.endSlot }}</td>
+              <td>{{ bk.userName || '—' }}{{ bk.propertyLabel ? ' · ' + bk.propertyLabel : '' }}</td>
+              <td><button type="button" class="link-btn" (click)="cancelEstateBooking(bk)">Cancelar</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (showNuevaAmenidad()) {
+  <div class="modal-backdrop" (click)="closeNuevaAmenidad()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>{{ editAmenityId() ? 'Editar instalación' : 'Nueva instalación' }}</h4>
+        <button class="close-btn" (click)="closeNuevaAmenidad()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Nombre *
+          <input type="text" placeholder="Ej. Piscina" [class.form-field--error]="amErrors().name" [ngModel]="amName()" (ngModelChange)="amName.set($event)" />
+          @if (amErrors().name) { <span class="form-error">Campo obligatorio</span> }
+        </label>
+        <label class="form-field">
+          Icono (emoji, opcional)
+          <input type="text" placeholder="🏊" maxlength="4" [ngModel]="amIcon()" (ngModelChange)="amIcon.set($event)" />
+        </label>
+        <div class="form-field">
+          Color identificativo
+          <div class="color-swatches">
+            @for (opt of amenityColorOptions; track opt.color) {
+              <button
+                type="button"
+                class="color-swatch"
+                [style.background]="opt.color"
+                [class.color-swatch--selected]="amColor() === opt.color"
+                (click)="amColor.set(opt.color); amBg.set(opt.bg)"
+              >
+                @if (amColor() === opt.color) { <app-icon name="check" [size]="14"></app-icon> }
+              </button>
+            }
+          </div>
+        </div>
+        <label class="form-field">
+          Horas máx. por reserva *
+          <input type="number" min="1" [class.form-field--error]="amErrors().maxHours" [ngModel]="amMaxHours()" (ngModelChange)="amMaxHours.set($event)" />
+          @if (amErrors().maxHours) { <span class="form-error">Debe ser al menos 1</span> }
+        </label>
+        <label class="form-field">
+          Aforo máximo *
+          <input type="number" min="1" [class.form-field--error]="amErrors().capacity" [ngModel]="amCapacity()" (ngModelChange)="amCapacity.set($event)" />
+          @if (amErrors().capacity) { <span class="form-error">Debe ser al menos 1</span> }
+        </label>
+        <div class="form-field">
+          Horario diario (franjas reservables) *
+          <div class="hour-chips">
+            @for (h of amenityHourOptions; track h) {
+              <button
+                type="button"
+                class="hour-chip"
+                [class.hour-chip--selected]="amSlots().includes(h)"
+                (click)="toggleAmSlot(h)"
+              >{{ h }}</button>
+            }
+          </div>
+          @if (amErrors().slots) { <span class="form-error">Selecciona al menos una franja horaria</span> }
+        </div>
+        <label class="form-field">
+          Normas de uso (opcional)
+          <textarea rows="3" [ngModel]="amRules()" (ngModelChange)="amRules.set($event)"></textarea>
+        </label>
+        <label class="form-field form-field--checkbox">
+          <input type="checkbox" [ngModel]="amSeasonal()" (ngModelChange)="amSeasonal.set($event)" />
+          Disponibilidad estacional
+        </label>
+        @if (amSeasonal()) {
+          <label class="form-field">
+            Etiqueta de temporada
+            <input type="text" placeholder="Ej. 15 jun – 15 sep" [ngModel]="amSeasonLabel()" (ngModelChange)="amSeasonLabel.set($event)" />
+          </label>
+        }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeNuevaAmenidad()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="amSaving()" (clicked)="submitAmenidad()">
+          {{ amSaving() ? 'Guardando…' : 'Guardar' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+
+@if (showNuevoBloqueo()) {
+  <div class="modal-backdrop" (click)="closeNuevoBloqueo()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Nuevo periodo de mantenimiento</h4>
+        <button class="close-btn" (click)="closeNuevoBloqueo()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Desde *
+          <input type="date" [class.form-field--error]="bkErrors().dates" [ngModel]="bkStartDate()" (ngModelChange)="bkStartDate.set($event)" />
+        </label>
+        <label class="form-field">
+          Hasta *
+          <input type="date" [class.form-field--error]="bkErrors().dates" [ngModel]="bkEndDate()" (ngModelChange)="bkEndDate.set($event)" />
+          @if (bkErrors().dates) { <span class="form-error">Selecciona un rango de fechas válido</span> }
+        </label>
+        <label class="form-field">
+          Motivo (opcional)
+          <input type="text" placeholder="Ej. Limpieza y mantenimiento anual" [ngModel]="bkReason()" (ngModelChange)="bkReason.set($event)" />
+        </label>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeNuevoBloqueo()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="bkSaving()" (clicked)="submitBloqueo()">
+          {{ bkSaving() ? 'Guardando…' : 'Registrar' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

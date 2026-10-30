@@ -1,0 +1,105 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cf-title" (click)="$event.stopPropagation()" appContractDialog (dismiss)="closed.emit()" tabindex="-1">
+    <div class="modal__header">
+      <div class="modal__titles">
+        <h4 id="cf-title">{{ editing() ? 'Editar contrato' : 'Nuevo contrato' }}</h4>
+        @if (contract) {
+          <span class="modal__subtitle">{{ contract.supplier.name }}</span>
+        }
+      </div>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <form class="modal__body" (ngSubmit)="submit()" novalidate>
+      @if (!editing()) {
+        <label class="form-field">
+          Proveedor
+          <select id="cf-supplier" [class.field--error]="supplierInvalid()" [ngModel]="supplierId()" (ngModelChange)="onSupplierChange($event)" name="supplier" [disabled]="suppliers() === null">
+            <option value="">{{ suppliers() === null ? 'Cargando proveedores…' : 'Elige un proveedor' }}</option>
+            @for (s of suppliers() ?? []; track s.id) {
+              <option [value]="s.id">{{ s.name }} · {{ s.category }}</option>
+            }
+          </select>
+          @if (supplierInvalid()) { <span class="field-error">Elige el proveedor del contrato.</span> }
+          @if (suppliers() !== null && suppliers()!.length === 0) {
+            <span class="field-hint">Esta finca no tiene proveedores activos: da de alta uno en la pestaña Proveedores.</span>
+          }
+        </label>
+      }
+
+      <label class="form-field">
+        Tipo de servicio
+        <input id="cf-service" type="text" name="service" placeholder="Mantenimiento ascensor, Seguro RC…" [class.field--error]="serviceInvalid()" [ngModel]="serviceType()" (ngModelChange)="onServiceTypeChange($event)" />
+        @if (serviceInvalid()) { <span class="field-error">Indica el tipo de servicio.</span> }
+      </label>
+
+      <label class="form-field">
+        Nº de contrato o de póliza (opcional)
+        <input id="cf-number" type="text" name="contractNumber" maxlength="50" autocomplete="off" [ngModel]="contractNumber()" (ngModelChange)="contractNumber.set($event)" />
+      </label>
+
+      <div class="form-row">
+        <label class="form-field">
+          Fecha de inicio
+          <input id="cf-start" type="date" name="start" [class.field--error]="startInvalid()" [ngModel]="startDate()" (ngModelChange)="startDate.set($event)" />
+          @if (startInvalid()) { <span class="field-error">Indica la fecha de inicio.</span> }
+        </label>
+        <label class="form-field">
+          Fecha de fin
+          <input id="cf-end" type="date" name="end" [class.field--error]="endInvalid()" [min]="startDate() || null" [ngModel]="endDate()" (ngModelChange)="endDate.set($event)" />
+          <span class="field-hint">Vacía = contrato indefinido.</span>
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label class="form-field">
+          Renovación
+          <select id="cf-renewal" name="renewal" [ngModel]="renewalType()" (ngModelChange)="renewalType.set($event)">
+            <option value="tacita">Automática (tácita reconducción)</option>
+            <option value="manual">Manual</option>
+          </select>
+        </label>
+        <label class="form-field">
+          Cadencia de revisión
+          <input id="cf-review" type="text" name="review" placeholder="Trimestral, anual…" [ngModel]="reviewFrequency()" (ngModelChange)="reviewFrequency.set($event)" />
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label class="form-field">
+          Importe (opcional)
+          <input id="cf-cost" type="number" name="cost" min="0" step="0.01" [ngModel]="costAmount()" (ngModelChange)="costAmount.set($event)" />
+        </label>
+        <label class="form-field">
+          Periodicidad del importe
+          <select id="cf-frequency" name="frequency" [ngModel]="costFrequency()" (ngModelChange)="costFrequency.set($event)">
+            <option [ngValue]="null">Sin especificar</option>
+            <option value="MONTHLY">Mensual</option>
+            <option value="QUARTERLY">Trimestral</option>
+            <option value="SEMIANNUAL">Semestral</option>
+            <option value="ANNUAL">Anual</option>
+            <option value="ONE_OFF">Pago único</option>
+            <option value="OTHER">Otra</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="form-field">
+        Moneda (ISO)
+        <input id="cf-currency" type="text" name="currency" maxlength="3" [ngModel]="currency()" (ngModelChange)="currency.set($event.toUpperCase())" />
+      </label>
+
+      <label class="form-field">
+        Notas
+        <textarea id="cf-notes" name="notes" rows="2" placeholder="Observaciones del contrato" [ngModel]="notes()" (ngModelChange)="notes.set($event)"></textarea>
+      </label>
+
+      @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closed.emit()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="submit()">{{ saving() ? 'Guardando…' : (editing() ? 'Guardar cambios' : 'Crear contrato') }}</app-btn>
+      </div>
+    </form>
+  </div>
+</div>

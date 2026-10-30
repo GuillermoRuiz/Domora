@@ -1,0 +1,41 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="key-contacts-title" aria-describedby="key-contacts-hint" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <div>
+        <h4 id="key-contacts-title">Contactos clave</h4>
+        <p class="modal__subtitle">Propiedad {{ propertyLabel() }}</p>
+      </div>
+      <button #closeButton type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      <p id="key-contacts-hint" class="hint">Los contactos clave aparecen, con su teléfono y correo, en «Datos generales» de la finca.</p>
+      @if (holders(); as list) {
+        @if (list.length === 0) {
+          @if (!error()) { <p class="empty">Esta propiedad no tiene titulares propietarios. Añade un titular primero.</p> }
+        } @else {
+          <ul class="holders">
+            @for (h of list; track $index) {
+              <li class="holder">
+                <span class="holder__name" [id]="'kc-name-' + $index">{{ h.name }}</span>
+                <button type="button" role="switch" class="switch" [class.switch--on]="h.keyContact"
+                  [attr.aria-checked]="!!h.keyContact" [attr.aria-labelledby]="'kc-name-' + $index + ' kc-label-' + $index"
+                  [disabled]="saving() !== null" (click)="toggle($index)">
+                  <span class="switch__knob" aria-hidden="true"></span>
+                </button>
+                <span class="holder__state" [id]="'kc-label-' + $index">{{ saving() === $index ? 'Guardando…' : h.keyContact ? 'Contacto clave' : 'No es contacto clave' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      } @else {
+        <p class="empty">Cargando titulares…</p>
+      }
+      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="primary" size="sm" (clicked)="closed.emit()">Hecho</app-btn>
+    </div>
+  </div>
+</div>

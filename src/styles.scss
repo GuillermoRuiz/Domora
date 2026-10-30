@@ -1,0 +1,327 @@
+@use './app/shared/styles/page-intro' as pageIntro;
+
+@include pageIntro.styles;
+
+/*
+ * Modo oscuro = tema por defecto (identidad de marca: negro + dorado, ver
+ * el logo). `:root` guarda los valores OSCUROS a propósito, para que el
+ * primer pintado (antes de que StateService aplique `data-theme` desde
+ * localStorage) ya sea oscuro y no haya flash de tema claro.
+ * `[data-theme='light']` es la variante alternativa: dorado + claro/blanco.
+ *
+ * `--color-primary` sigue siendo el color de relleno "estructural" (sidebar,
+ * botones primarios) — se empareja con texto claro (#fff) en AMBOS temas,
+ * por eso los ~30 sitios que hacen `background: var(--color-primary); color: #fff;`
+ * no necesitaron tocarse. `--color-accent` es el dorado de marca para texto,
+ * bordes, focus rings e indicadores "activo" — antes esos sitios usaban
+ * `var(--color-primary)` como color de TEXTO, lo que en modo oscuro (con
+ * --color-primary en negro) quedaba invisible sobre el fondo oscuro; ahora
+ * usan --color-accent, que tiene contraste verificado (~9:1 en oscuro,
+ * ~5:1 en claro) contra el fondo en ambos temas.
+ */
+:root {
+  --color-primary: #0d0d0f;
+  --color-primary-hover: #232327;
+  --color-accent: #d9a62e;
+  --color-accent-hover: #c6941f;
+  --color-secondary: #4F6B8A;
+  --color-secondary-hover: #5e738b;
+  --color-secondary-bg: #163826;
+  --color-tertiary: #F5F7F6;
+  --color-tertiary-bg: #323C81;
+  --color-tertiary-hover: #E8F4EE;
+  --color-bg: #0b0b0d;
+  --color-surface: #1a1a1d;
+  --color-surface-hover: #232327;
+  --color-border: rgba(255,255,255,0.10);
+  --color-border-light: rgba(255,255,255,0.06);
+  --color-text: #f5f5f0;
+  --color-muted: #9a9a9e;
+  --color-light: #6e6e73;
+  --color-error: #E0594A;
+  --color-error-bg: #3A2020;
+  --color-error-border: #5C2E2C;
+  --color-success: #28a745;
+  --color-success-bg: #163826;
+  --color-success-border: #c3e6cb;
+  --color-warning: #D99A42;
+  --color-warning-bg: #3A2F18;
+  --color-warning-border: #5C4A22;
+  /* Banner "Entorno de demostración": dorado de marca propio (no comparte
+     tokens con .subscription-banner). Contraste verificado en
+     demo-banner.component.spec.ts: si cambias estos valores, actualiza allí. */
+  --demo-banner-bg: #D9A62E;
+  --demo-banner-fg: #14120A;
+  --demo-banner-border: #9C741A;
+  --color-blue: #6CA0F0;
+  --color-blue-bg: #1B2A40;
+  --color-blue-border: #2E4566;
+  --color-purple: #B79AE0;
+  --color-purple-bg: #2B2240;
+  --color-orange: #E8A57D;
+  --color-orange-bg: #3A2417;
+  --color-maroon: #E89086;
+  --color-maroon-bg: #3A1F1C;
+
+  --sidebar-width: 240px;
+  --topbar-height: 72px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+  /* Menús emergentes: --shadow-lg casi no se ve sobre superficies oscuras. */
+  --shadow-popover: 0 16px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.4);
+}
+
+[data-theme='light'] {
+  --color-primary: #1c1a15;
+  --color-primary-hover: #2c2820;
+  --color-accent: #8a6412;
+  --color-accent-hover: #74530f;
+  --color-secondary: #2D6A4F;
+  --color-secondary-hover: #3A7F62;
+  --color-secondary-bg: #E8F4EE;
+  --color-tertiary: #F5F7F6;
+  --color-tertiary-bg: #323C81;
+  --color-tertiary-hover: #E8F4EE;
+  --color-bg: #FAF7EF;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F5EFDF;
+  --color-border: #E9DFC3;
+  --color-border-light: #F1EBD9;
+  --color-text: #211D12;
+  --color-muted: #7C7461;
+  --color-light: #B7AD91;
+  --color-error: #C0392B;
+  --color-error-bg: #FEECEC;
+  --color-error-border: #f5c6c6;
+  --color-success: #28a745;
+  --color-success-bg: #163826;
+  --color-success-border: #c3e6cb;
+  --color-warning: #9c6417;
+  --color-warning-bg: #FFF3DC;
+  --color-warning-border: #F0D88A;
+  --demo-banner-bg: #F0C75E;
+  --demo-banner-fg: #211D12;
+  --demo-banner-border: #B58A1F;
+  --color-blue: #2563EB;
+  --color-blue-bg: #EBF2FF;
+  --color-blue-border: #C5D8F5;
+  --color-purple: #6B3FA0;
+  --color-purple-bg: #F2EEFF;
+  --color-orange: #8B3A14;
+  --color-orange-bg: #FEF0E8;
+  --color-maroon: #8C1F12;
+  --color-maroon-bg: #FBE4E1;
+  --shadow-popover: 0 12px 32px rgba(33,29,18,0.14), 0 2px 6px rgba(33,29,18,0.08);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+// Zero specificity so the shared field rule below (same specificity, later) sets the field size.
+:where(input, select, textarea) {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Las cajas de texto largo solo se alargan hacia abajo: ensancharlas rompe el diseño de su formulario. */
+textarea {
+  resize: vertical;
+}
+
+/* iOS Safari amplía la página al enfocar un campo con fuente menor de 16px: en pantallas táctiles los campos
+   se quedan en 16px aunque su componente use un tamaño menor. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/*
+ * Campos de formulario: los inputs de texto, las áreas de texto y los <select> comparten una sola caja
+ * (borde, radio, relleno, tipografía y estados de foco y deshabilitado) en toda la app.
+ * Va dentro de `:where()` (especificidad cero) a propósito: cualquier regla de pantalla gana, así que las
+ * pantallas solo fijan maquetación (ancho, flex, márgenes) o una excepción deliberada; nunca la caja.
+ * - `.field--sm`: variante compacta para tablas densas y celdas editables.
+ * - `.field--bare`: el campo no lleva caja porque otro control la dibuja (buscador con icono, compositor
+ *   del chat, píldora, cabecera, papel del acta) o la pantalla tiene diseño propio (acceso e invitaciones).
+ */
+:where(
+  input:is(:not([type]), [type='text'], [type='email'], [type='password'], [type='search'], [type='tel'],
+    [type='url'], [type='number'], [type='date'], [type='time'], [type='month'], [type='week'], [type='datetime-local']),
+  textarea,
+  select:not([multiple]):not([size])
+):where(:not(.field--bare)) {
+  box-sizing: border-box;
+  min-height: 38px;
+  padding: 9px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 400;
+  color-scheme: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &::placeholder { color: var(--color-muted); }
+  &:focus-visible {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+:where(textarea):where(:not(.field--bare)) {
+  line-height: 1.5;
+  resize: vertical;
+}
+
+:where(input, textarea, select).field--sm {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+/*
+ * Todos los <select> comparten además desplegable (ver SelectDropdownDirective): la flecha y el borde
+ * dorado al pasar/abrir. `!important` porque cada pantalla define su `background:` abreviado, que borraría
+ * la flecha. Se aplica también a `.field--bare`, que conserva la flecha y el desplegable compartidos.
+ */
+:root {
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9a9e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --select-chevron-open: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9a9e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+}
+[data-theme='light'] {
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237c7461' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --select-chevron-open: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237c7461' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+}
+
+select:not([multiple]):not([size]) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  padding-right: 30px !important;
+  background-image: var(--select-chevron) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 12px 12px !important;
+  text-overflow: ellipsis;
+  cursor: pointer;
+
+  &:disabled { cursor: not-allowed; }
+  &:not(.field--bare):hover:not(:disabled), &.dd-select--open { border-color: var(--color-accent) !important; }
+  &.dd-select--open { background-image: var(--select-chevron-open) !important; }
+}
+
+ul, ol {
+  list-style: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-light); }
+
+/*
+ * En pantallas pequeñas el menú lateral (240 px) se come casi todo el ancho:
+ * se colapsa a una columna de iconos. Se aplica a las pantallas pensadas para
+ * móvil (listado contable y Tareas) y no al resto, que sigue como estaba.
+ */
+// One shared header size per viewport, independent of the active page or role.
+@media (max-width: 768px) {
+  :root { --topbar-height: 120px; }
+}
+@media (max-width: 640px) {
+  :root { --topbar-height: 157px; }
+}
+
+@mixin collapsed-sidebar {
+  --sidebar-width: 64px;
+  .sidebar__logo { padding: 0 14px; }
+  .sidebar__nav { padding: 12px 6px; }
+  .sidebar__section-label, .sidebar__role-badge { display: none; }
+  .sidebar__item { justify-content: center; min-height: 44px; padding: 10px 8px; }
+  .sidebar__logo-text, .sidebar__item-label, .sidebar__theme-toggle > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .sidebar__item app-badge { position: absolute; top: 0; right: 0; }
+  .sidebar__theme-toggle { justify-content: center; min-height: 44px; padding: 10px; }
+}
+
+@media (max-width: 640px) {
+  .app-shell:has(app-accounting-dashboard) { @include collapsed-sidebar; }
+}
+
+@media (max-width: 720px) {
+  .app-shell:has(app-tasks) { @include collapsed-sidebar; }
+}
+/* Utility classes */
+.text-muted { color: var(--color-muted); }
+.text-green { color: var(--color-secondary); }
+.text-error { color: var(--color-error); }
+.text-warning { color: var(--color-warning); }
+.text-sm { font-size: 13px; }
+.text-xs { font-size: 12px; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Paleta categórica de los gráficos (validada con validate_palette: CVD adyacente ≥ 8, contraste ≥ 3:1 en oscuro).
+   Seis huecos fijos: el color sigue a la entidad, nunca a su posición en el ranking. */
+:root {
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+}
+
+[data-theme='light'] {
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+}

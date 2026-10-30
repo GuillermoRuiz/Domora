@@ -1,0 +1,98 @@
+<div class="agenda-tab">
+  <app-meeting-card title="Orden del día" [meta]="agenda().length + (agenda().length === 1 ? ' punto' : ' puntos')">
+    <ul class="list">
+      @for (row of agenda(); track row.id) {
+        <li>
+          <div class="item" [class.item--selected]="isOpen(row)">
+            <button
+              type="button"
+              class="item__main"
+              [attr.aria-expanded]="isOpen(row)"
+              [attr.aria-controls]="'agenda-detail-' + row.id"
+              [attr.aria-label]="'Punto ' + row.number + ': ' + row.title + '. ' + row.statusLabel"
+              (click)="toggle(row)"
+            >
+              <span class="item__number">{{ row.number }}</span>
+              <span class="item__text">
+                <strong>{{ row.title }}</strong>
+                <span class="item__status">
+                  <app-status-pill [tone]="row.tone">{{ row.statusLabel }}</app-status-pill>
+                  <span class="item__hint">{{ row.hint }}</span>
+                </span>
+              </span>
+              @if (row.tally.length && votingOpen(row)) {
+                <span class="item__tally">
+                  @for (option of row.tally; track option.label) {
+                    <span [class]="'tally tally--' + option.tone">
+                      <strong>{{ option.count }}</strong>
+                      <small>{{ option.label }}</small>
+                    </span>
+                  }
+                </span>
+              }
+              @if (row.result) {
+                <app-status-pill [tone]="row.result.tone" [dot]="false">
+                  <app-icon [name]="row.result.tone === 'green' ? 'check' : 'x'" [size]="13" aria-hidden="true"></app-icon>&nbsp;{{ row.result.label }}
+                </app-status-pill>
+              }
+              <app-icon [name]="isOpen(row) ? 'chevron-down' : 'chevron-right'" [size]="18" class="item__chevron" aria-hidden="true"></app-icon>
+            </button>
+            @if (isOpen(row)) {
+              <div class="item__detail" [id]="'agenda-detail-' + row.id">
+                @if (row.description) {
+                  <p class="detail__description">{{ row.description }}</p>
+                }
+                @if (row.comments) {
+                  <div class="detail__comments">
+                    <strong>Comentarios</strong>
+                    <p>{{ row.comments }}</p>
+                  </div>
+                }
+                <div class="actions">
+                  @if (!row.votable) {
+                  @if (row.canMarkTreated) {
+                    <app-btn variant="accent" size="sm" (clicked)="markTreated.emit(row)">
+                      <app-icon name="check" [size]="16"></app-icon>Marcar como tratado
+                    </app-btn>
+                  } @else if (row.canUnmarkTreated) {
+                    <app-btn variant="outline" size="sm" (clicked)="unmarkTreated.emit(row)">
+                      <app-icon name="x" [size]="16"></app-icon>Quitar marca
+                    </app-btn>
+                  }
+                } @else {
+                    @if (row.canStartVote) {
+                      <app-btn variant="accent" size="sm" [disabled]="row.noParticipants"
+                        [attr.title]="row.noParticipants ? 'No se puede iniciar la votación: no hay propietarios presentes ni representados' : null"
+                        (clicked)="startVote.emit(row)">
+                        <app-icon name="check" [size]="16"></app-icon>Iniciar votación
+                      </app-btn>
+                    }
+                    @if (row.canCloseVote) {
+                      <app-btn variant="danger" size="sm" (clicked)="closeVote.emit(row)">
+                        <app-icon name="x" [size]="16"></app-icon>Cerrar votación
+                      </app-btn>
+                    }
+                    <app-btn [variant]="row.canStartVote || row.canCloseVote ? 'outline' : 'accent'" size="sm" (clicked)="openPoint.emit(row)">
+                      <app-icon name="eye" [size]="16"></app-icon>Ver votación
+                    </app-btn>
+                  }
+                  <app-btn
+                    variant="subtle"
+                    size="sm"
+                    [disabled]="!row.canComment"
+                    [attr.title]="row.canComment ? null : 'No se pueden cambiar los comentarios: la junta está cancelada o el acta ya está firmada'"
+                    (clicked)="editComments.emit(row)"
+                  >
+                    <app-icon name="file-text" [size]="16"></app-icon>Comentarios{{ row.comments ? ' (1)' : '' }}
+                  </app-btn>
+                </div>
+              </div>
+            }
+          </div>
+        </li>
+      } @empty {
+        <li class="empty">No hay puntos en el orden del día.</li>
+      }
+    </ul>
+  </app-meeting-card>
+</div>

@@ -1,0 +1,119 @@
+<section class="card" id="ajustes-facturacion" aria-labelledby="billing-card-title">
+  <div class="card__header">
+    <div>
+      <h4 id="billing-card-title">Datos de facturación</h4>
+      <p>Son los datos que aparecen en las facturas que te emite Domora.</p>
+    </div>
+    @if (own() && !editing()) {
+      <app-btn variant="outline" size="sm" data-testid="billing-edit" (clicked)="startEdit()">
+        {{ own()?.billing ? 'Editar' : 'Añadir datos' }}
+      </app-btn>
+    }
+  </div>
+
+  <p class="field-hint">
+    Las facturas ya emitidas no cambian: conservan los datos con los que se emitieron. Si alguna tiene un error, te emitiremos una factura rectificativa.
+  </p>
+
+  @if (savedMessage() && !editing()) {
+    <p class="notice notice--ok" role="status">{{ savedMessage() }}</p>
+  }
+
+  @if (loadError()) {
+    <p class="notice notice--error" role="alert">{{ loadError() }}</p>
+  } @else if (!own()) {
+    <p class="field-hint">Cargando…</p>
+  } @else if (editing()) {
+    <form class="billing-form" (ngSubmit)="save()" novalidate>
+      <div class="form-grid">
+        <label class="form-field">
+          Razón social
+          <input id="billing-name" name="businessName" type="text" autocomplete="organization" [ngModel]="businessName()" (ngModelChange)="businessName.set($event)" />
+          @if (shownErrors().businessName) { <span class="form-error">{{ shownErrors().businessName }}</span> }
+        </label>
+        <label class="form-field">
+          NIF/CIF
+          <input id="billing-cif" name="cif" type="text" autocomplete="off" [ngModel]="cif()" (ngModelChange)="cif.set($event)" />
+          @if (shownErrors().cif) { <span class="form-error">{{ shownErrors().cif }}</span> }
+        </label>
+        <label class="form-field form-field--wide">
+          Domicilio fiscal
+          <input id="billing-address" name="address" type="text" autocomplete="off" [ngModel]="address()" (ngModelChange)="address.set($event)" />
+          @if (shownErrors().address) { <span class="form-error">{{ shownErrors().address }}</span> }
+        </label>
+        <label class="form-field">
+          Email de facturación
+          <input id="billing-email" name="email" type="email" autocomplete="off" [ngModel]="email()" (ngModelChange)="email.set($event)" />
+          @if (shownErrors().email) { <span class="form-error">{{ shownErrors().email }}</span> }
+        </label>
+        <label class="form-field">
+          Método de pago
+          <select id="billing-method" name="paymentMethod" [ngModel]="paymentMethod()" (ngModelChange)="paymentMethod.set($event)">
+            @for (m of methods; track m) {
+              <option [value]="m" [disabled]="m === 'Domiciliación' && !sepaAvailable() && !activeMandate()">{{ m }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      @if (!sepaAvailable() && !activeMandate()) {
+        <p class="field-hint">El pago por domiciliación todavía no está disponible: Domora aún no tiene configurado su identificador de acreedor SEPA. Puedes pagar con tarjeta o por transferencia.</p>
+      }
+
+      @if (paymentMethod() === 'Domiciliación') {
+        @if (activeMandate() && !changeAccount()) {
+          <div class="mandate-summary">
+            <p>Cuenta de cargo <strong class="mono">{{ activeMandate()!.ibanMasked }}</strong> · Mandato <strong class="mono">{{ activeMandate()!.reference }}</strong>, firmado el {{ activeMandate()!.signedAt | date: 'dd/MM/yyyy' }}.</p>
+            @if (sepaAvailable()) {
+              <button type="button" class="link-btn" (click)="changeAccount.set(true)">Domiciliar en otra cuenta</button>
+            }
+          </div>
+        } @else {
+          <div class="form-grid">
+            <label class="form-field">
+              IBAN de la cuenta de cargo
+              <input id="billing-iban" name="iban" type="text" inputmode="text" autocomplete="off" [ngModel]="iban()" (ngModelChange)="iban.set($event)" />
+              @if (shownErrors().iban) { <span class="form-error">{{ shownErrors().iban }}</span> }
+            </label>
+            <label class="form-field">
+              Titular de la cuenta
+              <input id="billing-debtor" name="debtorName" type="text" autocomplete="off" [ngModel]="debtorName()" (ngModelChange)="debtorName.set($event)" />
+              @if (shownErrors().debtorName) { <span class="form-error">{{ shownErrors().debtorName }}</span> }
+            </label>
+          </div>
+          <pre class="mandate-text" tabindex="0" aria-label="Orden de domiciliación SEPA">{{ own()!.sepa.mandateText }}</pre>
+          <label class="accept">
+            <input id="billing-accept" name="accepted" type="checkbox" [ngModel]="accepted()" (ngModelChange)="accepted.set($event)" />
+            <span>He leído y acepto la orden de domiciliación de adeudo directo SEPA.</span>
+          </label>
+          @if (shownErrors().mandate) { <span class="form-error">{{ shownErrors().mandate }}</span> }
+        }
+      }
+
+      @if (saveError()) {
+        <p class="notice notice--error" role="alert">{{ saveError() }}</p>
+      }
+
+      <div class="form-actions">
+        <app-btn variant="outline" size="sm" (clicked)="cancel()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar cambios' }}</app-btn>
+      </div>
+    </form>
+  } @else if (own()!.billing; as b) {
+    <div class="field-row"><span>Razón social</span><strong>{{ b.businessName }}</strong></div>
+    <div class="field-row"><span>NIF/CIF</span><strong class="mono">{{ b.cif }}</strong></div>
+    <div class="field-row"><span>Domicilio fiscal</span><strong>{{ b.address || '—' }}</strong></div>
+    <div class="field-row"><span>Email de facturación</span><strong>{{ b.email }}</strong></div>
+    <div class="field-row"><span>Método de pago</span><strong>{{ b.paymentMethod }}</strong></div>
+    @if (b.paymentMethod === 'Domiciliación') {
+      <div class="field-row"><span>Cuenta de cargo</span><strong class="mono">{{ b.ibanMasked || '—' }}</strong></div>
+      @if (activeMandate(); as m) {
+        <div class="field-row"><span>Mandato SEPA</span><strong class="mono">{{ m.reference }} · {{ m.signedAt | date: 'dd/MM/yyyy' }}</strong></div>
+      } @else {
+        <div class="field-row"><span>Mandato SEPA</span><strong>Sin firmar: edita los datos para aceptar la orden de domiciliación.</strong></div>
+      }
+    }
+  } @else {
+    <p class="field-hint">Todavía no has indicado tus datos de facturación.</p>
+  }
+</section>

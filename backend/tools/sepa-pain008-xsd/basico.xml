@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.008.001.02">
+  <CstmrDrctDbtInitn>
+    <GrpHdr>
+      <MsgId>DOMORA-2026-08-abc12345</MsgId>
+      <CreDtTm>2026-08-16T15:09:16.323Z</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+      <CtrlSum>42.50</CtrlSum>
+      <InitgPty><Nm>Comunidad de Prueba &quot;Los Álamos&quot; &amp; Anexo</Nm></InitgPty>
+    </GrpHdr>
+    <PmtInf>
+      <PmtInfId>DOMORA-2026-08-abc12345-RCUR-0</PmtInfId>
+      <PmtMtd>DD</PmtMtd>
+      <NbOfTxs>1</NbOfTxs>
+      <CtrlSum>42.50</CtrlSum>
+      <PmtTpInf>
+        <SvcLvl><Cd>SEPA</Cd></SvcLvl>
+        <LclInstrm><Cd>CORE</Cd></LclInstrm>
+        <SeqTp>RCUR</SeqTp>
+      </PmtTpInf>
+      <ReqdColltnDt>2026-09-01</ReqdColltnDt>
+      <Cdtr><Nm>Comunidad de Prueba &quot;Los Álamos&quot; &amp; Anexo</Nm></Cdtr>
+      <CdtrAcct><Id><IBAN>ES9121000418450200051332</IBAN></Id></CdtrAcct>
+      <CdtrAgt><FinInstnId><BIC>CAIXESBBXXX</BIC></FinInstnId></CdtrAgt>
+      <ChrgBr>SLEV</ChrgBr>
+      <CdtrSchmeId><Id><PrvtId><Othr><Id>ES90000B98765432</Id><SchmeNm><Prtry>SEPA</Prtry></SchmeNm></Othr></PrvtId></Id></CdtrSchmeId>
+      <DrctDbtTxInf>
+        <PmtId><EndToEndId>DOMORA-2026-08-0001</EndToEndId></PmtId>
+        <InstdAmt Ccy="EUR">42.50</InstdAmt>
+        <DrctDbtTx>
+          <MndtRltdInf>
+            <MndtId>UMR-0001</MndtId>
+            <DtOfSgntr>2024-01-15</DtOfSgntr><AmdmntInd>false</AmdmntInd>
+          </MndtRltdInf>
+        </DrctDbtTx>
+        <DbtrAgt><FinInstnId><Othr><Id>NOTPROVIDED</Id></Othr></FinInstnId></DbtrAgt>
+        <Dbtr><Nm>Juan Pérez García</Nm></Dbtr>
+        <DbtrAcct><Id><IBAN>ES7621000813610123456789</IBAN></Id></DbtrAcct>
+        
+      </DrctDbtTxInf>
+    </PmtInf>
+  </CstmrDrctDbtInitn>
+</Document>

@@ -1,0 +1,72 @@
+<button
+  #trigger
+  type="button"
+  class="dd__trigger"
+  [class.dd__trigger--active]="active()"
+  [class.dd__trigger--cta]="cta()"
+  role="combobox"
+  aria-haspopup="listbox"
+  [attr.aria-expanded]="open()"
+  [attr.aria-controls]="listId"
+  [attr.aria-activedescendant]="activeOptionId()"
+  [attr.aria-label]="ariaLabel() || null"
+  [disabled]="disabled()"
+  (click)="toggle()"
+  (keydown)="onKeydown($event)"
+  (keyup)="onKeyup($event)"
+>
+  @if (triggerIcon(); as icon) {
+    <app-icon [name]="icon" [size]="14"></app-icon>
+  }
+  <span class="dd__value" [class.dd__value--placeholder]="isPlaceholder()">{{ triggerText() }}</span>
+  <app-icon class="dd__chevron" name="chevron-down" [size]="12"></app-icon>
+</button>
+
+<!-- Siempre en el DOM para poder animar también el cierre; cerrado queda oculto (visibility). -->
+<ul
+  #panel
+  class="dd__panel"
+  [class.dd__panel--open]="open()"
+  [class.dd__panel--end]="align() === 'end'"
+  [class.dd__panel--up]="openUp()"
+  [style.max-height.px]="panelMaxHeight()"
+  role="listbox"
+  [attr.aria-multiselectable]="multiple() || null"
+  [id]="listId"
+  [attr.aria-label]="ariaLabel() || label() || null"
+  (mousedown)="$event.preventDefault()"
+>
+  @for (item of items(); track item.id; let i = $index) {
+    <li
+      class="dd__option"
+      role="option"
+      [id]="optionId(i)"
+      [class.dd__option--selected]="isSelected(item, i)"
+      [class.dd__option--active]="i === activeIndex()"
+      [attr.aria-selected]="isSelected(item, i)"
+      (click)="choose(item)"
+      (mouseenter)="hover(i)"
+    >
+      @if (item.icon) {
+        <app-icon [name]="item.icon" [size]="14"></app-icon>
+      }
+      <span class="dd__option-text" [class.dd__option-text--described]="item.description">{{ item.label }}@if (item.description) {<small class="dd__option-desc">{{ item.description }}</small>}</span>
+      @if (isSelected(item, i)) {
+        <app-icon class="dd__check" name="check" [size]="14"></app-icon>
+      }
+    </li>
+  } @empty {
+    @if (emptyText()) {
+      <li class="dd__empty" role="presentation">{{ emptyText() }}</li>
+    }
+  }
+  @if (multiple() && clearLabel()) {
+    <li class="dd__footer" role="presentation">
+      <button type="button" class="dd__clear" tabindex="-1" [disabled]="selectedIds().length === 0" (click)="clear()">{{ clearLabel() }}</button>
+    </li>
+  }
+  <!-- Contenido propio del padre (p. ej. un campo para crear una opción): necesita foco y teclado, no es una opción. -->
+  <li class="dd__extra" role="presentation" (mousedown)="$event.stopPropagation()" (keydown.escape)="onExtraEscape($event)">
+    <ng-content select="[ddExtra]"></ng-content>
+  </li>
+</ul>

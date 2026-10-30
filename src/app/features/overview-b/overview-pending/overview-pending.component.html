@@ -1,0 +1,29 @@
+<app-section-card title="Pendientes de hoy" [padded]="false">
+  <span slot="tools" class="pending__count" [attr.aria-label]="(data()?.total ?? 0) + ' pendientes'">{{ data()?.total ?? 0 }}</span>
+
+  @if (error() && !data()) {
+    <p class="pending__message pending__message--error" role="alert">
+      No se pudieron cargar los pendientes.
+      <button type="button" class="pending__retry" (click)="retry()()">Reintentar</button>
+    </p>
+  } @else if (!data()) {
+    <p class="pending__message" role="status">Cargando pendientes…</p>
+  } @else if (data()!.items.length === 0) {
+    <p class="pending__message">No tienes nada pendiente. ¡Todo al día!</p>
+  } @else {
+    <ul class="pending" [attr.aria-busy]="loading()" aria-label="Pendientes de hoy">
+      @for (item of data()!.items; track item.id) {
+        <li>
+          <button type="button" class="pending__row" [attr.data-kind]="item.kind" (click)="open.emit(item)">
+            <span class="pending__icon" aria-hidden="true"><app-icon [name]="icon(item)" [size]="16"></app-icon></span>
+            <span class="pending__text">
+              <span class="pending__title">{{ item.title }}</span>
+              <span class="pending__detail">{{ item.detail }}</span>
+            </span>
+            <app-status-pill [text]="urgency(item).text" [tone]="urgency(item).tone"></app-status-pill>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-section-card>

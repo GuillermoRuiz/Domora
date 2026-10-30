@@ -1,0 +1,46 @@
+<div class="toolbar">
+  <div class="models" role="tablist" aria-label="Informe">
+    <button type="button" role="tab" class="model-tab" [class.model-tab--active]="view() === 'trial-balance'"
+      [attr.aria-selected]="view() === 'trial-balance'" (click)="select('trial-balance')">Sumas y saldos</button>
+    <button type="button" role="tab" class="model-tab" [class.model-tab--active]="view() === 'balance-sheet'"
+      [attr.aria-selected]="view() === 'balance-sheet'" (click)="select('balance-sheet')">Balance de situación</button>
+  </div>
+  <div class="toolbar__actions">
+    @if (view() === 'trial-balance') {
+      <label class="year" for="balance-year">
+        Ejercicio
+        <select id="balance-year" class="form-input" [ngModel]="year()" (ngModelChange)="setYear($event)">
+          @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
+        </select>
+      </label>
+    } @else {
+      <label class="year" for="balance-asof">
+        A fecha
+        <input id="balance-asof" class="form-input" type="date" [ngModel]="asOf()" (ngModelChange)="setAsOf($event)" />
+      </label>
+    }
+    <app-btn variant="outline" size="sm" (clicked)="download('xlsx')">
+      <app-icon name="download" [size]="13"></app-icon>
+      Excel
+    </app-btn>
+    <app-btn variant="outline" size="sm" (clicked)="download('pdf')">
+      <app-icon name="download" [size]="13"></app-icon>
+      PDF
+    </app-btn>
+  </div>
+</div>
+
+@if (loadError()) {
+  <p class="form-error" role="alert">{{ loadError() }}</p>
+} @else if (loading()) {
+  <p class="muted">Calculando…</p>
+} @else if (view() === 'trial-balance' && trialBalance()) {
+  <app-report-table [sections]="trialBalanceSections"></app-report-table>
+} @else if (view() === 'balance-sheet' && balanceSheet(); as r) {
+  @if (!r.balanced) {
+    <p class="warning" role="alert">
+      AVISO: el activo no cuadra con pasivo + patrimonio neto. Esto no debería pasar nunca — contacta con soporte.
+    </p>
+  }
+  <app-report-table [sections]="balanceSheetSections"></app-report-table>
+}

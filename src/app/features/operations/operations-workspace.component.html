@@ -1,0 +1,266 @@
+<app-topbar [title]="title" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="operations-heading">
+    <label class="scope-selector">
+      <app-icon class="community-control__building" name="building" [size]="18" aria-hidden="true"></app-icon>
+      <span class="sr-only">Comunidad</span>
+      <select class="community-control__label field--bare"
+        aria-label="Comunidad"
+        [ngModel]="estateId()"
+        (ngModelChange)="setQuery({ estateId: $event || null })"
+      >
+        <option value="">Todas mis comunidades</option>
+        @for (estate of estateOptions(); track estate.id) {
+          <option [value]="estate.id">{{ estate.name }}</option>
+        }
+      </select>
+      <app-icon class="community-control__chevron" name="chevron-down" [size]="14" aria-hidden="true"></app-icon>
+    </label>
+    <span class="operations-heading__separator" aria-hidden="true">/</span>
+    <span class="operations-heading__section">{{ title }}</span>
+  </div>
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">{{ title }}</h1>
+    <p class="page-intro__subtitle">{{ isMeetings ? 'Organiza y da seguimiento a las juntas de tus comunidades.' : 'Gestiona y da seguimiento a las incidencias de tus comunidades.' }}</p>
+  </div>
+  <div class="page-intro__actions"><app-btn
+      variant="primary"
+      [disabled]="!estates().length"
+      (clicked)="create()"
+      ><app-icon name="plus" [size]="16"></app-icon>{{ newLabel }}</app-btn
+    ></div>
+</header>
+<div
+  class="page-content operations-page"
+  [class.operations-page--meetings]="isMeetings"
+>
+
+  @if (isMeetings) {
+  <section class="metrics" aria-label="Resumen del ámbito seleccionado">
+    @for (metric of metrics(); track metric.key) {
+      <article class="metric">
+        <span class="metric__icon" [class]="'metric__icon tone-' + metric.tone"
+          ><app-icon [name]="metric.icon" [size]="23"></app-icon
+        ></span>
+        <div>
+          <span class="metric__label">{{ metric.label }}</span
+          ><strong>{{ initialLoading() ? "—" : metric.value }}</strong>
+        </div>
+      </article>
+    }
+  </section>
+  <section
+    class="workspace-controls"
+    [attr.aria-label]="'Filtros de ' + title.toLowerCase()"
+  >
+    <div class="filter-tabs" role="group" aria-label="Estado">
+      @for (option of filters; track option.id) {
+        <button
+          type="button"
+          [class.active]="filter() === option.id"
+          [attr.aria-pressed]="filter() === option.id"
+          (click)="setQuery({ filter: option.id })"
+        >
+          {{ option.label }}
+        </button>
+      }
+    </div>
+    <label class="workspace-search"
+      ><app-icon name="search" [size]="17"></app-icon
+      ><span class="sr-only">Buscar</span
+      ><input class="field--bare"
+        type="search"
+        aria-label="Buscar"
+        placeholder="Buscar por título, comunidad o referencia…"
+        maxlength="120"
+        [ngModel]="search()"
+        (ngModelChange)="onSearch($event)"
+    /></label>
+    <select
+      class="sort-select"
+      aria-label="Ordenar"
+      [ngModel]="sort()"
+      (ngModelChange)="setQuery({ sort: $event })"
+    >
+      <option value="newest">Más recientes primero</option>
+      <option value="oldest">Más antiguas primero</option>
+    </select>
+    @if (search() || estateId() || filter() !== "all") {
+      <button class="clear-filters" type="button" (click)="clearFilters()">
+        <app-icon name="x" [size]="14"></app-icon>Limpiar
+      </button>
+    }
+  </section>
+  }
+  @if (error()) {
+    <div class="workspace-error" role="alert">
+      {{ error() }} <button type="button" (click)="reload()">Reintentar</button>
+    </div>
+  }
+  @if (selectionError()) {
+    <p class="workspace-error" role="alert">{{ selectionError() }}</p>
+  }
+  @if (isMeetings) {
+    <div class="operations-layout" [attr.aria-busy]="loading()">
+      <section class="workspace-list" aria-label="Listado de juntas">
+        <div class="table-scroll">
+          <table class="operations-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Título y comunidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (initialLoading()) {
+                <tr>
+                  <td class="empty-state" colspan="2">Cargando juntas…</td>
+                </tr>
+              } @else if (!error()) {
+                @for (row of data().items; track row.id) {
+                  <tr
+                    [class.row-selected]="selected()?.id === row.id"
+                    (click)="select(row)"
+                  >
+                    <td>
+                      <div class="date-tile">
+                        <em>{{ date(row.date, "year") }}</em
+                        ><span>{{ date(row.date, "month") }}</span
+                        ><strong>{{ date(row.date, "day") }}</strong>
+                      </div>
+                    </td>
+                    <td>
+                      <button
+                        class="row-title"
+                        type="button"
+                        [attr.aria-pressed]="selected()?.id === row.id"
+                        (click)="select(row)"
+                      >
+                        {{ row.title }}</button
+                      ><span class="row-community">{{ row.estate.name }}</span>
+                      <span class="type-status">
+                        <span class="muted">{{ row.typeLabel }}</span>
+                        <span [class]="'status-tag tone-' + row.tone">{{
+                          row.statusLabel
+                        }}</span>
+                      </span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="empty-state" colspan="2">
+                      <app-icon name="calendar" [size]="28"></app-icon
+                      ><strong>{{
+                        search() || filter() !== "all"
+                          ? "Sin resultados para estos filtros"
+                          : "Todavía no hay juntas"
+                      }}</strong
+                      ><span>{{
+                        search() || filter() !== "all"
+                          ? "Prueba a cambiar la búsqueda o el estado."
+                          : "Los registros de tus comunidades aparecerán aquí."
+                      }}</span>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="list-footer">
+          <span
+            >{{ data().total }} juntas · Página {{ data().page }} de
+            {{ pageCount() }}</span
+          >
+          <div>
+            <button
+              type="button"
+              aria-label="Página anterior"
+              [disabled]="loading() || page() <= 1"
+              (click)="setQuery({ page: page() - 1 })"
+            >
+              <app-icon name="chevron-left" [size]="16"></app-icon></button
+            ><span class="current-page">{{ data().page }}</span
+            ><button
+              type="button"
+              aria-label="Página siguiente"
+              [disabled]="loading() || page() >= pageCount()"
+              (click)="setQuery({ page: page() + 1 })"
+            >
+              <app-icon name="chevron-right" [size]="16"></app-icon>
+            </button>
+          </div>
+        </footer>
+      </section>
+      @if (!error() && selected(); as row) {
+        <!-- Sigue montado mientras el listado se refresca: así el detalle no pierde la pestaña activa ni vuelve a cargar. -->
+        <aside
+          class="workspace-preview workspace-preview--meeting"
+          aria-label="Detalle de la junta seleccionada"
+        >
+          <app-meeting-workspace
+            [row]="row"
+            (changed)="onMeetingChanged()"
+            (edit)="editingMeeting.set($event)"
+            (failed)="selectionError.set($event)"
+            (openBeacon)="openBeacon(row)"
+          ></app-meeting-workspace>
+        </aside>
+      } @else if (!loading() && !error()) {
+        <aside class="workspace-preview preview-empty">
+          <app-icon name="calendar" [size]="36"></app-icon>
+          <h2>Todo el seguimiento, en un lugar</h2>
+          <p>Selecciona una junta del listado para ver su detalle.</p>
+        </aside>
+      }
+    </div>
+  } @else {
+    <div class="operations-layout operations-layout--issues" [attr.aria-busy]="loading()">
+      <app-issues-list
+        [data]="data()"
+        [query]="issuesQuery()"
+        [loading]="initialLoading()"
+        [refreshing]="refreshing()"
+        [failed]="!!error()"
+        [saving]="saving()"
+        [page]="page()"
+        [pageCount]="pageCount()"
+        [asset]="data().asset ?? null"
+        (queryChange)="setQuery($event)"
+        (searchChange)="onSearch($event)"
+        (cleared)="clearFilters()"
+        (opened)="openFullIssue($event)"
+        (statusChanged)="updateIssueStatus($event.row, $event.status)"
+        (deleteRequested)="deleteIssue($event)"
+      ></app-issues-list>
+    </div>
+  }
+</div>
+@if (newIssueEstateId() !== null) {
+  <app-new-issue-dialog
+    [estates]="issueEstates()"
+    [estateId]="newIssueEstateId() || null"
+    (created)="issueCreated($event)"
+    (closed)="newIssueEstateId.set(null)"
+  ></app-new-issue-dialog>
+}
+@if (editingMeeting(); as meeting) {
+  <app-create-junta-modal
+    [estateId]="meeting.estateId"
+    [meeting]="meeting"
+    [open]="true"
+    (closed)="editingMeeting.set(null)"
+    (saved)="meetingEdited()"
+  ></app-create-junta-modal>
+}
+@if (creationEstateId() !== null) {
+  <app-create-junta-modal
+    [estateId]="creationEstateId() ?? ''"
+    [estates]="estates()"
+    [open]="true"
+    (closed)="creationEstateId.set(null)"
+    (created)="meetingCreated($event)"
+  ></app-create-junta-modal>
+}

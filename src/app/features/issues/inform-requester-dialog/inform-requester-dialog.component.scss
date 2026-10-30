@@ -1,0 +1,46 @@
+@use 'dialog-shell' as ds;
+
+.modal-backdrop { @include ds.backdrop-shell($padded: true); }
+
+.modal { @include ds.modal-shell; }
+
+.modal__header { @include ds.dialog-header-chrome; }
+
+.close-btn { @include ds.close-btn-chrome; }
+
+.modal__body { @include ds.modal-body-chrome; }
+
+.modal__footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+.ir-intro { margin: 0; font-size: 14px; color: var(--color-muted); }
+
+.ir-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+
+  @include ds.dialog-field-controls;
+}
+
+.ir-count {
+  align-self: flex-end;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-muted);
+
+  &--full { color: var(--color-error); }
+}
+
+.ir-problems {
+  margin: 0;
+  padding: 10px 12px 10px 28px;
+  font-size: 13px;
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border-radius: var(--radius-md);
+}
+
+.ir-error { margin: 0; font-size: 13px; color: var(--color-error); }

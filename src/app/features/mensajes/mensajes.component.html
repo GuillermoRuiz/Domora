@@ -1,0 +1,300 @@
+<app-topbar title="Mensajes" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="community-heading">
+    <label class="community-heading__selector community-heading__control">
+      <app-icon class="community-control__building" name="building" [size]="18" aria-hidden="true"></app-icon>
+      <select class="community-control__label field--bare" aria-label="Comunidad" [ngModel]="selectedEstateId()" (ngModelChange)="changeEstate($event)" [disabled]="scopeLoading() || sending()">
+        <option value="">Todas mis comunidades</option>
+        @for (estate of estateOptions(); track estate.id) { <option [value]="estate.id">{{ estate.name }}</option> }
+      </select>
+      <app-icon class="community-control__chevron" name="chevron-down" [size]="14" aria-hidden="true"></app-icon>
+    </label>
+    <span class="community-heading__separator" aria-hidden="true">/</span>
+    <span class="community-heading__section">Mensajes</span>
+  </div>
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Mensajes</h1>
+    <p class="page-intro__subtitle">Consulta tus conversaciones y comunícate con tu comunidad.</p>
+  </div>
+  <div class="page-intro__actions">
+    <app-btn variant="primary" (clicked)="openCompose()">
+      <app-icon name="plus" [size]="14"></app-icon> Nuevo mensaje
+    </app-btn>
+  </div>
+</header>
+
+<section class="messages-page" aria-label="Bandeja de mensajes">
+  @if (scopeError()) {
+    <div class="notice notice--warn" role="alert">
+      No se pudieron cargar las comunidades.
+      <button type="button" class="notice__action" (click)="loadEstates()">Reintentar</button>
+    </div>
+  }
+  @if (error()) {
+    <div class="notice notice--error" role="alert">
+      {{ error() }}
+      <button type="button" class="notice__close" aria-label="Cerrar aviso" (click)="error.set('')"><app-icon name="x" [size]="12"></app-icon></button>
+    </div>
+  }
+
+  <div class="controls" role="search">
+    <label class="search">
+      <app-icon name="search" [size]="14" aria-hidden="true"></app-icon>
+      <span class="sr-only">Buscar conversaciones</span>
+      <input type="search" placeholder="Buscar por nombre o último mensaje…" maxlength="100" [ngModel]="filters().search" (ngModelChange)="setFilter('search', $event)" />
+    </label>
+    <div class="controls__end">
+      <div class="segmented" role="group" aria-label="Lectura">
+        <button type="button" class="segmented__btn" [class.segmented__btn--on]="!filters().unreadOnly" [attr.aria-pressed]="!filters().unreadOnly" (click)="setFilter('unreadOnly', false)">Todos</button>
+        <button type="button" class="segmented__btn" [class.segmented__btn--on]="filters().unreadOnly" [attr.aria-pressed]="filters().unreadOnly" (click)="setFilter('unreadOnly', true)">
+          Sin leer
+          @if (unreadTotal()) { <span class="segmented__count">{{ unreadTotal() }}</span> }
+        </button>
+      </div>
+      <app-date-range-picker label="Fecha de los mensajes" placeholder="Fecha: todas" [value]="filters().range" (valueChange)="setFilter('range', $event)"></app-date-range-picker>
+    </div>
+  </div>
+
+  <div class="messages-layout" [class.messages-layout--thread-open]="hasActiveThread() || domoActive()">
+    <aside class="conversations-pane" aria-label="Conversaciones">
+      <div class="conversations-pane__header">
+        <h2>Conversaciones <span>({{ filteredConversations().length }})</span></h2>
+        <select class="filter-select filter-select--compact" aria-label="Ordenar conversaciones" [ngModel]="filters().sort" (ngModelChange)="setFilter('sort', $event)">
+          <option value="recent">Más recientes</option>
+          <option value="oldest">Más antiguas</option>
+          <option value="unread">Sin leer primero</option>
+        </select>
+      </div>
+
+      <div class="conversation-list">
+        @if (showDomoRow()) {
+          <button type="button" class="domo-row" [class.domo-row--active]="domoActive()" [attr.aria-current]="domoActive() ? 'true' : null" (click)="openDomo()" [disabled]="scopeLoading()">
+            <app-avatar name="Domo" src="domo-avatar.png" [size]="44"></app-avatar>
+            <span class="conversation-row__info">
+              <span class="conversation-row__name">Domo <span class="domo-row__tag">Asistente</span></span>
+              <span class="conversation-row__preview">Pregúntame sobre tu comunidad</span>
+            </span>
+          </button>
+        }
+        @if (loading()) {
+          <p class="muted-text pane-hint" role="status">Cargando conversaciones…</p>
+        } @else {
+          @for (c of filteredConversations(); track c.id) {
+            <article class="conversation-entry">
+              <button type="button" class="conversation-row" [class.conversation-row--active]="activeConversationId() === c.id" [class.conversation-row--unread]="c.unreadCount > 0" [attr.aria-current]="activeConversationId() === c.id ? 'true' : null" (click)="openConversation(c)">
+                <app-avatar [name]="c.otherDisplayName" [size]="44"></app-avatar>
+                <span class="conversation-row__info">
+                  <span class="conversation-row__top">
+                    <span class="conversation-row__name">{{ c.otherDisplayName }}</span>
+                    <time class="conversation-row__date" [attr.datetime]="c.lastMessageAt">{{ formatDate(c.lastMessageAt) }}</time>
+                  </span>
+                  <span class="conversation-row__bottom">
+                    <span class="conversation-row__preview" [class.conversation-row__preview--deleted]="c.lastMessagePreview === deletedText">{{ c.lastMessagePreview || 'Sin mensajes todavía' }}</span>
+                    @if (c.unreadCount > 0) { <app-badge [text]="c.unreadCount" variant="nav"></app-badge> }
+                  </span>
+                </span>
+              </button>
+              <button type="button" class="pin-toggle" [class.pin-toggle--pinned]="pinnedIds().includes(c.id)" [attr.aria-label]="(pinnedIds().includes(c.id) ? 'Desfijar ' : 'Fijar ') + c.otherDisplayName" [attr.aria-pressed]="pinnedIds().includes(c.id)" (click)="togglePin(c.id)">
+                <app-icon name="star" [size]="14" aria-hidden="true"></app-icon>
+              </button>
+            </article>
+          } @empty {
+            <div class="empty-conversations">
+              @if (conversations().length) {
+                <p>No hay coincidencias. Prueba con otro nombre o cambia los filtros.</p>
+                <button class="text-button" type="button" (click)="clearFilters()">Limpiar filtros</button>
+              } @else if (error()) {
+                <p>No se ha podido cargar la bandeja.</p>
+                <button class="text-button" type="button" (click)="reloadConversations()">Reintentar</button>
+              } @else {
+                <p>Todavía no tienes conversaciones. Empieza una con "Nuevo mensaje".</p>
+              }
+            </div>
+          }
+        }
+      </div>
+    </aside>
+
+    <section class="thread-pane" aria-label="Conversación seleccionada">
+      @if (domoActive()) {
+        <header class="thread-pane__header">
+          <button type="button" class="icon-button thread-back" aria-label="Volver a las conversaciones" (click)="backToList()"><app-icon name="chevron-left" [size]="18"></app-icon></button>
+          <app-avatar name="Domo" src="domo-avatar.png" [size]="40"></app-avatar>
+          <div class="thread-person">
+            <span class="thread-person__name">Domo · Asistente de Domora</span>
+            @if (selectedEstate(); as estate) { <span class="thread-person__details">{{ estate.name }}</span> }
+          </div>
+        </header>
+        @for (estateId of [selectedEstateId()]; track estateId) {
+          <app-assistant-chat channel="domo" assistantName="Domo" avatarSrc="domo-avatar.png" [fixedEstateId]="estateId || undefined" [showEstateSelector]="false" welcome="¡Hola! Soy Domo, el asistente de Domora. Pregúntame lo que quieras saber sobre tu comunidad: normas, estatutos, actas, la Ley de Propiedad Horizontal…"></app-assistant-chat>
+        }
+      } @else if (!hasActiveThread()) {
+        <div class="thread-empty">
+          <app-icon name="mail" [size]="32"></app-icon>
+          <p>Elige una conversación o escribe un mensaje nuevo.</p>
+        </div>
+      } @else {
+        <header class="thread-pane__header">
+          <button type="button" class="icon-button thread-back" aria-label="Volver a las conversaciones" (click)="backToList()"><app-icon name="chevron-left" [size]="18"></app-icon></button>
+          <app-avatar [name]="threadTitle()" [size]="40"></app-avatar>
+          <div class="thread-person">
+            <span class="thread-person__name">{{ threadTitle() }}</span>
+            <span class="thread-person__details">{{ threadCommunity() }}</span>
+          </div>
+          @if (activeConversation() ? activeConversationId() : null; as activeId) {
+            <div class="thread-actions">
+              <button type="button" class="icon-button" aria-label="Opciones de la conversación" [attr.aria-expanded]="showThreadMenu()" aria-controls="thread-options" (click)="toggleThreadMenu($event)"><app-icon name="ellipsis" [size]="18"></app-icon></button>
+              @if (showThreadMenu()) {
+                <div id="thread-options" class="thread-options">
+                  @if (confirmDeleteConversation()) {
+                    <p class="thread-options__confirm">¿Eliminar esta conversación? Dejará de aparecer en tu lista; si volvéis a escribiros, el historial se recupera.</p>
+                    <div class="thread-options__buttons">
+                      <button type="button" (click)="confirmDeleteConversation.set(false)">Cancelar</button>
+                      <button type="button" class="thread-options__danger" (click)="deleteConversation(activeId)">Eliminar</button>
+                    </div>
+                  } @else {
+                    <button type="button" (click)="togglePin(activeId)">{{ pinnedIds().includes(activeId) ? 'Desfijar conversación' : 'Fijar conversación' }}</button>
+                    <button type="button" (click)="markRead(activeId)">Marcar como leída</button>
+                    <button type="button" class="thread-options__danger" (click)="askDeleteConversation($event)">Eliminar conversación</button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </header>
+
+        <div #messageList class="thread-messages" [attr.aria-busy]="threadLoading()" aria-live="polite" aria-relevant="additions">
+          @if (threadLoading()) { <p class="muted-text thread-messages__hint" role="status">Cargando mensajes…</p> }
+          @for (m of messages(); track m.id; let i = $index) {
+            <article class="thread-message" [class.thread-message--mine]="isMine(m)" [class.thread-message--deleted]="!!m.deletedAt">
+              @if (!isMine(m)) { <app-avatar class="thread-message__avatar" [name]="threadTitle()" [size]="36"></app-avatar> }
+              <div class="thread-message__main">
+                <div class="thread-message__meta">
+                  <span class="thread-message__author">{{ senderName(m) }}</span>
+                  <time [attr.datetime]="m.createdAt">{{ formatMessageTime(m.createdAt) }}</time>
+                  @if (m.editedAt && !m.deletedAt) { <span class="thread-message__edited">editado</span> }
+                </div>
+                <div class="thread-message__row">
+                  <div class="thread-message__body">
+                  <div class="thread-message__bubble">
+                    @if (m.deletedAt) {
+                      <p class="thread-message__deleted">{{ deletedText }}</p>
+                    } @else if (editingId() === m.id) {
+                      <div class="message-edit">
+                        <textarea rows="1" maxlength="10000" aria-label="Editar mensaje" [ngModel]="editText()" (ngModelChange)="editText.set($event)" (keydown)="onEditKeydown($event)" [disabled]="savingEdit()"></textarea>
+                        <div class="message-edit__actions">
+                          <button type="button" (click)="cancelEdit()" [disabled]="savingEdit()">Cancelar</button>
+                          <button type="button" class="message-edit__save" (click)="saveEdit()" [disabled]="!canSaveEdit(m)">Guardar</button>
+                        </div>
+                      </div>
+                    } @else {
+                      @if (m.text) {
+                        <p class="thread-message__text" [class.thread-message__text--clamped]="!expandedIds().includes(m.id)" [appClampOverflow]="!expandedIds().includes(m.id)" (overflowChange)="setOverflow(m.id, $event)">{{ m.text }}</p>
+                        @if (overflowIds().includes(m.id) && !expandedIds().includes(m.id)) {
+                          <button type="button" class="thread-message__more" (click)="expandMessage(m.id)">Leer más</button>
+                        }
+                      }
+                      @for (attachment of m.attachments ?? []; track attachment.id) {
+                        <button class="message-attachment" type="button" [disabled]="downloadingIds().includes(attachment.id)" (click)="downloadAttachment(attachment)" [attr.aria-label]="'Descargar ' + attachment.name">
+                          <app-icon name="file" [size]="16"></app-icon>
+                          <span><strong>{{ attachment.name }}</strong><small>{{ fileSize(attachment.sizeBytes) }} · {{ downloadingIds().includes(attachment.id) ? 'Descargando…' : 'Descargar' }}</small></span>
+                          <app-icon name="download" [size]="14"></app-icon>
+                        </button>
+                      }
+                    }
+                  </div>
+                  @if (isMine(m) && !m.deletedAt) {
+                    <span class="thread-message__status" [class.thread-message__status--read]="m.readByRecipient" [attr.title]="m.readByRecipient ? 'Leído' : 'Enviado'">
+                      <app-icon [name]="m.readByRecipient ? 'check-check' : 'check'" [size]="14" aria-hidden="true"></app-icon>
+                      <span class="sr-only">{{ m.readByRecipient ? 'Leído' : 'Enviado' }}</span>
+                    </span>
+                  }
+                  </div>
+                  @if (isMine(m) && !m.deletedAt && editingId() !== m.id) {
+                    <div class="message-actions">
+                      <button type="button" class="icon-button message-actions__toggle" aria-label="Opciones del mensaje" aria-haspopup="menu" [attr.aria-expanded]="menuMessageId() === m.id" (click)="toggleMessageMenu(m.id, $event)"><app-icon name="ellipsis-vertical" [size]="16"></app-icon></button>
+                      @if (menuMessageId() === m.id) {
+                        <div class="message-menu" [class.message-menu--up]="i >= messages().length - 2" role="menu" (click)="$event.stopPropagation()">
+                          @if (confirmDeleteId() === m.id) {
+                            <p class="message-menu__confirm">¿Borrar este mensaje?</p>
+                            <div class="message-menu__buttons">
+                              <button type="button" role="menuitem" (click)="menuMessageId.set(null); confirmDeleteId.set(null)">Cancelar</button>
+                              <button type="button" role="menuitem" class="message-menu__danger" (click)="deleteMessage(m.id)">Borrar</button>
+                            </div>
+                          } @else {
+                            <button type="button" role="menuitem" (click)="startEdit(m)"><app-icon name="edit" [size]="14"></app-icon> Editar mensaje</button>
+                            <button type="button" role="menuitem" class="message-menu__danger" (click)="askDelete(m.id)"><app-icon name="trash" [size]="14"></app-icon> Borrar mensaje</button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+          @if (pendingContact() && !messages().length && !threadLoading()) { <p class="muted-text thread-messages__hint">Escribe el primer mensaje para iniciar la conversación.</p> }
+        </div>
+
+        <div class="thread-composer">
+          @if (draftFiles().length) {
+            <div class="draft-attachments" aria-label="Archivos para enviar">
+              @for (file of draftFiles(); track $index) {
+                <div class="draft-attachment">
+                  <app-icon name="file" [size]="14"></app-icon>
+                  <span>{{ file.name }}<small>{{ fileSize(file.size) }}</small></span>
+                  <button type="button" [disabled]="sending()" [attr.aria-label]="'Quitar ' + file.name" (click)="removeFile($index)"><app-icon name="x" [size]="12"></app-icon></button>
+                </div>
+              }
+            </div>
+          }
+          <div class="composer-row">
+            <input #filePicker type="file" multiple hidden (change)="selectFiles($event)" [accept]="acceptAll" />
+            <div class="composer-field">
+              <textarea class="field--bare" rows="1" maxlength="10000" aria-label="Escribe un mensaje" placeholder="Escribe un mensaje…" [ngModel]="messageText()" (ngModelChange)="messageText.set($event)" (keydown)="onComposerKeydown($event)"></textarea>
+              <div class="composer-tools">
+                <button class="icon-button" type="button" aria-label="Adjuntar archivos" title="Adjuntar archivos · hasta 5 de 10 MB" [disabled]="sending()" (click)="openPicker(filePicker, acceptAll)"><app-icon name="paperclip" [size]="18"></app-icon></button>
+              </div>
+            </div>
+            <app-btn variant="primary" size="sm" [disabled]="sending() || (!messageText().trim() && !draftFiles().length)" (clicked)="sendMessage()">
+              <app-icon name="send" [size]="14"></app-icon><span class="sr-only">Enviar mensaje</span>
+            </app-btn>
+          </div>
+        </div>
+      }
+    </section>
+  </div>
+</section>
+
+@if (showCompose()) {
+  <div class="modal-backdrop" (click)="closeCompose()">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="compose-title" (click)="$event.stopPropagation()" (keydown.tab)="trapDialogTab($event)">
+      <div class="modal__header">
+        <h4 id="compose-title">Nuevo mensaje</h4>
+        <button type="button" class="close-btn" aria-label="Cerrar nuevo mensaje" (click)="closeCompose()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <input #contactSearch type="search" aria-label="Buscar contacto" placeholder="Buscar contacto…" [ngModel]="composeSearch()" (ngModelChange)="composeSearch.set($event)" />
+        @if (contactsLoading()) {
+          <p class="muted-text" role="status">Cargando…</p>
+        } @else if (contactsError()) {
+          <p class="muted-text" role="alert">No se pudieron cargar los contactos.</p>
+          <button class="text-button" type="button" (click)="loadContacts()">Reintentar</button>
+        } @else {
+          <div class="contact-list">
+            @for (c of filteredContacts(); track c.userId) {
+              <button type="button" class="contact-row" (click)="startConversationWith(c)">
+                <app-avatar [name]="c.displayName" [size]="32"></app-avatar>
+                <span>{{ c.displayName }}</span>
+              </button>
+            } @empty {
+              <p class="muted-text">No hay contactos disponibles con esta selección.</p>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+}

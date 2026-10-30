@@ -1,0 +1,48 @@
+<ul class="kpis" aria-label="Resumen de contratos">
+  <li>
+    <button type="button" class="kpi" data-kpi="active" [class.kpi--selected]="selected() === 'active'" [attr.aria-pressed]="selected() === 'active'" (click)="pick.emit('active')">
+      <span class="kpi__icon" aria-hidden="true"><app-icon name="file-text" [size]="22"></app-icon></span>
+      <span class="kpi__body">
+        <span class="kpi__label">Contratos activos</span>
+        <span class="kpi__value">{{ kpis().active }}</span>
+        <span class="kpi__sub">de {{ kpis().total }} {{ kpis().total === 1 ? 'contrato' : 'contratos' }}</span>
+      </span>
+    </button>
+  </li>
+  <li>
+    <button type="button" class="kpi kpi--danger" data-kpi="expiring" [class.kpi--selected]="selected() === 'expiring'" [attr.aria-pressed]="selected() === 'expiring'" (click)="pick.emit('expiring')">
+      <span class="kpi__icon" aria-hidden="true"><app-icon name="exclamation" [size]="22"></app-icon></span>
+      <span class="kpi__body">
+        <span class="kpi__label">Vencen pronto</span>
+        <span class="kpi__value" [class.kpi__value--danger]="kpis().expiringSoon > 0">{{ kpis().expiringSoon }}</span>
+        <span class="kpi__sub">en los próximos {{ alertDays }} días</span>
+        @if (kpis().expired > 0) {
+          <span class="kpi__note kpi__note--danger" data-note="expired">{{ kpis().expired }} {{ kpis().expired === 1 ? 'vencido' : 'vencidos' }}</span>
+        }
+      </span>
+    </button>
+  </li>
+  <li>
+    <button type="button" class="kpi" data-kpi="auto" [class.kpi--selected]="selected() === 'auto'" [attr.aria-pressed]="selected() === 'auto'" (click)="pick.emit('auto')">
+      <span class="kpi__icon" aria-hidden="true"><app-icon name="repeat" [size]="22"></app-icon></span>
+      <span class="kpi__body">
+        <span class="kpi__label">Renovaciones automáticas</span>
+        <span class="kpi__value">{{ kpis().autoRenewals }}</span>
+        <span class="kpi__sub">contratos con renovación tácita</span>
+      </span>
+    </button>
+  </li>
+  <li>
+    <button type="button" class="kpi" data-kpi="amount" [class.kpi--selected]="selected() === 'amount'" [attr.aria-pressed]="selected() === 'amount'" (click)="pick.emit('amount')">
+      <span class="kpi__icon" aria-hidden="true"><app-icon name="card" [size]="22"></app-icon></span>
+      <span class="kpi__body">
+        <span class="kpi__label">Importe anual</span>
+        <span class="kpi__value kpi__value--accent">{{ amount() }}</span>
+        <span class="kpi__sub">en contratos activos · importes según contrato</span>
+        @for (note of amountNotes(); track note) {
+          <span class="kpi__note" data-note="amount">{{ note }}</span>
+        }
+      </span>
+    </button>
+  </li>
+</ul>

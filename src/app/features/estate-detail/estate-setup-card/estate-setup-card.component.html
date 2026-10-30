@@ -1,0 +1,44 @@
+<section class="setup-card" aria-labelledby="setup-card-title">
+  <header class="setup-card__header">
+    <div class="setup-card__heading">
+      <h3 id="setup-card-title" class="setup-card__title">Puesta en marcha</h3>
+      <p class="setup-card__subtitle">
+        {{ status().requiredDone }} de {{ status().requiredTotal }} pasos imprescindibles completados
+      </p>
+    </div>
+  </header>
+
+  <div class="setup-card__progress" role="progressbar" [attr.aria-valuenow]="progressPct()" aria-valuemin="0" aria-valuemax="100">
+    <div class="setup-card__progress-fill" [style.width.%]="progressPct()"></div>
+  </div>
+
+  <ol class="setup-steps">
+    @for (step of steps(); track step.key) {
+      <li class="setup-step" [class]="'setup-step setup-step--' + step.status" [attr.data-step]="step.key">
+        <span class="setup-step__marker" aria-hidden="true">
+          @if (step.status === 'done') {
+            <app-icon name="check" [size]="12"></app-icon>
+          } @else if (step.status === 'warning') {
+            <app-icon name="exclamation" [size]="12"></app-icon>
+          }
+        </span>
+        <div class="setup-step__body">
+          <div class="setup-step__title">
+            {{ step.title }}
+            @if (step.optional) {
+              <span class="setup-step__tag">Recomendado</span>
+            }
+          </div>
+          <p class="setup-step__detail">{{ step.detail }}</p>
+          @if (step.actions.length > 0) {
+            <div class="setup-step__actions">
+              @for (a of step.actions; track a.action) {
+                <button type="button" class="setup-step__action" (click)="action.emit(a.action)">{{ a.label }}</button>
+              }
+            </div>
+          }
+        </div>
+      </li>
+    }
+  </ol>
+</section>

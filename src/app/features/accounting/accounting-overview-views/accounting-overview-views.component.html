@@ -1,0 +1,134 @@
+@if (view() === 'table') {
+  <div class="communities-table-wrap">
+    <table class="communities-table">
+      <caption class="sr-only">
+        Contabilidad de las comunidades
+      </caption>
+      <thead>
+        <tr>
+          @for (column of columns; track column.id) {
+            <th
+              scope="col"
+              [class.metric-column]="column.id !== 'name'"
+              [attr.aria-sort]="ariaSort(column.id)"
+            >
+              <button
+                class="th--sortable"
+                type="button"
+                (click)="sort.emit(column.id)"
+              >
+                {{ column.label }}
+                @if (sortColumn() === column.id) {
+                  <span aria-hidden="true">{{
+                    direction() === 'asc' ? '↑' : '↓'
+                  }}</span>
+                }
+              </button>
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (estate of items(); track estate.id) {
+          <tr>
+            <td>
+              <div class="community-cell">
+                <app-accounting-facade-thumbnail
+                  [url]="estate.catastroFacadeUrl ?? null"
+                  [name]="estate.name"
+                ></app-accounting-facade-thumbnail>
+                <div>
+                  <button
+                    type="button"
+                    class="community-name"
+                    (click)="openEstate.emit(estate)"
+                  >
+                    {{ estate.name }}
+                  </button>
+                  <span class="community-address">{{ address(estate) }}</span>
+                </div>
+              </div>
+            </td>
+            <td
+              class="money-cell metric-column"
+              [class.text-green]="estate.balance > 0"
+              [class.text-error]="estate.balance < 0"
+            >
+              {{ estate.balance | currency: 'EUR' : 'symbol' : '1.2-2' : 'es' }}
+            </td>
+            <td class="money-cell metric-column">
+              {{ estate.reserve | currency: 'EUR' : 'symbol' : '1.2-2' : 'es' }}
+            </td>
+            <td class="metric-column">
+              <span
+                class="debt-pill"
+                [class.debt-pill--active]="estate.delinquency > 0"
+                >{{
+                  estate.delinquency
+                    | currency: 'EUR' : 'symbol' : '1.2-2' : 'es'
+                }}</span
+              >
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+} @else {
+  <div class="accounting-grid">
+    @for (estate of items(); track estate.id) {
+      <button
+        type="button"
+        class="accounting-card"
+        [attr.aria-label]="'Abrir ' + estate.name"
+        (click)="openEstate.emit(estate)"
+      >
+        <app-accounting-facade-thumbnail
+          variant="wide"
+          [url]="estate.catastroFacadeUrl ?? null"
+          [name]="estate.name"
+        ></app-accounting-facade-thumbnail>
+        <span
+          class="debt-pill accounting-card__status"
+          [class.debt-pill--active]="estate.delinquency > 0"
+          [class.debt-pill--current]="estate.delinquency <= 0"
+          >{{ estate.delinquency > 0 ? 'Con morosidad' : 'Al corriente' }}</span
+        >
+        <div class="accounting-card__body">
+          <h2 class="accounting-card__name">{{ estate.name }}</h2>
+          <p class="community-address">{{ address(estate) }}</p>
+          <dl class="accounting-card__metrics">
+            <div class="accounting-card__balance">
+              <dt>Saldo actual</dt>
+              <dd
+                [class.text-green]="estate.balance > 0"
+                [class.text-error]="estate.balance < 0"
+              >
+                {{
+                  estate.balance | currency: 'EUR' : 'symbol' : '1.2-2' : 'es'
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Fondo de reserva</dt>
+              <dd>
+                {{
+                  estate.reserve | currency: 'EUR' : 'symbol' : '1.2-2' : 'es'
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Morosidad</dt>
+              <dd [class.text-error]="estate.delinquency > 0">
+                {{
+                  estate.delinquency
+                    | currency: 'EUR' : 'symbol' : '1.2-2' : 'es'
+                }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </button>
+    }
+  </div>
+}

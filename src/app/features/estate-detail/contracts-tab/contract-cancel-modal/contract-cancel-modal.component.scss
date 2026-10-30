@@ -1,0 +1,4 @@
+@use '../contract-dialog' as cd;
+
+@include cd.dialog(480px);
+@include cd.dialog-focus;

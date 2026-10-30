@@ -1,0 +1,180 @@
+@if (failed()) {
+  <p class="panel__message panel__message--error" role="alert">No se pudieron cargar las instalaciones de la finca.</p>
+} @else if (data() === null) {
+  <p class="panel__message">Cargando…</p>
+} @else {
+  <div class="filters" role="search">
+    <div class="filters__search-wrap">
+      <label class="sr-only" for="inst-search">Buscar instalación</label>
+      <app-icon name="search" [size]="15"></app-icon>
+      <input id="inst-search" class="filters__search" type="search" placeholder="Buscar instalaciones..."
+        [ngModel]="search()" (ngModelChange)="search.set($event)" />
+    </div>
+    <label class="filters__field" for="inst-type">
+      <span>Tipo</span>
+      <select id="inst-type" [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event)">
+        @for (o of typeOptions(); track o.key) { <option [value]="o.key">{{ o.label }}</option> }
+      </select>
+    </label>
+    <label class="filters__field" for="inst-status">
+      <span>Estado</span>
+      <select id="inst-status" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
+        @for (o of statusOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+      </select>
+    </label>
+    <label class="filters__field" for="inst-review">
+      <span>Próximas revisiones</span>
+      <select id="inst-review" [ngModel]="reviewFilter()" (ngModelChange)="reviewFilter.set($event)">
+        @for (o of reviewOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+      </select>
+    </label>
+    <label class="filters__field" for="inst-supplier">
+      <span>Proveedor</span>
+      <select id="inst-supplier" [ngModel]="supplierFilter()" (ngModelChange)="supplierFilter.set($event)">
+        @for (o of supplierOptions(); track o.id) { <option [value]="o.id">{{ o.name }}</option> }
+      </select>
+    </label>
+    <label class="filters__field" for="inst-sort">
+      <span>Ordenar por</span>
+      <select id="inst-sort" [ngModel]="sortKey()" (ngModelChange)="sortKey.set($event)">
+        @for (o of sortOptions(); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+      </select>
+    </label>
+    @if (hasFilters()) {
+      <button type="button" class="filters__clear" (click)="clearFilters()">Limpiar filtros</button>
+    }
+    <button type="button" class="new-btn" data-action="new" (click)="openForm(null)">
+      <app-icon name="plus" [size]="14"></app-icon> Nueva instalación
+    </button>
+  </div>
+
+  <section class="panel__kpis" aria-label="Resumen de instalaciones">
+    <button type="button" class="kpi-btn" data-kpi="total" (click)="showAll()">
+      <app-kpi-tile align="start" label="Total instalaciones" [value]="kpis().total" sub="instalaciones" icon="building"></app-kpi-tile>
+    </button>
+    <button type="button" class="kpi-btn" [class.kpi-btn--active]="statusFilter() === 'en_mantenimiento'" [attr.aria-pressed]="statusFilter() === 'en_mantenimiento'" data-kpi="maintenance" (click)="toggleMaintenance()">
+      <app-kpi-tile align="start" label="En mantenimiento" [value]="kpis().maintenance" sub="instalaciones" icon="wrench"
+        [tone]="kpis().maintenance > 0 ? 'positive' : 'default'"></app-kpi-tile>
+    </button>
+    <button type="button" class="kpi-btn" [class.kpi-btn--active]="reviewFilter() === 'soon'" [attr.aria-pressed]="reviewFilter() === 'soon'" data-kpi="soon" (click)="toggleSoon()">
+      <app-kpi-tile align="start" label="Revisión próxima" [value]="kpis().soon" [sub]="soonSub()" icon="calendar"
+        [tone]="kpis().soon > 0 || kpis().overdue > 0 ? 'warning' : 'default'"></app-kpi-tile>
+    </button>
+    <button type="button" class="kpi-btn" [class.kpi-btn--active]="issuesOnly()" [attr.aria-pressed]="issuesOnly()" data-kpi="issues" (click)="toggleIssues()">
+      <app-kpi-tile align="start" label="Incidencias relacionadas" [value]="kpis().issues" sub="incidencias abiertas" icon="exclamation"
+        [tone]="kpis().issues > 0 ? 'danger' : 'default'"></app-kpi-tile>
+    </button>
+  </section>
+
+  @if (actionError()) {
+    <p class="panel__message panel__message--error" role="alert">{{ actionError() }}</p>
+  }
+
+  @if (installations().length === 0) {
+    <p class="panel__message">Esta finca aún no tiene instalaciones. Da de alta la primera con "Nueva instalación".</p>
+  } @else {
+    <div class="inst-card" [class.inst-card--saving]="saving()">
+      <div class="inst-scroll">
+        <table class="inst-table">
+          <thead>
+            <tr>
+              @for (col of columns; track col.field) {
+                <th [attr.aria-sort]="ariaSort(col.field)" [class.th--num]="col.field === 'issues'">
+                  <button type="button" class="th-sort" [attr.data-sort]="col.field" (click)="toggleSort(col.field)">
+                    {{ col.label }} <app-icon name="sort" [size]="12"></app-icon>
+                  </button>
+                </th>
+              }
+              <th class="th--num">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of visible(); track item.id) {
+              <tr class="inst-row" [attr.data-installation]="item.id" tabindex="0" (click)="openDetail(item)" (keydown.enter)="openDetail(item)">
+                <td>
+                  <span class="inst-name">
+                    <span class="inst-icon"><app-icon [name]="typeInfo(item).icon" [size]="18"></app-icon></span>
+                    <span class="inst-name__text">
+                      <span class="inst-name__title">{{ item.name }}</span>
+                      <span class="inst-name__sub">{{ item.category }}</span>
+                    </span>
+                  </span>
+                </td>
+                <td class="td--muted">{{ item.location ?? '—' }}</td>
+                <td><app-status-pill [text]="pill(item).text" [tone]="pill(item).tone" [dot]="true"></app-status-pill></td>
+                <td class="td--date">{{ dateLabel(item.lastReviewDate) }}</td>
+                <td class="td--date">
+                  <span class="inst-next" [class.inst-next--danger]="nextTone(item) === 'danger'" [class.inst-next--warning]="nextTone(item) === 'warning'">{{ dateLabel(item.nextReviewDate) }}</span>
+                  @if (deadline(item); as label) { <span class="inst-next__sub">({{ label }})</span> }
+                </td>
+                <td>{{ item.supplier?.name ?? '—' }}</td>
+                <td class="td--num">
+                  @if (item.openIssues > 0) {
+                    <button type="button" class="inst-issues" [attr.aria-label]="item.openIssues + ' incidencias abiertas de ' + item.name"
+                      (click)="$event.stopPropagation(); openIssues.emit({ id: item.id, name: item.name })">
+                      <span class="inst-issues__dot" aria-hidden="true"></span>{{ item.openIssues }}
+                    </button>
+                  } @else {
+                    <span class="td--muted">0</span>
+                  }
+                </td>
+                <td class="td--num">
+                  <button type="button" class="action-btn" aria-haspopup="menu" [attr.aria-expanded]="menuId() === item.id"
+                    [attr.aria-label]="'Acciones de ' + item.name" (click)="toggleMenu($event, item.id)">
+                    <app-icon name="ellipsis" [size]="16"></app-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (visible().length === 0) {
+        <div class="inst-empty">
+          <p>Ninguna instalación coincide con los filtros.</p>
+          <button type="button" class="filters__clear" (click)="clearFilters()">Limpiar filtros</button>
+        </div>
+      }
+    </div>
+    @if (hasFilters() && visible().length > 0) {
+      <p class="panel__count" aria-live="polite">Mostrando {{ visible().length }} de {{ installations().length }} instalaciones</p>
+    }
+  }
+
+  @if (installations().length > 0) {
+    <app-installation-reviews-panels [upcoming]="upcoming()" (openAsset)="openAsset($event)" (openCalendar)="openCalendar.emit()"></app-installation-reviews-panels>
+  }
+
+  @if (menuInstallation(); as item) {
+    <div class="menu-backdrop" (click)="closeMenu()"></div>
+    <div class="inst-menu" role="menu" [style.top.px]="menuPosition().top" [style.left.px]="menuPosition().left"
+      (keydown.escape)="closeMenu()" (click)="$event.stopPropagation()">
+      <button type="button" role="menuitem" data-action="detail" (click)="openDetail(item)">
+        <app-icon name="eye" [size]="14"></app-icon> Ver ficha
+      </button>
+      <button type="button" role="menuitem" data-action="edit" (click)="openForm(item)">
+        <app-icon name="edit" [size]="14"></app-icon> Editar
+      </button>
+      <button type="button" role="menuitem" data-action="review" (click)="registerReview()">
+        <app-icon name="calendar" [size]="14"></app-icon> Registrar revisión
+      </button>
+      <p class="inst-menu__label">Cambiar estado</p>
+      @for (choice of statusChoices; track choice.value) {
+        <button type="button" role="menuitemradio" [attr.data-status]="choice.value" [attr.aria-checked]="item.operationalStatus === choice.value" (click)="setStatus(item, choice.value)">
+          <span class="inst-menu__check">@if (item.operationalStatus === choice.value) { <app-icon name="check" [size]="13"></app-icon> }</span>
+          {{ choice.label }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (detail(); as selected) {
+    <app-installation-detail-modal [estateId]="estateId" [installation]="selected"
+      (edit)="openForm(selected)" (closed)="detail.set(null)"></app-installation-detail-modal>
+  }
+
+  @if (formOpen()) {
+    <app-installation-form-modal [estateId]="estateId" [installation]="formTarget()" [suppliers]="supplierOptions4Form()"
+      (saved)="onSaved()" (closed)="closeForm()"></app-installation-form-modal>
+  }
+}

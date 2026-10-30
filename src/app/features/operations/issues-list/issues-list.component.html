@@ -1,0 +1,265 @@
+<section class="cards" aria-label="Resumen de incidencias">
+  @for (card of cards(); track card.filter) {
+    <button
+      type="button"
+      class="card"
+      [class.card--active]="query().filter === card.filter"
+      [attr.aria-pressed]="query().filter === card.filter"
+      [attr.data-filter]="card.filter"
+      (click)="setFilter(card.filter)"
+    >
+      <span class="card__icon" [class]="'card__icon tone-' + card.tone"
+        ><app-icon [name]="card.icon" [size]="22"></app-icon
+      ></span>
+      <span class="card__body">
+        <span class="card__label">{{ card.label }}</span>
+        <strong [class.tone-red]="card.filter === 'attention' && card.value > 0">{{
+          loading() ? '—' : card.value
+        }}</strong>
+        <span class="card__caption">{{ card.caption }}</span>
+      </span>
+    </button>
+  }
+</section>
+
+<section class="filters" aria-label="Filtros de incidencias">
+  <div class="selects">
+    <select
+      class="filter-select"
+      aria-label="Estado"
+      [class.filter-select--set]="!!query().status"
+      [ngModel]="query().status"
+      (ngModelChange)="setField('status', $event)"
+    >
+      <option value="">Estado</option>
+      @for (option of statusFilterOptions; track option.value) {
+        <option [value]="option.value">{{ option.label }}</option>
+      }
+    </select>
+    <select
+      class="filter-select"
+      aria-label="Situación actual"
+      [class.filter-select--set]="!!query().situation"
+      [ngModel]="query().situation"
+      (ngModelChange)="setField('situation', $event)"
+    >
+      <option value="">Situación actual</option>
+      @for (option of situationOptions; track option.key) {
+        <option [value]="option.key">{{ option.label }}</option>
+      }
+    </select>
+    <select
+      class="filter-select"
+      aria-label="En manos de"
+      [class.filter-select--set]="!!query().ball"
+      [ngModel]="query().ball"
+      (ngModelChange)="setField('ball', $event)"
+    >
+      <option value="">En manos de</option>
+      @for (option of ballOptions; track option.key) {
+        <option [value]="option.key">{{ option.label }}</option>
+      }
+    </select>
+    <select
+      class="filter-select"
+      aria-label="Fecha de creación"
+      [class.filter-select--set]="!!query().created"
+      [ngModel]="query().created"
+      (ngModelChange)="setField('created', $event)"
+    >
+      <option value="">Fecha de creación</option>
+      @for (option of createdOptions; track option.key) {
+        <option [value]="option.key">{{ option.label }}</option>
+      }
+    </select>
+    <button type="button" class="clear" [disabled]="!hasFilters()" (click)="cleared.emit()">
+      <app-icon name="refresh" [size]="16"></app-icon>Limpiar filtros
+    </button>
+  </div>
+  @if (query().assetId) {
+    <div class="asset-filter" data-asset-filter>
+      <span>Instalación: <strong>{{ asset()?.name ?? 'seleccionada' }}</strong></span>
+      <button type="button" class="asset-filter__clear" (click)="setField('assetId', null)">Quitar filtro</button>
+    </div>
+  }
+  <div class="filters__bar">
+    <label class="search">
+      <app-icon name="search" [size]="18"></app-icon>
+      <span class="sr-only">Buscar</span>
+      <input
+        type="search"
+        aria-label="Buscar"
+        placeholder="Buscar por código, título o comunidad…"
+        maxlength="120"
+        [ngModel]="query().search"
+        (ngModelChange)="searchChange.emit($event)"
+      />
+    </label>
+    <span class="count" aria-live="polite">{{ loading() ? '' : data().total + (data().total === 1 ? ' resultado' : ' resultados') }}</span>
+    <select
+      class="sort-select"
+      aria-label="Ordenar"
+      [ngModel]="query().sort"
+      (ngModelChange)="setField('sort', $event)"
+    >
+      <option value="newest">Más recientes</option>
+      <option value="oldest">Más antiguas</option>
+      @if (columnSortLabel(); as label) {
+        <option [value]="query().sort">{{ label }}</option>
+      }
+    </select>
+  </div>
+</section>
+
+<section class="list" [class.list--refreshing]="refreshing()" [attr.aria-busy]="refreshing() || loading()" aria-label="Listado de incidencias">
+  <div class="table-scroll">
+    <table class="issues-table">
+      <colgroup>
+        <col class="c-code" />
+        <col class="c-title" />
+        <col class="c-estate" />
+        <col class="c-status" />
+        <col class="c-ball" />
+        <col class="c-age" />
+        <col class="c-actions" />
+      </colgroup>
+      <thead>
+        <tr>
+          @for (column of columns; track column.field) {
+            <th [attr.aria-sort]="ariaSort(column.field)">
+              <button type="button" class="sort" [class.sort--active]="!!sortState(column.field)" (click)="sortBy(column.field)">
+                {{ column.label }}
+                <app-icon
+                  class="sort__icon"
+                  [class.sort__icon--asc]="sortState(column.field) === 'asc'"
+                  [name]="sortState(column.field) ? 'chevron-down' : 'sort'"
+                  [size]="13"
+                  aria-hidden="true"
+                ></app-icon>
+              </button>
+            </th>
+          }
+          <th class="col-actions"><span class="sr-only">Acciones</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td class="empty-state" colspan="7">Cargando incidencias…</td>
+          </tr>
+        } @else if (!failed()) {
+          @for (row of data().items; track row.id) {
+            <tr (click)="open(row)">
+              <td class="code">{{ row.ref }}</td>
+              <td class="col-title">
+                <button class="row-title" type="button">{{ row.title }}</button>
+                @if (firstLine(row.description); as line) {
+                  <span class="row-description">{{ line }}</span>
+                }
+              </td>
+              <td>
+                <span class="row-community">{{ row.estate.name }}</span>
+              </td>
+              <td>
+                <span class="situation" [class]="'situation situation--' + statusTheme(row)">{{ row.statusLabel }}</span>
+              </td>
+              <td>
+                @let b = ball(row);
+                <span class="ball" [attr.title]="b.title || null">
+                  <span class="ball__icon"><app-icon [name]="b.icon" [size]="18"></app-icon></span>
+                  <span class="ball__text">
+                    <span class="row-community">{{ b.who }}@if (b.more) { <em class="ball__more">+{{ b.more }}</em> }</span>
+                    @if (b.detail) {
+                      <span class="row-sub">{{ b.detail }}</span>
+                    }
+                  </span>
+                </span>
+              </td>
+              <td class="age">
+                {{ day(row.date) }}
+              </td>
+              <td class="col-actions">
+                <button
+                  type="button"
+                  class="row-menu__trigger"
+                  aria-haspopup="menu"
+                  [attr.aria-expanded]="menuFor() === row.id"
+                  [attr.aria-label]="'Acciones de la incidencia ' + row.ref"
+                  (click)="toggleMenu($event, row)"
+                >
+                  <app-icon name="ellipsis-vertical" [size]="18"></app-icon>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td class="empty-state" colspan="7">
+                <app-icon name="check" [size]="28"></app-icon>
+                <strong>{{ hasFilters() ? 'Sin resultados para estos filtros' : 'Todavía no hay incidencias' }}</strong>
+                <span>{{
+                  hasFilters()
+                    ? 'Prueba a cambiar la búsqueda o los filtros.'
+                    : 'Las incidencias de tus comunidades aparecerán aquí.'
+                }}</span>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+  <footer class="list-footer">
+    <span>{{ data().total }} incidencias · Página {{ data().page }} de {{ pageCount() }}</span>
+    <div>
+      <button
+        type="button"
+        aria-label="Página anterior"
+        [disabled]="loading() || page() <= 1"
+        (click)="queryChange.emit({ page: page() - 1 })"
+      >
+        <app-icon name="chevron-left" [size]="16"></app-icon></button
+      ><span class="current-page">{{ data().page }}</span
+      ><button
+        type="button"
+        aria-label="Página siguiente"
+        [disabled]="loading() || page() >= pageCount()"
+        (click)="queryChange.emit({ page: page() + 1 })"
+      >
+        <app-icon name="chevron-right" [size]="16"></app-icon>
+      </button>
+    </div>
+  </footer>
+</section>
+
+@if (menuRow(); as row) {
+  <div
+    class="row-menu"
+    role="menu"
+    [attr.aria-label]="'Acciones de la incidencia ' + row.ref"
+    [style.top.px]="menuPosition().top"
+    [style.bottom.px]="menuPosition().bottom"
+    [style.max-height.px]="menuPosition().maxHeight"
+    [style.left.px]="menuPosition().left"
+  >
+    <button type="button" role="menuitem" (click)="open(row)">
+      <app-icon name="arrow-right" [size]="15"></app-icon>Ver expediente completo
+    </button>
+    <span class="row-menu__heading" role="presentation">Cambiar estado</span>
+    @for (option of statusOptions; track option.value) {
+      <button
+        type="button"
+        role="menuitemradio"
+        [attr.aria-checked]="row.status === option.value"
+        [disabled]="saving() || row.status === option.value"
+        (click)="changeStatus(row, option.label)"
+      >
+        <app-icon name="check" [size]="15" [style.visibility]="row.status === option.value ? 'visible' : 'hidden'"></app-icon
+        >{{ option.label }}
+      </button>
+    }
+    <span class="row-menu__heading row-menu__heading--line" role="presentation"></span>
+    <button type="button" role="menuitem" class="row-menu__danger" data-action="delete-issue" [disabled]="saving()" (click)="requestDelete(row)">
+      <app-icon name="trash" [size]="15"></app-icon>Eliminar incidencia
+    </button>
+  </div>
+}

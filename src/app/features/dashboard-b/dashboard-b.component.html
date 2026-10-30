@@ -1,0 +1,333 @@
+<app-topbar title="Fincas" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="fincas-heading">
+    <app-estate-scope-selector></app-estate-scope-selector
+    ><app-estate-management-search></app-estate-management-search>
+  </div>
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title" id="fincas-title">Fincas</h1>
+    <p class="page-intro__subtitle">Gestiona tus comunidades y accede a cada una en un clic.</p>
+  </div>
+  <div class="page-intro__actions"><app-btn variant="primary" class="new-estate" (clicked)="openNuevaFinca()"
+      ><app-icon name="plus" [size]="17"></app-icon>Nueva finca</app-btn
+    ></div>
+</header>
+
+<div class="page-content">
+
+  <div class="compact-summary" aria-live="polite">
+    @if (loading() && !overview()) {
+      <span class="summary-loading" role="status">Cargando comunidades…</span>
+    } @else if (overview(); as result) {
+      <span
+        ><app-icon name="building" [size]="17"></app-icon
+        ><strong>{{ result.summary.communities }}</strong> comunidades</span
+      >
+      <span
+        ><app-icon name="home" [size]="17"></app-icon
+        ><strong>{{ result.summary.properties }}</strong> propiedades</span
+      >
+      <span
+        ><app-icon name="users" [size]="17"></app-icon
+        ><strong>{{ result.summary.pendingRequests }}</strong> solicitudes
+        pendientes</span
+      >
+    }
+  </div>
+
+  @if (!loading() && !loadError() && overview()?.summary?.communities === 0) {
+    <div class="empty-card">
+      <app-empty-state
+        icon="building"
+        title="Da de alta tu primera finca"
+        description="Créala desde cero o importa sus propiedades, propietarios y recibos desde otro programa."
+      >
+        <app-btn variant="primary" size="sm" (clicked)="openNuevaFinca()"
+          >Crear finca</app-btn
+        ><app-btn variant="outline" size="sm" (clicked)="openNuevaFinca()"
+          >Importar desde otro programa</app-btn
+        >
+      </app-empty-state>
+    </div>
+  } @else {
+    <div class="toolbar">
+      <div class="local-search">
+        <app-icon name="search" [size]="18"></app-icon
+        ><input class="field--bare"
+          type="search"
+          maxlength="100"
+          aria-label="Buscar comunidades por nombre o dirección"
+          placeholder="Buscar por nombre o dirección…"
+          [value]="searchValue()"
+          (input)="onLocalSearch($any($event.target).value)"
+        />
+      </div>
+      <div class="toolbar-controls">
+        <app-estate-type-filter
+          [options]="estateTypeOptions"
+          [selected]="typeFilters()"
+          (selectionChange)="setTypes($event)"
+        ></app-estate-type-filter>
+        <button
+          type="button"
+          class="download-btn"
+          aria-label="Descargar comunidades en Excel"
+          title="Descargar Excel"
+          [attr.aria-busy]="exporting()"
+          [disabled]="
+            exporting() || loading() || loadError() || !overview()?.total
+          "
+          (click)="downloadExcel()"
+        >
+          <app-icon name="download" [size]="18"></app-icon>
+        </button>
+        <div class="view-toggle" role="group" aria-label="Vista de comunidades">
+          <button
+            type="button"
+            aria-label="Vista tabla"
+            [attr.aria-pressed]="view() === 'table'"
+            (click)="setView('table')"
+          >
+            <app-icon name="table" [size]="18"></app-icon></button
+          ><button
+            type="button"
+            aria-label="Vista cards"
+            [attr.aria-pressed]="view() === 'cards'"
+            (click)="setView('cards')"
+          >
+            <app-icon name="grid" [size]="18"></app-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    @if (exportError()) {
+      <p class="export-error" role="alert">{{ exportError() }}</p>
+    }
+
+    @if (loadError()) {
+      <div class="feedback-card" role="alert">
+        <app-icon name="exclamation" [size]="24"></app-icon>
+        <p>No se pudieron cargar las comunidades.</p>
+        <app-btn variant="outline" size="sm" (clicked)="loadOverview()"
+          >Reintentar</app-btn
+        >
+      </div>
+    } @else if (loading()) {
+      <div
+        class="list-loading"
+        role="status"
+        aria-label="Cargando comunidades"
+        aria-busy="true"
+      >
+        <app-estate-overview-skeleton
+          [view]="view()"
+        ></app-estate-overview-skeleton>
+      </div>
+    } @else if (!items().length) {
+      <div class="feedback-card" role="status">
+        <app-icon name="search" [size]="24"></app-icon>
+        <p>No hay comunidades que coincidan con tu búsqueda o filtros.</p>
+        <app-btn variant="outline" size="sm" (clicked)="clearFilters()"
+          >Limpiar filtros</app-btn
+        >
+      </div>
+    } @else {
+      <app-estate-overview-views
+        [items]="items()"
+        [view]="view()"
+        [sortColumn]="sortColumn()"
+        [direction]="direction()"
+        [pendingLabel]="overview()?.pendingLabel ?? 'Cuotas pendientes'"
+        [setupRemaining]="setupRemaining()"
+        (sort)="setSort($event, true)"
+        (estateAction)="onEstateAction($event)"
+      ></app-estate-overview-views>
+      <div class="list-footer">
+        <p>
+          Mostrando {{ firstResult() }}–{{ lastResult() }} de
+          {{ overview()?.total }} comunidades
+        </p>
+        <nav class="pagination" aria-label="Páginas de comunidades">
+          <button
+            type="button"
+            aria-label="Página anterior"
+            [disabled]="page() <= 1"
+            (click)="goToPage(page() - 1)"
+          >
+            <app-icon
+              name="chevron-right"
+              class="previous-icon"
+              [size]="16"
+            ></app-icon>
+          </button>
+          @for (number of pageNumbers(); track number) {
+            <button
+              type="button"
+              [attr.aria-label]="'Página ' + number"
+              [attr.aria-current]="page() === number ? 'page' : null"
+              (click)="goToPage(number)"
+            >
+              {{ number }}
+            </button>
+          }
+          <button
+            type="button"
+            aria-label="Página siguiente"
+            [disabled]="page() >= (overview()?.totalPages ?? 0)"
+            (click)="goToPage(page() + 1)"
+          >
+            <app-icon name="chevron-right" [size]="16"></app-icon>
+          </button>
+        </nav>
+      </div>
+    }
+  }
+</div>
+
+@if (showNuevaFinca()) {
+  <div class="modal-backdrop" (click)="closeNuevaFinca()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Nueva finca</h4>
+        <button class="close-btn" (click)="closeNuevaFinca()">
+          <app-icon name="x" [size]="16"></app-icon>
+        </button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Nombre *
+          <input
+            type="text"
+            placeholder="Ej. Edificio Eixample Centro"
+            [class.form-field--error]="nfErrors().name"
+            [ngModel]="nfName()"
+            (ngModelChange)="nfName.set($event)"
+          />
+          @if (nfErrors().name) {
+            <span class="form-error">Campo obligatorio</span>
+          }
+        </label>
+        <div class="form-field">
+          Tipo de finca
+          <div class="type-grid">
+            @for (opt of estateTypeOptions; track opt.type) {
+              <button
+                type="button"
+                class="type-card"
+                [class.type-card--selected]="nfType() === opt.type"
+                (click)="nfType.set(opt.type)"
+              >
+                <div class="type-card__icon">
+                  <app-icon [name]="opt.icon" [size]="18"></app-icon>
+                </div>
+                <span class="type-card__label">{{ opt.type }}</span>
+              </button>
+            }
+          </div>
+        </div>
+        <label class="form-field">
+          Dirección *
+          <input
+            type="text"
+            placeholder="Ej. Carrer de Provença"
+            [class.form-field--error]="nfErrors().address"
+            [ngModel]="nfAddress()"
+            (ngModelChange)="nfAddress.set($event)"
+          />
+          @if (nfErrors().address) {
+            <span class="form-error">Campo obligatorio</span>
+          }
+        </label>
+        <label class="form-field">
+          Nº (opcional)
+          <input
+            type="text"
+            placeholder="Ej. 248"
+            [ngModel]="nfStreetNumber()"
+            (ngModelChange)="nfStreetNumber.set($event)"
+          />
+          <span class="form-hint"
+            >Si lo indicas, se precargará al dar de alta propiedades dentro de
+            esta finca.</span
+          >
+        </label>
+        <label class="form-field">
+          Localidad *
+          <input
+            type="text"
+            placeholder="Ej. Barcelona"
+            [class.form-field--error]="nfErrors().location"
+            [ngModel]="nfLocation()"
+            (ngModelChange)="nfLocation.set($event)"
+          />
+          @if (nfErrors().location) {
+            <span class="form-error">Campo obligatorio</span>
+          }
+        </label>
+        <label class="form-field">
+          Provincia
+          <input
+            type="text"
+            placeholder="Ej. Barcelona (opcional)"
+            [ngModel]="nfProvince()"
+            (ngModelChange)="nfProvince.set($event)"
+          />
+        </label>
+        <label class="form-field">
+          Código postal
+          <input
+            type="text"
+            maxlength="10"
+            placeholder="Opcional"
+            [ngModel]="nfPostalCode()"
+            (ngModelChange)="nfPostalCode.set($event)"
+          />
+        </label>
+        <label class="form-field">
+          Referencia catastral de la parcela
+          <input
+            type="text"
+            maxlength="14"
+            placeholder="14 caracteres (opcional)"
+            [class.form-field--error]="nfErrors().cadastralReference"
+            [ngModel]="nfCadastralReference()"
+            (ngModelChange)="nfCadastralReference.set($event)"
+          />
+          @if (nfErrors().cadastralReference) {
+            <span class="form-error"
+              >Deben ser 14 caracteres (letras y números)</span
+            >
+          }
+          <span class="form-hint"
+            >Con ella podrás importar todas las propiedades del edificio desde
+            el Catastro.</span
+          >
+        </label>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeNuevaFinca()"
+          >Cancelar</app-btn
+        >
+        <app-btn
+          variant="outline"
+          size="sm"
+          (clicked)="submitNuevaFinca('import')"
+          >Crear e importar datos</app-btn
+        >
+        <app-btn variant="primary" size="sm" (clicked)="submitNuevaFinca()"
+          >Crear finca</app-btn
+        >
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

@@ -1,0 +1,57 @@
+<section class="kpis" aria-label="Indicadores de la finca" [attr.aria-busy]="loading()">
+  @for (kpi of kpis(); track kpi.id) {
+    <button type="button" class="kpis__item" [attr.data-kpi]="kpi.id" (click)="go(kpi)">
+      <app-kpi-tile [label]="kpi.label" [value]="kpi.value" [sub]="kpi.sub" [icon]="kpi.icon" [tone]="kpi.tone"></app-kpi-tile>
+    </button>
+  }
+</section>
+
+@if (failed()) {
+  <p class="kpis__error" role="alert">No se pudieron cargar los indicadores de la finca. Recarga la página para reintentarlo.</p>
+}
+
+<div class="overview">
+  @if (estate; as e) {
+    <section class="hero" aria-label="Presentación de la finca">
+      <div class="hero__media">
+        <app-estate-facade-thumbnail [url]="e.catastroFacadeUrl ?? null" [estateId]="e.id" [photoVersion]="e.photoUpdatedAt ?? null" [name]="e.name" variant="wide"></app-estate-facade-thumbnail>
+      </div>
+      <div class="hero__body">
+        <span class="hero__eyebrow">Comunidad de propietarios</span>
+        <h3 class="hero__name">{{ e.name }}</h3>
+        @if (heroAddress()) {
+          <p class="hero__address"><app-icon name="map-pin" [size]="13"></app-icon>{{ heroAddress() }}</p>
+        }
+        @if (e.description) {
+          <p class="hero__description">{{ e.description }}</p>
+        } @else {
+          <p class="hero__description hero__description--empty">
+            Aún no hay una descripción de la comunidad.
+            <button type="button" class="hero__link" (click)="editEstate.emit()">Añadir descripción</button>
+          </p>
+        }
+        <div class="hero__actions">
+          <app-btn variant="secondary" (clicked)="addProperty.emit()">
+            <app-icon name="plus" [size]="14"></app-icon>
+            Añadir propiedad
+          </app-btn>
+          <app-btn variant="outline" (clicked)="openAccounting()">
+            <app-icon name="chart" [size]="14"></app-icon>
+            Ver contabilidad
+          </app-btn>
+        </div>
+      </div>
+    </section>
+  }
+  <app-cashflow-card [estateId]="estateId" (openAccounting)="openAccounting()" (yearChange)="year.set($event)"></app-cashflow-card>
+</div>
+
+<div class="panels">
+  <app-expense-breakdown-card [estateId]="estateId" [year]="year()"></app-expense-breakdown-card>
+  <app-milestones-card [estateId]="estateId" (openTab)="openTab.emit($event)"></app-milestones-card>
+  <app-activity-card [estateId]="estateId" (openTarget)="openActivityTarget($event)"></app-activity-card>
+</div>
+
+<div class="recent">
+  <app-properties-card [estateId]="estateId" (viewAll)="openTab.emit('properties')" (openProperty)="openProperty.emit($event)"></app-properties-card>
+</div>

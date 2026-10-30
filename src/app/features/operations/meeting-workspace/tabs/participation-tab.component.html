@@ -1,0 +1,157 @@
+<div class="participation">
+  <app-meeting-card title="Participación y asistencia">
+    <div class="stats">
+      <div class="stats__quorum">
+        <span class="stats__icon" [class]="'stats__icon stats__icon--' + stats.quorumTone" aria-hidden="true">
+          <app-icon [name]="stats.quorumTone === 'green' ? 'check' : 'exclamation'" [size]="20"></app-icon>
+        </span>
+        <div>
+          <strong [class]="'stats__label stats__label--' + stats.quorumTone">{{ stats.quorumLabel }}</strong>
+          <p>{{ stats.quorumHint }}</p>
+        </div>
+      </div>
+      <dl class="stats__metrics">
+        <div><dt>Asistentes</dt><dd><app-icon name="users" [size]="18"></app-icon>{{ stats.attending }} / {{ stats.totalOwners }}</dd></div>
+        <div><dt>Representados</dt><dd><app-icon name="users" [size]="18"></app-icon>{{ stats.represented }}</dd></div>
+        <div><dt>Vecinos presentes</dt><dd><app-icon name="users" [size]="18"></app-icon>{{ percent(stats.ownersPercent) }}</dd></div>
+        <div><dt>Coeficiente presente</dt><dd><app-icon name="chart" [size]="18"></app-icon>{{ percent(stats.quotaPercent) }}</dd></div>
+      </dl>
+    </div>
+
+    <div class="tools">
+      <label class="tools__search">
+        <app-icon name="search" [size]="16" aria-hidden="true"></app-icon>
+        <span class="sr-only">Buscar propietario</span>
+        <input class="field--bare"
+          type="search"
+          placeholder="Buscar propietario…"
+          maxlength="80"
+          [value]="query()"
+          (input)="query.set($any($event.target).value)"
+        />
+      </label>
+      <label class="tools__filter">
+        <app-icon name="filter" [size]="16" aria-hidden="true"></app-icon>
+        <span class="sr-only">Filtrar por estado</span>
+        <select class="field--bare" [value]="filter()" (change)="filter.set($any($event.target).value)">
+          @for (option of filters; track option.id) {
+            <option [value]="option.id" [selected]="filter() === option.id">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="table-scroll">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Propiedad</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Representación</th>
+            <th scope="col">Coeficiente</th>
+            <th scope="col" class="table__actions">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of visibleRows(); track row.propertyId) {
+            <tr>
+              <td data-label="Propiedad">
+                <span class="owner"><span class="owner__avatar" aria-hidden="true">{{ row.initials }}</span>{{ row.unit }} -
+                  @if (canPickHolder(row)) {
+                    <select
+                      class="owner__select"
+                      [attr.aria-label]="'Titular de la propiedad ' + row.unit"
+                      [value]="row.holderUserId"
+                      (change)="holderChosen.emit({ row, userId: $any($event.target).value })"
+                    >
+                      @for (holder of row.holders; track holder.userId) {
+                        <option [value]="holder.userId" [selected]="holder.userId === row.holderUserId">{{ holder.name }}</option>
+                      }
+                    </select>
+                  } @else {
+                    {{ row.owner }}
+                  }
+                </span>
+              </td>
+              <td data-label="Estado"><app-status-pill [tone]="statusTone(row.status)">{{ row.statusLabel }}</app-status-pill></td>
+              <td data-label="Representación" class="muted">
+                {{ row.representedBy ? 'Por ' + row.representedBy : '—' }}
+                @if (row.representedByDni) {
+                  <span class="muted--small">DNI {{ row.representedByDni }}</span>
+                }
+              </td>
+              <td data-label="Coeficiente">{{ row.quota }}</td>
+              <td data-label="Acciones" class="table__actions">
+                <button
+                  #trigger
+                  type="button"
+                  class="icon-btn row-menu__trigger"
+                  aria-haspopup="menu"
+                  [disabled]="!canRegister"
+                  [attr.aria-expanded]="menu()?.row?.propertyId === row.propertyId"
+                  [attr.aria-label]="'Gestionar participación de ' + row.owner"
+                  (click)="toggleMenu(row, trigger)"
+                >
+                  <app-icon name="ellipsis" [size]="18"></app-icon>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="empty">
+                {{ query() || filter() !== 'all' ? 'Ningún propietario coincide con la búsqueda.' : 'Esta comunidad todavía no tiene propiedades.' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </app-meeting-card>
+
+  @if (menu(); as open) {
+    <div
+      #menuPanel
+      popover="manual"
+      class="row-menu"
+      role="menu"
+      [attr.aria-label]="'Participación de ' + open.row.owner"
+      [style.right.px]="open.right"
+      [style.top.px]="open.top"
+      [style.bottom.px]="open.bottom"
+    >
+      @switch (open.row.status) {
+        @case ('presente') {
+          <button type="button" role="menuitem" (click)="act('markAbsent', open.row)">
+            <app-icon name="x" [size]="16"></app-icon>Marcar como ausente
+          </button>
+          <button type="button" role="menuitem" (click)="act('represent', open.row)">
+            <app-icon name="users" [size]="16"></app-icon>Registrar representación
+          </button>
+        }
+        @case ('ausente') {
+          <button type="button" role="menuitem" (click)="act('markPresent', open.row)">
+            <app-icon name="check" [size]="16"></app-icon>Marcar como presente
+          </button>
+          <button type="button" role="menuitem" (click)="act('represent', open.row)">
+            <app-icon name="users" [size]="16"></app-icon>Registrar representación
+          </button>
+        }
+        @case ('representado') {
+          <button type="button" role="menuitem" (click)="act('represent', open.row)">
+            <app-icon name="repeat" [size]="16"></app-icon>Cambiar representante
+          </button>
+          <button type="button" role="menuitem" (click)="act('removeRepresentation', open.row)">
+            <app-icon name="trash" [size]="16"></app-icon>Quitar representación
+          </button>
+          <hr />
+          <button type="button" role="menuitem" (click)="act('markPresent', open.row)">
+            <app-icon name="check" [size]="16"></app-icon>Marcar como presente
+          </button>
+          <button type="button" role="menuitem" (click)="act('markAbsent', open.row)">
+            <app-icon name="x" [size]="16"></app-icon>Marcar como ausente
+          </button>
+        }
+      }
+    </div>
+  }
+</div>

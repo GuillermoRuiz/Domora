@@ -1,0 +1,60 @@
+@use 'breakpoints' as bp;
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 20px 0 10px;
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 0.9fr 1.4fr auto;
+  gap: 8px;
+  align-items: end;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+
+  @include bp.respond-to('phone') {
+    grid-template-columns: 1fr 1fr;
+
+    .line__account,
+    .line__desc { grid-column: 1 / -1; }
+  }
+
+  &__remove { margin-bottom: 6px; }
+}
+
+.totals {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  dt { color: var(--color-muted); }
+  dd { margin: 0; }
+
+  &__main {
+    padding-top: 6px;
+    border-top: 1px solid var(--color-border);
+    font-weight: 600;
+
+    dt { color: var(--color-text); }
+  }
+}

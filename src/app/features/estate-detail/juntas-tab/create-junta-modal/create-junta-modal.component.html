@@ -1,0 +1,223 @@
+@if (open && !showSuccess()) {
+  <div class="wizard-backdrop" (mousedown)="onBackdrop($event)">
+    <div
+      class="wizard"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="junta-wizard-title"
+      (keydown)="onKeydown($event)"
+    >
+      <header class="wizard__header">
+        <div class="wizard__title-row">
+          <h2 id="junta-wizard-title">
+            <app-icon name="calendar" [size]="18" aria-hidden="true"></app-icon> {{ editing ? "Editar junta" : "Nueva junta" }}
+          </h2>
+          <button
+            type="button"
+            class="wizard__close"
+            aria-label="Cerrar"
+            [disabled]="draft.saving()"
+            (click)="requestClose()"
+          >
+            <app-icon name="x" [size]="16"></app-icon>
+          </button>
+        </div>
+
+        <ol class="step-indicator" [attr.aria-label]="editing ? 'Pasos para editar la junta' : 'Pasos para crear la junta'">
+          @for (s of steps; track s.n; let last = $last) {
+            <li class="step-pill">
+              <button
+                type="button"
+                class="step-btn"
+                [disabled]="draft.saving()"
+                [attr.aria-current]="step() === s.n ? 'step' : null"
+                (click)="goTo(s.n)"
+              >
+                <span
+                  class="step-circle"
+                  [class.step-circle--active]="step() === s.n"
+                  [class.step-circle--done]="step() > s.n"
+                >
+                  @if (step() > s.n) {
+                    <app-icon name="check" [size]="14" aria-label="Completado"></app-icon>
+                  } @else {
+                    {{ s.n }}
+                  }
+                </span>
+                <span
+                  class="step-label"
+                  [class.step-label--active]="step() === s.n"
+                  [class.step-label--done]="step() > s.n"
+                  >{{ s.label }}</span
+                >
+              </button>
+              @if (!last) {
+                <span class="step-connector" [class.step-connector--done]="step() > s.n" aria-hidden="true"></span>
+              }
+            </li>
+          }
+        </ol>
+      </header>
+
+      <div class="wizard__body">
+        @switch (step()) {
+          @case (1) {
+            <app-junta-details-step (estateChosen)="onEstateChosen($event)"></app-junta-details-step>
+          }
+          @case (2) {
+            <section class="step-agenda" aria-labelledby="junta-step-2-heading">
+              <h3 class="step-agenda__heading" id="junta-step-2-heading" tabindex="-1" data-step-heading>
+                Orden del día
+              </h3>
+              <p class="step-agenda__intro">
+                Añade los puntos que se tratarán en la junta. Puedes reordenarlos arrastrando.
+              </p>
+              <app-agenda-builder
+                [meetingType]="draft.type()"
+                [items]="draft.agenda()"
+                [showErrors]="draft.errorField() === 'agenda'"
+                (itemsChange)="draft.agenda.set($event)"
+              ></app-agenda-builder>
+            </section>
+          }
+          @case (3) {
+            <app-junta-guests-step></app-junta-guests-step>
+          }
+        }
+      </div>
+
+      <footer class="wizard__footer">
+        <app-btn variant="outline" [disabled]="draft.saving()" (clicked)="requestClose()">Cancelar</app-btn>
+
+        <p class="wizard__error" id="junta-wizard-error" role="alert">
+          @if (draft.error(); as error) {
+            {{ error.message }}
+          }
+        </p>
+
+        <div class="wizard__nav">
+          @if (step() > 1) {
+            <app-btn variant="outline" [disabled]="draft.saving()" (clicked)="back()">
+              <app-icon name="arrow-left" [size]="16" aria-hidden="true"></app-icon>
+              Atrás
+            </app-btn>
+          }
+          @if (step() < lastStep) {
+            <app-btn variant="accent" (clicked)="next()">
+              Continuar
+              <app-icon name="arrow-right" [size]="16" aria-hidden="true"></app-icon>
+            </app-btn>
+          } @else {
+            <app-btn variant="accent" [disabled]="draft.saving()" (clicked)="submit()">
+              @if (editing) {
+                {{ draft.saving() ? "Guardando…" : "Guardar cambios" }}
+              } @else {
+                {{ draft.saving() ? "Creando…" : "Crear junta" }}
+              }
+            </app-btn>
+          }
+        </div>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (showSuccess() && successInfo(); as info) {
+  <div class="wizard-backdrop" (mousedown)="$event.target === $event.currentTarget && viewMeeting()">
+    <div
+      class="success"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="junta-success-title"
+      (keydown.escape)="viewMeeting()"
+    >
+      <span class="success__icon" aria-hidden="true"><app-icon name="check" [size]="26"></app-icon></span>
+      <h2 id="junta-success-title">¡Junta creada correctamente!</h2>
+      <p class="success__text">
+        «{{ info.meeting.title }}» se ha creado y ya aparece en el listado de juntas.
+        @if (info.meeting.includeJitsi) {
+          Comparte con los asistentes el enlace de la sala de espera.
+        }
+      </p>
+
+      @if (info.failedUploads.length) {
+        <p class="success__warning" role="alert">
+          No se pudieron subir {{ info.failedUploads.length === 1 ? "este archivo" : "estos archivos" }}:
+          {{ info.failedUploads.join(", ") }}.
+        </p>
+      }
+
+      <div class="success__links">
+        <div class="success-block">
+          <span class="success-block__label">Link para vecinos (sala de espera)</span>
+          <div class="success-block__row">
+            <input type="text" readonly aria-label="Link para vecinos (sala de espera)" [value]="info.waitRoomUrl" />
+            <button
+              type="button"
+              class="action-btn"
+              aria-label="Copiar link de sala de espera"
+              (click)="copy(info.waitRoomUrl, 'Link de sala de espera')"
+            >
+              <app-icon name="copy" [size]="14"></app-icon>
+            </button>
+          </div>
+        </div>
+
+        @if (info.password) {
+          <div class="success-block">
+            <span class="success-block__label">Contraseña de acceso</span>
+            <div class="success-block__row">
+              <input
+                type="text"
+                readonly
+                class="success-block__password"
+                aria-label="Contraseña de acceso"
+                [value]="info.password"
+              />
+              <button
+                type="button"
+                class="action-btn"
+                aria-label="Copiar contraseña"
+                (click)="copy(info.password!, 'Contraseña')"
+              >
+                <app-icon name="copy" [size]="14"></app-icon>
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (info.beaconUrl) {
+          <div class="success-block">
+            <span class="success-block__label">Link de administrador</span>
+            <div class="success-block__row">
+              <input type="text" readonly aria-label="Link de administrador" [value]="info.beaconUrl" />
+              <button
+                type="button"
+                class="action-btn"
+                aria-label="Copiar link de administrador"
+                (click)="copy(info.beaconUrl!, 'Link de administrador')"
+              >
+                <app-icon name="copy" [size]="14"></app-icon>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="success__actions">
+        <app-btn variant="outline" (clicked)="downloadConvocatoria()">
+          <app-icon name="download" [size]="14"></app-icon>Descargar convocatoria
+        </app-btn>
+        <app-btn variant="outline" (clicked)="copyAll()">Copiar todo</app-btn>
+        <app-btn variant="accent" (clicked)="viewMeeting()">Ver junta</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast" role="status">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

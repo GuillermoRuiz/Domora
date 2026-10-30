@@ -1,0 +1,89 @@
+<div class="backdrop" (click)="closed.emit()">
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="cd-title" (click)="$event.stopPropagation()" appContractDialog (dismiss)="closed.emit()" tabindex="-1">
+    <header class="drawer__header">
+      <div class="drawer__titles">
+        <h4 id="cd-title">{{ contract.serviceType }}</h4>
+        <span class="drawer__subtitle">{{ contract.supplier.name }} · {{ contract.supplier.category }}</span>
+        <span class="drawer__badges">
+          <app-status-pill [text]="pill().text" [tone]="pill().tone" [dot]="true"></app-status-pill>
+          <span class="drawer__alert" [class]="'drawer__alert drawer__alert--' + alert().tone" data-detail="alert">{{ alert().text }}</span>
+        </span>
+      </div>
+      <button type="button" class="drawer__close" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </header>
+
+    <div class="drawer__body">
+      <section aria-label="Datos del contrato">
+        <dl class="facts">
+          <div><dt>Inicio</dt><dd data-detail="start">{{ start() }}</dd></div>
+          <div><dt>Vencimiento</dt><dd data-detail="end">{{ end() }}</dd></div>
+          <div><dt>Renovación</dt><dd data-detail="renewal">{{ renewalLabel() }}</dd></div>
+          <div><dt>Cadencia de revisión</dt><dd>{{ contract.reviewFrequency || '—' }}</dd></div>
+          <div><dt>Importe anual</dt><dd data-detail="annual">{{ amount().main }}@if (amount().sub) { <small>{{ amount().sub }}</small> }</dd></div>
+          <div><dt>Importe según contrato</dt><dd data-detail="cost">{{ costAsRecorded() }}</dd></div>
+          @if (contract.status === 'Cancelado') {
+            <div><dt>Cancelado</dt><dd data-detail="cancelled">{{ cancelledOn() }}@if (contract.cancelledReason) { <small>{{ contract.cancelledReason }}</small> }</dd></div>
+          }
+          @if (contract.notes) {
+            <div class="facts__wide"><dt>Notas</dt><dd class="facts__notes">{{ contract.notes }}</dd></div>
+          }
+        </dl>
+      </section>
+
+      <section aria-labelledby="cd-docs">
+        <h5 id="cd-docs">Documentos</h5>
+        @if (documents() === null) {
+          <p class="drawer__empty" role="status">Cargando documentos…</p>
+        } @else if (documentsFailed()) {
+          <p class="drawer__empty drawer__empty--error" role="alert">No se pudieron cargar los documentos.</p>
+        } @else if (documents()!.length === 0) {
+          <p class="drawer__empty">Este contrato no tiene documentos adjuntos.</p>
+        } @else {
+          <ul class="list" data-detail="documents">
+            @for (doc of documents(); track doc.id) {
+              <li class="list__row">
+                <app-icon name="file-text" [size]="16"></app-icon>
+                <span class="list__text"><strong>{{ doc.title }}</strong><small>{{ doc.documentType }} · {{ doc.fileName }}</small></span>
+                <button type="button" class="list__action" [attr.aria-label]="'Descargar ' + doc.title" (click)="download(doc)">Descargar</button>
+              </li>
+            }
+          </ul>
+        }
+        @if (downloadError()) { <p class="drawer__empty drawer__empty--error" role="alert">{{ downloadError() }}</p> }
+      </section>
+
+      <section aria-labelledby="cd-renewals">
+        <h5 id="cd-renewals">Renovaciones</h5>
+        @if (mine().length === 0) {
+          <p class="drawer__empty">Todavía no se ha registrado ninguna renovación de este contrato.</p>
+        } @else {
+          <ul class="list" data-detail="renewals">
+            @for (r of mine(); track r.id) {
+              <li class="list__row">
+                <app-icon name="repeat" [size]="16"></app-icon>
+                <span class="list__text">
+                  <strong>{{ r.date }} · {{ r.kind }}</strong>
+                  <small>Nuevo vencimiento {{ r.newEnd }}@if (r.amount) { · {{ r.amount }}/año }@if (r.notes) { · {{ r.notes }} }</small>
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+
+    <footer class="drawer__footer">
+      <button type="button" class="drawer__link" (click)="openSupplier.emit(contract)">Ver proveedor</button>
+      <span class="drawer__spacer"></span>
+      @if (canCancel()) {
+        <app-btn variant="outline" size="sm" (clicked)="cancel.emit(contract)">Cancelar contrato</app-btn>
+      }
+      @if (canRenew()) {
+        <app-btn variant="outline" size="sm" (clicked)="renew.emit(contract)">Renovar</app-btn>
+      }
+      @if (canEdit()) {
+        <app-btn variant="primary" size="sm" (clicked)="edit.emit(contract)">Editar</app-btn>
+      }
+    </footer>
+  </aside>
+</div>

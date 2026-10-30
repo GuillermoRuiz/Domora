@@ -1,0 +1,41 @@
+:host { display: block; min-width: 0; height: 100%; }
+app-section-card { height: 100%; }
+
+.evt__message { margin: 0; padding: 24px 20px 28px; text-align: center; font-size: 14px; color: var(--color-muted); }
+.evt__message--error { color: var(--color-error); }
+
+.evt { margin: 8px 0 0; padding: 0; list-style: none; }
+.evt__item {
+  display: grid;
+  grid-template-columns: 46px 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 20px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  cursor: pointer;
+}
+li:first-child > .evt__item { border-top: none; }
+.evt__item:disabled { cursor: default; }
+.evt__item:not(:disabled):hover { background: var(--color-bg); }
+.evt__item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.evt__item > app-icon { color: var(--color-muted); }
+
+.evt__date { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 46px; padding: 4px 0; line-height: 1.1; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.evt__date strong { font-size: 16px; font-variant-numeric: tabular-nums; color: var(--color-text); }
+.evt__date small { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-muted); }
+
+.evt__icon { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); background: var(--color-bg); color: var(--color-muted); }
+.evt__icon--junta { color: #2563EB; }
+.evt__icon--recibo { color: var(--color-warning); }
+.evt__icon--reserva { color: var(--color-secondary); }
+.evt__icon--revision { color: var(--color-accent); }
+
+.evt__text { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.evt__title { font-weight: 600; color: var(--color-text); overflow-wrap: anywhere; }
+.evt__sub { font-size: 13px; color: var(--color-muted); overflow-wrap: anywhere; }

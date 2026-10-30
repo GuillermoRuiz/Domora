@@ -1,0 +1,331 @@
+<div class="acta-tab">
+  <div class="mode" role="group" aria-label="Modo del acta">
+    <button
+      type="button"
+      class="mode__option"
+      [class.mode__option--active]="mode() === 'generated'"
+      [attr.aria-pressed]="mode() === 'generated'"
+      (click)="selectMode('generated')"
+    >
+      <app-icon name="sparkles" [size]="18"></app-icon>Generar en Domora
+    </button>
+    <button
+      type="button"
+      class="mode__option"
+      [class.mode__option--active]="mode() === 'uploaded'"
+      [attr.aria-pressed]="mode() === 'uploaded'"
+      (click)="selectMode('uploaded')"
+    >
+      <app-icon name="upload" [size]="18"></app-icon>Subir acta existente
+    </button>
+  </div>
+
+  @if (mode() === 'uploaded') {
+    @if (uploadInfo; as upload) {
+      <app-meeting-card title="Acta subida">
+        <div class="uploaded">
+          <span class="uploaded__icon" aria-hidden="true"><app-icon name="file-text" [size]="22"></app-icon></span>
+          <div class="uploaded__body">
+            <strong class="uploaded__name" [title]="upload.fileName">{{ upload.fileName }}</strong>
+            <span class="uploaded__meta">{{ formatSize(upload.sizeBytes) }} · subida el {{ dateTime(upload.uploadedAt) }}</span>
+            <span class="uploaded__hash" [title]="upload.sha256">SHA-256 {{ upload.sha256.slice(0, 8) }}</span>
+          </div>
+          <div class="uploaded__actions">
+            <app-btn variant="outline" size="sm" (clicked)="downloadUpload.emit(upload.fileName)">
+              <app-icon name="download" [size]="14"></app-icon>Descargar
+            </app-btn>
+            @if (!uploadBlockedReason) {
+              <app-btn variant="ghost" size="sm" (clicked)="replacing.set(!replacing())">{{ replacing() ? 'Cancelar' : 'Subir otro archivo' }}</app-btn>
+            }
+          </div>
+        </div>
+      </app-meeting-card>
+    }
+    @if (!uploadInfo || replacing()) {
+      <app-meeting-acta-upload-card
+        [file]="uploadFile()"
+        [disabled]="!!uploadBlockedReason || busy || uploading()"
+        [blockedReason]="uploadBlockedReason"
+        [busy]="uploading()"
+        (fileChange)="uploadFile.set($event)"
+        (submitted)="requestUpload()"
+      ></app-meeting-acta-upload-card>
+    }
+  } @else {
+    @if (uploadedOrigin) {
+      <p class="banner" role="note">
+        El acta que se firma es el archivo subido ({{ uploadInfo?.fileName }}). Si preparas este borrador para la firma, sustituirá al archivo.
+      </p>
+    }
+    <div class="toolbar">
+      <div class="version">
+        <label class="version__select">
+          <span>Versión</span>
+          <select aria-label="Versión del acta" [value]="selectedId() ?? ''" (change)="selectVersion($any($event.target).value)">
+            @for (option of versionOptions; track option.value) {
+              <option [value]="option.value" [selected]="option.value === (selectedId() ?? '')">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+        @if (readOnly()) {
+          <span class="version__state version__state--muted" role="status">Solo lectura</span>
+          <app-btn variant="outline" [disabled]="!canEdit" (clicked)="restore()">Restaurar esta versión</app-btn>
+        } @else {
+          @if (dirty()) {
+            <span class="version__state version__state--dirty" role="status">Cambios sin guardar</span>
+          } @else if (versions().length) {
+            <span class="version__state version__state--saved" role="status"><app-icon name="check" [size]="14"></app-icon>Guardado</span>
+          }
+          <app-btn variant="accent" [disabled]="!canSave" (clicked)="save()">{{ saving() ? 'Guardando…' : 'Guardar' }}</app-btn>
+        }
+      </div>
+
+      <div class="toolbar__actions">
+        <app-btn
+          variant="accent"
+          [disabled]="!canReview || reviewBusy()"
+          [attr.title]="canReview ? null : 'Disponible cuando la junta esté celebrada'"
+          (clicked)="openReview()"
+        >
+          {{ reviewBusy() ? 'Abriendo…' : 'Revisar' }}
+        </app-btn>
+        <div class="menu">
+          <button
+            type="button"
+            class="menu__trigger"
+            aria-haspopup="menu"
+            aria-label="Más acciones del acta"
+            [attr.aria-expanded]="menuOpen()"
+            (click)="toggleMenu()"
+          >
+            <app-icon name="ellipsis" [size]="20"></app-icon>
+          </button>
+          @if (menuOpen()) {
+            <div class="menu__panel" role="menu" aria-label="Acciones del acta">
+              <button type="button" role="menuitem" [disabled]="!signed" (click)="choose('download')">
+                <app-icon name="download" [size]="16"></app-icon>Descargar acta
+              </button>
+              <button type="button" role="menuitem" [disabled]="!canSend" (click)="choose('send')">
+                <app-icon name="send" [size]="16"></app-icon>Enviar a propietarios
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (selectedVersion(); as version) {
+      <p class="banner" role="note">
+        Estás viendo la versión {{ version.versionNumber }}, guardada el {{ dateTime(version.createdAt) }}{{ version.savedByName ? ' por ' + version.savedByName : '' }}.
+        Solo recoge los textos del acta: la asistencia y los resultados son siempre los actuales de la junta.
+      </p>
+    }
+
+  }
+
+  @if (mode() === 'generated' || uploadInfo) {
+    <app-meeting-card title="Proceso de firma">
+      <ol class="steps">
+        @for (step of steps; track step.label) {
+          <li [class]="'step step--' + step.state" [attr.aria-current]="step.state === 'current' ? 'step' : null">
+            <span class="step__dot" aria-hidden="true">
+              @if (step.state === 'done') {
+                <app-icon name="check" [size]="12"></app-icon>
+              }
+            </span>
+            <strong>{{ step.label }}</strong>
+            @if (step.date) {
+              <small>{{ step.date }}</small>
+            }
+          </li>
+        }
+      </ol>
+
+      <div class="signers-head">
+        <h4>Firmas requeridas</h4>
+        <span>{{ signedCount }}/{{ signers.length }} completadas</span>
+      </div>
+      <ul class="signers">
+        @for (signer of signers; track signer.role; let i = $index) {
+          <li class="signer">
+            <strong>{{ signer.role }}</strong>
+            @if (!signer.signed && canSignAs(i)) {
+              <app-btn variant="accent" size="sm" [disabled]="signBusy()" (clicked)="sign(i)">Firmar</app-btn>
+            } @else {
+              <app-status-pill [tone]="signer.signed ? 'green' : 'yellow'" [dot]="false">{{ signer.signed ? 'Firmado' : 'Pendiente de firma' }}</app-status-pill>
+            }
+          </li>
+        }
+      </ul>
+
+      @if (meeting.actaDistributedAt) {
+        <p class="distributed">
+          Enviada a los propietarios el {{ dateTime(meeting.actaDistributedAt) }}.
+          @if (impugnacionDaysLeft !== null) {
+            Plazo de impugnación: {{ impugnacionDaysLeft >= 0 ? impugnacionDaysLeft + ' días restantes' : 'vencido' }}.
+          }
+        </p>
+      }
+    </app-meeting-card>
+  }
+
+  @if (mode() === 'generated') {
+    <app-meeting-card title="Asistencia">
+      <app-status-pill card-actions [tone]="stats.quorumTone">{{ stats.quorumLabel }}</app-status-pill>
+      <p class="text text--muted">{{ stats.quorumHint }}</p>
+
+      <dl class="metrics">
+        <div>
+          <dt>Propietarios asistentes</dt>
+          <dd>{{ stats.attending }} <small>/ {{ stats.totalOwners }}</small></dd>
+        </div>
+        <div>
+          <dt>Vecinos presentes</dt>
+          <dd>{{ percent(stats.ownersPercent) }}</dd>
+        </div>
+        <div>
+          <dt>Coeficiente presente</dt>
+          <dd>{{ percent(stats.quotaPercent) }}</dd>
+        </div>
+      </dl>
+
+      @for (group of groups(); track group.name) {
+        <section class="group" [attr.aria-label]="group.name">
+          <header>
+            <strong>{{ group.name }}</strong>
+            <span>{{ group.count }}</span>
+            <b>{{ group.quota }}</b>
+          </header>
+          <ul class="chips">
+            @for (unit of group.units; track unit.propertyId) {
+              <li><strong>{{ unit.unit }}</strong> {{ unit.quota }}</li>
+            }
+          </ul>
+        </section>
+      } @empty {
+        <p class="text text--empty">Todavía no hay propiedades presentes ni representadas.</p>
+      }
+    </app-meeting-card>
+
+    <app-meeting-card title="Orden del día y resultados">
+      <app-btn card-actions variant="outline" size="sm" (clicked)="manageAgenda.emit()">Gestionar orden del día</app-btn>
+      <ol class="points">
+        @for (row of agenda; track row.id) {
+          <li class="point">
+            <div class="point__head">
+              <span class="point__number">{{ row.number }}</span>
+              <div class="point__body">
+                <div class="point__title">
+                  <strong>{{ row.title }}</strong>
+                  <app-status-pill [tone]="pill(row).tone" [dot]="false">{{ pill(row).label }}</app-status-pill>
+                </div>
+                @if (total(row) > 0) {
+                  <div class="bar" role="img" [attr.aria-label]="summary(row)">
+                    @for (option of row.tally; track $index) {
+                      @if (option.count > 0) {
+                        <span [class]="'bar__seg bar__seg--' + option.tone" [style.width.%]="share(row, option)"></span>
+                      }
+                    }
+                  </div>
+                }
+                <p class="point__summary">{{ summary(row) }}</p>
+              </div>
+            </div>
+            <div class="point__comment">
+              <p [class.point__text--empty]="!commentOf(row)">{{ commentOf(row) || 'Sin comentarios en este punto.' }}</p>
+              <app-btn variant="outline" size="sm" [disabled]="!row.canComment || readOnly() || busy" (clicked)="openPoint(row)">
+                <app-icon name="edit" [size]="14"></app-icon>Editar
+              </app-btn>
+            </div>
+          </li>
+        } @empty {
+          <li class="text text--empty">No hay puntos en el orden del día.</li>
+        }
+      </ol>
+    </app-meeting-card>
+
+    <app-meeting-card title="Observaciones">
+      <div class="agreements">
+        <div class="point__comment">
+          <p [class.point__text--empty]="!general()">{{ general() || 'Todavía no hay observaciones sobre la junta.' }}</p>
+          <app-btn variant="outline" size="sm" [disabled]="!canEdit || readOnly() || busy" (clicked)="openNote('general')">
+            <app-icon name="edit" [size]="14"></app-icon>Editar
+          </app-btn>
+        </div>
+      </div>
+    </app-meeting-card>
+
+    <app-meeting-card title="Acuerdos y actuaciones">
+      <div class="agreements">
+        <h4 class="agreements__title agreements__title--green">Acuerdos adoptados</h4>
+        <ul>
+          @for (agreement of agreementLines; track agreement) {
+            <li>{{ agreement }}</li>
+          } @empty {
+            <li class="text--empty">{{ acta()?.version ? 'Ninguna votación aprobada consta en el acta.' : 'Se recogerán al preparar el acta, a partir de las votaciones cerradas.' }}</li>
+          }
+        </ul>
+      </div>
+      <div class="agreements">
+        <h4 class="agreements__title">Actuaciones derivadas de los acuerdos</h4>
+        <div class="point__comment">
+          <p [class.point__text--empty]="!nextSteps().length">{{ nextSteps().join('\n') || 'Todavía no hay actuaciones derivadas de los acuerdos.' }}</p>
+          <app-btn variant="outline" size="sm" [disabled]="!canEdit || readOnly() || busy" (clicked)="openNote('next')">
+            <app-icon name="edit" [size]="14"></app-icon>Editar
+          </app-btn>
+        </div>
+      </div>
+    </app-meeting-card>
+  }
+
+  @if (uploadDialog()) {
+    <app-acta-upload-dialog
+      [fileName]="uploadFile()?.name ?? ''"
+      [replacesDraft]="hasGeneratedActa"
+      [busy]="uploading()"
+      [error]="uploadError()"
+      (confirmed)="confirmUpload($event)"
+      (closed)="closeUploadDialog()"
+    ></app-acta-upload-dialog>
+  }
+
+  @if (dialog(); as dlg) {
+    <app-meeting-comments-modal
+      [row]="dlg.target"
+      [heading]="dlg.heading"
+      [description]="dlg.description"
+      [placeholder]="dlg.placeholder"
+      [max]="dlg.max"
+      (save)="stage($event)"
+      (closed)="closeEditor()"
+    ></app-meeting-comments-modal>
+  }
+
+  @if (prepareValidation(); as validation) {
+    <app-acta-prepare-dialog
+      [validation]="validation"
+      [busy]="prepareBusy()"
+      [error]="prepareError()"
+      (generate)="confirmPrepare($event)"
+      (closed)="closePrepare()"
+    ></app-acta-prepare-dialog>
+  }
+
+  @if (viewer(); as version) {
+    <app-acta-viewer
+      [version]="version"
+      [busy]="viewerBusy()"
+      [error]="viewerError()"
+      [warnings]="viewerWarnings()"
+      [versions]="actaVersions()"
+      (pickVersion)="pickActaVersion($event)"
+      (back)="closeViewer()"
+      (save)="saveViewerEdits($event)"
+      (regenerate)="regenerateNarrative()"
+      (downloadPdf)="downloadPdf.emit($event)"
+      (prepare)="prepareForSignature()"
+      (continueToSign)="continueToSigning()"
+      (editData)="editMeetingData()"
+    ></app-acta-viewer>
+  }
+</div>

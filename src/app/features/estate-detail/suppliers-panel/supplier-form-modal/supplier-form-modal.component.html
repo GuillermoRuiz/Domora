@@ -1,0 +1,61 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sup-form-title" (click)="$event.stopPropagation()" (keydown.escape)="closed.emit()">
+    <div class="modal__header">
+      <h4 id="sup-form-title">{{ editing() ? 'Editar proveedor' : 'Nuevo proveedor' }}</h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <form class="modal__body" (ngSubmit)="submit()" novalidate>
+      <label class="form-field" for="sf-name">
+        Nombre *
+        <input id="sf-name" name="name" type="text" maxlength="200" placeholder="Ascensores Levante S.L." autocomplete="off"
+          [ngModel]="name()" (ngModelChange)="name.set($event)" [class.field--error]="nameInvalid()" />
+        @if (nameInvalid()) { <span class="field-error">El nombre es obligatorio</span> }
+      </label>
+
+      <label class="form-field" for="sf-category">
+        Categoría
+        <select id="sf-category" name="category" [ngModel]="categoryKey()" (ngModelChange)="categoryKey.set($event)">
+          @for (c of categoryOptions; track c.key) { <option [value]="c.key">{{ c.label }}</option> }
+        </select>
+      </label>
+
+      @if (categoryKey() === 'otro') {
+        <label class="form-field" for="sf-other">
+          Descripción de la categoría
+          <input id="sf-other" name="other" type="text" maxlength="100" placeholder="Por ejemplo: Administración de fincas"
+            [ngModel]="otherText()" (ngModelChange)="otherText.set($event)" />
+        </label>
+      }
+
+      <label class="form-field" for="sf-contact">
+        Persona de contacto
+        <input id="sf-contact" name="contact" type="text" maxlength="200" autocomplete="off"
+          [ngModel]="contactName()" (ngModelChange)="contactName.set($event)" />
+      </label>
+
+      <div class="form-row">
+        <label class="form-field" for="sf-phone">
+          Teléfono
+          <input id="sf-phone" name="phone" type="tel" maxlength="30" autocomplete="off"
+            [ngModel]="phone()" (ngModelChange)="phone.set($event)" />
+        </label>
+        <label class="form-field" for="sf-email">
+          Correo
+          <input id="sf-email" name="email" type="email" maxlength="200" autocomplete="off"
+            [ngModel]="email()" (ngModelChange)="email.set($event)" [class.field--error]="emailInvalid()" />
+          @if (emailInvalid()) { <span class="field-error">El correo no es válido</span> }
+        </label>
+      </div>
+
+      @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="closed.emit()">Cancelar</app-btn>
+        <app-btn variant="primary" type="submit" [disabled]="saving()">
+          {{ saving() ? 'Guardando…' : (editing() ? 'Guardar cambios' : 'Crear proveedor') }}
+        </app-btn>
+      </div>
+    </form>
+  </div>
+</div>

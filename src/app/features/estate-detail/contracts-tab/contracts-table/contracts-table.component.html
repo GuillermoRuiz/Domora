@@ -1,0 +1,66 @@
+<div class="scroll" tabindex="0" role="region" aria-label="Contratos con proveedores">
+  <table class="table">
+    <thead>
+      <tr>
+        <th scope="col">Contrato / Servicio</th>
+        <th scope="col">Proveedor</th>
+        <th scope="col">Inicio</th>
+        <th scope="col">Vencimiento</th>
+        <th scope="col">Renovación</th>
+        <th scope="col" class="table__num">Importe</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Alerta</th>
+        <th scope="col"><span class="sr-only">Acción</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.contract.id) {
+        <tr [attr.data-contract]="row.contract.id" [class.table__row--cancelled]="row.cancelled">
+          <td data-label="Contrato">
+            <span class="table__service">{{ row.contract.serviceType }}</span>
+            <span class="table__category">{{ row.contract.supplier.category }}</span>
+          </td>
+          <td data-label="Proveedor">
+            <span class="table__supplier">
+              <app-avatar [name]="row.contract.supplier.name" [size]="30" [bg]="row.color"></app-avatar>
+              <span class="table__supplier-name">{{ row.contract.supplier.name }}</span>
+            </span>
+          </td>
+          <td data-label="Inicio" class="table__date">{{ row.start }}</td>
+          <td data-label="Vencimiento" class="table__date table__end" [class]="'table__date table__end table__end--' + row.endTone">{{ row.end }}</td>
+          <td data-label="Renovación">{{ row.renewal }}</td>
+          <td data-label="Importe" class="table__num">
+            <span class="table__amount">{{ row.amount.main }}</span>
+            @if (row.amount.sub) {
+              <span class="table__amount-sub">{{ row.amount.sub }}</span>
+            }
+          </td>
+          <td data-label="Estado"><app-status-pill [text]="row.pill.text" [tone]="row.pill.tone" [dot]="true"></app-status-pill></td>
+          <td data-label="Alerta">
+            <span class="table__alert" [class]="'table__alert table__alert--' + row.alert.tone" [attr.data-alert-tone]="row.alert.tone">
+              @if (row.alert.tone !== 'neutral') {
+                <app-icon name="exclamation" [size]="15"></app-icon>
+              }
+              {{ row.alert.text }}
+            </span>
+          </td>
+          <td class="table__actions">
+            <button type="button" class="table__view" [attr.aria-label]="'Ver ' + row.contract.serviceType + ' de ' + row.contract.supplier.name" (click)="view.emit(row.contract)">Ver</button>
+            <button type="button" class="table__more" aria-haspopup="menu" [attr.aria-expanded]="menu()?.contract?.id === row.contract.id"
+              [attr.aria-label]="'Más acciones de ' + row.contract.serviceType + ' de ' + row.contract.supplier.name" (click)="toggleMenu(row.contract, $event)">
+              <app-icon name="ellipsis" [size]="18"></app-icon>
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (menu(); as open) {
+  <ul class="menu" role="menu" aria-label="Acciones del contrato" [style.top.px]="open.top" [style.left.px]="open.left" (keydown)="onMenuKeydown($event)" (click)="$event.stopPropagation()">
+    @for (item of menuItems(); track item.id) {
+      <li role="none"><button type="button" role="menuitem" class="menu__item" [class.menu__item--danger]="item.danger" [attr.data-action]="item.id" (click)="choose(item.id)">{{ item.label }}</button></li>
+    }
+  </ul>
+}

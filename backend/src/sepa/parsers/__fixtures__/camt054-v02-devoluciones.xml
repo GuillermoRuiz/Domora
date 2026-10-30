@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Aviso de adeudos (camt.054.001.02): dos devoluciones en un apunte agrupado y un abono que no es devolución. Datos ficticios. -->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.054.001.02">
+  <BkToCstmrDbtCdtNtfctn>
+    <GrpHdr>
+      <MsgId>CAMT054-20260312-77</MsgId>
+      <CreDtTm>2026-03-12T07:00:00</CreDtTm>
+    </GrpHdr>
+    <Ntfctn>
+      <Id>NTF-1</Id>
+      <CreDtTm>2026-03-12T07:00:00</CreDtTm>
+      <Acct><Id><IBAN>ES9121000418450200051332</IBAN></Id></Acct>
+      <Ntry>
+        <Amt Ccy="EUR">250.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-03-12</Dt></BookgDt>
+        <ValDt><Dt>2026-03-12</Dt></ValDt>
+        <BkTxCd><Domn><Cd>PMNT</Cd><Fmly><Cd>RDDT</Cd><SubFmlyCd>UPDD</SubFmlyCd></Fmly></Domn></BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>REM-2026-03-ABCDEF-0001</EndToEndId></Refs>
+            <AmtDtls><TxAmt><Amt Ccy="EUR">100.00</Amt></TxAmt></AmtDtls>
+            <Chrgs><Amt Ccy="EUR">2.50</Amt><CdtDbtInd>DBIT</CdtDbtInd></Chrgs>
+            <RtrInf><Rsn><Cd>AM04</Cd></Rsn></RtrInf>
+          </TxDtls>
+          <TxDtls>
+            <Refs><EndToEndId>REM-2026-03-ABCDEF-0002</EndToEndId></Refs>
+            <AmtDtls><TxAmt><Amt Ccy="EUR">150.00</Amt></TxAmt></AmtDtls>
+            <RtrInf><Rsn><Cd>MD06</Cd></Rsn></RtrInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">80.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-03-12</Dt></BookgDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+    </Ntfctn>
+  </BkToCstmrDbtCdtNtfctn>
+</Document>

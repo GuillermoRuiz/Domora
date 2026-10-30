@@ -1,0 +1,63 @@
+<figure class="chart">
+  @if (!hasData()) {
+    <p class="chart__empty">{{ emptyText() }}</p>
+  } @else {
+    @if (showTable()) {
+      <div class="chart__table-wrap">
+        <table class="chart__table">
+          <caption>{{ caption() }}</caption>
+          <thead><tr><th scope="col"></th><th scope="col">Importe</th><th scope="col">%</th></tr></thead>
+          <tbody>
+            @for (item of items(); track item.key) {
+              <tr><th scope="row">{{ item.label }}</th><td>{{ item.amount }}</td><td>{{ item.percent }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="donut" [class.donut--hovering]="hover() !== null">
+        <svg class="donut__svg" [attr.width]="size" [attr.height]="size" role="group" [attr.aria-label]="caption()">
+          @for (item of items(); track item.key) {
+            <path
+              class="donut__slice"
+              role="img"
+              tabindex="0"
+              [class.donut__slice--active]="hover() === item.key"
+              [attr.d]="item.d"
+              [style.fill]="item.color"
+              [attr.aria-label]="item.aria"
+              (pointerenter)="hover.set(item.key)"
+              (pointerleave)="hover.set(null)"
+              (focus)="hover.set(item.key)"
+              (blur)="hover.set(null)"
+            />
+          }
+          @if (showTotal()) {
+            <text class="donut__total" [attr.x]="center" [attr.y]="center + 2" text-anchor="middle">{{ totalText() }}</text>
+            <text class="donut__caption" [attr.x]="center" [attr.y]="center + 18" text-anchor="middle">{{ totalLabel() }}</text>
+          }
+        </svg>
+
+        <ul class="donut__legend" aria-label="Leyenda">
+          @for (item of items(); track item.key) {
+            <li
+              class="donut__row"
+              [class.donut__row--active]="hover() === item.key"
+              (pointerenter)="hover.set(item.key)"
+              (pointerleave)="hover.set(null)"
+            >
+              <span class="chart__swatch" [style.background]="item.color" aria-hidden="true"></span>
+              <span class="donut__label">{{ item.label }}</span>
+              <span class="donut__percent">{{ item.percent }}</span>
+              <span class="donut__amount">{{ item.amount }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
+    <button type="button" class="chart__toggle" (click)="showTable.set(!showTable())">
+      {{ showTable() ? 'Ver gráfico' : 'Ver como tabla' }}
+    </button>
+  }
+</figure>

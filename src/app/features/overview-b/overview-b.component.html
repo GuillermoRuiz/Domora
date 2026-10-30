@@ -1,0 +1,47 @@
+<app-topbar title="Vista general" [customHeading]="true" [flexible]="true">
+  <div slot="heading" class="overview-heading">
+    <app-estate-scope-selector [redirect]="false"></app-estate-scope-selector>
+  </div>
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">{{ greeting() }}</h1>
+    <p class="scope">
+      <app-icon [name]="scope() ? 'building' : 'city'" [size]="16"></app-icon>
+      <span class="scope__label">{{ scopeLabel() }}</span>
+      <span
+        class="scope__info"
+        role="img"
+        tabindex="0"
+        aria-label="El icono indica el ámbito de los datos de esta pantalla: todas tus comunidades o la que has elegido en el selector de la cabecera."
+        title="El icono indica el ámbito de los datos de esta pantalla: todas tus comunidades o la que has elegido en el selector de la cabecera."
+        >i</span
+      >
+    </p>
+  </div>
+</header>
+
+<div class="page-content">
+  <app-overview-kpis [kpis]="kpis.data()" [loading]="kpis.loading()" [error]="kpis.error()" [retry]="retry(kpis)"></app-overview-kpis>
+
+  <div class="overview-grid">
+    <app-overview-pending [data]="pending.data()" [loading]="pending.loading()" [error]="pending.error()" [retry]="retry(pending)" (open)="openPending($event)"></app-overview-pending>
+    <app-overview-milestones [data]="milestones.data()" [loading]="milestones.loading()" [error]="milestones.error()" [retry]="retry(milestones)" (open)="openMilestone($event)"></app-overview-milestones>
+  </div>
+
+  <div class="overview-grid">
+    <app-overview-economic [data]="economic.data()" [loading]="economic.loading()" [error]="economic.error()" [retry]="retry(economic)"></app-overview-economic>
+    <app-overview-activity [data]="activity.data()" [loading]="activity.loading()" [error]="activity.error()" [retry]="retry(activity)"></app-overview-activity>
+  </div>
+
+  <app-overview-performance
+    [data]="performance.data()"
+    [selectedId]="scope()?.id ?? null"
+    [loading]="performance.loading()"
+    [error]="performance.error()"
+    [retry]="retry(performance)"
+    (pick)="pickEstate($event)"
+    (viewAll)="openEstates()"
+  ></app-overview-performance>
+</div>

@@ -1,0 +1,317 @@
+# CI/CD de Domora — Azure Pipelines (Azure Container Apps + ACR).
+#
+# Requisitos previos en Azure DevOps (ver doc/deploy-azure.md):
+#   - Service connection ARM 'sc-domora-azure' (Workload Identity).
+#   - Environments 'domora-test' y 'domora-prod' (prod con aprobación manual).
+#   - Variable group 'domora-deploy' con: ACR_NAME, RG_TEST, RG_PROD,
+#     API_APP_NAME_TEST, WEB_APP_NAME_TEST, API_APP_NAME_PROD,
+#     WEB_APP_NAME_PROD, TEST_API_URL, PROD_API_URL.
+
+trigger:
+  branches:
+    include:
+      - main
+      - claude/confident-fermi-98sAs
+      - dev
+      - release/*
+
+pr:
+  branches:
+    include:
+      - '*'
+
+variables:
+  - group: domora-deploy
+  - name: apiImage
+    value: $(ACR_NAME).azurecr.io/domora-api:$(Build.SourceVersion)
+  - name: webImage
+    value: $(ACR_NAME).azurecr.io/domora-web:$(Build.SourceVersion)
+
+stages:
+  # ── Stage 1: CI ─────────────────────────────────────────────────────────
+  - stage: CI
+    displayName: Lint, build y tests
+    jobs:
+      - job: backend
+        displayName: Backend (NestJS + smoke e2e con Postgres)
+        pool:
+          vmImage: ubuntu-latest
+        services:
+          postgres:
+            image: postgres:16-alpine
+            ports:
+              - 5432:5432
+            env:
+              POSTGRES_USER: domora
+              POSTGRES_PASSWORD: domora
+              POSTGRES_DB: domora
+        variables:
+          DATABASE_URL: postgresql://domora:domora@localhost:5432/domora?schema=public
+          JWT_SECRET: ci-secret
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '24.x'
+          - script: npm ci
+            workingDirectory: backend
+            displayName: npm ci
+          - script: npm run lint
+            workingDirectory: backend
+            displayName: Lint
+          - script: npx prisma generate && npm run build
+            workingDirectory: backend
+            displayName: Build
+          - script: npx prisma migrate deploy && npx prisma db seed
+            workingDirectory: backend
+            displayName: Migraciones + seed (Postgres de CI)
+          - script: npm run test:migration-safety
+            workingDirectory: backend
+            displayName: Migration safety (isolated local databases)
+            env:
+              MIGRATION_TEST_ADMIN_URL: postgresql://domora:domora@localhost:5432/postgres
+          # DEBE ir después de las migraciones: hay specs de integración
+          # (invoice-numbering.spec.ts, verifactu-chain.spec.ts) que golpean
+          # Postgres de verdad porque prueban comportamiento del propio motor
+          # —atomicidad bajo concurrencia, triggers de inmutabilidad— que un
+          # mock no verificaría. Sin las tablas creadas fallan con
+          # "relation ... does not exist", no por un defecto del código.
+          - script: npm test
+            workingDirectory: backend
+            displayName: Unit tests
+            env:
+              # Activa backend/prisma/demo/__tests__/seed-demo.integration.spec.ts
+              # (sin esta variable la suite se salta en silencio). Apunta a la BD
+              # de servicio `postgres` del service container LOCAL de este job: el
+              # rol `domora` es el POSTGRES_USER del contenedor (superusuario del
+              # cluster), asi que puede CREATE/DROP DATABASE. El test crea y borra
+              # SOLO `domora_demo_test` y rechaza hosts que no sean localhost.
+              # Limitada a este paso a proposito: no es una variable del job.
+              DEMO_TEST_ADMIN_URL: postgresql://domora:domora@localhost:5432/postgres
+          - script: |
+              node dist/src/main.js &
+              sleep 5
+              bash scripts/smoke-e2e.sh
+            workingDirectory: backend
+            displayName: Smoke e2e
+            env:
+              API: http://localhost:3000/api/v1
+
+      - job: frontend
+        displayName: Frontend (Angular)
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '24.x'
+          - script: npm install
+            displayName: npm install
+          - script: npx tsc -p tsconfig.app.json --noEmit
+            displayName: Typecheck
+          - script: npx ng build --configuration production
+            displayName: Build producción
+          # Control real de que el bundle de PRODUCCION no lleva rastro del modo
+          # demo (credenciales, texto, dominio de cuentas). Bloqueante a
+          # proposito: sin continueOnError. Inspecciona dist/domora-app/browser,
+          # la salida por defecto del build de arriba.
+          - script: npm run check:bundle:prod
+            displayName: Bundle prod sin credenciales demo
+          # Build demo a dist/demo (no pisa dist/domora-app) + inverso: el bundle
+          # demo DEBE contener las cuentas (si no, el fileReplacements se rompio).
+          - script: npm run build:demo && npm run check:bundle:demo
+            displayName: Build demo + bundle demo con cuentas demo
+          - script: npm run test:bundle-check
+            displayName: Tests del checker de bundle
+          - script: npm run test:select-coverage
+            displayName: Todo <select> usa el desplegable de Domora
+          - script: npx ng test --watch=false
+            displayName: Unit tests (Vitest)
+
+      - job: e2e
+        displayName: E2E (Playwright, 5 proyectos cross-browser/device)
+        # Gate INFORMATIVO, no bloqueante, las primeras 2-3 semanas — ver
+        # e2e/README.md para el porqué (flakiness real bajo carga local,
+        # investigada a fondo pero no 100% aislada). continueOnError hace que
+        # un fallo acá no bloquee BuildImages/Deploy ni la PR, solo se ve en
+        # el resumen del run. Pasar a bloqueante es un cambio explícito de
+        # seguimiento tras ~2 semanas sin falsos positivos.
+        continueOnError: true
+        pool:
+          vmImage: ubuntu-latest
+        services:
+          postgres:
+            image: postgres:16-alpine
+            ports:
+              - 5432:5432
+            env:
+              POSTGRES_USER: domora
+              POSTGRES_PASSWORD: domora
+              POSTGRES_DB: domora
+        variables:
+          DATABASE_URL: postgresql://domora:domora@localhost:5432/domora?schema=public
+          JWT_SECRET: ci-secret
+          CORS_ORIGIN: http://localhost:4200
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '24.x'
+          - script: npm ci
+            workingDirectory: backend
+            displayName: 'Backend: npm ci'
+          - script: npx prisma generate && npm run build
+            workingDirectory: backend
+            displayName: 'Backend: build'
+          - script: npx prisma migrate deploy && npx prisma db seed
+            workingDirectory: backend
+            displayName: 'Backend: migraciones + seed'
+          - script: |
+              node dist/src/main.js &
+              for i in $(seq 1 30); do
+                code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/v1/auth/login \
+                  -H "Content-Type: application/json" \
+                  -d '{"email":"admin@domora.app","password":"admin123"}')
+                [ "$code" = "201" ] && exit 0
+                sleep 2
+              done
+              echo "El backend no respondió a tiempo" && exit 1
+            workingDirectory: backend
+            displayName: 'Backend: arrancar en background y esperar a que responda'
+          - script: npm install
+            displayName: 'Frontend: npm install'
+          # Build de desarrollo a propósito, no de producción: el build de
+          # producción usa apiBaseUrl relativo (/api/v1) y necesita el nginx
+          # de Dockerfile.frontend por delante para llegar al backend — acá
+          # alcanza con el apiBaseUrl absoluto de environment.development.ts
+          # (http://localhost:3000/api/v1), ya habilitado en CORS_ORIGIN
+          # arriba. El build de producción YA se verifica aparte en el job
+          # `frontend`; este job prueba UI/DOM/cross-browser, no topología
+          # de despliegue.
+          - script: npx ng build --configuration development
+            displayName: 'Frontend: build (desarrollo, ver comentario arriba)'
+          - script: |
+              npx --yes serve -s dist/domora-app/browser -l 4200 &
+              for i in $(seq 1 30); do
+                curl -sf http://localhost:4200 -o /dev/null && exit 0
+                sleep 2
+              done
+              echo "El frontend no respondió a tiempo" && exit 1
+            displayName: 'Frontend: servir en background y esperar a que responda'
+          - script: npx playwright install --with-deps chromium firefox webkit
+            displayName: 'Playwright: instalar navegadores'
+          - script: npx playwright test
+            displayName: 'Playwright: correr los 5 proyectos'
+            env:
+              CI: true
+              E2E_BASE_URL: http://localhost:4200
+          - task: PublishPipelineArtifact@1
+            condition: always()
+            displayName: 'Publicar reporte HTML de Playwright'
+            inputs:
+              targetPath: playwright-report
+              artifactName: playwright-report
+
+  # ── Stage 2: imágenes a ACR (solo rama principal) ──────────────────────
+  - stage: BuildImages
+    displayName: Build y push de imágenes
+    dependsOn: CI
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - job: images
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: AzureCLI@2
+            displayName: Login ACR
+            inputs:
+              azureSubscription: sc-domora-azure
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: az acr login --name $(ACR_NAME)
+          - script: |
+              docker build -t $(apiImage) -f backend/Dockerfile backend
+              docker push $(apiImage)
+            displayName: Imagen API
+          - script: |
+              docker build -t $(webImage) -f Dockerfile.frontend .
+              docker push $(webImage)
+            displayName: Imagen Web
+          # T0.19: SOLO construye la imagen demo (build-arg NG_CONFIG=demo) para
+          # comprobar que el Dockerfile con el config `demo` compila. NO hay
+          # `docker push` ni se etiqueta con el nombre del ACR: no publica nada
+          # en el registro. Publicarla y desplegarla es T5.4 (stage DeployDemo).
+          - script: |
+              docker build --build-arg NG_CONFIG=demo -t domora-web-demo:$(Build.SourceVersion) -f Dockerfile.frontend .
+            displayName: Imagen Web demo (solo build, sin push)
+
+  # ── Stage 3: despliegue a TEST (automático) ─────────────────────────────
+  - stage: DeployTest
+    displayName: Deploy TEST
+    dependsOn: BuildImages
+    condition: succeeded()
+    jobs:
+      - deployment: deploy_test
+        environment: domora-test
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: Actualizar Container Apps (test)
+                  inputs:
+                    azureSubscription: sc-domora-azure
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az containerapp update -g $(RG_TEST) -n $(API_APP_NAME_TEST) --image $(apiImage)
+                      az containerapp update -g $(RG_TEST) -n $(WEB_APP_NAME_TEST) --image $(webImage)
+                - task: AzureCLI@2
+                  displayName: Seed idempotente (solo test)
+                  inputs:
+                    azureSubscription: sc-domora-azure
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      # script -qec da un pty falso: az containerapp exec exige tty y el agente no tiene.
+                      # Test tiene minReplicas=0: tras el update puede no haber réplica lista todavía
+                      # (o haber escalado a cero de nuevo), así que reintenta en vez de un sleep fijo.
+                      for i in $(seq 1 10); do
+                        script -qec "az containerapp exec -g $(RG_TEST) -n $(API_APP_NAME_TEST) --command 'npx prisma db seed'" /dev/null && exit 0
+                        echo "Sin réplica lista todavía (intento $i/10), reintentando..."
+                        sleep 10
+                      done
+                      exit 1
+                - script: |
+                    sleep 15
+                    API=$(TEST_API_URL) bash backend/scripts/smoke-e2e.sh
+                  displayName: Smoke e2e post-deploy
+
+  # ── Stage 4: despliegue a PROD (aprobación manual en el environment) ────
+  - stage: DeployProd
+    displayName: Deploy PROD
+    dependsOn: DeployTest
+    condition: succeeded()
+    jobs:
+      - deployment: deploy_prod
+        environment: domora-prod
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: Actualizar Container Apps (prod)
+                  inputs:
+                    azureSubscription: sc-domora-azure
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az containerapp update -g $(RG_PROD) -n $(API_APP_NAME_PROD) --image $(apiImage)
+                      az containerapp update -g $(RG_PROD) -n $(WEB_APP_NAME_PROD) --image $(webImage)
+                - script: |
+                    sleep 15
+                    curl -sf "$(PROD_API_URL)/health" || (echo "Health check de prod falló" && exit 1)
+                  displayName: Verificación post-deploy (health check)

@@ -1,0 +1,77 @@
+@use "breakpoints" as bp;
+
+:host { display: block; min-width: 0; }
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kpi {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "icon label" "value value" "change change" "comparison comparison";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.kpi__icon {
+  grid-area: icon;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+}
+.kpi__label { grid-area: label; font-size: 13.5px; font-weight: 500; color: var(--color-muted); overflow-wrap: anywhere; }
+.kpi__value {
+  grid-area: value;
+  margin-top: 8px;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.kpi__change {
+  grid-area: change;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.kpi__change--positive { color: var(--color-secondary); }
+.kpi__change--danger { color: var(--color-error); }
+.kpi__change--neutral { color: var(--color-muted); }
+.kpi__comparison { grid-area: comparison; font-size: 12.5px; color: var(--color-muted); }
+
+.kpis-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  color: var(--color-error);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.kpis-error__retry { padding: 0; font: inherit; font-weight: 600; color: var(--color-accent); background: none; border: none; cursor: pointer; }
+.kpis-error__retry:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 2px; }
+
+@include bp.respond-to("tablet") { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@include bp.respond-to("phone") { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+@media (max-width: 360px) { .kpis { grid-template-columns: minmax(0, 1fr); } }

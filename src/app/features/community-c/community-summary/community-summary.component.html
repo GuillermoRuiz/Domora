@@ -1,0 +1,38 @@
+<app-section-card title="Resumen de la comunidad" [actionLabel]="summary() ? 'Ver detalles' : ''" [padded]="true" (action)="details.emit()">
+  @if (unlinked()) {
+    <div class="sum__notice" data-unlinked>
+      <p>Esta propiedad aún no está vinculada a una comunidad. Solicita la vinculación para ver aquí el resumen de tu comunidad.</p>
+      <button type="button" class="sum__link" data-action="request-link" (click)="requestLink.emit()">Solicitar vinculación</button>
+    </div>
+  } @else if (summary(); as s) {
+    <div class="sum" data-summary>
+      <div class="sum__photo">
+        <app-estate-facade-thumbnail [url]="s.catastroFacadeUrl" [estateId]="s.id" [photoVersion]="s.photoUpdatedAt" [name]="s.name" variant="wide"></app-estate-facade-thumbnail>
+      </div>
+      <div class="sum__body">
+        <h4 class="sum__name">{{ s.name }}</h4>
+        <p class="sum__address"><app-icon name="map-pin" [size]="13"></app-icon> {{ addressLine() }}</p>
+        @if (s.description) { <p class="sum__description">{{ s.description }}</p> }
+      </div>
+    </div>
+
+    <div class="sum__indicators">
+      <div class="indicator" [class]="'indicator indicator--' + areas().tone" data-indicator="areas">
+        <span class="indicator__icon"><app-icon [name]="areasIcon()" [size]="18"></app-icon></span>
+        <span class="indicator__text"><span class="indicator__label">Zonas comunes</span><strong>{{ areas().text }}</strong></span>
+      </div>
+      <div class="indicator" [class.indicator--danger]="s.indicators.activeIssues > 0" data-indicator="issues">
+        <span class="indicator__icon"><app-icon name="exclamation" [size]="18"></app-icon></span>
+        <span class="indicator__text"><span class="indicator__label">Incidencias activas</span><strong>{{ s.indicators.activeIssues }}</strong><span class="indicator__sub">de la comunidad</span></span>
+      </div>
+      <div class="indicator" data-indicator="owners">
+        <span class="indicator__icon"><app-icon name="users" [size]="18"></app-icon></span>
+        <span class="indicator__text"><span class="indicator__label">Propietarios</span><strong>{{ s.indicators.owners }}</strong><span class="indicator__sub">en la comunidad</span></span>
+      </div>
+    </div>
+  } @else if (failed()) {
+    <p class="sum__message sum__message--error" role="alert">No se pudo cargar el resumen de la comunidad.</p>
+  } @else {
+    <p class="sum__message">Cargando…</p>
+  }
+</app-section-card>

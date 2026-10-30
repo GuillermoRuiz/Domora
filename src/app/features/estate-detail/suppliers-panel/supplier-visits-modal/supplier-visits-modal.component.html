@@ -1,0 +1,113 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sv-title" (click)="$event.stopPropagation()" (keydown.escape)="closed.emit()">
+    <div class="modal__header">
+      <div class="modal__titles">
+        <h4 id="sv-title">{{ mode() === 'form' ? (editing() ? 'Editar visita' : 'Programar visita') : 'Visitas' }}</h4>
+        <span class="modal__subtitle">{{ supplier.name }}</span>
+      </div>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    @if (mode() === 'form') {
+      <form class="modal__body" (ngSubmit)="submit()" novalidate>
+        <div class="form-row">
+          <label class="form-field" for="sv-date">
+            Fecha *
+            <input id="sv-date" name="date" type="date" [ngModel]="date()" (ngModelChange)="date.set($event)" [class.field--error]="dateInvalid()" />
+            @if (dateInvalid()) { <span class="field-error">Elige la fecha de la visita</span> }
+          </label>
+          <label class="form-field" for="sv-time">
+            Hora
+            <input id="sv-time" name="time" type="time" [ngModel]="time()" (ngModelChange)="time.set($event)" />
+          </label>
+        </div>
+
+        <label class="form-field" for="sv-purpose">
+          Motivo *
+          <input id="sv-purpose" name="purpose" type="text" maxlength="200" list="sv-purposes" placeholder="Revisión mensual, reparación de bajante…" autocomplete="off"
+            [ngModel]="purpose()" (ngModelChange)="purpose.set($event)" [class.field--error]="purposeInvalid()" />
+          <datalist id="sv-purposes">
+            @for (p of purposeSuggestions; track p) { <option [value]="p"></option> }
+          </datalist>
+          @if (purposeInvalid()) { <span class="field-error">El motivo es obligatorio</span> }
+        </label>
+
+        <label class="form-field" for="sv-asset">
+          Instalación
+          <select id="sv-asset" name="asset" [ngModel]="assetId()" (ngModelChange)="assetId.set($event)">
+            <option value="">Sin instalación</option>
+            @for (i of installations(); track i.id) { <option [value]="i.id">{{ i.name }}</option> }
+          </select>
+        </label>
+
+        <label class="form-field" for="sv-notes">
+          Notas
+          <textarea id="sv-notes" name="notes" rows="3" [ngModel]="notes()" (ngModelChange)="notes.set($event)"></textarea>
+        </label>
+
+        @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+
+        <div class="modal__footer">
+          <app-btn variant="outline" (clicked)="backToList()">Volver</app-btn>
+          <app-btn variant="primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Guardando…' : (editing() ? 'Guardar cambios' : 'Programar visita') }}
+          </app-btn>
+        </div>
+      </form>
+    } @else {
+      <div class="modal__body modal__body--list">
+        @if (loadFailed()) {
+          <p class="visits__message visits__message--error" role="alert">No se pudieron cargar las visitas de este proveedor.</p>
+        } @else if (visits() === null) {
+          <p class="visits__message">Cargando…</p>
+        } @else if (sortedVisits().length === 0) {
+          <p class="visits__message">Este proveedor aún no tiene visitas. Programa la primera.</p>
+        } @else {
+          <ul class="visits" data-list="visits">
+            @for (v of sortedVisits(); track v.id) {
+              <li class="visit" [attr.data-visit]="v.id">
+                <div class="visit__main">
+                  <span class="visit__when">{{ dateLabel(v.scheduledAt) }} · {{ timeLabel(v.scheduledAt) }}</span>
+                  <span class="visit__purpose">{{ v.purpose }}</span>
+                  @if (links(v)) { <span class="visit__sub">{{ links(v) }}</span> }
+                  @if (v.notes) { <span class="visit__sub visit__notes">{{ v.notes }}</span> }
+                </div>
+                <app-status-pill [text]="statusInfo(v).text" [tone]="statusInfo(v).tone" [dot]="true"></app-status-pill>
+
+                @if (v.status === 'planificada') {
+                  @if (closing()?.id === v.id) {
+                    <div class="visit__close">
+                      <label class="form-field" [for]="'sv-close-' + v.id">
+                        {{ closing()?.action === 'complete' ? 'Notas de la visita (opcional)' : 'Motivo de la cancelación (opcional)' }}
+                        <textarea [id]="'sv-close-' + v.id" rows="2" [name]="'close-' + v.id" [ngModel]="closingNotes()" (ngModelChange)="closingNotes.set($event)"></textarea>
+                      </label>
+                      <div class="visit__close-actions">
+                        <app-btn variant="outline" (clicked)="dismissClose()">Volver</app-btn>
+                        <app-btn variant="primary" data-action="confirm-close" [disabled]="saving()" (clicked)="confirmClose()">
+                          {{ closing()?.action === 'complete' ? 'Marcar como realizada' : 'Cancelar la visita' }}
+                        </app-btn>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="visit__actions">
+                      <button type="button" class="link-btn" data-action="complete" (click)="askClose(v, 'complete')">Realizada</button>
+                      <button type="button" class="link-btn" data-action="edit" (click)="openForm(v)">Editar</button>
+                      <button type="button" class="link-btn link-btn--danger" data-action="cancel" (click)="askClose(v, 'cancel')">Cancelar</button>
+                    </div>
+                  }
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+
+        <div class="modal__footer">
+          <app-btn variant="outline" (clicked)="closed.emit()">Cerrar</app-btn>
+          <app-btn variant="primary" data-action="new-visit" (clicked)="openForm(null)">Programar visita</app-btn>
+        </div>
+      </div>
+    }
+  </div>
+</div>

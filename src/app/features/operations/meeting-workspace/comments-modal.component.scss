@@ -1,0 +1,57 @@
+@use 'dialog-shell' as ds;
+
+.modal-backdrop { @include ds.backdrop-shell($padded: true, $z: 2000); }
+
+.modal { @include ds.modal-shell($width: 520px); }
+
+.modal__header {
+  @include ds.dialog-header-chrome($margin-bottom: 14px);
+  h4 { display: flex; align-items: center; gap: 8px; }
+}
+
+.close-btn { @include ds.close-btn-chrome; }
+
+.modal__body { @include ds.modal-body-chrome($gap: 12px); }
+
+.hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+  strong { color: var(--color-text); }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+
+.counter {
+  align-self: flex-end;
+  color: var(--color-light);
+  font-size: 12px;
+}
+
+.field-error {
+  margin: 0;
+  color: var(--color-error);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

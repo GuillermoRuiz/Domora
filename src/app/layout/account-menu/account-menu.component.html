@@ -1,0 +1,100 @@
+<button
+  #trigger
+  class="account-menu__trigger"
+  type="button"
+  [attr.aria-label]="triggerLabel()"
+  aria-haspopup="menu"
+  [attr.aria-expanded]="open()"
+  [attr.aria-controls]="menuId"
+  (click)="toggle()"
+  (keydown)="onTriggerKeydown($event)"
+>
+  <app-avatar [name]="state.userName()" [size]="32"></app-avatar>
+  @if (pending() > 0) { <span class="account-menu__dot" aria-hidden="true"></span> }
+</button>
+<div
+  #menu
+  class="account-menu"
+  [hidden]="!open()"
+  [id]="menuId"
+  role="menu"
+  aria-label="Mi cuenta"
+  (keydown)="onMenuKeydown($event)"
+>
+  <div class="account-menu__identity" role="presentation">
+    <strong>{{ state.userName() }}</strong
+    ><span>{{ state.userRole() }}</span>
+  </div>
+  <button
+    class="account-menu__profile"
+    type="button"
+    role="menuitem"
+    tabindex="-1"
+    (click)="openSettings()"
+  >
+    <app-icon name="user" [size]="16"></app-icon><span>Mi perfil</span>
+  </button>
+  <button
+    class="account-menu__settings"
+    type="button"
+    role="menuitem"
+    [attr.aria-label]="pending() > 0 ? 'Configuración, puesta en marcha pendiente' : null"
+    tabindex="-1"
+    (click)="openSettings()"
+  >
+    <app-icon name="settings" [size]="16"></app-icon><span>Configuración</span
+    >@if (pending() > 0) { <span class="account-menu__dot account-menu__dot--inline" aria-hidden="true"></span> }<app-icon name="chevron-right" [size]="14"></app-icon>
+  </button>
+  <button
+    type="button"
+    class="account-menu__theme"
+    role="menuitem"
+    tabindex="-1"
+    (click)="toggleTheme()"
+  >
+    <app-icon [name]="state.darkMode() ? 'sun' : 'moon'" [size]="16"></app-icon>
+    <span>{{ state.darkMode() ? 'Modo claro' : 'Modo oscuro' }}</span>
+  </button>
+  <button
+    type="button"
+    class="account-menu__legal"
+    role="menuitem"
+    tabindex="-1"
+    aria-haspopup="menu"
+    [attr.aria-expanded]="legalOpen()"
+    [attr.aria-controls]="legalId"
+    (click)="legalOpen.set(!legalOpen())"
+  >
+    <app-icon name="file-text" [size]="16"></app-icon><span>Legal y privacidad</span
+    ><app-icon
+      class="account-menu__legal-chevron"
+      [class.account-menu__legal-chevron--open]="legalOpen()"
+      name="chevron-down"
+      [size]="14"
+    ></app-icon>
+  </button>
+  @if (legalOpen()) {
+    <div class="account-menu__legal-list" [id]="legalId" role="menu" aria-label="Legal y privacidad">
+      @for (link of legalLinks; track link.route) {
+        <a
+          class="account-menu__legal-link"
+          role="menuitem"
+          tabindex="-1"
+          [routerLink]="link.route"
+          (click)="followLegalLink()"
+        >{{ link.label }}</a>
+      }
+    </div>
+  }
+  <div class="account-menu__separator" role="separator"></div>
+  <button
+    class="account-menu__logout"
+    type="button"
+    role="menuitem"
+    tabindex="-1"
+    [disabled]="loggingOut()"
+    (click)="logout()"
+  >
+    <app-icon name="door" [size]="16"></app-icon><span>Cerrar sesión</span>
+  </button>
+</div>

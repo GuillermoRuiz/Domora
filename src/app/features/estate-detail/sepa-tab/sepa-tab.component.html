@@ -1,0 +1,61 @@
+<div class="card">
+  <div class="card__header">
+    <h4 class="card__title">Acreedor SEPA</h4>
+    @if (!editing()) {
+      <button class="link-btn" (click)="openEdit()">Editar</button>
+    }
+  </div>
+  <p class="td--muted" style="margin-bottom: 16px;">
+    Datos del acreedor que aparecen en el fichero pain.008 al presentar una remesa SEPA. El IBAN se guarda cifrado y nunca se muestra completo — solo se puede reemplazar por uno nuevo, no consultar el guardado.
+  </p>
+
+  @if (!loaded()) {
+    <p class="td--muted">Cargando…</p>
+  } @else if (!editing()) {
+    <div class="billing-grid">
+      <div><span class="td--muted">Creditor ID (CID)</span><div>{{ billing()?.creditorId || 'No configurado' }}</div></div>
+      <div><span class="td--muted">IBAN acreedor</span><div>{{ billing()?.creditorIbanMasked || 'No configurado' }}</div></div>
+      <div><span class="td--muted">BIC</span><div>{{ billing()?.creditorBic || '—' }}</div></div>
+      <div><span class="td--muted">Dirección postal del acreedor</span><div>{{ billing()?.creditorPostalAddress || '—' }}</div></div>
+    </div>
+    @if (!billing()?.creditorId || !billing()?.creditorIbanMasked) {
+      <div class="return-alert" style="margin-top: 16px;">
+        <app-icon name="exclamation" [size]="16"></app-icon>
+        <span>Sin CID e IBAN configurados no se puede generar ninguna remesa SEPA real para esta finca.</span>
+      </div>
+    }
+  } @else {
+    <div class="form-grid">
+      <label class="form-field">
+        Creditor ID (CID)
+        <input type="text" placeholder="ES23000B00000000" [ngModel]="creditorId()" (ngModelChange)="creditorId.set($event)" />
+      </label>
+      <label class="form-field">
+        Nuevo IBAN acreedor
+        <input type="text" [placeholder]="billing()?.creditorIbanMasked || 'ES00 0000 0000 0000 0000 0000'" [ngModel]="creditorIban()" (ngModelChange)="creditorIban.set($event)" />
+        <span class="field-hint">Dejalo vacío para conservar el IBAN ya guardado.</span>
+      </label>
+      <label class="form-field">
+        BIC (opcional)
+        <input type="text" placeholder="CAIXESBBXXX" [ngModel]="creditorBic()" (ngModelChange)="creditorBic.set($event)" />
+      </label>
+      <label class="form-field">
+        Dirección postal del acreedor (opcional)
+        <input type="text" [ngModel]="creditorPostalAddress()" (ngModelChange)="creditorPostalAddress.set($event)" />
+      </label>
+    </div>
+    <div class="modal__footer" style="margin-top: 16px;">
+      <app-btn variant="outline" size="sm" (clicked)="closeEdit()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="save()">
+        {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
+      </app-btn>
+    </div>
+  }
+</div>
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

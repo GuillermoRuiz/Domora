@@ -1,0 +1,374 @@
+@use 'breakpoints' as bp;
+@use 'dialog-shell' as ds;
+
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.estate-intelligence { margin: 24px 24px 0; }
+
+.estate-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+
+  app-estate-community-selector { width: 280px; max-width: 100%; flex: 0 0 auto; }
+}
+
+@include bp.respond-to('phone') {
+  .estate-heading app-estate-community-selector { width: 100%; }
+}
+
+.estate-heading__separator { color: var(--topbar-muted, var(--color-muted)); }
+.estate-heading__section {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--topbar-muted, var(--color-muted));
+}
+
+@media (max-width: 768px) {
+  .estate-heading__separator, .estate-heading__section { display: none; }
+}
+
+.estate-subnav {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-self: center;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  gap: 0;
+  margin: 16px 16px 0;
+  padding: 4px;
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface));
+}
+
+.estate-subnav__indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--chip-width, 0px);
+  height: var(--chip-height, 0px);
+  transform: translate(var(--chip-x, 0px), var(--chip-y, 0px));
+  border-radius: var(--radius-lg);
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-border), 0 1px 3px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 500ms cubic-bezier(0.22, 1.15, 0.36, 1), width 500ms ease, height 500ms ease;
+}
+
+.estate-subnav--ready .estate-subnav__indicator { opacity: 1; }
+
+.estate-subnav__item {
+  position: relative;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: color 200ms ease, background-color 200ms ease;
+
+  &:hover:not(.estate-subnav__item--active) {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  &--active {
+    color: var(--color-bg);
+    background: var(--color-accent);
+  }
+}
+
+.estate-subnav--ready .estate-subnav__item--active { background: transparent; }
+.estate-subnav__label { position: relative; z-index: 1; overflow-wrap: anywhere; }
+
+@media (max-width: 600px) {
+  .estate-subnav__item { padding: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .estate-subnav__indicator, .estate-subnav__item { transition: none; }
+}
+
+.estate-subnav__label { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.estate-subnav__item--active .tab__count { background: color-mix(in srgb, currentColor 12%, transparent); color: inherit; }
+
+.subtab-content { display: block; padding: 0 24px 24px; }
+
+.providers-subtabs {
+  display: flex;
+  gap: 8px;
+  margin: 20px 24px 16px;
+}
+
+.providers-subtab {
+  padding: 7px 16px;
+  border-radius: 100px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+
+  &--active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+  }
+}
+
+.tab__count {
+  background: var(--color-border-light);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 20px;
+}
+
+.tab__count--badge {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-primary);
+  color: #fff;
+  padding: 11px 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+// ── Modals ────────────────────────────────────────────────────────────
+.modal-backdrop { @include ds.backdrop-shell($padded: true); }
+.modal { @include ds.modal-shell; }
+.modal__header { @include ds.dialog-header-chrome; }
+.close-btn { @include ds.close-btn-chrome; }
+.modal__body { @include ds.modal-body-chrome; }
+.modal__footer { display: flex; justify-content: flex-end; gap: 8px; }
+// ── «Editar finca»: pestañas + rejilla de 2 columnas ──────────────────
+// Own modifier classes: `.modal`/`.modal-backdrop` are shared with the other modals of this page.
+.modal-backdrop--blur { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+.modal--estate-edit {
+  @include ds.modal-shell($width: 720px, $max-height: 90vh);
+  // Fixed height: switching tabs never resizes (and so never re-centres) the modal.
+  height: min(760px, calc(100dvh - 48px));
+  display: flex; flex-direction: column;
+  padding: 0;
+  overflow: hidden; // the body scrolls; header, tabs and footer stay in place
+}
+
+.ee-header { flex-shrink: 0; padding: 20px 24px 0; margin-bottom: 0; }
+.ee-header h4 { font-size: 20px; font-weight: 600; color: var(--color-text); }
+.ee-header__titles { min-width: 0; }
+.ee-header__subtitle { margin: 2px 0 0; font-size: 13px; color: var(--color-muted); overflow-wrap: anywhere; }
+
+// Same chip tabs as the estate sections (`.estate-subnav` + appEstateChipTabs), placed inside the modal.
+.ee-tabs { flex-shrink: 0; align-self: center; margin: 16px 24px 0; max-width: calc(100% - 48px); }
+.ee-tab { position: relative; }
+// Shape + colour, not colour alone: a dot that says «revisa esta pestaña».
+.ee-tab__alert {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  width: 7px; height: 7px;
+  background: var(--color-error);
+  border: 2px solid var(--color-bg);
+  box-sizing: content-box;
+  border-radius: 50%;
+}
+
+.ee-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; margin: 0; }
+
+.ee-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+  align-content: start;
+  &[hidden] { display: none; }
+}
+.ee-span { grid-column: 1 / -1; }
+// Block layout so «Label (opcional)» stays on one line (as a flex column every text run became its own row).
+.ee-grid > .form-field { display: block; }
+.ee-grid > .form-field > input,
+.ee-grid > .form-field > select,
+.ee-grid > .form-field > .ee-textarea,
+.ee-grid > .form-field > .color-swatches { display: block; margin-top: 6px; }
+.ee-grid > .form-field > .color-swatches { display: flex; }
+.ee-grid > .form-field > .form-error,
+.ee-grid > .form-field > .form-hint { display: block; margin-top: 5px; }
+.ee-optional { font-weight: 400; color: var(--color-light); }
+
+.ee-textarea { position: relative; display: block; }
+.ee-textarea textarea { padding-bottom: 24px; }
+.ee-counter {
+  position: absolute; right: 10px; bottom: 8px;
+  font-size: 11.5px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--color-muted);
+  pointer-events: none;
+}
+
+// Focus: gold border and a soft gold glow, only in this modal.
+.modal--estate-edit {
+  .ee-invalid, .ee-invalid:focus { border-color: var(--color-error); }
+  .ee-invalid:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 20%, transparent); }
+  .color-swatch:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+
+.ee-footer {
+  flex-shrink: 0;
+  padding: 14px 24px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+@media (max-width: 640px) {
+  .modal--estate-edit { max-height: 100dvh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .ee-header { padding: 16px 16px 0; }
+  .modal--estate-edit { height: calc(100dvh - 24px); }
+  .ee-tabs { margin: 12px 16px 0; max-width: calc(100% - 32px); }
+  .ee-body { padding: 16px; }
+  .ee-grid { grid-template-columns: minmax(0, 1fr); }
+  .ee-footer { padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal--estate-edit input, .modal--estate-edit select, .modal--estate-edit textarea { transition: none; }
+}
+@media (forced-colors: active) {
+  .ee-tab__alert { background: Mark; }
+}
+
+.setup-drawer-backdrop {
+  @include ds.backdrop-shell;
+  justify-content: flex-end;
+}
+
+.setup-drawer {
+  // Más ancho que el drawer por defecto (420px): los pasos con 2 acciones
+  // ("Recalcular por m²" + "Revisar propiedades") necesitan el margen
+  // extra para no envolver en casi todas las filas.
+  @include ds.drawer-shell($width: 480px);
+  position: relative;
+
+  .close-btn {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+  }
+}
+
+input, select, textarea { width: 100%;
+}
+textarea { resize: vertical; }
+
+.form-field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--color-muted);
+  &--checkbox { flex-direction: row; align-items: center; gap: 8px;
+    input { width: auto; }
+  }
+}
+.form-error { font-size: 12px; color: var(--color-error); margin-top: 3px; }
+.form-hint { font-size: 12px; font-weight: 400; color: var(--color-muted); }
+
+.color-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.color-swatch {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  transition: transform 0.15s, border-color 0.15s;
+
+  &:hover { transform: scale(1.08); }
+
+  &--selected { border-color: var(--color-text); }
+
+  &--auto {
+    background: var(--color-border-light); color: var(--color-muted);
+    &.color-swatch--selected { border-color: var(--color-text); color: var(--color-text); }
+  }
+}
+
+// ── Cabeceras de tarjeta / formularios compartidos ──────────────────────────────────────────────────
+.card {
+  background: var(--color-surface);
+  margin: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.card > p { margin-left: 20px; margin-right: 20px; }
+.td--muted { color: var(--color-muted); font-size: 14px; }
+
+.card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+}
+
+.card__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.field-hint {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--color-light);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding-bottom: 20px;
+}
+
+.legacy-back { padding: 16px 24px 0; }
+.legacy-links { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 12px 20px 20px; }
+
+// Volver al listado global de incidencias (modo `operationsSection`).
+.back-link {
+  display: flex; align-items: center; gap: 6px; border: none; background: none; color: var(--color-muted);
+  font-size: 14px; font-weight: 500; cursor: pointer; padding: 0; margin-bottom: 16px;
+  &:hover { color: var(--color-text); }
+}

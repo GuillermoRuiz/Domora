@@ -1,0 +1,138 @@
+<section class="history" aria-labelledby="history-title">
+  <h4 class="history__title" id="history-title">Historial de cobros</h4>
+
+  @if (loadError()) {
+    <p class="form-error" role="alert">{{ loadError() }}</p>
+  } @else if (history(); as h) {
+    <div class="history__wrap">
+      <table class="history__table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Movimiento</th>
+            <th class="num">Importe</th>
+            <th class="num">Debe tras él</th>
+            @if (!readonly) { <th><span class="sr-only">Acciones</span></th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of h.movements; track $index) {
+            <tr>
+              <td class="nowrap">{{ m.date }}</td>
+              <td>
+                <span class="history__label">{{ label(m) }}</span>
+                <span class="history__meta">
+                  Asiento {{ m.entryNumber }}/{{ m.fiscalYear }}{{ m.method ? ' · ' + m.method : '' }}{{ m.returnCode ? ' · ' + m.returnCode : '' }}
+                </span>
+              </td>
+              <td class="num money" [class.history__in]="m.credit > 0">
+                {{ m.credit > 0 ? '−' + fmtEur(m.credit) : '+' + fmtEur(m.debit) }}
+              </td>
+              <td class="num money">{{ fmtEur(m.balance) }}</td>
+              @if (!readonly) {
+                <td class="history__actions">
+                  @if (canUndo(m)) {
+                    <app-btn variant="outline" size="sm" (clicked)="openUndo(m)">Deshacer</app-btn>
+                  }
+                  @if (canReturn(m)) {
+                    <app-btn variant="outline" size="sm" (clicked)="openReturn(m)">Devuelto por el banco</app-btn>
+                  }
+                  @if (m.collectionActive && m.fromRemesa) {
+                    <span class="history__meta">Se devuelve desde la remesa</span>
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <p class="form-hint">Cargando…</p>
+  }
+</section>
+
+@if (undoing(); as m) {
+  <div class="modal-overlay modal-overlay--nested" (click)="undoing.set(null)">
+    <div class="modal" role="dialog" aria-labelledby="undo-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Recibos · Historial de cobros</div>
+          <h3 class="modal__title" id="undo-title">Deshacer el cobro del {{ m.date }}</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">
+          Úsalo si el cobro se registró por error. Se contabiliza un contraasiento y el recibo vuelve a deber
+          {{ fmtEur(m.credit) }}. Si el dinero entró y el banco lo devolvió después, usa "Devuelto por el banco".
+        </p>
+        <div class="form-field">
+          <label class="form-label" for="undo-reason">Motivo</label>
+          <input id="undo-reason" class="form-input" type="text" maxlength="200" placeholder="p. ej. Registrado dos veces"
+            [(ngModel)]="undoReason" />
+        </div>
+        @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="undoing.set(null)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="confirmUndo()">
+          {{ saving() ? 'Deshaciendo…' : 'Deshacer cobro' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (returning(); as m) {
+  <div class="modal-overlay modal-overlay--nested" (click)="returning.set(null)">
+    <div class="modal" role="dialog" aria-labelledby="return-collection-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <div class="modal__breadcrumb">Recibos · Historial de cobros</div>
+          <h3 class="modal__title" id="return-collection-title">El banco devolvió el cobro del {{ m.date }}</h3>
+        </div>
+      </div>
+      <div class="modal__body">
+        <p class="modal__intro">
+          El recibo vuelve a deber {{ fmtEur(m.credit) }} y ese importe sale de la cuenta de la comunidad.
+          Si el banco cobró comisión, indícala: se contabiliza como gasto bancario.
+        </p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="ret-code">Motivo SEPA</label>
+            <select id="ret-code" class="form-input" [(ngModel)]="returnForm.returnCode">
+              @for (c of returnCodes; track c.code) {
+                <option [value]="c.code">{{ c.code }} · {{ c.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ret-date">Fecha del cargo</label>
+            <input id="ret-date" class="form-input" type="date" [(ngModel)]="returnForm.date" />
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label" for="ret-reason">Observaciones</label>
+            <input id="ret-reason" class="form-input" type="text" maxlength="150" placeholder="Opcional"
+              [(ngModel)]="returnForm.returnReason" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ret-fee">Comisión del banco (€)</label>
+            <input id="ret-fee" class="form-input money" type="text" inputmode="decimal" placeholder="0,00"
+              [(ngModel)]="returnForm.feeAmount" />
+          </div>
+          <label class="form-check form-field--full" for="ret-recharge">
+            <input id="ret-recharge" type="checkbox" [(ngModel)]="returnForm.rechargeFee" />
+            Repercutir la comisión al propietario con un recibo (solo si lo permiten los estatutos o la junta)
+          </label>
+        </div>
+        @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="returning.set(null)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="confirmReturn()">
+          {{ saving() ? 'Registrando…' : 'Registrar devolución' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,7 @@
+# Los scripts que se ejecutan dentro de contenedores Linux (Alpine/sh) deben
+# mantener finales de línea LF pase lo que pase con la config local de git
+# (core.autocrlf) — un CRLF suelto rompe el intérprete de sh con errores
+# crípticos ("illegal option -") difíciles de diagnosticar.
+*.sh text eol=lf
+Dockerfile* text eol=lf
+docker-entrypoint.sh text eol=lf

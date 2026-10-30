@@ -1,0 +1,88 @@
+<button
+  #trigger
+  type="button"
+  class="trigger"
+  [class.trigger--icon]="variant() === 'icon'"
+  [class.trigger--open]="isOpen()"
+  aria-haspopup="menu"
+  [attr.aria-expanded]="isOpen()"
+  [attr.aria-controls]="isOpen() ? menuId() : null"
+  [attr.aria-label]="triggerLabel()"
+  title="Acciones"
+  (click)="toggle($event)"
+  (keydown)="onTriggerKeydown($event)"
+>
+  @if (variant() === 'icon') {
+    <app-icon name="ellipsis" [size]="18"></app-icon>
+    @if (pending() > 0) { <span class="trigger__dot" aria-hidden="true"></span> }
+  } @else {
+    <app-icon name="settings" [size]="15"></app-icon>
+    <span>Acciones</span>
+    @if (pending() > 0) { <span class="trigger__count" aria-hidden="true">{{ pending() }}</span> }
+    <app-icon class="trigger__chevron" name="chevron-down" [size]="14"></app-icon>
+  }
+</button>
+
+@if (isOpen()) {
+  @if (sheet()) {
+    <div class="backdrop" (click)="close(true); $event.stopPropagation()" aria-hidden="true"></div>
+  }
+  <div
+    #panel
+    class="panel"
+    [class.panel--sheet]="sheet()"
+    [style.top.px]="sheet() ? null : position().top"
+    [style.left.px]="sheet() ? null : position().left"
+    (keydown)="onPanelKeydown($event)"
+  >
+    @if (sheet()) {
+      <div class="panel__handle" aria-hidden="true"></div>
+      <p class="panel__title">{{ sheetTitle() }}</p>
+    }
+    <ul role="menu" class="menu" [id]="menuId()" aria-label="Acciones de la finca">
+      @if (pending() > 0) {
+        <li role="none">
+          <button type="button" role="menuitem" tabindex="-1" class="item item--setup" [attr.aria-label]="setupLabel()" (click)="choose('open-setup')">
+            <span class="item__icon"><app-icon name="file-text" [size]="15"></app-icon></span>
+            <span class="item__text">
+              <span class="item__label">Puesta en marcha</span>
+              <span class="item__hint">Completa los pasos pendientes</span>
+            </span>
+            <span class="item__chip" aria-hidden="true">{{ pending() }}</span>
+          </button>
+        </li>
+        <li role="separator" class="menu__separator"></li>
+      }
+      <li role="none">
+        <button type="button" role="menuitem" tabindex="-1" class="item" (click)="choose('edit')">
+          <span class="item__icon"><app-icon name="settings" [size]="15"></app-icon></span>
+          <span class="item__text"><span class="item__label">Editar finca</span></span>
+        </button>
+      </li>
+      <li role="none">
+        <button type="button" role="menuitem" tabindex="-1" class="item" (click)="choose('office-history')">
+          <span class="item__icon"><app-icon name="clock" [size]="15"></app-icon></span>
+          <span class="item__text">
+            <span class="item__label">Historial de cargos</span>
+            <span class="item__hint">Presidentes y vicepresidentes, con sus fechas</span>
+          </span>
+        </button>
+      </li>
+      <li role="none">
+        <button type="button" role="menuitem" tabindex="-1" class="item" (click)="choose('import-catastro')">
+          <span class="item__icon"><app-icon name="building" [size]="15"></app-icon></span>
+          <span class="item__text">
+            <span class="item__label">Importar del Catastro</span>
+            <span class="item__hint">Trae propiedades desde datos catastrales</span>
+          </span>
+        </button>
+      </li>
+      <li role="none">
+        <button type="button" role="menuitem" tabindex="-1" class="item item--primary" (click)="choose('new-property')">
+          <span class="item__icon"><app-icon name="plus" [size]="15"></app-icon></span>
+          <span class="item__text"><span class="item__label">Nueva propiedad</span></span>
+        </button>
+      </li>
+    </ul>
+  </div>
+}

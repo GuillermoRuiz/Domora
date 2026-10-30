@@ -1,0 +1,36 @@
+@use 'dialog-shell' as ds;
+
+.modal-backdrop { @include ds.backdrop-shell($padded: true); }
+.modal { @include ds.modal-shell($width: 520px); }
+.modal--wide { @include ds.modal-shell($width: 640px); }
+.modal--preview { @include ds.modal-shell($width: 960px, $max-height: 92vh); display: flex; flex-direction: column; }
+.modal__header { @include ds.dialog-header-chrome; h4 { overflow-wrap: anywhere; } }
+.subtitle { margin: 2px 0 0; font-size: 13px; color: var(--color-muted); overflow-wrap: anywhere; }
+.close-btn { @include ds.close-btn-chrome; }
+.modal__body { @include ds.modal-body-chrome; }
+.modal__footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.form-field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--color-muted); }
+input[type='text'], select, textarea { width: 100%; }
+.form-error { margin: 0; font-size: 13px; color: var(--color-error); }
+.hint { margin: 0; font-size: 12.5px; color: var(--color-muted); }
+
+.options { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: none; }
+.option {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; cursor: pointer;
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  input { margin-top: 3px; accent-color: var(--color-accent); }
+  span { display: flex; flex-direction: column; gap: 2px; }
+  strong { font-size: 14px; color: var(--color-text); }
+  small { font-size: 12.5px; color: var(--color-muted); }
+}
+.option--on { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
+
+.warning {
+  display: flex; gap: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.45; color: var(--color-text);
+  background: var(--color-warning-bg); border: 1px solid var(--color-warning-border); border-radius: var(--radius-md);
+  app-icon { display: inline-flex; flex-shrink: 0; margin-top: 1px; color: var(--color-warning); }
+  p { margin: 0; }
+}

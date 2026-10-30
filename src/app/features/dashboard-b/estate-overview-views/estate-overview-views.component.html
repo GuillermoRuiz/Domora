@@ -1,0 +1,206 @@
+@if (view() === "table") {
+  <div class="communities-table-wrap">
+    <table class="communities-table">
+      <caption class="sr-only">
+        Comunidades accesibles
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col" [attr.aria-sort]="ariaSort('name')">
+            <button type="button" (click)="sort.emit('name')">
+              Comunidad
+              <span>{{
+                sortColumn() === "name"
+                  ? direction() === "asc"
+                    ? "↑"
+                    : "↓"
+                  : ""
+              }}</span>
+            </button>
+          </th>
+          <th class="metric-column" scope="col" [attr.aria-sort]="ariaSort('ownersCount')">
+            <button type="button" (click)="sort.emit('ownersCount')">
+              Propietarios
+              <span>{{
+                sortColumn() === "ownersCount"
+                  ? direction() === "asc"
+                    ? "↑"
+                    : "↓"
+                  : ""
+              }}</span>
+            </button>
+          </th>
+          <th class="metric-column" scope="col" [attr.aria-sort]="ariaSort('activeIssues')">
+            <button type="button" (click)="sort.emit('activeIssues')">
+              Incidencias
+              <span>{{
+                sortColumn() === "activeIssues"
+                  ? direction() === "asc"
+                    ? "↑"
+                    : "↓"
+                  : ""
+              }}</span>
+            </button>
+          </th>
+          <th class="metric-column" scope="col" [attr.aria-sort]="ariaSort('pendingAmount')">
+            <button type="button" (click)="sort.emit('pendingAmount')">
+              {{ pendingLabel() }}
+              <span>{{
+                sortColumn() === "pendingAmount"
+                  ? direction() === "asc"
+                    ? "↑"
+                    : "↓"
+                  : ""
+              }}</span>
+            </button>
+          </th>
+          <th class="metric-column" scope="col" [attr.aria-sort]="ariaSort('balance')">
+            <button type="button" (click)="sort.emit('balance')">
+              Saldo actual
+              <span>{{
+                sortColumn() === "balance"
+                  ? direction() === "asc"
+                    ? "↑"
+                    : "↓"
+                  : ""
+              }}</span>
+            </button>
+          </th>
+          <th class="actions-column" scope="col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (estate of items(); track estate.id) {
+          <tr>
+            <td>
+              <div class="community-cell">
+                <app-estate-facade-thumbnail
+                  [url]="estate.catastroFacadeUrl"
+                  [estateId]="estate.id"
+                  [photoVersion]="estate.photoUpdatedAt ?? null"
+                  [name]="estate.name"
+                ></app-estate-facade-thumbnail>
+                <div>
+                  <a
+                    class="community-name"
+                    [routerLink]="['/b/estates', estate.id]"
+                    >{{ estate.name }}</a
+                  ><span class="community-address">{{ address(estate) }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="number-cell metric-column">{{ estate.ownersCount }}</td>
+            <td class="metric-column">
+              <span
+                class="issue-pill"
+                [class.issue-pill--active]="estate.activeIssues > 0"
+                >{{ estate.activeIssues }}</span
+              >
+            </td>
+            <td
+              class="money-cell metric-column"
+              [class.text-warning]="estate.pendingAmount > 0"
+              [class.text-muted]="estate.pendingAmount === 0"
+            >
+              {{ fmtEur(estate.pendingAmount) }}
+            </td>
+            <td
+              class="money-cell metric-column"
+              [class.text-green]="estate.balance > 0"
+              [class.text-error]="estate.balance < 0"
+            >
+              {{ fmtEur(estate.balance) }}
+            </td>
+            <td class="actions-column">
+              <div class="row-actions">
+                <a class="view-estate" [routerLink]="['/b/estates', estate.id]"
+                  >Ver finca<app-icon name="arrow-right" [size]="16"></app-icon
+                ></a>
+                <app-estate-actions-menu
+                  variant="icon"
+                  [estateId]="estate.id"
+                  [estateName]="estate.name"
+                  [setupRemaining]="setupRemaining()[estate.id] ?? null"
+                  (openSetup)="estateAction.emit({ estate, action: 'open-setup' })"
+                  (edit)="estateAction.emit({ estate, action: 'edit' })"
+                  (officeHistory)="estateAction.emit({ estate, action: 'office-history' })"
+                  (importCatastro)="estateAction.emit({ estate, action: 'import-catastro' })"
+                  (newProperty)="estateAction.emit({ estate, action: 'new-property' })"
+                ></app-estate-actions-menu>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+} @else {
+  <div class="estates-grid">
+    @for (estate of items(); track estate.id) {
+      <article class="estate-card">
+        <app-estate-facade-thumbnail
+          variant="wide"
+          [url]="estate.catastroFacadeUrl"
+          [estateId]="estate.id"
+          [photoVersion]="estate.photoUpdatedAt ?? null"
+          [name]="estate.name"
+        ></app-estate-facade-thumbnail>
+        <app-estate-actions-menu
+          class="estate-card__menu"
+          variant="icon"
+          [estateId]="estate.id"
+          [estateName]="estate.name"
+          [setupRemaining]="setupRemaining()[estate.id] ?? null"
+          (openSetup)="estateAction.emit({ estate, action: 'open-setup' })"
+          (edit)="estateAction.emit({ estate, action: 'edit' })"
+                  (officeHistory)="estateAction.emit({ estate, action: 'office-history' })"
+          (importCatastro)="estateAction.emit({ estate, action: 'import-catastro' })"
+          (newProperty)="estateAction.emit({ estate, action: 'new-property' })"
+        ></app-estate-actions-menu>
+        <span
+          class="issue-pill estate-card__issues"
+          [class.issue-pill--active]="estate.activeIssues > 0"
+        >
+          Incidencias <strong>{{ estate.activeIssues }}</strong>
+        </span>
+        <div class="estate-card__body">
+          <h2 class="estate-card__name">
+            <a
+              class="estate-card__link"
+              [routerLink]="['/b/estates', estate.id]"
+              [attr.aria-label]="'Abrir ' + estate.name"
+              >{{ estate.name }}</a
+            >
+          </h2>
+          <p class="estate-card__address">{{ address(estate) }}</p>
+          <dl class="estate-card__metrics">
+            <div>
+              <dt>Propietarios</dt>
+              <dd>{{ estate.ownersCount }}</dd>
+            </div>
+            <div>
+              <dt>Saldo actual</dt>
+              <dd
+                class="card-balance"
+                [class.text-green]="estate.balance > 0"
+                [class.text-error]="estate.balance < 0"
+              >
+                {{ fmtEur(estate.balance) }}
+              </dd>
+            </div>
+            <div>
+              <dt>{{ pendingLabel() }}</dt>
+              <dd
+                class="card-pending"
+                [class.text-warning]="estate.pendingAmount > 0"
+                [class.text-muted]="estate.pendingAmount === 0"
+              >
+                {{ fmtEur(estate.pendingAmount) }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </article>
+    }
+  </div>
+}

@@ -1,0 +1,66 @@
+<div class="modal-backdrop" (click)="close()">
+  <div #dialog class="modal" role="dialog" aria-modal="true" aria-labelledby="office-dialog-title" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <div>
+        <h4 id="office-dialog-title">{{ title() }}</h4>
+        <p class="modal__subtitle">Propiedad {{ propertyLabel() }}</p>
+      </div>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="close()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      @if (isAppoint()) {
+        @if (holders(); as list) {
+          @if (list.length === 0) {
+            @if (!error()) {
+              <p class="notice notice--empty">Esta propiedad no tiene titulares propietarios. Añade un titular antes de nombrarle.</p>
+            }
+          } @else if (list.length === 1) {
+            <p class="holder"><span class="holder__label">Titular</span> {{ list[0].name }}</p>
+          } @else {
+            <fieldset class="holders">
+              <legend>¿Quién ocupa el cargo?</legend>
+              @for (h of list; track $index) {
+                <label class="holders__option">
+                  <input type="radio" name="office-holder" [value]="$index" [ngModel]="holderIndex()" (ngModelChange)="holderIndex.set($event)" />
+                  {{ h.name }}
+                </label>
+              }
+            </fieldset>
+          }
+        } @else {
+          <p class="notice">Cargando titulares…</p>
+        }
+      } @else if (holder(); as h) {
+        <p class="holder"><span class="holder__label">Titular</span> {{ h.name }}</p>
+      }
+
+      <label class="form-field">
+        {{ isAppoint() ? 'Fecha de inicio' : 'Fecha de cese' }}
+        <input id="office-day" type="date" [min]="minDay()" [ngModel]="day()" (ngModelChange)="day.set($event)" />
+      </label>
+
+      @if (blocker()) {
+        <p class="notice notice--error" role="alert">{{ blocker() }}</p>
+      }
+      @if (warnings().length) {
+        <div class="notice notice--warning" role="status">
+          <app-icon name="exclamation" [size]="16"></app-icon>
+          <div>
+            @for (w of warnings(); track w) { <p>{{ w }}</p> }
+          </div>
+        </div>
+      }
+      @if (error()) {
+        <p class="notice notice--error" role="alert">{{ error() }}</p>
+      }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" (clicked)="close()">Cancelar</app-btn>
+      <app-btn [variant]="isAppoint() ? 'primary' : 'danger'" size="sm" [disabled]="!canSubmit()" (clicked)="submit()">
+        {{ saving() ? 'Guardando…' : submitLabel() }}
+      </app-btn>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,36 @@
+<div class="login">
+  @if (checking()) {
+    <div class="login__card">
+      <h1>Domora</h1>
+      <p class="login__subtitle">Comprobando el enlace…</p>
+    </div>
+  } @else if (inviteError()) {
+    <div class="login__card">
+      <h1>Domora</h1>
+      <p class="login__error">{{ inviteError() }}</p>
+      <a routerLink="/login" class="login__demo-btn">Volver al inicio de sesión</a>
+    </div>
+  } @else if (info(); as i) {
+    <div class="login__card">
+      <h1>Domora</h1>
+      <p class="login__subtitle">
+        Te invitaron como <strong>{{ i.roleType }}</strong>
+        @if (i.propertyAddress) { de <strong>{{ i.propertyAddress }}</strong> }
+        @if (i.estateName) { , {{ i.estateName }} }
+      </p>
+
+      @if (isLoggedIn) {
+        @if (redeemError()) {
+          <p class="login__error">{{ redeemError() }}</p>
+        }
+        <button type="button" [disabled]="redeeming()" (click)="accept()">
+          {{ redeeming() ? 'Aceptando…' : 'Aceptar invitación' }}
+        </button>
+      } @else {
+        <p class="login__subtitle">Inicia sesión o regístrate, y vuelve a abrir este mismo enlace — sigue vigente unos días.</p>
+        <a routerLink="/login" class="login__demo-btn">Iniciar sesión</a>
+        <a routerLink="/register" class="login__demo-btn">Registrarme</a>
+      }
+    </div>
+  }
+</div>

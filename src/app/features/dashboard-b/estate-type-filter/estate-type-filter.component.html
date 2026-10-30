@@ -1,0 +1,15 @@
+<app-dropdown
+  ariaLabel="Filtrar por tipo de finca"
+  label="Filtrar"
+  icon="filter"
+  align="end"
+  [multiple]="true"
+  [items]="items()"
+  [selectedIds]="selected()"
+  [summary]="summary()"
+  [active]="selected().length > 0"
+  clearLabel="Limpiar selección"
+  emptyText="No hay tipos de finca."
+  (selectionChange)="toggleType($any($event.id))"
+  (cleared)="selectionChange.emit([])"
+></app-dropdown>

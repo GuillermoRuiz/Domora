@@ -1,0 +1,28 @@
+<app-section-card title="Ingresos vs. Gastos" actionLabel="Ver contabilidad" (action)="openAccounting.emit()">
+  @if (data(); as d) {
+    <select slot="tools" class="cashflow__year" aria-label="Ejercicio" [value]="d.year" (change)="changeYear($any($event.target).value)">
+      @for (year of d.years; track year) {
+        <option [value]="year" [selected]="year === d.year">{{ year }}</option>
+      }
+    </select>
+  }
+
+  <div class="cashflow__body" [class.cashflow__body--loading]="loading()" [attr.aria-busy]="loading()">
+    @if (data()) {
+      <app-bar-chart
+        [categories]="categories"
+        [series]="series()"
+        [valueFormatter]="formatter"
+        [caption]="caption()"
+        emptyText="Todavía no hay ingresos ni gastos en este ejercicio"
+      ></app-bar-chart>
+    } @else if (failed()) {
+      <p class="cashflow__error" role="alert">No se pudo cargar el gráfico de ingresos y gastos.</p>
+    } @else {
+      <p class="cashflow__placeholder">Cargando…</p>
+    }
+    @if (failed() && data()) {
+      <p class="cashflow__error" role="alert">No se pudo actualizar el gráfico; se muestra el último ejercicio cargado.</p>
+    }
+  </div>
+</app-section-card>

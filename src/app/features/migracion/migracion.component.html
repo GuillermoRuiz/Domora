@@ -1,0 +1,373 @@
+<div class="overlay" (click)="close()">
+  <div class="wizard" (click)="$event.stopPropagation()">
+
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <div class="wizard__header">
+      <div class="wizard__meta">
+        @if (step() < 6) {
+          <div class="wizard__breadcrumb">Paso {{ step() }} de 5{{ selectedEstate() ? ' · ' + selectedEstate()!.name : '' }}</div>
+        }
+        <h2 class="wizard__title">Migrar desde otra plataforma</h2>
+      </div>
+
+      @if (step() < 6) {
+        <div class="step-indicator">
+          @for (s of steps; track s.n; let last = $last) {
+            <div class="step-pill">
+              <div class="step-circle"
+                [class.step-circle--done]="step() > s.n"
+                [class.step-circle--active]="step() === s.n">
+                @if (step() > s.n) {
+                  <app-icon name="check" [size]="12"></app-icon>
+                } @else {
+                  {{ s.n }}
+                }
+              </div>
+              <span class="step-label"
+                [class.step-label--active]="step() === s.n"
+                [class.step-label--done]="step() > s.n">{{ s.label }}</span>
+            </div>
+            @if (!last) { <div class="step-connector" [class.step-connector--done]="step() > s.n"></div> }
+          }
+        </div>
+      }
+
+      <button class="close-btn" (click)="close()">
+        <app-icon name="x" [size]="14"></app-icon>
+      </button>
+    </div>
+
+    <!-- ── Body ───────────────────────────────────────────────────────── -->
+    <div class="wizard__body">
+
+      <!-- PASO 1 — Origen -->
+      @if (step() === 1) {
+        <div class="step-content">
+          <h3 class="step-heading">Origen de los datos</h3>
+
+          <div class="form-field" style="margin-bottom:20px">
+            <label class="form-label">Finca destino <span class="required">*</span></label>
+            @if (loadingEstates()) {
+              <p class="step-sub">Cargando fincas…</p>
+            } @else {
+              <select class="form-input form-select" [ngModel]="selectedEstateId()" (ngModelChange)="selectedEstateId.set($event)">
+                <option value="" disabled>— Selecciona una finca —</option>
+                @for (e of estates(); track e.id) {
+                  <option [value]="e.id">{{ e.name }}</option>
+                }
+              </select>
+            }
+          </div>
+
+          <div class="section-label">Plataforma de origen</div>
+          <div class="pill-group" style="margin-bottom:20px">
+            <button type="button" class="pill" [class.pill--active]="sourcePlatform() === 'GESFINCAS_NET'" (click)="sourcePlatform.set('GESFINCAS_NET')">Gesfincas.NET</button>
+            <button type="button" class="pill" [class.pill--active]="sourcePlatform() === 'GENERIC'" (click)="sourcePlatform.set('GENERIC')">Genérico (CSV/Excel)</button>
+          </div>
+
+          <div class="section-label">Qué vas a importar</div>
+          <div class="section-label" style="font-weight:400;opacity:.7;margin-top:-8px">Estado actual</div>
+          <div class="pill-group">
+            @for (o of entityTypeOptions; track o.value) {
+              @if (o.scope === 'current_state') {
+                <button type="button" class="pill" [class.pill--active]="entityType() === o.value" (click)="entityType.set(o.value)">{{ o.label }}</button>
+              }
+            }
+          </div>
+          <div class="section-label" style="font-weight:400;opacity:.7;margin-top:14px">Histórico contable</div>
+          <div class="pill-group">
+            @for (o of entityTypeOptions; track o.value) {
+              @if (o.scope === 'historical_accounting') {
+                <button type="button" class="pill" [class.pill--active]="entityType() === o.value" (click)="entityType.set(o.value)">{{ o.label }}</button>
+              }
+            }
+          </div>
+
+          <div class="notice notice--blue" style="margin-top:20px">
+            <app-icon name="exclamation" [size]="15"></app-icon>
+            <span>
+              Gesfincas suele exportar cada tipo de dato en un fichero separado —
+              lo normal es ejecutar este asistente <strong>varias veces</strong>, una por cada uno.
+              Para recibos y remesas, importa primero las propiedades y luego los recibos —
+              una remesa se vincula a un recibo ya importado.
+            </span>
+          </div>
+        </div>
+      }
+
+      <!-- PASO 2 — Subir fichero -->
+      @if (step() === 2) {
+        <div class="step-content">
+          <h3 class="step-heading">Sube el fichero</h3>
+          <p class="step-sub" style="margin-bottom:16px">Formatos admitidos: CSV, XLS, XLSX. Tamaño máximo 25MB.</p>
+
+          <div class="file-field">
+            <input type="file" id="import-file" accept=".csv,.xlsx,.xls" (change)="onFileSelected($event)" />
+            @if (selectedFile(); as f) {
+              <p class="file-field__selected">
+                <app-icon name="file-text" [size]="14"></app-icon>
+                {{ f.name }}
+              </p>
+            }
+          </div>
+
+          @if (uploadError()) {
+            <div class="notice notice--warning" style="margin-top:16px">
+              <app-icon name="exclamation" [size]="15"></app-icon>
+              <span>{{ uploadError() }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- PASO 3 — Mapeo de columnas -->
+      @if (step() === 3) {
+        <div class="step-content">
+          <h3 class="step-heading">Mapeo de columnas</h3>
+          <p class="step-sub" style="margin-bottom:16px">
+            Indica qué columna de tu fichero corresponde a cada campo de Domora. Las sugerencias son editables.
+          </p>
+
+          @if (loadingPresets()) {
+            <p class="step-sub">Cargando sugerencias de mapeo…</p>
+          } @else {
+            <table class="mapping-table">
+              <thead>
+                <tr>
+                  <th>Campo Domora</th>
+                  <th>Columna de tu fichero</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (f of presetFields(); track f.targetField) {
+                  <tr>
+                    <td class="td-name">
+                      {{ f.label }}
+                      @if (f.required) { <span class="required">*</span> }
+                    </td>
+                    <td>
+                      <select class="form-input form-select"
+                        [ngModel]="mapping()[f.targetField] ?? ''"
+                        (ngModelChange)="setMapping(f.targetField, $event)">
+                        <option value="">— sin mapear —</option>
+                        @for (h of headers(); track h) {
+                          <option [value]="h">{{ h }}</option>
+                        }
+                      </select>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+
+          @if (validateError()) {
+            <div class="notice notice--warning" style="margin-top:16px">
+              <app-icon name="exclamation" [size]="15"></app-icon>
+              <span>{{ validateError() }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- PASO 4 — Revisión -->
+      @if (step() === 4) {
+        <div class="step-content">
+          <div class="step-heading-row">
+            <h3 class="step-heading" style="margin-bottom:0">Revisión</h3>
+            @if (validationSummary(); as s) {
+              <button class="batch-btn" [disabled]="s.errors.length === 0 && s.warnings.length === 0" (click)="exportErrorsCsv()">
+                <app-icon name="download" [size]="13"></app-icon>
+                Exportar para corregir
+              </button>
+            }
+          </div>
+
+          @if (validationSummary(); as s) {
+            <div class="summary-kpis">
+              <app-stat-card label="Filas totales" [value]="s.totalRows" icon="file-text"></app-stat-card>
+              <app-stat-card label="Filas OK" [value]="s.okRows" icon="check"></app-stat-card>
+              <app-stat-card label="Errores" [value]="s.errorCount" icon="exclamation"></app-stat-card>
+              <app-stat-card label="Avisos" [value]="s.warningCount" icon="exclamation"></app-stat-card>
+            </div>
+
+            @if (s.errors.length > 0) {
+              <div class="section-label">Errores</div>
+              <div class="issues-list">
+                @for (e of s.errors; track e.rowNumber) {
+                  <div class="issue-row issue-row--error">
+                    <span class="issue-row__num">Fila {{ e.rowNumber }}</span>
+                    <span class="issue-row__msgs">{{ e.errors.join(' · ') }}</span>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (s.warnings.length > 0) {
+              <div class="section-label" style="margin-top:16px">Avisos</div>
+              <div class="issues-list">
+                @for (w of s.warnings; track w.rowNumber) {
+                  <div class="issue-row issue-row--warning">
+                    <span class="issue-row__num">Fila {{ w.rowNumber }}</span>
+                    <span class="issue-row__msgs">{{ w.warnings.join(' · ') }}</span>
+                  </div>
+                }
+              </div>
+            }
+          }
+        </div>
+      }
+
+      <!-- PASO 5 — Confirmar -->
+      @if (step() === 5) {
+        <div class="step-content">
+          <h3 class="step-heading">Confirmar importación</h3>
+
+          @if (validationSummary(); as s) {
+            <div class="info-card">
+              <div class="info-row">
+                <span class="info-row__key">Filas válidas</span>
+                <span class="info-row__val">{{ s.okRows }} de {{ s.totalRows }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-row__key">Finca</span>
+                <span class="info-row__val">{{ selectedEstate()?.name }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-row__key">Tipo</span>
+                <span class="info-row__val">{{ selectedEntityTypeLabel() }}</span>
+              </div>
+            </div>
+          }
+
+          <div class="notice notice--blue">
+            <app-icon name="exclamation" [size]="15"></app-icon>
+            <span>
+              Al confirmar, se crearán las filas válidas en Domora. Podrás deshacer esta importación
+              completa después si algo no queda bien.
+            </span>
+          </div>
+
+          @if (commitError()) {
+            <div class="notice notice--warning" style="margin-top:12px">
+              <app-icon name="exclamation" [size]="15"></app-icon>
+              <span>{{ commitError() }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- PASO 6 — Resumen -->
+      @if (step() === 6) {
+        <div class="success-screen">
+          <div class="success-icon">
+            <app-icon name="check" [size]="32"></app-icon>
+          </div>
+          <h3 class="success-title">Importación completada</h3>
+          @if (commitSummary(); as c) {
+            <p class="success-sub">
+              Se han creado <strong>{{ c.committed.createdCount }}</strong> registros.
+              @if (c.committed.skippedCount > 0) {
+                <strong>{{ c.committed.skippedCount }}</strong> filas se omitieron.
+              }
+            </p>
+
+            @if (c.committed.skippedReasons.length > 0) {
+              <div class="success-card" style="max-width:100%;text-align:left">
+                <div class="section-label" style="margin:12px 0 6px">Filas omitidas</div>
+                @for (r of c.committed.skippedReasons; track r.rowNumber) {
+                  <div class="success-card__row">
+                    <span>Fila {{ r.rowNumber }}</span>
+                    <span>{{ r.reason }}</span>
+                  </div>
+                }
+              </div>
+            }
+          }
+
+          <!-- No importado en esta versión — contenido estático, no viene del backend -->
+          <div class="disclosure" style="text-align:left;width:100%">
+            <div class="section-label">No importado en esta versión</div>
+            @for (row of noImportado; track row.label) {
+              <div class="disclosure-row">
+                <div>
+                  <div class="disclosure-row__label">{{ row.label }}</div>
+                  <div class="disclosure-row__sub">{{ row.sub }}</div>
+                </div>
+                <span class="disclosure-row__reason">{{ row.reason }}</span>
+              </div>
+            }
+          </div>
+
+          @if (rolledBack()) {
+            <div class="notice notice--blue" style="width:100%">
+              <app-icon name="check" [size]="15"></app-icon>
+              <span>
+                Importación deshecha
+                @if (rollbackResult(); as r) {
+                  — {{ rollbackSummary(r) }}.
+                }
+              </span>
+            </div>
+          } @else if (isOpeningEntity()) {
+            <div class="notice notice--blue" style="width:100%">
+              <app-icon name="exclamation" [size]="15"></app-icon>
+              <span>
+                Estas filas solo rellenaron el borrador de saldos iniciales — edítalas o bórralas
+                desde el asistente, en vez de deshacer la importación.
+              </span>
+            </div>
+          } @else {
+            @if (rollbackError()) {
+              <div class="notice notice--warning" style="width:100%">
+                <app-icon name="exclamation" [size]="15"></app-icon>
+                <span>{{ rollbackError() }}</span>
+              </div>
+            }
+            <div class="success-actions">
+              <button class="btn-outline" [disabled]="rollingBack()" (click)="rollback()">
+                <app-icon name="refresh" [size]="13"></app-icon>
+                {{ rollingBack() ? 'Deshaciendo…' : 'Deshacer esta importación' }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+    </div>
+
+    <!-- ── Footer ─────────────────────────────────────────────────────── -->
+    @if (step() < 6) {
+      <div class="wizard__footer">
+        <div class="footer-info"></div>
+        <div class="footer-btns">
+          <button class="btn-secondary" (click)="step() === 1 ? close() : back()">
+            {{ step() === 1 ? 'Cancelar' : 'Atrás' }}
+          </button>
+          @if (step() < 5) {
+            <app-btn variant="primary" (click)="next()" [disabled]="!canAdvance()">
+              {{ continueLabel() }}
+              <app-icon name="chevron-right" [size]="13"></app-icon>
+            </app-btn>
+          } @else {
+            <app-btn variant="primary" (click)="commit()" [disabled]="committing()">
+              <app-icon name="check" [size]="13"></app-icon>
+              {{ committing() ? 'Confirmando…' : 'Confirmar importación' }}
+            </app-btn>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="wizard__footer wizard__footer--success">
+        @if (entityType() === 'property' && !rolledBack()) {
+          <button class="btn-secondary" (click)="importOwnersNext()">Importar ahora los propietarios</button>
+        }
+        @if (isOpeningEntity() && !rolledBack()) {
+          <button class="btn-secondary" (click)="goToOpeningWizard()">Ir al borrador de saldos iniciales</button>
+        }
+        <app-btn variant="primary" (click)="close()">{{ returnToSetup() ? 'Volver a la finca' : 'Cerrar' }}</app-btn>
+      </div>
+    }
+
+  </div>
+</div>

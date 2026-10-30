@@ -1,0 +1,37 @@
+<header class="estate-header">
+  <a class="estate-header__back" routerLink="/b/estates" (click)="clearScope()">
+    <app-icon name="arrow-left" [size]="14"></app-icon>
+    Volver a todas las fincas
+  </a>
+
+  <div class="estate-header__row">
+    <div class="estate-header__id">
+      <div class="estate-header__photo">
+        <app-estate-facade-thumbnail [url]="estate().catastroFacadeUrl ?? null" [estateId]="estate().id" [photoVersion]="estate().photoUpdatedAt ?? null" [name]="estate().name" variant="wide"></app-estate-facade-thumbnail>
+      </div>
+      <div class="estate-header__text">
+        <div class="estate-header__title-row">
+          <h2 class="estate-header__name">{{ estate().name }}</h2>
+          @if (status(); as s) {
+            <app-status-pill [text]="s.text" [tone]="s.tone" [dot]="true"></app-status-pill>
+          }
+        </div>
+        @if (address()) {
+          <p class="estate-header__address">{{ address() }}</p>
+        }
+      </div>
+    </div>
+
+    <app-estate-actions-menu
+      class="estate-header__actions"
+      [estateId]="estate().id"
+      [estateName]="estate().name"
+      [setupRemaining]="setupRemaining()"
+      (openSetup)="openSetup.emit()"
+      (edit)="edit.emit()"
+      (officeHistory)="officeHistory.emit()"
+      (importCatastro)="importCatastro.emit()"
+      (newProperty)="newProperty.emit()"
+    ></app-estate-actions-menu>
+  </div>
+</header>

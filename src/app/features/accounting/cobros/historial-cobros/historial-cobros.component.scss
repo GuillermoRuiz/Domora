@@ -1,0 +1,58 @@
+.modal-overlay--nested { z-index: 1100; }
+
+.history {
+  margin-top: 18px;
+
+  &__title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+
+  &__wrap { overflow-x: auto; }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+
+    th {
+      text-align: left;
+      font-weight: 500;
+      font-size: 12px;
+      color: var(--color-light);
+      letter-spacing: 0.02em;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    td {
+      padding: 8px;
+      border-bottom: 1px solid var(--color-border);
+      vertical-align: top;
+    }
+
+    .num { text-align: right; }
+    .nowrap { white-space: nowrap; }
+  }
+
+  &__label {
+    display: block;
+    font-weight: 500;
+  }
+
+  &__meta {
+    display: block;
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+
+  &__in { color: var(--color-secondary); }
+
+  &__actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}

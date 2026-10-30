@@ -1,0 +1,44 @@
+<div class="requests-grid">
+  @for (req of requests; track req.id) {
+    <div class="request-card">
+      <div class="request-card__header">
+        <app-avatar [name]="userName(req)" [size]="44"></app-avatar>
+        <div class="request-card__info">
+          <div class="request-card__name">{{ userName(req) }}</div>
+          <div class="request-card__email">{{ userEmail(req) }}</div>
+        </div>
+        <app-badge [text]="req.roleType" variant="primary"></app-badge>
+      </div>
+      <div class="request-card__details">
+        <div class="request-detail">
+          <app-icon name="home" [size]="13"></app-icon>
+          <span>{{ propertyLabel(req) }}</span>
+        </div>
+        <div class="request-detail">
+          <app-icon name="calendar" [size]="13"></app-icon>
+          <span>{{ dateLabel(req) }}</span>
+        </div>
+      </div>
+      <div class="request-card__actions">
+        <app-btn variant="danger" size="sm" (clicked)="reject(req)">
+          <app-icon name="x" [size]="13"></app-icon>
+          Rechazar
+        </app-btn>
+        <app-btn variant="secondary" size="sm" (clicked)="approve(req)">
+          <app-icon name="check" [size]="13"></app-icon>
+          Aprobar
+        </app-btn>
+      </div>
+    </div>
+  }
+  @empty {
+    <div class="no-requests">No hay solicitudes pendientes</div>
+  }
+</div>
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

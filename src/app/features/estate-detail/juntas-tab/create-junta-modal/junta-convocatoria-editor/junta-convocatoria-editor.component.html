@@ -1,0 +1,126 @@
+<div class="paper" role="group" aria-label="Convocatoria de la junta">
+  <p class="paper__kicker">Comunidad de propietarios</p>
+  <input
+    class="paper__field paper__field--center paper__field--community field--bare"
+    type="text"
+    maxlength="300"
+    aria-label="Nombre de la comunidad"
+    [disabled]="disabled"
+    [ngModel]="doc.header.community"
+    (ngModelChange)="patchHeader({ community: $event })"
+  />
+  <input
+    class="paper__field paper__field--center paper__field--title field--bare"
+    type="text"
+    maxlength="300"
+    aria-label="Título de la convocatoria"
+    [disabled]="disabled"
+    [ngModel]="doc.header.title"
+    (ngModelChange)="patchHeader({ title: $event })"
+  />
+
+  <textarea
+    class="paper__field paper__field--notice field--bare"
+    rows="1"
+    maxlength="2000"
+    aria-label="Aviso sobre cómo se recibe la convocatoria"
+    placeholder="Aviso (opcional)"
+    [disabled]="disabled"
+    [ngModel]="doc.notice"
+    (ngModelChange)="patch({ notice: $event })"
+  ></textarea>
+
+  <input
+    class="paper__field paper__field--right field--bare"
+    type="text"
+    maxlength="300"
+    aria-label="Lugar y fecha de la convocatoria"
+    [disabled]="disabled"
+    [ngModel]="doc.issuedLine"
+    (ngModelChange)="patch({ issuedLine: $event })"
+  />
+
+  <input
+    class="paper__field field--bare"
+    type="text"
+    maxlength="300"
+    aria-label="Saludo"
+    [disabled]="disabled"
+    [ngModel]="doc.greeting"
+    (ngModelChange)="patch({ greeting: $event })"
+  />
+  <textarea
+    class="paper__field paper__field--intro field--bare"
+    rows="3"
+    maxlength="4000"
+    aria-label="Texto de la convocatoria"
+    [disabled]="disabled"
+    [ngModel]="doc.intro"
+    (ngModelChange)="patch({ intro: $event })"
+  ></textarea>
+
+  <p class="paper__heading">ORDEN DEL DÍA</p>
+  @for (line of doc.agenda; track $index; let i = $index) {
+    <div class="paper__point">
+      <span class="paper__number">{{ line.number }}</span>
+      <textarea
+        class="paper__field paper__field--point field--bare"
+        rows="1"
+        maxlength="2000"
+        [attr.aria-label]="'Punto ' + line.number + ' del orden del día'"
+        [disabled]="disabled"
+        [ngModel]="line.text"
+        (ngModelChange)="patchAgendaLine(i, $event)"
+      ></textarea>
+    </div>
+  } @empty {
+    <p class="paper__empty">No hay puntos en el orden del día.</p>
+  }
+
+  <textarea
+    class="paper__field paper__field--intro field--bare"
+    rows="2"
+    maxlength="4000"
+    aria-label="Texto de cierre"
+    [disabled]="disabled"
+    [ngModel]="doc.closing"
+    (ngModelChange)="patch({ closing: $event })"
+  ></textarea>
+
+  <textarea
+    class="paper__field paper__field--signature field--bare"
+    rows="2"
+    aria-label="Firma (una línea por renglón)"
+    placeholder="Cargo, nombre y nº de colegiado"
+    [disabled]="disabled"
+    [ngModel]="signatureText()"
+    (ngModelChange)="setSignature($event)"
+  ></textarea>
+
+  <label class="paper__toggle">
+    <input
+      type="checkbox"
+      [disabled]="disabled"
+      [checked]="doc.authorization.enabled"
+      (change)="setAuthorizationEnabled($any($event.target).checked)"
+    />
+    Incluir la autorización para delegar el voto (parte inferior, a recortar)
+  </label>
+  @if (doc.authorization.enabled) {
+    <div class="paper__footer">
+    <div class="paper__cut" aria-hidden="true">✂ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</div>
+    <textarea
+      class="paper__field paper__field--intro field--bare"
+      rows="4"
+      maxlength="4000"
+      aria-label="Texto de la autorización"
+      [disabled]="disabled"
+      [ngModel]="doc.authorization.text"
+      (ngModelChange)="setAuthorizationText($event)"
+    ></textarea>
+    <p class="paper__blank">D/Dª ______________________________________________</p>
+    <p class="paper__blank">Atentamente:</p>
+    <p class="paper__blank paper__blank--sign">Firmado: ______________ · Propietario del: ____________</p>
+    </div>
+  }
+</div>

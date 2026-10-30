@@ -1,0 +1,49 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="inst-detail-title" (click)="$event.stopPropagation()" (keydown.escape)="closed.emit()">
+    <div class="modal__header">
+      <div class="detail-title">
+        <span class="detail-icon"><app-icon [name]="type().icon" [size]="20"></app-icon></span>
+        <h4 id="inst-detail-title">{{ installation.name }}</h4>
+        <app-status-pill [text]="pill().text" [tone]="pill().tone" [dot]="true"></app-status-pill>
+      </div>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <dl class="detail-grid">
+      @for (d of details(); track d.id) {
+        <div class="detail-grid__row" [attr.data-detail]="d.id">
+          <dt>{{ d.label }}</dt>
+          <dd>{{ d.value }}</dd>
+        </div>
+      }
+    </dl>
+
+    @if (installation.notes) {
+      <p class="detail-notes" data-detail="notes"><strong>Notas</strong> {{ installation.notes }}</p>
+    }
+
+    <h5 class="detail-subtitle">Historial de revisiones</h5>
+    @if (historyFailed()) {
+      <p class="detail-message detail-message--error" role="alert">No se pudo cargar el historial de revisiones.</p>
+    } @else if (history() === null) {
+      <p class="detail-message">Cargando…</p>
+    } @else if (rows().length === 0) {
+      <p class="detail-message">Esta instalación aún no tiene revisiones registradas.</p>
+    } @else {
+      <ul class="detail-history">
+        @for (row of rows(); track row.id) {
+          <li [attr.data-inspection]="row.id">
+            <span class="detail-history__title">{{ row.title }}</span>
+            <span class="detail-history__status">{{ row.status }}</span>
+            <span class="detail-history__date">{{ row.label }}</span>
+          </li>
+        }
+      </ul>
+    }
+
+    <div class="modal__footer">
+      <button type="button" class="link-btn" (click)="closed.emit()">Cerrar</button>
+      <button type="button" class="primary-btn" data-action="edit" (click)="edit.emit()">Editar</button>
+    </div>
+  </div>
+</div>

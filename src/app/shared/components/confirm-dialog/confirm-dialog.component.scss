@@ -1,0 +1,52 @@
+@use 'dialog-shell' as ds;
+
+// Por encima del resto de modales (el asistente de junta usa z-index 1100, otros 2000).
+.backdrop {
+  @include ds.backdrop-shell($padded: true, $z: 3000);
+}
+
+.dialog {
+  @include ds.modal-shell($width: 400px);
+}
+
+.dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+}
+
+.dialog__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface));
+  color: var(--color-accent);
+  &--danger {
+    background: color-mix(in srgb, var(--color-error) 16%, var(--color-surface));
+    color: var(--color-error);
+  }
+}
+
+.dialog__message {
+  margin: 0 0 20px;
+  white-space: pre-line;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

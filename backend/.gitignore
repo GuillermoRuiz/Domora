@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+
+# Keep environment variables out of version control
+.env
+.env.*.local
+
+# Prisma generated client (when using a custom output path)
+/src/generated
+storage/
+# STORAGE_DIR resuelve a '' cuando está declarada vacía en .env (?? no cae
+# al default con string vacío) — los ficheros reales terminan aquí en vez
+# de storage/. Bug conocido, ver DataService/StorageService; no commitear.
+/documents/

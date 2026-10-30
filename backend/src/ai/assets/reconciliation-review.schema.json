@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "properties": {
+    "candidate_key": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 100
+    },
+    "plausible": {
+      "type": "boolean"
+    },
+    "evidence_summary": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "needs_review": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "candidate_key",
+    "plausible",
+    "evidence_summary",
+    "needs_review"
+  ],
+  "additionalProperties": false
+}

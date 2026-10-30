@@ -1,0 +1,89 @@
+:host { display: block; }
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
+  padding: 24px 24px 0;
+}
+
+// Cada indicador es un botón (lleva a su sección): se resetea el estilo del
+// botón y se deja que el tile ponga la apariencia.
+.kpis__item {
+  display: flex;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  transition: transform 0.12s;
+}
+.kpis__item > app-kpi-tile { flex: 1; }
+.kpis__item:hover { transform: translateY(-1px); }
+.kpis__item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.kpis__error { margin: 12px 24px 0; font-size: 13.5px; color: var(--color-error); }
+
+// Fila de presentación: la tarjeta de la finca y el gráfico de ingresos y gastos.
+.overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin: 16px 24px 0;
+}
+.overview > app-cashflow-card { min-width: 0; }
+
+// Fila de paneles (reparto de gastos, hitos, actividad): tres columnas fijas para que cada tarjeta mantenga su ancho aunque aún falten otras.
+.panels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 16px 24px 0;
+}
+.panels > * { min-width: 0; }
+.recent { margin: 16px 24px 24px; }
+
+// Tarjeta de presentación: fachada + datos + acciones.
+.hero {
+  display: flex;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.hero__media { flex: 0 0 38%; max-width: 380px; min-width: 220px; align-self: stretch; display: flex; background: var(--color-bg); }
+.hero__media app-estate-facade-thumbnail { width: 100%; height: 100%; aspect-ratio: auto; min-height: 200px; border-radius: 0; }
+.hero__body { flex: 1; min-width: 0; padding: 22px 26px; display: flex; flex-direction: column; gap: 8px; }
+.hero__eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); }
+.hero__name { margin: 0; font-size: 25px; font-weight: 700; color: var(--color-text); overflow-wrap: anywhere; }
+.hero__address { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 14.5px; color: var(--color-muted); }
+.hero__description { margin: 4px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--color-text); max-width: 62ch; }
+.hero__description--empty { color: var(--color-muted); }
+.hero__link {
+  border: none; background: none; padding: 0; margin-left: 4px;
+  font: inherit; font-weight: 600; color: var(--color-accent); cursor: pointer;
+}
+.hero__link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+.hero__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 12px; }
+
+@media (max-width: 1280px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .overview { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1280px) { .panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .panels { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 16px 0; }
+  .overview, .panels { margin: 16px 16px 0; }
+  .recent { margin: 16px 16px 24px; }
+  .hero { flex-direction: column; }
+  .hero__media { flex-basis: auto; max-width: none; }
+  .hero__media app-estate-facade-thumbnail { min-height: 140px; }
+  .hero__body { padding: 18px; }
+}
+@media (max-width: 440px) { .kpis { grid-template-columns: minmax(0, 1fr); } }
+
+@media (prefers-reduced-motion: reduce) { .kpis__item { transition: none; } }

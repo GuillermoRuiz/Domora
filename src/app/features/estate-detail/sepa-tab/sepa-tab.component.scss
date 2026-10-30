@@ -1,0 +1,98 @@
+.card {
+  background: var(--color-surface);
+  margin: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+}
+
+.card__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.card > p, .card > .billing-grid, .card > .form-grid, .card > .return-alert {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.card > .billing-grid:last-child, .card > .form-grid:last-child { margin-bottom: 20px; }
+
+.td--muted { color: var(--color-muted); font-size: 14px; }
+
+.link-btn {
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.field-hint {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--color-light);
+}
+
+.billing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-bottom: 20px;
+
+  span { display: block; font-size: 12px; color: var(--color-muted); margin-bottom: 3px; }
+  div div { font-size: 14px; color: var(--color-text); font-family: monospace; }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding-bottom: 20px;
+}
+
+input { width: 100%;
+}
+
+.form-field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--color-muted); }
+
+.modal__footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+.return-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin-bottom: 20px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-primary);
+  color: #fff;
+  padding: 11px 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

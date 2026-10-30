@@ -1,0 +1,64 @@
+@use '../junta-fields' as f;
+
+@include f.fields;
+
+:host {
+  display: block;
+}
+
+// Código postal estrecho · ciudad flexible · botón de mapa a la derecha.
+.place-row {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.map-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+
+  &:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.map-preview {
+  overflow: hidden;
+  height: 240px;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+
+  iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  p {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .place-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

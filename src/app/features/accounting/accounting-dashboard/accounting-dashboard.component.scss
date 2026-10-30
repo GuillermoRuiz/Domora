@@ -1,0 +1,413 @@
+@use 'breakpoints' as bp;
+@use 'dialog-shell' as ds;
+
+.page-content {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// ── Morosos (alerta de deudores de todas las comunidades) ──────────────
+.alert-card {
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alert-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-error);
+}
+
+.debtors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.debtor-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(255,255,255,0.7);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.debtor-info {
+  flex: 1;
+}
+
+.debtor-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.debtor-property {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-top: 1px;
+}
+
+.debtor-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-error);
+}
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  h1 {
+    font-size: 32px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+  p {
+    margin-top: 6px;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--color-muted);
+  }
+}
+.generate-receipts {
+  flex-shrink: 0;
+}
+.compact-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border-light);
+  color: var(--color-muted);
+  font-size: 14px;
+  min-height: 40px;
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  strong {
+    color: var(--color-text);
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.local-search {
+  flex: 1 1 0;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  &:focus-within {
+    border-color: var(--color-accent);
+  }
+  input {
+    border: 0;
+    padding: 0;
+    min-width: 0;
+    outline: 0;
+    background: transparent;
+    font-size: 14px;
+    &::placeholder {
+      color: var(--color-muted);
+    }
+  }
+}
+.toolbar-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+  margin-left: auto;
+}
+.download-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  &:hover:not(:disabled) {
+    border-color: var(--color-accent);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+.view-toggle {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  button {
+    width: 36px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-muted);
+    border-radius: var(--radius-sm);
+    &[aria-pressed='true'] {
+      color: var(--color-accent);
+      background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    }
+  }
+}
+
+:host {
+  display: block;
+  min-width: 0;
+}
+.local-search input {
+  width: 100%;
+  color: var(--color-text);
+}
+.filter-control {
+  position: relative;
+}
+.filter-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 40px;
+  min-width: 132px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  &--active {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+}
+.filters-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  width: 260px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-muted);
+  }
+  select {
+    width: 100%;
+  }
+}
+.clear-filters {
+  text-align: left;
+  color: var(--color-accent);
+  font-size: 13px;
+}
+.list-footer {
+  text-align: right;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+.feedback-card {
+  min-height: 220px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-muted);
+  text-align: center;
+}
+button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .page-content {
+    padding: 16px;
+    gap: 14px;
+  }
+  .page-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    h1 {
+      font-size: 29px;
+    }
+    p {
+      font-size: 14px;
+    }
+  }
+  .local-search {
+    flex-basis: 100%;
+  }
+  .toolbar-controls {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+  .compact-summary {
+    gap: 12px;
+  }
+  .filters-menu {
+    left: 0;
+    right: auto;
+    width: min(260px, calc(100vw - var(--sidebar-width) - 32px));
+  }
+  .list-footer {
+    text-align: center;
+  }
+}
+
+// ── Modal "Generar recibos" ─────────────────────────────────────────────
+.modal-backdrop { @include ds.backdrop-shell; }
+
+.modal { @include ds.modal-shell($width: 400px); }
+
+.modal__header { @include ds.dialog-header-chrome($margin-bottom: 16px); }
+
+.close-btn { @include ds.close-btn-chrome; }
+
+.modal__body { @include ds.modal-body-chrome; }
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+
+}
+
+.field-error {
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+.td-muted {
+  color: var(--color-muted);
+  font-size: 13.5px;
+}
+
+.gr-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--color-secondary);
+  font-size: 14px;
+
+  strong {
+    color: var(--color-text);
+  }
+}
+.accounting-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+}
+
+.accounting-header__search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  max-width: 620px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  color: var(--color-muted);
+
+  app-icon {
+    display: flex;
+    flex-shrink: 0;
+  }
+  &:focus-within {
+    border-color: var(--color-accent);
+  }
+  input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    &::placeholder {
+      color: var(--color-muted);
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .accounting-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    app-accounting-community-selector {
+      width: 100%;
+    }
+  }
+  .accounting-header__search {
+    margin-left: 0;
+    max-width: none;
+  }
+}

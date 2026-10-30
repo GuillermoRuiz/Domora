@@ -1,0 +1,181 @@
+<div class="card">
+  <div class="card__header">
+    <span class="card__title">Plan de cuentas</span>
+    <div class="card__actions">
+      @if (archivedCount() > 0) {
+        <label class="toggle-archived">
+          <input type="checkbox" [ngModel]="showArchived()" (ngModelChange)="showArchived.set($event)" />
+          Ver archivadas ({{ archivedCount() }})
+        </label>
+      }
+      <app-btn *appPageAction variant="primary" size="sm" (clicked)="openNuevaCuenta()">
+        <app-icon name="plus" [size]="13"></app-icon>
+        Nueva cuenta
+      </app-btn>
+    </div>
+  </div>
+  <p class="card__hint">
+    Plan propio de esta finca. Las cuentas marcadas como <strong>Plan</strong> vienen de la plantilla de
+    comunidades: puedes renombrarlas y colgarles subcuentas, pero no borrarlas. Las cuentas bancarias se dan
+    de alta en Configuración.
+  </p>
+  @if (actionError()) {
+    <p class="action-error" role="alert">{{ actionError() }}</p>
+  }
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nombre</th>
+        <th>Naturaleza</th>
+        <th></th>
+        <th class="th-actions">Acciones</th>
+      </tr>
+    </thead>
+    @if (loaded() && groups().length === 0) {
+      <tbody>
+        <tr>
+          <td colspan="5" class="td-empty">Todavía no hay cuentas contables en esta finca.</td>
+        </tr>
+      </tbody>
+    }
+    @for (g of groups(); track g.key) {
+      <tbody class="group">
+        <tr class="group__row">
+          <td colspan="5">{{ g.label }}</td>
+        </tr>
+        @for (a of g.accounts; track a.id) {
+          <tr [class.tr--archived]="a.archivedAt">
+            <td class="td-code" [style.padding-left.px]="20 + indent(a)">{{ a.code }}</td>
+            <td>
+              {{ a.name }}
+              @if (a.shortName && a.shortName !== a.name) {
+                <span class="td-muted"> · {{ a.shortName }}</span>
+              }
+            </td>
+            <td class="td-muted">{{ natureLabel(a) }}</td>
+            <td class="td-flags">
+              @if (a.system) { <app-badge text="Plan" variant="default"></app-badge> }
+              @if (a.postable === false) { <app-badge text="Agrupadora" variant="default"></app-badge> }
+              @if (a.archivedAt) { <app-badge text="Archivada" variant="warning"></app-badge> }
+            </td>
+            <td class="td-actions">
+              @if (canAddChild(a)) {
+                <button type="button" class="link-btn" (click)="openNuevaCuenta(a)" [attr.aria-label]="'Añadir subcuenta a ' + a.code">
+                  Subcuenta
+                </button>
+              }
+              <button type="button" class="link-btn" (click)="openEditar(a)" [attr.aria-label]="'Renombrar ' + a.code">Renombrar</button>
+              @if (canArchive(a)) {
+                <button type="button" class="link-btn" (click)="toggleArchived(a)">
+                  {{ a.archivedAt ? 'Reactivar' : 'Archivar' }}
+                </button>
+              }
+              @if (canDelete(a)) {
+                <button type="button" class="link-btn link-btn--danger" (click)="askDelete(a)" [attr.aria-label]="'Borrar ' + a.code">
+                  Borrar
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    }
+  </table>
+</div>
+
+@if (showNuevaCuenta()) {
+  <div class="modal-backdrop" (click)="closeNuevaCuenta()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>{{ ncParent() ? 'Nueva subcuenta de ' + ncParent()!.code : 'Nueva cuenta contable' }}</h4>
+        <button class="close-btn" (click)="closeNuevaCuenta()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        @if (ncParent(); as parent) {
+          <p class="modal__hint">
+            Cuelga de <strong>{{ parent.code }} · {{ parent.name }}</strong> y hereda su naturaleza. El código debe
+            empezar por {{ parent.code }} (por ejemplo, {{ parent.code }}0001).
+          </p>
+        } @else {
+          <p class="modal__hint">La naturaleza sale del código: el grupo 6 es gasto y el 7, ingreso.</p>
+        }
+        <label class="form-field">
+          Código
+          <input type="text" inputmode="numeric" placeholder="ej. 6280001" [ngModel]="ncCode()" (ngModelChange)="ncCode.set($event)" [class.field--error]="ncErrors().code || ncErrors().prefix" />
+          @if (ncErrors().code) { <span class="field-error">El código son de 3 a 10 dígitos</span> }
+          @if (ncErrors().prefix) { <span class="field-error">Debe empezar por {{ ncParent()?.code }} y ser más largo</span> }
+        </label>
+        <label class="form-field">
+          Nombre
+          <input type="text" placeholder="ej. Suministro eléctrico" [ngModel]="ncName()" (ngModelChange)="ncName.set($event)" [class.field--error]="ncErrors().name" />
+          @if (ncErrors().name) { <span class="field-error">El nombre es obligatorio</span> }
+        </label>
+        <label class="form-field">
+          Nombre corto (para tablas)
+          <input type="text" placeholder="ej. Luz" [ngModel]="ncShortName()" (ngModelChange)="ncShortName.set($event)" />
+        </label>
+        @if (ncError()) { <span class="field-error">{{ ncError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeNuevaCuenta()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="ncSaving()" (clicked)="submitNuevaCuenta()">
+          {{ ncSaving() ? 'Guardando…' : 'Crear cuenta' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (editing(); as account) {
+  <div class="modal-backdrop" (click)="closeEditar()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Renombrar la cuenta {{ account.code }}</h4>
+        <button class="close-btn" (click)="closeEditar()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Nombre
+          <input type="text" [ngModel]="edName()" (ngModelChange)="edName.set($event)" />
+        </label>
+        <label class="form-field">
+          Nombre corto (para tablas)
+          <input type="text" [ngModel]="edShortName()" (ngModelChange)="edShortName.set($event)" />
+        </label>
+        @if (edError()) { <span class="field-error">{{ edError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeEditar()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="edSaving()" (clicked)="submitEditar()">
+          {{ edSaving() ? 'Guardando…' : 'Guardar' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (deleting(); as account) {
+  <div class="modal-backdrop" (click)="cancelDelete()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Borrar la cuenta {{ account.code }}</h4>
+        <button class="close-btn" (click)="cancelDelete()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <p>Se borrará <strong>{{ account.code }} · {{ account.name }}</strong>. Si ya tiene apuntes no se podrá borrar: en ese caso, archívala.</p>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="cancelDelete()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" (clicked)="confirmDelete()">Borrar</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

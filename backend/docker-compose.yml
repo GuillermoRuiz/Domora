@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-domora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-domora}
+      POSTGRES_DB: ${POSTGRES_DB:-domora}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-domora} -d ${POSTGRES_DB:-domora}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Este compose es para desarrollo/pruebas locales, no para simular
+      # producción — de ahí el override explícito. La imagen fija
+      # NODE_ENV=production (correcto para el despliegue real en Azure),
+      # pero eso activa la validación estricta de env.validation.ts, que
+      # exige JWT_SECRET no-default, SEPA_ENC_KEY y los INVOICE_ISSUER_*
+      # reales y aborta el arranque si faltan — justo lo que se quiere en
+      # un despliegue real, pero no lo que hace falta para levantar esto
+      # en local con datos de prueba.
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-domora}:${POSTGRES_PASSWORD:-domora}@postgres:5432/${POSTGRES_DB:-domora}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      JWT_ACCESS_EXPIRES: ${JWT_ACCESS_EXPIRES:-15m}
+      SEPA_ENC_KEY: ${SEPA_ENC_KEY:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
+      STORAGE_DIR: /app/storage
+      PORT: 3000
+      # Vacías por defecto: StripeService degrada (igual que MailService
+      # sin SMTP_HOST) en vez de exigirlas para poder levantar el resto de
+      # la app en local sin cuenta de Stripe configurada. Rellenar con
+      # `stripe listen` (STRIPE_WEBHOOK_SECRET) para probar el flujo real.
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_BASE: ${STRIPE_PRICE_BASE:-}
+      STRIPE_PRICE_STANDARD: ${STRIPE_PRICE_STANDARD:-}
+      STRIPE_PRICE_PREMIUM: ${STRIPE_PRICE_PREMIUM:-}
+      # Catastro: público y sin clave; "false" lo apaga. La base solo hace
+      # falta si el host cambia.
+      CATASTRO_ENABLED: ${CATASTRO_ENABLED:-true}
+      CATASTRO_BASE_URL: ${CATASTRO_BASE_URL:-}
+    ports:
+      - '3000:3000'
+    volumes:
+      - api_storage:/app/storage
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/api/v1/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  api_storage:

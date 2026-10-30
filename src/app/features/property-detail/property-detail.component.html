@@ -1,0 +1,780 @@
+<app-topbar [title]="propertyView?.nickname || 'Propiedad'" [breadcrumb]="['Mi comunidad', propertyView?.nickname || '']">
+</app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">{{ propertyView?.nickname || 'Propiedad' }}</h1>
+    <p class="page-intro__subtitle">{{ propertyView?.addressFull || 'Consulta la información y el seguimiento de tu propiedad.' }}</p>
+  </div>
+  <div class="page-intro__actions"><button class="action-btn action-btn--outline" type="button" (click)="reportIssue()">Reportar incidencia</button></div>
+</header>
+
+<div class="page-content">
+  <!-- Header -->
+  <div class="property-context"><button class="back-btn" (click)="goBack()">
+      <app-icon name="arrow-left" [size]="16"></app-icon>
+      Volver
+    </button>
+    @if (propertyView?.viewerRoleType; as rt) { <app-badge [text]="rt" variant="default"></app-badge> }
+    <button class="action-btn action-btn--outline" (click)="openVinculacionModal()">Editar vinculación</button>
+  </div>
+
+  <!-- Vinculación banner -->
+  @if (linkageStatus() === 'linked') {
+    <div class="vinc-banner vinc-banner--linked">
+      <app-icon name="check" [size]="18"></app-icon>
+      <div class="vinc-banner__text">
+        <strong>Vinculada a {{ propertyView?.estateName }}</strong>
+        <span>Tu propiedad está vinculada a la comunidad.</span>
+      </div>
+      <app-badge text="Vinculada" variant="secondary"></app-badge>
+    </div>
+  } @else if (linkageStatus() === 'pending') {
+    <div class="vinc-banner vinc-banner--pending">
+      <app-icon name="exclamation" [size]="18"></app-icon>
+      <div class="vinc-banner__text">
+        <strong>Solicitud de vinculación enviada</strong>
+        <span>El administrador revisará tu solicitud en breve.</span>
+      </div>
+      <app-badge text="Pendiente" variant="warning"></app-badge>
+    </div>
+  } @else if (linkageStatus() === 'revoked') {
+    <div class="vinc-banner vinc-banner--revoked">
+      <app-icon name="exclamation" [size]="18"></app-icon>
+      <div class="vinc-banner__text">
+        <strong>Vinculación revocada por el administrador</strong>
+        <span>Contacta con tu comunidad o vuelve a solicitar la vinculación.</span>
+      </div>
+      <app-btn variant="primary" size="sm" (clicked)="openVinculacionModal()">Vincular de nuevo</app-btn>
+    </div>
+  } @else {
+    <div class="vinc-banner vinc-banner--none">
+      <app-icon name="building" [size]="18"></app-icon>
+      <div class="vinc-banner__text">
+        <strong>Propiedad sin vincular</strong>
+        <span>Vincula esta propiedad a una comunidad para acceder a recibos y reservas.</span>
+      </div>
+      <button class="action-btn action-btn--outline">Más información</button>
+      <app-btn variant="primary" size="sm" (clicked)="openVinculacionModal()">Vincular a comunidad</app-btn>
+    </div>
+  }
+
+  <!-- Tabs -->
+  <div class="tabs">
+    @for (tab of tabs(); track tab.id) {
+      <button
+        class="tab"
+        [class.tab--active]="activeTab() === tab.id"
+        (click)="activeTab.set(tab.id)"
+      >{{ tab.label }}</button>
+    }
+  </div>
+
+  <div class="tab-content">
+    <!-- Summary -->
+    @if (activeTab() === 'summary') {
+      <div class="resumen-grid">
+        <div class="resumen-main">
+          <div class="summary-grid">
+            <div class="summary-card" [class.summary-card--error]="(property?.balance || 0) < 0">
+              <div class="summary-card__label">Saldo actual</div>
+              <div class="summary-card__value">{{ property?.balance | currency:'EUR':'symbol':'1.2-2':'es' }}</div>
+              <div class="summary-card__hint">{{ (property?.balance || 0) < 0 ? 'Pago pendiente' : 'Al día' }}</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card__label">Cuota mensual</div>
+              <div class="summary-card__value">{{ property?.quotaMonthly | currency:'EUR':'symbol':'1.2-2':'es' }}</div>
+              <div class="summary-card__hint">Domiciliada</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card__label">Pagado en 2026</div>
+              <div class="summary-card__value">{{ paidThisYear() | currency:'EUR':'symbol':'1.2-2':'es' }}</div>
+              <div class="summary-card__hint">4 mensualidades</div>
+            </div>
+          </div>
+
+          @if ((property?.advance || 0) > 0) {
+            <div class="advance-note">
+              <app-icon name="check" [size]="14"></app-icon>
+              <span>
+                Tienes {{ property?.advance | currency:'EUR':'symbol':'1.2-2':'es' }} a favor sin aplicar a ningún
+                recibo todavía.
+                @if ((property?.balance || 0) < 0) {
+                  No se descuenta del saldo pendiente de arriba: la gestora lo aplicará al registrar el próximo cobro.
+                } @else {
+                  La gestora lo aplicará a tu próxima cuota.
+                }
+              </span>
+            </div>
+          }
+
+          <div class="card datos-card">
+            <h4 class="card__title">Datos del inmueble</h4>
+            <div class="kv-table">
+              <div class="kv-row"><span>Tipo</span><strong>{{ property?.type }}</strong></div>
+              <div class="kv-row"><span>Modalidad</span><strong>{{ propertyView?.viewerRoleType || '—' }}</strong></div>
+              <div class="kv-row"><span>Dirección</span><strong>{{ propertyView?.addressFull }}</strong></div>
+              <div class="kv-row"><span>Localidad</span><strong>{{ property?.municipality }} {{ property?.province }}</strong></div>
+              <div class="kv-row"><span>Comunidad</span><strong>{{ propertyView?.estateName || '—' }}</strong></div>
+              <div class="kv-row"><span>Administrador</span><strong>{{ propertyView?.adminName || '—' }}</strong></div>
+              @if (property?.cadastralReference) {
+                <div class="kv-row"><span>Ref. catastral</span><strong class="td--mono">{{ property?.cadastralReference }}</strong></div>
+              }
+              @if (property?.participationQuota != null) {
+                <div class="kv-row"><span>Coeficiente de participación</span><strong>{{ property?.participationQuota | number:'1.2-2':'es' }} %</strong></div>
+              }
+              @if (property?.builtAreaM2 != null) {
+                <div class="kv-row"><span>Superficie construida</span><strong>{{ property?.builtAreaM2 | number:'1.0-2':'es' }} m²</strong></div>
+              }
+            </div>
+          </div>
+
+          <div class="card datos-card reports-card">
+            <h4 class="card__title">Informes contables</h4>
+            <div class="kv-table">
+              <div class="kv-row">
+                <span>Extracto de cuenta</span>
+                <span class="actions">
+                  <app-btn variant="outline" size="sm" class="statement-pdf" [disabled]="downloadingReport() === 'statement'" (clicked)="downloadStatement('pdf')">
+                    <app-icon name="download" [size]="13"></app-icon>
+                    PDF
+                  </app-btn>
+                  <app-btn variant="outline" size="sm" class="statement-xlsx" [disabled]="downloadingReport() === 'statement'" (clicked)="downloadStatement('xlsx')">
+                    <app-icon name="download" [size]="13"></app-icon>
+                    Excel
+                  </app-btn>
+                </span>
+              </div>
+              <div class="kv-row">
+                <span>Certificado de deuda</span>
+                <span class="actions">
+                  <app-btn variant="outline" size="sm" class="certificate-pdf" [disabled]="downloadingReport() === 'certificate'" (clicked)="downloadDebtCertificate()">
+                    <app-icon name="download" [size]="13"></app-icon>
+                    PDF
+                  </app-btn>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card comms-card">
+            <div class="card__header-row">
+              <h4 class="card__title">Últimas comunicaciones</h4>
+              <button class="link-btn" (click)="setTab('communications')">Ver todas</button>
+            </div>
+            @for (comm of recentCommunications(); track comm.id) {
+              <div class="comm-preview">
+                <div class="comm-preview__avatar">{{ comm.from.charAt(0) }}</div>
+                <div class="comm-preview__body">
+                  <span class="comm-preview__title" [class.comm-preview__title--unread]="isCommUnread(comm.id)">{{ comm.title }}</span>
+                  <span class="comm-preview__meta">{{ comm.from }} · {{ comm.date }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="resumen-sidebar">
+          @if ((property?.balance || 0) < 0) {
+            <div class="card sidebar-card sidebar-card--warning">
+              <h4 class="card__title">Pago pendiente</h4>
+              <div class="sidebar-card__amount">{{ property?.balance | currency:'EUR':'symbol':'1.2-2':'es' }}</div>
+              <button class="action-btn action-btn--outline" (click)="openPayBalance()">Pagar ahora</button>
+            </div>
+          }
+          @if (property?.nextEvent) {
+            <div class="card sidebar-card sidebar-card--dark">
+              <h4 class="card__title">Próximo evento</h4>
+              <div class="event-row">
+                <div class="event-date-badge">
+                  <span>{{ property!.nextEvent!.day }}</span>
+                  <span>{{ property!.nextEvent!.month }}</span>
+                </div>
+                <div class="event-info">
+                  <strong>{{ property!.nextEvent!.title }}</strong>
+                  <span>{{ property!.nextEvent!.location }} · {{ property!.nextEvent!.time }}</span>
+                  <span class="event-info__hint">Confirma asistencia desde la convocatoria.</span>
+                </div>
+              </div>
+            </div>
+          }
+          @if (propertyView?.adminName) {
+            <div class="card sidebar-card">
+              <h4 class="card__title">Administrador</h4>
+              <div class="admin-row">
+                <div class="admin-row__avatar">{{ (propertyView?.adminContactName || propertyView?.adminName || '?').charAt(0) }}</div>
+                <div class="admin-row__info">
+                  <strong>{{ propertyView?.adminContactName || propertyView?.adminName }}</strong>
+                  <span>{{ propertyView?.adminName }}</span>
+                </div>
+              </div>
+              <button class="action-btn action-btn--outline" (click)="contactAdmin()">Enviar mensaje</button>
+            </div>
+          }
+          @if (staffDirectory().length > 0) {
+            <div class="card sidebar-card">
+              <h4 class="card__title">Personal de la finca</h4>
+              @for (s of staffDirectory(); track s.id) {
+                <div class="admin-row staff-row">
+                  <div class="admin-row__avatar">{{ s.fullName.charAt(0) }}</div>
+                  <div class="admin-row__info">
+                    <strong>{{ s.fullName }}</strong>
+                    <span>{{ s.position }}</span>
+                    @if (s.schedule) { <span class="staff-row__schedule">{{ s.schedule }}</span> }
+                  </div>
+                  <div class="staff-row__actions">
+                    @if (s.phone) { <a class="icon-link" [href]="'tel:' + s.phone" title="Llamar"><app-icon name="phone" [size]="14"></app-icon></a> }
+                    @if (s.email) { <a class="icon-link" [href]="'mailto:' + s.email" title="Enviar email"><app-icon name="mail" [size]="14"></app-icon></a> }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+          @if (property?.id) {
+            <div class="card sidebar-card">
+              <app-members-section [propertyId]="property!.id" [canInvite]="true" [canRevoke]="true"></app-members-section>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Receipts -->
+    @if (activeTab() === 'receipts') {
+      <div class="card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Importe</th>
+              <th>Vencimiento</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (receipt of receipts(); track receipt.id) {
+              <tr>
+                <td class="td--name">{{ receipt.period }}</td>
+                <td>{{ receipt.amount | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="td--muted">{{ receipt.dueDate ?? receipt.date }}</td>
+                <td><span class="status-dot" [class.status-dot--green]="receipt.status === 'Pagada'" [class.status-dot--warning]="receipt.status === 'Pendiente'" [class.status-dot--error]="receipt.status === 'Devuelto'"></span><app-badge [text]="receipt.status" [variant]="receiptStatusVariant(receipt.status)"></app-badge></td>
+                <td class="receipt-actions">
+                  @if (receipt.status === 'Pagada') {
+                    @if (receipt.proofFileName) {
+                      <button class="action-btn" (click)="downloadProof(receipt)">Descargar</button>
+                    }
+                  } @else {
+                    <button class="action-btn action-btn--outline" (click)="openPayReceipt(receipt)">Pagar</button>
+                    @if (receipt.proofFileName) {
+                      <button class="action-btn action-btn--outline" (click)="downloadProof(receipt)">
+                        <app-icon name="check" [size]="12"></app-icon>
+                        Ver justificante
+                      </button>
+                    } @else {
+                      <button class="action-btn action-btn--outline" [disabled]="attachingProofId() === receipt.id" (click)="triggerAttachProof(receipt.id, proofFileInput)">
+                        Adjuntar justificante
+                      </button>
+                    }
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <input #proofFileInput type="file" style="display: none;" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onProofFileChange($event)" />
+
+    <!-- Communications -->
+    @if (activeTab() === 'communications') {
+      <div class="card__header-row">
+        <h4 class="card__title">Bandeja de comunicados</h4>
+        <div class="comm-toolbar-actions">
+          <button class="action-btn action-btn--outline" (click)="markAllCommunicationsRead()">Marcar como leídos</button>
+          <app-btn variant="primary" size="sm" (clicked)="openNuevoComunicado()">Nuevo comunicado</app-btn>
+        </div>
+      </div>
+      <div class="inc-filters comm-filters">
+        <button class="inc-filter" [class.inc-filter--active]="commFilter() === 'active'" (click)="setCommFilter('active')">Activos</button>
+        <button class="inc-filter" [class.inc-filter--active]="commFilter() === 'archived'" (click)="setCommFilter('archived')">Archivados</button>
+      </div>
+      <div class="comms-list">
+        @for (comm of communications(); track comm.id) {
+          <div class="comm-card" [class.comm-card--unread]="isCommUnread(comm.id)" (click)="markCommRead(comm.id)">
+            <div class="comm-card__avatar">{{ comm.from.charAt(0) }}</div>
+            <div class="comm-card__content">
+              <div class="comm-card__header">
+                @if (isCommUnread(comm.id)) {
+                  <span class="unread-dot"></span>
+                }
+                <span class="comm-card__title" [class.comm-card__title--unread]="isCommUnread(comm.id)">{{ comm.title }}</span>
+                @if (comm.category !== 'General') {
+                  <app-badge [text]="communicationCategoryLabel(comm.category)" [variant]="comm.category === 'Urgente' ? 'error' : 'default'"></app-badge>
+                }
+                <span class="comm-card__date">{{ comm.date }}</span>
+              </div>
+              <p class="comm-card__body">{{ comm.body }}</p>
+              <div class="comm-card__from">
+                <app-icon name="users" [size]="12"></app-icon>
+                <span>{{ comm.from }}</span>
+              </div>
+              @if (showEditTrace(comm)) {
+                <div class="comm-card__trace">Editado por {{ comm.lastEditedByName }} el {{ formatDate(comm.lastEditedAt) }}</div>
+              }
+              @if (isMyCommunication(comm)) {
+                <div class="comm-card__actions">
+                  <button class="action-btn action-btn--outline" (click)="openEditarComunicado(comm); $event.stopPropagation()">Editar</button>
+                  <button class="action-btn action-btn--outline" (click)="deleteComunicado(comm); $event.stopPropagation()">Eliminar</button>
+                </div>
+              }
+
+              @if (comm.replies.length > 0) {
+                <div class="inc-timeline" [class.inc-timeline--connected]="comm.replies.length > 1" (click)="$event.stopPropagation()">
+                  @for (reply of comm.replies; track reply.id) {
+                    <div class="inc-timeline__entry">
+                      <div class="inc-timeline__avatar" [class]="'inc-role--' + reply.role">{{ reply.authorName.charAt(0) }}</div>
+                      <div class="inc-timeline__content">
+                        <div class="inc-timeline__head">
+                          <strong>{{ reply.authorName }}</strong>
+                          <span class="inc-timeline__role">{{ reply.role }}</span>
+                          <span class="inc-timeline__date">{{ formatDate(reply.createdAt) }}</span>
+                          @if (reply.authorUserId === membershipsMessaging.currentUserId()) {
+                            <button class="action-btn action-btn--outline" (click)="deleteCommunicationReply(comm, reply.id)">Eliminar</button>
+                          }
+                        </div>
+                        <div class="inc-timeline__text">{{ reply.text }}</div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+              <div class="inc-reply" (click)="$event.stopPropagation()">
+                <input type="text" placeholder="Responder a este comunicado…"
+                  [ngModel]="commReplyText(comm.id)" (ngModelChange)="setCommReplyText(comm.id, $event)"
+                  (keydown.enter)="sendCommunicationReply(comm)" />
+                <app-btn variant="outline" size="sm" (clicked)="sendCommunicationReply(comm)">Enviar</app-btn>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+      <!-- El listado viene paginado del servidor: se dice explícitamente
+           cuántos faltan en vez de truncar en silencio. -->
+      @if (hasMoreCommunications()) {
+        <div class="load-more">
+          <span class="load-more__count">
+            Mostrando {{ communications().length }} de {{ communicationsTotal() }} comunicados
+          </span>
+          <button class="action-btn action-btn--outline" [disabled]="communicationsLoadingMore()" (click)="loadMoreCommunications()">
+            {{ communicationsLoadingMore() ? 'Cargando…' : 'Cargar más' }}
+          </button>
+        </div>
+      }
+    }
+
+    <!-- Reservas -->
+    @if (activeTab() === 'reservas') {
+      @if (amenities().length === 0) {
+        <div class="empty-state">
+          <app-icon name="calendar" [size]="28"></app-icon>
+          <h3>Sin instalaciones reservables</h3>
+          <p>Esta propiedad no tiene instalaciones comunitarias disponibles para reservar.</p>
+        </div>
+      } @else {
+        <div class="amenities-grid">
+          @for (a of amenities(); track a.id) {
+            <div class="amenity-card">
+              <div class="amenity-card__icon" [style.background]="a.bg" [style.color]="a.color">{{ a.icon }}</div>
+              <div class="amenity-card__info">
+                <div class="amenity-card__name">{{ a.name }}</div>
+                <div class="amenity-card__meta">Máx. {{ a.maxHours }}h · Hasta {{ a.capacity }} personas</div>
+                @if (a.seasonal) {
+                  <span class="amenity-card__season">Temporada: {{ a.seasonLabel }}</span>
+                }
+              </div>
+              <app-btn variant="outline" size="sm" (clicked)="openNuevaReserva(a)">Reservar</app-btn>
+            </div>
+          }
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <span class="stat-card__label">Próximas</span>
+            <span class="stat-card__value">{{ upcomingCount() }}</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__label">Completadas</span>
+            <span class="stat-card__value">{{ completedCount() }}</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__label">Total</span>
+            <span class="stat-card__value">{{ totalCount() }}</span>
+          </div>
+        </div>
+
+        <div class="reservas-toolbar">
+          <div class="pills">
+            <button class="pill" [class.pill--active]="reservaFilter() === 'all'" (click)="reservaFilter.set('all')">Todas</button>
+            <button class="pill" [class.pill--active]="reservaFilter() === 'upcoming'" (click)="reservaFilter.set('upcoming')">Próximas ({{ upcomingCount() }})</button>
+            <button class="pill" [class.pill--active]="reservaFilter() === 'past'" (click)="reservaFilter.set('past')">Anteriores</button>
+          </div>
+          <app-btn variant="primary" size="sm" (clicked)="openNuevaReserva()">
+            <app-icon name="plus" [size]="14"></app-icon>
+            Nueva reserva
+          </app-btn>
+        </div>
+
+        <div class="bookings-list">
+          @for (b of filteredBookings(); track b.id) {
+            <div class="booking-row" (click)="openBookingDetail(b)">
+              <div class="booking-row__main">
+                <span class="booking-row__name">{{ b.amenityName }}</span>
+                <span class="booking-row__date">{{ b.date }} · {{ b.startSlot }} - {{ b.endSlot }} · {{ b.guests }} pers.</span>
+              </div>
+              <app-badge [text]="bookingStatusLabel(b.status)" [variant]="bookingStatusVariant(b.status)"></app-badge>
+            </div>
+          } @empty {
+            <div class="empty-row">No hay reservas en esta categoría.</div>
+          }
+        </div>
+
+        <div class="card calendar-card">
+          <div class="calendar-header">
+            <button class="action-btn" (click)="calendarPrevMonth()">
+              <app-icon name="arrow-left" [size]="14"></app-icon>
+            </button>
+            <strong>{{ calendarLabel() }}</strong>
+            <button class="action-btn" (click)="calendarNextMonth()">
+              <app-icon name="chevron-right" [size]="14"></app-icon>
+            </button>
+          </div>
+          <div class="calendar-grid">
+            @for (d of ['L','M','X','J','V','S','D']; track d) {
+              <div class="calendar-grid__dow">{{ d }}</div>
+            }
+            @for (day of calendarDays(); track $index) {
+              <button class="calendar-day"
+                [class.calendar-day--empty]="!day.inMonth"
+                [class.calendar-day--past]="day.isPast"
+                [class.calendar-day--today]="day.isToday"
+                [disabled]="!day.inMonth || day.isPast"
+                (click)="selectCalendarDay(day)">
+                @if (day.inMonth) {
+                  <span>{{ day.label }}</span>
+                  @if (day.hasBooking) {
+                    <span class="calendar-day__dot"></span>
+                  }
+                }
+              </button>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    <!-- Juntas -->
+    @if (activeTab() === 'juntas') {
+      @if (property?.estateId; as estateId) {
+        <app-juntas-section [estateId]="estateId" [propertyId]="property!.id"></app-juntas-section>
+      } @else {
+        <div class="empty-state">
+          <app-icon name="users" [size]="28"></app-icon>
+          <h3>Sin finca vinculada</h3>
+          <p>Esta propiedad no está vinculada a ninguna finca, así que no tiene juntas de propietarios.</p>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+@if (payTarget(); as target) {
+  <app-transfer-instructions-modal
+    [iban]="propertyView?.estate?.iban ?? null"
+    [estateName]="propertyView?.estateName ?? null"
+    [amount]="target.amount"
+    [concept]="target.concept"
+    (closed)="closePayModal()">
+  </app-transfer-instructions-modal>
+}
+
+<!-- Vinculación modal -->
+@if (showVinculacionModal()) {
+  <div class="modal-backdrop" (click)="closeVinculacionModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Vincular propiedad</h4>
+        <button class="close-btn" (click)="closeVinculacionModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        @if (vincStep() === 0) {
+          <div class="mode-options">
+            <button class="mode-option" [class.mode-option--active]="vincMode() === 'existing'" (click)="vincMode.set('existing')">
+              <app-icon name="link" [size]="18"></app-icon>
+              <strong>Vincular a comunidad existente</strong>
+              <span>Busca y selecciona tu comunidad de la lista.</span>
+            </button>
+            <button class="mode-option" [class.mode-option--active]="vincMode() === 'request'" (click)="vincMode.set('request')">
+              <app-icon name="building" [size]="18"></app-icon>
+              <strong>Solicitar alta de comunidad</strong>
+              <span>Tu comunidad todavía no está registrada.</span>
+            </button>
+          </div>
+          <div class="info-callout">La vinculación deberá ser aprobada por el administrador de la comunidad. Puede ser revocada en cualquier momento.</div>
+        }
+        @if (vincStep() === 1 && vincMode() === 'existing') {
+          <div class="search-box">
+            <app-icon name="search" [size]="14"></app-icon>
+            <input class="field--bare" type="text" placeholder="Buscar comunidad..." [ngModel]="vincSearch()" (ngModelChange)="vincSearch.set($event)" />
+          </div>
+          <div class="estate-list">
+            @for (e of filteredLinkEstates(); track e.id) {
+              <button class="estate-row" [class.estate-row--selected]="vincSelectedEstate()?.id === e.id" (click)="selectVincEstate(e)">
+                <strong>{{ e.name }}</strong>
+                <span>{{ e.address }}</span>
+                <span class="text-muted">{{ e.admin }}</span>
+              </button>
+            }
+          </div>
+          <button class="link-btn" (click)="vincMode.set('request')">¿No encuentras tu comunidad? Solicita el alta</button>
+        }
+        @if (vincStep() === 1 && vincMode() === 'request') {
+          <div class="info-callout">Esta solicitud será revisada por nuestro equipo antes de activarse.</div>
+          <label class="form-field">
+            Nombre de la comunidad *
+            <input type="text" [ngModel]="vincName()" (ngModelChange)="vincName.set($event)" />
+          </label>
+          <label class="form-field">
+            Dirección
+            <input type="text" [ngModel]="vincAddress()" (ngModelChange)="vincAddress.set($event)" />
+          </label>
+          <label class="form-field">
+            Nombre del administrador
+            <input type="text" [ngModel]="vincAdminName()" (ngModelChange)="vincAdminName.set($event)" />
+          </label>
+          <label class="form-field">
+            Email del administrador
+            <input type="email" [ngModel]="vincAdminEmail()" (ngModelChange)="vincAdminEmail.set($event)" />
+          </label>
+        }
+        @if (vincStep() === 2) {
+          <div class="confirm-summary">
+            @if (vincMode() === 'existing') {
+              <strong>{{ vincSelectedEstate()?.name }}</strong>
+              <span>{{ vincSelectedEstate()?.address }}</span>
+            } @else {
+              <strong>{{ vincName() }}</strong>
+              <span>{{ vincAddress() }}</span>
+            }
+          </div>
+          <div class="info-callout">Propiedad a vincular: {{ propertyView?.addressFull }}</div>
+          <div class="info-callout info-callout--warning">El administrador deberá aprobar esta solicitud y podrá revocarla en cualquier momento.</div>
+        }
+      </div>
+      <div class="modal__footer">
+        @if (vincStep() > 0) {
+          <app-btn variant="outline" size="sm" (clicked)="vincBack()">Atrás</app-btn>
+        }
+        <app-btn variant="outline" size="sm" (clicked)="closeVinculacionModal()">Cancelar</app-btn>
+        @if (vincStep() < 2) {
+          <app-btn variant="primary" size="sm" [disabled]="!vincCanContinue()" (clicked)="vincNext()">{{ vincStep() === 0 ? 'Continuar' : 'Revisar' }}</app-btn>
+        } @else {
+          <app-btn variant="primary" size="sm" (clicked)="submitVinculacion()">{{ vincMode() === 'existing' ? 'Enviar solicitud de adhesión' : 'Enviar solicitud de alta' }}</app-btn>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Nueva reserva modal -->
+@if (showNuevaReserva()) {
+  <div class="modal-backdrop" (click)="closeNuevaReserva()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Nueva reserva</h4>
+        <button class="close-btn" (click)="closeNuevaReserva()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <div class="progress-steps">
+          <div class="progress-step" [class.progress-step--active]="reservaStep() >= 0"></div>
+          <div class="progress-step" [class.progress-step--active]="reservaStep() >= 1"></div>
+          <div class="progress-step" [class.progress-step--active]="reservaStep() >= 2"></div>
+        </div>
+        @if (reservaStep() === 0) {
+          <div class="amenities-grid amenities-grid--modal">
+            @for (a of amenities(); track a.id) {
+              <button class="amenity-card amenity-card--select" [class.amenity-card--active]="selectedAmenity()?.id === a.id" (click)="pickAmenity(a)">
+                <div class="amenity-card__icon" [style.background]="a.bg" [style.color]="a.color">{{ a.icon }}</div>
+                <div class="amenity-card__info">
+                  <div class="amenity-card__name">{{ a.name }}</div>
+                  <div class="amenity-card__meta">Máx. {{ a.maxHours }}h · Hasta {{ a.capacity }} personas</div>
+                </div>
+              </button>
+            }
+          </div>
+        }
+        @if (reservaStep() === 1 && selectedAmenity()) {
+          <div class="calendar-header">
+            <button class="action-btn" (click)="calendarPrevMonth()">
+              <app-icon name="arrow-left" [size]="14"></app-icon>
+            </button>
+            <strong>{{ calendarLabel() }}</strong>
+            <button class="action-btn" (click)="calendarNextMonth()">
+              <app-icon name="chevron-right" [size]="14"></app-icon>
+            </button>
+          </div>
+          <div class="calendar-grid">
+            @for (d of ['L','M','X','J','V','S','D']; track d) {
+              <div class="calendar-grid__dow">{{ d }}</div>
+            }
+            @for (day of calendarDays(); track $index) {
+              <button class="calendar-day"
+                [class.calendar-day--empty]="!day.inMonth"
+                [class.calendar-day--past]="day.isPast"
+                [class.calendar-day--today]="day.isToday"
+                [class.calendar-day--selected]="day.date === selectedDate()"
+                [disabled]="!day.inMonth || day.isPast"
+                (click)="selectCalendarDay(day)">
+                @if (day.inMonth) {
+                  <span>{{ day.label }}</span>
+                }
+              </button>
+            }
+          </div>
+          @if (selectedDate()) {
+            <div class="slots-grid">
+              @for (s of selectedAmenity()!.slots; track s) {
+                <button class="slot"
+                  [class.slot--selected]="selectedSlots().includes(s)"
+                  [class.slot--occupied]="occupiedSlots().includes(s)"
+                  [disabled]="occupiedSlots().includes(s)"
+                  (click)="toggleSlot(s)">{{ s }}</button>
+              }
+            </div>
+            <p class="text-muted slots-hint">Máximo {{ selectedAmenity()!.maxHours }} horas seguidas.</p>
+            <div class="slot-legend">
+              <span><i class="slot-legend__dot slot-legend__dot--free"></i> Disponible</span>
+              <span><i class="slot-legend__dot slot-legend__dot--selected"></i> Seleccionado</span>
+              <span><i class="slot-legend__dot slot-legend__dot--occupied"></i> Ocupado</span>
+            </div>
+          }
+          <div class="guests-row">
+            <span>Personas</span>
+            <div class="guests-stepper">
+              <button (click)="decGuests()">-</button>
+              <span>{{ guestCount() }}</span>
+              <button (click)="incGuests()">+</button>
+            </div>
+          </div>
+          <label class="form-field">
+            Notas (opcional)
+            <textarea rows="2" [ngModel]="reservaNotes()" (ngModelChange)="reservaNotes.set($event)"></textarea>
+          </label>
+        }
+        @if (reservaStep() === 2 && selectedAmenity()) {
+          <div class="confirm-summary">
+            <strong>{{ selectedAmenity()!.name }}</strong>
+            <span>{{ selectedDate() }} · {{ selectedSlots()[0] }} - {{ selectedSlots()[selectedSlots().length - 1] }}</span>
+            <span>{{ guestCount() }} personas</span>
+          </div>
+          <div class="info-callout">{{ selectedAmenity()!.rules }}</div>
+        }
+      </div>
+      <div class="modal__footer">
+        @if (reservaStep() > 0) {
+          <app-btn variant="outline" size="sm" (clicked)="reservaBack()">Atrás</app-btn>
+        }
+        <app-btn variant="outline" size="sm" (clicked)="closeNuevaReserva()">Cancelar</app-btn>
+        @if (reservaStep() < 2) {
+          <app-btn variant="primary" size="sm" [disabled]="!reservaCanContinue()" (clicked)="reservaNext()">Continuar</app-btn>
+        } @else {
+          <app-btn variant="primary" size="sm" (clicked)="confirmReserva()">Confirmar reserva</app-btn>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Nuevo/editar comunicado modal -->
+@if (showNuevoComunicado()) {
+  <div class="modal-backdrop" (click)="closeNuevoComunicado()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>{{ commEditingId() ? 'Editar comunicado' : 'Nuevo comunicado' }}</h4>
+        <button class="close-btn" (click)="closeNuevoComunicado()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Título *
+          <input type="text" [class.form-field--error]="commErrors().title" [ngModel]="commTitle()" (ngModelChange)="commTitle.set($event)" />
+          @if (commErrors().title) { <span class="form-error">Campo obligatorio</span> }
+        </label>
+        <label class="form-field">
+          Mensaje *
+          <textarea rows="4" [class.form-field--error]="commErrors().body" [ngModel]="commBody()" (ngModelChange)="commBody.set($event)"></textarea>
+          @if (commErrors().body) { <span class="form-error">Campo obligatorio</span> }
+        </label>
+        <label class="form-field">
+          Categoría
+          <select [ngModel]="commCategory()" (ngModelChange)="commCategory.set($event)">
+            @for (c of communicationCategoryOptions; track c) { <option [value]="c">{{ communicationCategoryLabel(c) }}</option> }
+          </select>
+        </label>
+        <label class="form-field">
+          Vigente hasta (opcional)
+          <input type="date" [ngModel]="commActiveUntil()" (ngModelChange)="commActiveUntil.set($event)" />
+        </label>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeNuevoComunicado()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" (clicked)="submitComunicado()">{{ commEditingId() ? 'Guardar cambios' : 'Publicar comunicado' }}</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Booking detail drawer -->
+@if (selectedBooking()) {
+  <div class="drawer-backdrop" (click)="closeBookingDetail()">
+    <div class="drawer" (click)="$event.stopPropagation()">
+      <div class="drawer__header">
+        <h4>Detalle de la reserva</h4>
+        <button class="close-btn" (click)="closeBookingDetail()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <app-badge [text]="bookingStatusLabel(selectedBooking()!.status)" [variant]="bookingStatusVariant(selectedBooking()!.status)"></app-badge>
+      <div class="drawer__rows">
+        <div class="drawer__row"><span>Instalación</span><strong>{{ selectedBooking()!.amenityName }}</strong></div>
+        <div class="drawer__row"><span>Fecha</span><strong>{{ selectedBooking()!.date }}</strong></div>
+        <div class="drawer__row"><span>Horario</span><strong>{{ selectedBooking()!.startSlot }} - {{ selectedBooking()!.endSlot }}</strong></div>
+        <div class="drawer__row"><span>Personas</span><strong>{{ selectedBooking()!.guests }}</strong></div>
+        <div class="drawer__row"><span>Creada el</span><strong>{{ selectedBooking()!.createdAt }}</strong></div>
+        @if (selectedBooking()!.notes) {
+          <div class="drawer__row"><span>Notas</span><strong>{{ selectedBooking()!.notes }}</strong></div>
+        }
+      </div>
+      @if (selectedBooking()!.status === 'confirmed') {
+        @if (!cancelConfirm()) {
+          <div class="drawer__footer">
+            <app-btn variant="danger" size="sm" (clicked)="requestCancel()">Cancelar reserva</app-btn>
+          </div>
+        } @else {
+          <div class="cancel-confirm">
+            <p>¿Seguro que quieres cancelar esta reserva?</p>
+            <div class="drawer__footer">
+              <app-btn variant="outline" size="sm" (clicked)="cancelConfirm.set(false)">No, mantener</app-btn>
+              <app-btn variant="danger" size="sm" (clicked)="cancelBooking()">Sí, cancelar</app-btn>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

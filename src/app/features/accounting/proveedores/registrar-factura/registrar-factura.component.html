@@ -1,0 +1,162 @@
+<div class="modal-overlay" (click)="close()">
+  <div class="modal modal--md" role="dialog" aria-labelledby="factura-title" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <div>
+        <div class="modal__breadcrumb">Proveedores · Facturas</div>
+        <h3 class="modal__title" id="factura-title">Registrar factura</h3>
+      </div>
+      <button class="icon-btn" type="button" aria-label="Cerrar" (click)="close()">
+        <app-icon name="x" [size]="16"></app-icon>
+      </button>
+    </div>
+
+    <div class="modal__body">
+      <p class="modal__intro">
+        Al registrarla queda contabilizada: el gasto (con el IVA, que la comunidad no deduce) y lo que se debe al
+        proveedor. Para corregirla después hay que anularla y registrar otra.
+      </p>
+
+      @if (extractionNote; as note) {
+        <div class="modal__intro" role="status">
+          <strong>Datos leídos de «{{ note.fileName }}».</strong> Compruébalos con el documento antes de registrar.
+          @if (note.supplierLabel) { <div>Proveedor detectado: {{ note.supplierLabel }}</div> }
+          @for (w of note.warnings; track w) { <div>Revisar: {{ w }}</div> }
+        </div>
+      }
+
+      <div class="form-grid">
+        <div class="form-field form-field--full">
+          <label class="form-label" for="rf-supplier">Proveedor</label>
+          <select id="rf-supplier" class="form-input" [ngModel]="form.supplierId" (ngModelChange)="onSupplierChange($event)">
+            <option value="" disabled>Elige un proveedor</option>
+            @for (s of activeSuppliers(); track s.id) {
+              <option [value]="s.id">{{ s.name }}{{ s.taxId ? ' · ' + s.taxId : '' }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="rf-number">Número de factura</label>
+          <input id="rf-number" class="form-input" type="text" maxlength="60" placeholder="p. ej. 2026/0143" [(ngModel)]="form.number" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="rf-issue">Fecha de la factura</label>
+          <input id="rf-issue" class="form-input" type="date" [(ngModel)]="form.issueDate" />
+        </div>
+        <div class="form-field form-field--full">
+          <label class="form-label" for="rf-concept">Concepto</label>
+          <input id="rf-concept" class="form-input" type="text" maxlength="300" placeholder="p. ej. Revisión trimestral del ascensor" [(ngModel)]="form.concept" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="rf-received">Fecha de recepción</label>
+          <input id="rf-received" class="form-input" type="date" [(ngModel)]="form.receivedDate" />
+          <span class="form-hint">Es la fecha contable. Si la dejas vacía, se usa la de la factura.</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="rf-due">Vencimiento</label>
+          <input id="rf-due" class="form-input" type="date" [(ngModel)]="form.dueDate" />
+        </div>
+      </div>
+
+      <h4 class="section-title">Líneas de gasto</h4>
+      <div class="lines">
+        @for (line of lines(); track $index; let i = $index) {
+          <div class="line">
+            <div class="form-field line__account">
+              <label class="form-label" [for]="'rf-account-' + i">Cuenta</label>
+              <select [id]="'rf-account-' + i" class="form-input" [(ngModel)]="line.accountId" (ngModelChange)="touch()">
+                <option value="" disabled>Elige la cuenta</option>
+                @for (a of expenseAccounts(); track a.id) {
+                  <option [value]="a.id">{{ a.code }} · {{ a.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label" [for]="'rf-centre-' + i">Centro de coste</label>
+              <select [id]="'rf-centre-' + i" class="form-input" [(ngModel)]="line.costCentreId">
+                <option value="">General</option>
+                @for (c of costCentres(); track c.id) {
+                  <option [value]="c.id">{{ c.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field line__base">
+              <label class="form-label" [for]="'rf-base-' + i">Base (€)</label>
+              <input [id]="'rf-base-' + i" class="form-input money" type="text" inputmode="decimal" placeholder="0,00"
+                [(ngModel)]="line.base" (ngModelChange)="touch()" />
+            </div>
+            <div class="form-field line__desc">
+              <label class="form-label" [for]="'rf-desc-' + i">Detalle</label>
+              <input [id]="'rf-desc-' + i" class="form-input" type="text" maxlength="255" placeholder="Opcional" [(ngModel)]="line.description" />
+            </div>
+            @if (lines().length > 1) {
+              <button class="icon-btn line__remove" type="button" [attr.aria-label]="'Quitar la línea ' + (i + 1)" (click)="removeLine(i)">
+                <app-icon name="trash" [size]="14"></app-icon>
+              </button>
+            }
+          </div>
+        }
+      </div>
+      <app-btn variant="outline" size="sm" (clicked)="addLine()">
+        <app-icon name="plus" [size]="12"></app-icon>
+        Añadir línea
+      </app-btn>
+
+      <h4 class="section-title">Impuestos</h4>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label" for="rf-vat">IVA (%)</label>
+          <input id="rf-vat" class="form-input" type="text" inputmode="decimal" list="rf-vat-presets"
+            [(ngModel)]="form.vatRatePct" (ngModelChange)="touch()" />
+          <datalist id="rf-vat-presets">
+            @for (p of vatPresets; track p) { <option [value]="p"></option> }
+          </datalist>
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="rf-wh">Retención IRPF (%)</label>
+          <input id="rf-wh" class="form-input" type="text" inputmode="decimal" list="rf-wh-presets"
+            [(ngModel)]="form.withholdingRatePct" (ngModelChange)="touch()" />
+          <datalist id="rf-wh-presets">
+            @for (p of withholdingPresets; track p) { <option [value]="p"></option> }
+          </datalist>
+          <span class="form-hint">Profesionales (abogados, arquitectos, administradores): 15 %; 7 % los primeros años de actividad.</span>
+        </div>
+        @if ((totals()?.withholding ?? 0) > 0) {
+          <div class="form-field">
+            <label class="form-label" for="rf-key">Clave de la retención</label>
+            <select id="rf-key" class="form-input" [(ngModel)]="form.withholdingKey">
+              @for (k of withholdingKeys; track k.value) { <option [value]="k.value">{{ k.label }}</option> }
+            </select>
+          </div>
+        }
+        <div class="form-field">
+          <label class="form-label" for="rf-payable">Cuenta del proveedor</label>
+          <select id="rf-payable" class="form-input" [(ngModel)]="form.payableAccount">
+            <option value="400">400 · Proveedores</option>
+            <option value="410">410 · Acreedores por servicios</option>
+          </select>
+        </div>
+      </div>
+
+      @if (totals(); as t) {
+        <dl class="totals">
+          <div><dt>Base imponible</dt><dd class="money">{{ fmtEur(t.base) }}</dd></div>
+          <div><dt>IVA</dt><dd class="money">{{ fmtEur(t.vat) }}</dd></div>
+          <div><dt>Total factura (gasto)</dt><dd class="money">{{ fmtEur(t.total) }}</dd></div>
+          @if (t.withholding > 0) {
+            <div><dt>Retención IRPF (a Hacienda)</dt><dd class="money">−{{ fmtEur(t.withholding) }}</dd></div>
+          }
+          <div class="totals__main"><dt>A pagar al proveedor</dt><dd class="money">{{ fmtEur(t.payable) }}</dd></div>
+        </dl>
+      }
+
+      @if (error()) { <p class="form-error" role="alert">{{ error() }}</p> }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" (clicked)="close()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="save()">
+        {{ saving() ? 'Registrando…' : 'Registrar factura' }}
+      </app-btn>
+    </div>
+  </div>
+</div>

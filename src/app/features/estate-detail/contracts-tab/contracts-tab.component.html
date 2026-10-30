@@ -1,0 +1,84 @@
+@if (failed()) {
+  <p class="contracts__message contracts__message--error" role="alert">No se pudieron cargar los contratos de la finca.</p>
+} @else if (contracts() === null) {
+  <p class="contracts__message" role="status">Cargando contratos…</p>
+} @else {
+  <app-contracts-kpis class="contracts__block" [kpis]="kpis()" [selected]="selectedShortcut()" (pick)="pickShortcut($event)"></app-contracts-kpis>
+
+  <app-contracts-toolbar
+    class="contracts__block"
+    [filters]="filters()"
+    [suppliers]="supplierChoices()"
+    [categories]="categoryChoices()"
+    (filtersChange)="setFilters($event)"
+    (create)="openNew()"
+  ></app-contracts-toolbar>
+
+  <section class="contracts__card" aria-label="Contratos">
+    @if (contracts()!.length === 0) {
+      <p class="contracts__message">
+        Esta finca aún no tiene contratos. Crea el primero con «Nuevo contrato».
+        <button type="button" class="contracts__link" (click)="openProviders.emit()">Ir a Proveedores</button>
+      </p>
+    } @else if (visible().length === 0) {
+      <p class="contracts__message">
+        Ningún contrato coincide con los filtros.
+        <button type="button" class="contracts__link" (click)="clearFilters()">Quitar filtros</button>
+      </p>
+    } @else {
+      <app-contracts-table
+        [contracts]="visible()"
+        (view)="openDialog('detail', $event)"
+        (edit)="openDialog('edit', $event)"
+        (renew)="openDialog('renew', $event)"
+        (cancel)="openDialog('cancel', $event)"
+        (openSupplier)="goToSupplier()"
+      ></app-contracts-table>
+    }
+  </section>
+
+  <app-contracts-panels
+    class="contracts__block contracts__block--panels"
+    [contracts]="contracts()!"
+    [renewals]="renewals()"
+    (view)="openDialog('detail', $event)"
+    (viewAll)="showAllByExpiry()"
+    (viewHistory)="openHistory()"
+  ></app-contracts-panels>
+
+  @if (dialog(); as d) {
+    @switch (d.kind) {
+      @case ('new') {
+        <app-contract-form-modal [estateId]="estateId" (saved)="afterChange('Contrato creado')" (closed)="closeDialog()"></app-contract-form-modal>
+      }
+      @case ('history') {
+        <app-contract-renewals-history [renewals]="renewals()" (closed)="closeDialog()"></app-contract-renewals-history>
+      }
+      @case ('edit') {
+        <app-contract-form-modal [estateId]="estateId" [contract]="dialogContract()" (saved)="afterChange('Contrato actualizado')" (closed)="closeDialog()"></app-contract-form-modal>
+      }
+      @case ('renew') {
+        <app-contract-renew-modal [estateId]="estateId" [contract]="dialogContract()!" (renewed)="afterChange('Contrato renovado')" (closed)="closeDialog()"></app-contract-renew-modal>
+      }
+      @case ('cancel') {
+        <app-contract-cancel-modal [estateId]="estateId" [contract]="dialogContract()!" (cancelled)="afterChange('Contrato cancelado')" (closed)="closeDialog()"></app-contract-cancel-modal>
+      }
+      @case ('detail') {
+        <app-contract-detail
+          [estateId]="estateId"
+          [contract]="dialogContract()!"
+          [renewals]="renewals()"
+          (closed)="closeDialog()"
+          (edit)="openDialog('edit', $event)"
+          (renew)="openDialog('renew', $event)"
+          (cancel)="openDialog('cancel', $event)"
+          (openSupplier)="goToSupplier()"
+        ></app-contract-detail>
+      }
+    }
+  }
+
+  @if (toast(); as message) {
+    <p class="contracts__toast" role="status">{{ message }}</p>
+  }
+}

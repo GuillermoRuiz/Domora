@@ -1,0 +1,58 @@
+<div class="modal-backdrop" (click)="close()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="acta-upload-title" (click)="$event.stopPropagation()" (keydown.escape)="close()">
+    <div class="modal__header">
+      <h4 id="acta-upload-title"><app-icon name="upload" [size]="16"></app-icon> Subir acta existente</h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="close()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      <p class="hint">
+        Archivo: <strong>{{ fileName }}</strong>
+      </p>
+
+      <div class="choices" role="radiogroup" aria-label="Estado de firma del acta">
+        <p class="question">¿Esta acta ya está firmada?</p>
+        <button
+          type="button"
+          role="radio"
+          class="choice"
+          [class.choice--on]="choice() === 'signed'"
+          [attr.aria-checked]="choice() === 'signed'"
+          (click)="choice.set('signed')"
+        >
+          <span class="choice__dot" aria-hidden="true"></span>
+          <span class="choice__text">
+            <strong>Sí, ya está firmada</strong>
+            <small>La junta pasa a «firmada». El archivo es el acta definitiva y se podrá descargar y enviar a los propietarios.</small>
+          </span>
+        </button>
+        <button
+          type="button"
+          role="radio"
+          class="choice"
+          [class.choice--on]="choice() === 'pending'"
+          [attr.aria-checked]="choice() === 'pending'"
+          (click)="choice.set('pending')"
+        >
+          <span class="choice__dot" aria-hidden="true"></span>
+          <span class="choice__text">
+            <strong>No, falta firmarla</strong>
+            <small>Presidente y secretario la firmarán en Domora sobre este archivo. Mientras nadie firme podrás subir otro archivo.</small>
+          </span>
+        </button>
+      </div>
+
+      @if (replacesDraft) {
+        <p class="note">Este archivo sustituye al borrador generado en Domora para la firma. Las versiones del borrador se conservan.</p>
+      }
+      @if (error) {
+        <p class="alert" role="alert">{{ error }}</p>
+      }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" [disabled]="busy" (clicked)="close()">Cancelar</app-btn>
+      <app-btn variant="accent" size="sm" [disabled]="!canSubmit" (clicked)="submit()">{{ busy ? 'Subiendo…' : 'Subir acta' }}</app-btn>
+    </div>
+  </div>
+</div>

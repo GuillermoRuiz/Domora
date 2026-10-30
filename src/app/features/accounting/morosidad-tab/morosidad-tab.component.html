@@ -1,0 +1,538 @@
+<div class="kpi-row">
+  <div class="kpi-card">
+    <span class="kpi-card__label">Deuda total</span>
+    <span class="kpi-card__value kpi-card__value--warn">{{ fmtEur0(totalDebt()) }}</span>
+    <span class="kpi-card__sub">{{ debtors().length }} deudores</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Recargos</span>
+    <span class="kpi-card__value">{{ fmtEur0(totalInterest()) }}</span>
+    <span class="kpi-card__sub">Intereses de demora</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">En reclamación</span>
+    <span class="kpi-card__value">{{ inClaim() }}</span>
+    <span class="kpi-card__sub">2ª carta o burofax</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Antigüedad máx.</span>
+    <span class="kpi-card__value">{{ maxMonths() ? maxMonths()!.monthsOverdue + ' meses' : '—' }}</span>
+    <span class="kpi-card__sub">{{ maxMonths()?.name ?? 'Sin morosos' }}</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__header">
+    <div class="card__title">
+      @if (viewMode() === 'debt') {
+        Deudores
+        @if (selectedCount() > 0) {
+          <span class="selected-badge">{{ selectedCount() }} seleccionados</span>
+        }
+      } @else {
+        Todos los vecinos
+      }
+    </div>
+    <div class="view-mode-toggle">
+      <button type="button" class="view-mode-toggle__btn" [class.view-mode-toggle__btn--active]="viewMode() === 'debt'" (click)="setViewMode('debt')">Solo con deuda</button>
+      <button type="button" class="view-mode-toggle__btn" [class.view-mode-toggle__btn--active]="viewMode() === 'all'" (click)="setViewMode('all')">Todos los vecinos</button>
+    </div>
+    <div class="card__actions">
+      <app-btn variant="outline" size="sm" [disabled]="exporting()" (clicked)="exportExcel()">
+        <app-icon name="download" [size]="14"></app-icon>
+        {{ exporting() ? 'Generando…' : 'Exportar Excel' }}
+      </app-btn>
+      <app-btn variant="outline" size="sm" [disabled]="true" title="Próximamente — todavía no envía nada de verdad" (clicked)="openBulkWizard()">
+        <app-icon name="send" [size]="14"></app-icon>
+        Enviar reclamación masiva
+      </app-btn>
+      <app-btn variant="outline" size="sm" (clicked)="openInterestModal()">
+        <app-icon name="receipt" [size]="14"></app-icon>
+        Liquidar intereses
+      </app-btn>
+    </div>
+  </div>
+
+  @if (viewMode() === 'debt') {
+    <table class="table">
+      <thead>
+        <tr>
+          <th class="th-check">
+            <input type="checkbox" [checked]="allSelected()" (change)="toggleSelectAll()" />
+          </th>
+          <th>Propietario</th>
+          <th class="th-right">Deuda</th>
+          <th class="th-right">Recargo</th>
+          <th>Antigüedad</th>
+          <th>Avisos</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of debtors(); track d.id) {
+          <tr [class.row--selected]="isSelected(d.id)">
+            <td class="td-check">
+              <input type="checkbox" [checked]="isSelected(d.id)" (change)="toggleSelect(d.id)" />
+            </td>
+            <td>
+              <div class="debtor-name">
+                <app-avatar [name]="d.name" [size]="28"></app-avatar>
+                <div class="debtor-name__text">
+                  <span class="debtor-name__main">{{ d.name }}</span>
+                  <span class="debtor-name__sub">{{ d.property }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="td-right td-strong">{{ fmtEur(d.amount) }}</td>
+            <td class="td-right td-muted">{{ fmtEur(d.interest) }}</td>
+            <td>
+              <span class="td-strong">{{ d.monthsOverdue }} meses</span>
+              <div class="td-muted">{{ d.lastContact ? 'Último contacto: ' + d.lastContact : 'Sin contacto' }}</div>
+            </td>
+            <td>
+              <div class="reminder-badges">
+                @for (r of reminderLabels; track r.key) {
+                  <span class="reminder-badge" [class.reminder-badge--sent]="d.reminders[r.key]" [class.reminder-badge--bf]="r.key === 'bf' && d.reminders[r.key]" [title]="r.title">{{ r.label }}</span>
+                }
+              </div>
+            </td>
+            <td>
+              <span class="status-badge" [style.background]="statusStyle(d.step).bg" [style.color]="statusStyle(d.step).fg">{{ d.step }}</span>
+            </td>
+            <td class="td-right">
+              <app-btn variant="outline" size="sm" (clicked)="manage(d)">Gestionar</app-btn>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  } @else {
+    @if (balancesLoading()) {
+      <p class="empty-hint">Cargando…</p>
+    } @else {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Propietario</th>
+            <th>Contacto</th>
+            <th class="th-right">Saldo</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (b of balances(); track b.propertyId) {
+            <tr>
+              <td>
+                <div class="debtor-name">
+                  <app-avatar [name]="b.titular ?? b.property.ref ?? '?'" [size]="28"></app-avatar>
+                  <div class="debtor-name__text">
+                    <span class="debtor-name__main">{{ b.titular ?? 'Sin titular' }}</span>
+                    <span class="debtor-name__sub">{{ b.property.ref }}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="td-muted">{{ b.email ?? b.phone ?? '—' }}</td>
+              <td class="td-right" [class.td-strong]="!b.isUpToDate">
+                {{ fmtEur(b.balance) }}
+                @if (b.advance > 0) {
+                  <span class="advance-hint" [title]="'Tiene ' + fmtEur(b.advance) + ' a favor sin aplicar a ningún recibo. Se aplica al registrar el próximo cobro, en Recibos.'">
+                    <app-icon name="check" [size]="11"></app-icon>
+                    {{ fmtEur(b.advance) }} sin aplicar
+                  </span>
+                }
+              </td>
+              <td>
+                @if (b.isUpToDate) {
+                  <span class="status-badge" style="background: var(--color-secondary-bg); color: var(--color-secondary);">Al día</span>
+                } @else {
+                  <span class="status-badge" [style.background]="statusStyle(balanceStatusLabel(b)).bg" [style.color]="statusStyle(balanceStatusLabel(b)).fg">{{ balanceStatusLabel(b) }}</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  }
+</div>
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}
+
+<!-- ── Drawer "Gestionar" ──────────────────────────────────────────────── -->
+@if (drawerDebtor()) {
+  <div class="drawer-backdrop" (click)="closeDrawer()">
+    <div class="drawer drawer--wide" (click)="$event.stopPropagation()">
+      <div class="drawer__header">
+        <div>
+          <h3>{{ drawerDebtor()!.name }}</h3>
+          <p class="drawer__subtitle">{{ drawerDebtor()!.property }} · {{ fmtEur(drawerDebtor()!.amount) }} pendiente</p>
+        </div>
+        <button class="close-btn" (click)="closeDrawer()">
+          <app-icon name="x" [size]="18"></app-icon>
+        </button>
+      </div>
+
+      <div class="drawer-tabs">
+        <button class="drawer-tab" [class.drawer-tab--active]="drawerTab() === 'historial'" (click)="drawerTab.set('historial')">Historial</button>
+        <button class="drawer-tab" [class.drawer-tab--active]="drawerTab() === 'nueva'" (click)="drawerTab.set('nueva')">Nueva gestión</button>
+        <button class="drawer-tab" [class.drawer-tab--active]="drawerTab() === 'acuerdo'" (click)="drawerTab.set('acuerdo')">Acuerdo de pago</button>
+      </div>
+
+      <div class="drawer__body">
+        @if (drawerTab() === 'historial') {
+          @if (drawerDebtorActions().length === 0) {
+            <div class="empty-state">
+              <app-icon name="calendar" [size]="28"></app-icon>
+              <p>Todavía no hay gestiones registradas para este deudor.</p>
+              <app-btn variant="primary" size="sm" (clicked)="drawerTab.set('nueva')">Registrar primera gestión</app-btn>
+            </div>
+          } @else {
+            <div class="timeline">
+              @for (h of drawerDebtorActions(); track h.id) {
+                <div class="timeline-item">
+                  <div class="timeline-item__icon">
+                    <app-icon [name]="h.type === 'Llamada' ? 'phone' : h.type === 'Acción judicial' ? 'gavel' : 'mail'" [size]="14"></app-icon>
+                  </div>
+                  <div class="timeline-item__content">
+                    <div class="timeline-item__head">
+                      <strong>{{ h.type }}</strong>
+                      <span class="td-muted">{{ fmtDate(h.date) }}</span>
+                    </div>
+                    <p class="timeline-item__note">{{ h.note }}</p>
+                    <div class="timeline-item__meta">
+                      <span class="status-badge">{{ h.result }}</span>
+                      <span class="td-muted">— {{ h.author }}</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        }
+
+        @if (drawerTab() === 'nueva') {
+          <div class="form-section">
+            <label class="form-label">Tipo de gestión</label>
+            <div class="type-grid">
+              @for (t of gestionTypes; track t.type) {
+                <button class="type-opt" [class.type-opt--selected]="newGestionType() === t.type" (click)="newGestionType.set(t.type)">
+                  <app-icon [name]="t.icon" [size]="18"></app-icon>
+                  <span>{{ t.type }}</span>
+                </button>
+              }
+            </div>
+
+            <label class="form-label">Fecha</label>
+            <input type="date" class="form-input" [value]="newGestionDate()" (input)="newGestionDate.set($any($event.target).value)" />
+
+            <label class="form-label">Notas</label>
+            <textarea class="form-textarea" rows="3" placeholder="Describe la gestión realizada..." [value]="newGestionNote()" (input)="newGestionNote.set($any($event.target).value)"></textarea>
+
+            <label class="form-label">Resultado</label>
+            <select class="form-input" [value]="newGestionResult()" (change)="newGestionResult.set($any($event.target).value)">
+              @for (r of resultOptions; track r) {
+                <option [value]="r">{{ r }}</option>
+              }
+            </select>
+
+            <label class="form-label">Próxima acción programada</label>
+            <input type="date" class="form-input" [value]="newGestionNextAction()" (input)="newGestionNextAction.set($any($event.target).value)" />
+          </div>
+        }
+
+        @if (drawerTab() === 'acuerdo') {
+          @if (activeAgreement(); as agreement) {
+            <!-- Ya existe un acuerdo persistido: mostrar sus cuotas en vez
+                 de los sliders. Cada cuota se puede marcar cobrada
+                 individualmente — "cobrar conforme al plan". -->
+            <div class="form-section">
+              <label class="form-label">
+                Acuerdo activo · {{ agreement.installmentsCount }} cuotas desde {{ fmtDate(agreement.firstDueDate) }}
+              </label>
+              <table class="plan-preview">
+                <thead>
+                  <tr><th>#</th><th>Fecha</th><th class="th-right">Importe</th><th>Estado</th><th></th></tr>
+                </thead>
+                <tbody>
+                  @for (row of activeAgreementInstallments(); track row.id) {
+                    <tr>
+                      <td>{{ row.seq === 0 ? 'Entrada' : row.seq }}</td>
+                      <td>{{ fmtDate(row.dueDate) }}</td>
+                      <td class="td-right">{{ fmtEur(row.amount) }}</td>
+                      <td>
+                        @if (row.paidAt) {
+                          <span class="status-badge">Cobrada {{ fmtDate(row.paidAt) }}</span>
+                        } @else {
+                          <span class="td-muted">Pendiente</span>
+                        }
+                      </td>
+                      <td>
+                        @if (!row.paidAt) {
+                          <app-btn variant="outline" size="sm" (clicked)="markInstallmentPaid(row.id)">Marcar cobrada</app-btn>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="form-section">
+              <label class="form-label">Número de cuotas: {{ acuerdoCuotas() }}</label>
+              <input type="range" min="1" max="12" class="form-range" [value]="acuerdoCuotas()" (input)="acuerdoCuotas.set(+$any($event.target).value)" />
+
+              <label class="form-label">Entrada inicial: {{ acuerdoEntrada() }}%</label>
+              <input type="range" min="0" max="50" class="form-range" [value]="acuerdoEntrada()" (input)="acuerdoEntrada.set(+$any($event.target).value)" />
+
+              <label class="form-label">Fecha de primer pago</label>
+              <input type="date" class="form-input" [value]="acuerdoFirstDate()" (input)="acuerdoFirstDate.set($any($event.target).value)" />
+
+              <label class="form-label">Vista previa del plan</label>
+              <table class="plan-preview">
+                <thead>
+                  <tr><th>#</th><th>Fecha</th><th class="th-right">Importe</th></tr>
+                </thead>
+                <tbody>
+                  @for (row of acuerdoPlan(); track row.n) {
+                    <tr>
+                      <td>{{ row.n === 0 ? 'Entrada' : row.n }}</td>
+                      <td>{{ fmtDate(row.date) }}</td>
+                      <td class="td-right">{{ fmtEur(row.amount) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="drawer__footer">
+        @if (drawerTab() === 'nueva') {
+          <app-btn variant="primary" (clicked)="saveGestion()">Guardar gestión</app-btn>
+        } @else if (drawerTab() === 'acuerdo' && !activeAgreement()) {
+          <app-btn variant="primary" (clicked)="confirmAcuerdo()">Confirmar acuerdo</app-btn>
+        } @else if (drawerTab() !== 'acuerdo') {
+          <app-btn variant="outline" size="sm" (clicked)="drawerTab.set('nueva')">
+            <app-icon name="plus" [size]="14"></app-icon>
+            Nueva gestión
+          </app-btn>
+          <app-btn variant="danger" size="sm" [disabled]="true" title="Próximamente — todavía no inicia nada de verdad" (clicked)="startLegalAction()">
+            <app-icon name="gavel" [size]="14"></app-icon>
+            Iniciar acción legal
+          </app-btn>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Wizard "Enviar reclamación masiva" ─────────────────────────────── -->
+@if (bulkWizardOpen()) {
+  <div class="modal-backdrop" (click)="closeBulkWizard()">
+    <div class="modal modal--wide" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Enviar reclamación masiva</h3>
+        <button class="close-btn" (click)="closeBulkWizard()">
+          <app-icon name="x" [size]="18"></app-icon>
+        </button>
+      </div>
+
+      <div class="wizard-steps">
+        <div class="wizard-step" [class.wizard-step--active]="bulkStep() === 1" [class.wizard-step--done]="bulkStep() > 1">1. Destinatarios</div>
+        <div class="wizard-step" [class.wizard-step--active]="bulkStep() === 2" [class.wizard-step--done]="bulkStep() > 2">2. Tipo y mensaje</div>
+        <div class="wizard-step" [class.wizard-step--active]="bulkStep() === 3">3. Revisión</div>
+      </div>
+
+      <div class="modal__body">
+        @if (bulkStep() === 1) {
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="th-check"><input type="checkbox" [checked]="bulkAllSelected()" (change)="bulkToggleSelectAll()" /></th>
+                <th>Propietario</th>
+                <th class="th-right">Deuda</th>
+                <th class="th-right">Recargo</th>
+                <th>Gestiones enviadas</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (d of debtors(); track d.id) {
+                <tr>
+                  <td class="td-check"><input type="checkbox" [checked]="bulkIsSelected(d.id)" (change)="bulkToggleSelect(d.id)" /></td>
+                  <td>{{ d.name }}</td>
+                  <td class="td-right">{{ fmtEur(d.amount) }}</td>
+                  <td class="td-right td-muted">{{ fmtEur(d.interest) }}</td>
+                  <td>
+                    <div class="reminder-badges">
+                      @for (r of reminderLabels; track r.key) {
+                        <span class="reminder-badge" [class.reminder-badge--sent]="d.reminders[r.key]" [class.reminder-badge--bf]="r.key === 'bf' && d.reminders[r.key]">{{ r.label }}</span>
+                      }
+                    </div>
+                  </td>
+                  <td><span class="status-badge" [style.background]="statusStyle(d.step).bg" [style.color]="statusStyle(d.step).fg">{{ d.step }}</span></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+
+        @if (bulkStep() === 2) {
+          <div class="form-section">
+            <label class="form-label">Tipo de comunicación</label>
+            <div class="bulk-type-grid">
+              @for (key of bulkTypeKeys; track key) {
+                <button class="bulk-type-card" [class.bulk-type-card--selected]="bulkType() === key" (click)="selectBulkType(key)">
+                  <strong>{{ bulkTypeInfo[key].label }}</strong>
+                  <span>{{ bulkTypeInfo[key].cost > 0 ? fmtEur(bulkTypeInfo[key].cost) + ' / envío' : 'Sin coste' }}</span>
+                </button>
+              }
+            </div>
+
+            <label class="form-label">Canal de envío</label>
+            <select class="form-input" [value]="bulkChannel()" (change)="bulkChannel.set($any($event.target).value)">
+              <option value="email">Email</option>
+              <option value="certificado">Correo certificado</option>
+              <option value="ambos">Ambos</option>
+            </select>
+
+            <label class="form-label">Mensaje (usa [Nombre], [Importe], [Propiedad], [Meses] como marcadores)</label>
+            <textarea class="form-textarea" rows="8" [value]="bulkMessage()" (input)="bulkMessage.set($any($event.target).value)"></textarea>
+          </div>
+        }
+
+        @if (bulkStep() === 3) {
+          <div class="review-summary">
+            <div><strong>Destinatarios:</strong> {{ bulkSelected().size }}</div>
+            <div><strong>Tipo:</strong> {{ bulkTypeInfo[bulkType()].label }}</div>
+            <div><strong>Canal:</strong> {{ bulkChannel() === 'email' ? 'Email' : bulkChannel() === 'certificado' ? 'Correo certificado' : 'Email + correo certificado' }}</div>
+            <div><strong>Coste total:</strong> {{ fmtEur(bulkTotalCost()) }}</div>
+          </div>
+
+          <label class="form-label">Propietarios seleccionados</label>
+          <ul class="review-list">
+            @for (d of bulkSelectedDebtors(); track d.id) {
+              <li>{{ d.name }} — {{ d.property }} ({{ fmtEur(d.amount) }})</li>
+            }
+          </ul>
+
+          @if (bulkType() === 'burofax') {
+            <div class="notice">
+              <app-icon name="exclamation" [size]="14"></app-icon>
+              El envío por burofax certificado tiene un coste de {{ fmtEur(bulkTypeInfo.burofax.cost) }} por destinatario.
+            </div>
+          }
+
+          <p class="legal-note">
+            Las comunicaciones formales y burofaxes generan constancia legal y pueden ser utilizados como prueba en un eventual procedimiento judicial de reclamación de deuda.
+          </p>
+        }
+      </div>
+
+      <div class="modal__footer">
+        @if (bulkStep() > 1) {
+          <app-btn variant="outline" (clicked)="bulkBack()">Atrás</app-btn>
+        } @else {
+          <div></div>
+        }
+        @if (bulkStep() < 3) {
+          <app-btn variant="primary" (clicked)="bulkNext()" [disabled]="bulkSelected().size === 0">Continuar</app-btn>
+        } @else {
+          <app-btn variant="primary" (clicked)="bulkSend()">
+            <app-icon name="send" [size]="14"></app-icon>
+            Enviar reclamación
+          </app-btn>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Modal "Liquidar intereses" (fase 10) ─────────────────────────────── -->
+@if (interestModalOpen()) {
+  <div class="modal-backdrop" (click)="closeInterestModal()">
+    <div class="modal modal--wide" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h3>Liquidar intereses de demora</h3>
+        <button class="close-btn" (click)="closeInterestModal()">
+          <app-icon name="x" [size]="18"></app-icon>
+        </button>
+      </div>
+
+      <div class="modal__body">
+        <p class="legal-note">
+          Interés simple, días reales sobre 365, desde el vencimiento de cada recibo más los días de gracia —
+          según el tipo vigente configurado en Ajustes. Se calcula {{ selectedCount() > 0 ? 'para los deudores seleccionados' : 'para todos los deudores' }}.
+        </p>
+        <div class="form-section">
+          <label class="form-label">Liquidar hasta</label>
+          <input type="date" class="form-input" [value]="interestAsOfDate()" (input)="interestAsOfDate.set($any($event.target).value)" />
+          <app-btn variant="outline" size="sm" [disabled]="interestCalculating()" (clicked)="calculateInterest()">
+            {{ interestCalculating() ? 'Calculando…' : 'Calcular' }}
+          </app-btn>
+        </div>
+
+        @if (interestError()) {
+          <div class="notice">
+            <app-icon name="exclamation" [size]="14"></app-icon>
+            {{ interestError() }}
+          </div>
+        }
+
+        @if (interestCalculated()) {
+          @if (interestRows().length === 0) {
+            <div class="empty-state">
+              <app-icon name="check" [size]="24"></app-icon>
+              <p>No hay nada que liquidar: o falta configurar un tipo de interés en Ajustes, o todos los recibos están al día o en carencia.</p>
+            </div>
+          } @else {
+            <div class="recargos-table-header">
+              <span>{{ interestReceiptCount() }} recibo{{ interestReceiptCount() === 1 ? '' : 's' }}</span>
+              <span>Total a liquidar: <strong>{{ fmtEur(interestGrandTotal()) }}</strong></span>
+            </div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Propietario</th>
+                  <th>Propiedad</th>
+                  <th>Recibos</th>
+                  <th class="th-right">Interés</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of interestRows(); track row.debtorId) {
+                  <tr>
+                    <td>{{ row.debtorName }}</td>
+                    <td>{{ row.propertyLabel }}</td>
+                    <td>
+                      @if (row.error) {
+                        <span class="td-muted">{{ row.error }}</span>
+                      } @else {
+                        {{ row.receipts.length }} · {{ row.receipts.map(r => r.no).join(', ') }}
+                      }
+                    </td>
+                    <td class="td-right td-strong">{{ fmtEur(row.total) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        }
+      </div>
+
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="closeInterestModal()">Cancelar</app-btn>
+        <app-btn variant="primary" [disabled]="!interestCalculated() || interestGrandTotal() === 0 || interestAccruing()" (clicked)="confirmInterest()">
+          {{ interestAccruing() ? 'Liquidando…' : 'Liquidar intereses' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}

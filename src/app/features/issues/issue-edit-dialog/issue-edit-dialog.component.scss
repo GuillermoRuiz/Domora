@@ -1,0 +1,25 @@
+@use 'dialog-shell' as ds;
+
+.backdrop { @include ds.backdrop-shell($padded: true); }
+.dialog { @include ds.modal-shell; }
+.dialog__header { @include ds.dialog-header-chrome; }
+.close-btn { @include ds.close-btn-chrome; }
+.dialog__body { @include ds.modal-body-chrome; }
+.dialog__footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+  @include ds.dialog-field-controls;
+  &--checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    input { width: auto; }
+  }
+}
+.error { margin: 3px 0 0; font-size: 12px; color: var(--color-error); }

@@ -1,0 +1,63 @@
+:host { display: block; min-width: 0; }
+
+.pending__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+/* 6 filas a la vista (6 × 61 px); el resto, con scroll. */
+.pending {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 366px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.pending li + li { border-top: 1px solid var(--color-border-light); }
+.pending__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 20px;
+  font: inherit;
+  text-align: left;
+  color: var(--color-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.pending__row:hover { background: var(--color-surface-hover); }
+.pending__row:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.pending__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+}
+.pending__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pending__title { font-size: 14.5px; font-weight: 600; overflow-wrap: anywhere; }
+.pending__detail { font-size: 13px; color: var(--color-muted); overflow-wrap: anywhere; }
+
+.pending__message { margin: 0; padding: 28px 20px; text-align: center; font-size: 14px; color: var(--color-muted); }
+.pending__message--error { color: var(--color-error); }
+.pending__retry { padding: 0 0 0 6px; font: inherit; font-weight: 600; color: var(--color-accent); background: none; border: none; cursor: pointer; }
+.pending__retry:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 2px; }

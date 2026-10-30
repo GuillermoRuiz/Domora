@@ -1,0 +1,23 @@
+:host { display: block; min-width: 0; }
+
+.contact { display: flex; flex-direction: column; gap: 16px; padding-top: 12px; }
+.contact__head { display: flex; align-items: center; gap: 12px; }
+.contact__avatar { flex-shrink: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: var(--color-accent); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 50%; }
+.contact__who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.contact__person { font-size: 15px; color: var(--color-text); overflow-wrap: anywhere; }
+.contact__company { display: inline-flex; align-items: center; gap: 5px; font-size: 13.5px; color: var(--color-muted); overflow-wrap: anywhere; }
+
+.contact__details { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+.contact__details > div { display: flex; flex-direction: column; gap: 1px; }
+.contact__details dt { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-muted); }
+.contact__details dd { margin: 0; font-size: 14px; color: var(--color-text); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.contact__sub { display: block; font-size: 13px; color: var(--color-muted); }
+
+.contact__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.contact__btn { display: inline-flex; flex: 1 1 110px; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; font: inherit; font-size: 14px; font-weight: 600; color: var(--color-accent); text-decoration: none; background: none; border: 1px solid var(--color-accent); border-radius: var(--radius-md); }
+.contact__btn:hover { background: var(--color-accent); color: #fff; }
+.contact__btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.contact__btn--primary { background: var(--color-accent); color: #fff; }
+.contact__btn--primary:hover { filter: brightness(1.08); }
+.contact__none, .contact__empty { margin: 0; font-size: 14px; color: var(--color-muted); }
+.contact__empty { padding: 12px 0 8px; }

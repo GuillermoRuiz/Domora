@@ -1,0 +1,206 @@
+@use 'breakpoints' as bp;
+
+:host { display: inline-flex; position: relative; }
+
+// ── Botón ───────────────────────────────────────────────────────────────
+.trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.trigger:hover { background: var(--color-surface-hover); border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); }
+.trigger:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.trigger--open { border-color: var(--color-accent); background: var(--color-surface-hover); }
+
+.trigger__chevron { display: inline-flex; transition: transform 0.15s; }
+.trigger--open .trigger__chevron { transform: rotate(180deg); }
+
+// Contador de pasos pendientes: fondo de aviso con texto del mismo tono (contraste ≥ 4,5:1 en ambos temas).
+.trigger__count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: 20px;
+}
+
+// Variante «⋯» de las filas y tarjetas del listado.
+.trigger--icon {
+  justify-content: center;
+  width: 36px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--color-muted);
+  border-color: transparent;
+}
+.trigger--icon:hover,
+.trigger--icon.trigger--open { color: var(--color-text); border-color: var(--color-border); }
+
+.trigger__dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  background: var(--color-warning);
+  border: 2px solid var(--color-surface);
+  box-sizing: content-box;
+  border-radius: 50%;
+  transform: translate(25%, -25%);
+}
+
+// ── Panel ───────────────────────────────────────────────────────────────
+.panel {
+  position: fixed;
+  z-index: 400;
+  width: min(264px, calc(100vw - 16px));
+  max-height: min(420px, calc(100dvh - 16px));
+  overflow-y: auto;
+  padding: 6px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+  animation: panel-in 0.12s ease-out;
+}
+
+.menu { margin: 0; padding: 0; list-style: none; }
+.menu__separator { height: 1px; margin: 6px 4px; background: var(--color-border-light); }
+
+.item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px 6px 6px;
+  font: inherit;
+  text-align: left;
+  color: var(--color-text);
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.item:hover,
+.item:focus-visible { background: var(--color-surface-hover); }
+.item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+
+.item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+.item:hover .item__icon,
+.item:focus-visible .item__icon { color: var(--color-accent); }
+
+.item__text { display: flex; flex-direction: column; min-width: 0; }
+.item__label { font-size: 14.5px; font-weight: 500; }
+.item__hint { margin-top: 1px; font-size: 12.5px; line-height: 1.3; color: var(--color-muted); }
+
+// «Puesta en marcha» con pasos pendientes: se destaca con color, borde y número (no solo color).
+.item--setup {
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  box-shadow: inset 2px 0 0 var(--color-warning);
+}
+.item--setup:hover,
+.item--setup:focus-visible { background: color-mix(in srgb, var(--color-warning) 18%, transparent); }
+.item--setup .item__icon { color: var(--color-warning); }
+.item__chip {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: 20px;
+}
+
+.item--primary .item__label { font-weight: 600; }
+.item--primary .item__icon { color: var(--color-secondary); }
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+// ── Táctil y móvil ──────────────────────────────────────────────────────
+@media (pointer: coarse) {
+  .trigger--icon { width: 44px; height: 44px; min-height: 44px; }
+  .item { min-height: 44px; }
+}
+
+.backdrop { position: fixed; inset: 0; z-index: 399; background: rgba(0, 0, 0, 0.45); animation: fade-in 0.2s ease-out; }
+
+@include bp.respond-to('phone') {
+  .trigger:not(.trigger--icon) { width: 100%; justify-content: center; min-height: 44px; }
+  :host { min-width: 0; }
+
+  .panel--sheet {
+    top: auto !important;
+    left: 0 !important;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 80dvh;
+    padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+    animation: sheet-in 0.2s ease-out;
+  }
+  .panel__handle { width: 36px; height: 4px; margin: 0 auto 10px; background: var(--color-border); border-radius: 4px; }
+  .panel__title { margin: 0 4px 8px; font-size: 13px; font-weight: 600; color: var(--color-muted); overflow-wrap: anywhere; }
+  .panel--sheet .item { min-height: 48px; }
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .panel, .backdrop, .panel--sheet { animation: none; }
+  .trigger, .trigger__chevron, .item__icon { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .panel { border: 1px solid CanvasText; }
+  .item:focus-visible,
+  .trigger:focus-visible { outline: 2px solid Highlight; }
+  .trigger__dot { border-color: CanvasText; background: Highlight; }
+  .item--setup { box-shadow: inset 2px 0 0 CanvasText; }
+}

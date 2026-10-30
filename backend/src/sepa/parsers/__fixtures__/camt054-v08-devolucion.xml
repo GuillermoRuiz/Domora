@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Aviso de adeudos (camt.054.001.08): una devolución con importe por operación y total de comisiones. Datos ficticios. -->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.054.001.08">
+  <BkToCstmrDbtCdtNtfctn>
+    <GrpHdr>
+      <MsgId>CAMT054-20260320-01</MsgId>
+      <CreDtTm>2026-03-20T06:30:00+01:00</CreDtTm>
+    </GrpHdr>
+    <Ntfctn>
+      <Id>NTF-9</Id>
+      <Acct><Id><IBAN>ES9121000418450200051332</IBAN></Id></Acct>
+      <Ntry>
+        <Amt Ccy="EUR">60.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><DtTm>2026-03-20T06:30:00+01:00</DtTm></BookgDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>REM-2026-03-ABCDEF-0004</EndToEndId></Refs>
+            <Amt Ccy="EUR">60.00</Amt>
+            <CdtDbtInd>DBIT</CdtDbtInd>
+            <Chrgs>
+              <TtlChrgsAndTaxAmt Ccy="EUR">1.21</TtlChrgsAndTaxAmt>
+              <Rcrd><Amt Ccy="EUR">1.00</Amt></Rcrd>
+              <Rcrd><Amt Ccy="EUR">0.21</Amt></Rcrd>
+            </Chrgs>
+            <RtrInf><Rsn><Cd>MS02</Cd></Rsn></RtrInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+    </Ntfctn>
+  </BkToCstmrDbtCdtNtfctn>
+</Document>

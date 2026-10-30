@@ -1,0 +1,597 @@
+<div class="kpi-row">
+  <div class="kpi-card">
+    <span class="kpi-card__label">Proveedores activos</span>
+    <span class="kpi-card__value">{{ suppliers().length }}</span>
+    <span class="kpi-card__sub">{{ categories() }} categorías</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Gasto YTD</span>
+    <span class="kpi-card__value">{{ fmtEur0(ytdTotal()) }}</span>
+    <span class="kpi-card__sub">Acumulado {{ currentYear }}</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Facturas pendientes</span>
+    <span class="kpi-card__value" [class.kpi-card__value--warn]="pendingTotal() > 0">{{ pendingTotal() }}</span>
+    <span class="kpi-card__sub">Por aprobar/pagar</span>
+  </div>
+</div>
+
+<app-supplier-spend-card [suppliers]="suppliers()" (selectSupplier)="openSupplierById($event)"></app-supplier-spend-card>
+
+@if (pendingDocs().length > 0) {
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Facturas subidas por registrar ({{ pendingDocs().length }})</span>
+      <div class="card__actions">
+        <app-btn variant="outline" size="sm" (clicked)="loadInvoiceDocs()">Actualizar</app-btn>
+      </div>
+    </div>
+    @for (doc of pendingDocs(); track doc.id) {
+      <div class="invoice-row">
+        <div>
+          <div class="invoice-row__concept">{{ doc.fileName }}</div>
+          @if (doc.extraction; as ex) {
+            <div class="invoice-row__date">
+              {{ ex.fields.supplier_name ?? 'Proveedor no identificado' }}
+              @if (ex.fields.invoice_number) { · Factura {{ ex.fields.invoice_number }} }
+              @if (ex.fields.total_amount) { · {{ ex.fields.total_amount }} € }
+            </div>
+            @for (w of ex.warnings; track w) {
+              <div class="invoice-row__date">Revisar: {{ warningLabel(w) }}</div>
+            }
+          } @else {
+            <div class="invoice-row__date">Leyendo la factura… Puede tardar unos minutos.</div>
+          }
+        </div>
+        <div class="invoice-row__actions">
+          <button class="icon-btn" title="Descargar el original" [attr.aria-label]="'Descargar ' + doc.fileName" (click)="downloadInvoiceDoc(doc)">
+            <app-icon name="download" [size]="14"></app-icon>
+          </button>
+          <app-btn variant="primary" size="sm" [disabled]="!doc.extraction" (clicked)="reviewInvoiceDoc(doc)">
+            Revisar y registrar
+          </app-btn>
+        </div>
+      </div>
+    }
+  </div>
+}
+
+<div class="card">
+  <div class="card__header">
+    <span class="card__title">Proveedores</span>
+    <div class="card__actions">
+      <app-btn variant="outline" size="sm" [disabled]="uploadingInvoice()" (clicked)="uploadInvoiceInput.click()">
+        <app-icon name="upload" [size]="13"></app-icon>
+        {{ uploadingInvoice() ? 'Subiendo…' : 'Subir factura' }}
+      </app-btn>
+      <app-btn variant="outline" size="sm" (clicked)="openRegistrarFactura()">
+        <app-icon name="plus" [size]="13"></app-icon>
+        Registrar a mano
+      </app-btn>
+      <app-btn *appPageAction variant="primary" size="sm" (clicked)="openNuevoProveedor()">
+        <app-icon name="plus" [size]="13"></app-icon>
+        Nuevo proveedor
+      </app-btn>
+    </div>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Proveedor</th>
+        <th>Categoría</th>
+        <th>Última factura</th>
+        <th class="th-right">Importe</th>
+        <th class="th-right">Gasto YTD</th>
+        <th class="th-right">Pendientes</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (s of suppliers(); track s.id) {
+        <tr class="row--clickable" (click)="openSupplierDetail(s)">
+          <td>
+            <div class="supplier-name">
+              <app-avatar [name]="s.name" [size]="30" bg="var(--color-secondary)"></app-avatar>
+              <span>{{ s.name }}</span>
+              @if (s.status === 'Baja') { <app-badge text="Baja" variant="default"></app-badge> }
+              @if (s.hasExpiringSoon) { <app-badge text="Vence pronto" variant="warning"></app-badge> }
+            </div>
+          </td>
+          <td><app-badge [text]="s.category" variant="default"></app-badge></td>
+          <td class="td-muted">{{ s.lastInvoice }}</td>
+          <td class="td-right">{{ fmtEur(s.lastAmount) }}</td>
+          <td class="td-right td-strong">{{ fmtEur0(s.ytdSpend) }}</td>
+          <td class="td-right">
+            @if (s.pendingInvoices > 0) {
+              <span class="pending-chip">{{ s.pendingInvoices }} factura{{ s.pendingInvoices > 1 ? 's' : '' }}</span>
+            } @else {
+              <span class="td-muted">—</span>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (showNuevoProveedor()) {
+  <div class="modal-backdrop" (click)="closeNuevoProveedor()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>{{ editingSupplierId() ? 'Editar proveedor' : 'Nuevo proveedor' }}</h4>
+        <button class="close-btn" (click)="closeNuevoProveedor()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Nombre del proveedor
+          <input type="text" placeholder="Razón social" [ngModel]="npName()" (ngModelChange)="npName.set($event)" [class.field--error]="npErrors().name" />
+          @if (npErrors().name) { <span class="field-error">El nombre es obligatorio</span> }
+        </label>
+        <label class="form-field">
+          Categoría
+          <input type="text" list="category-options" placeholder="Mantenimiento, Limpieza..." [ngModel]="npCategory()" (ngModelChange)="onCategoryChange($event)" [class.field--error]="npErrors().category" />
+          <datalist id="category-options">
+            @for (c of categoryOptions; track c) { <option [value]="c"></option> }
+          </datalist>
+          @if (npErrors().category) { <span class="field-error">Indica una categoría</span> }
+        </label>
+        <div class="form-row">
+          <label>
+            NIF / CIF
+            <input type="text" placeholder="B12345678" [ngModel]="npNif()" (ngModelChange)="npNif.set($event)" />
+          </label>
+          <label>
+            Teléfono
+            <input type="text" placeholder="934 000 000" [ngModel]="npPhone()" (ngModelChange)="npPhone.set($event)" />
+          </label>
+        </div>
+        <label class="form-field">
+          Email de contacto
+          <input type="email" placeholder="contacto@proveedor.es" [ngModel]="npEmail()" (ngModelChange)="npEmail.set($event)" />
+        </label>
+        <label class="form-field">
+          IBAN
+          <input type="text" placeholder="ES00 0000 0000 0000 0000 0000" [ngModel]="npIban()" (ngModelChange)="npIban.set($event)" />
+        </label>
+        <label class="check-field" for="np-excluded-347">
+          <input id="np-excluded-347" type="checkbox" [ngModel]="npExcluded347()" (ngModelChange)="setExcluded347($event)" />
+          Fuera del modelo 347 (suministros de luz, agua o combustible y seguros de elementos comunes, art. 33.5 RGAT)
+        </label>
+        @if (npError()) { <span class="field-error">{{ npError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeNuevoProveedor()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="npSaving()" (clicked)="submitNuevoProveedor()">
+          {{ npSaving() ? 'Guardando…' : (editingSupplierId() ? 'Guardar cambios' : 'Añadir proveedor') }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showRegistrarFactura()) {
+  <app-registrar-factura [estateId]="estateId" [suppliers]="suppliers()" [supplierId]="rfSupplierId()"
+    [initialExtraction]="reviewingDoc()?.extraction?.fields ?? null" [extractionNote]="reviewNote(reviewingDoc())"
+    (closed)="onFacturaClosed($event)"></app-registrar-factura>
+}
+
+@if (showContractModal()) {
+  <div class="modal-backdrop" (click)="closeContractModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>{{ editingContractId() ? 'Editar contrato' : 'Nuevo contrato' }}</h4>
+        <button class="close-btn" (click)="closeContractModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Tipo de servicio
+          <input type="text" list="category-options" placeholder="Mantenimiento ascensor, Seguro RC..." [ngModel]="ctServiceType()" (ngModelChange)="onContractServiceTypeChange($event)" />
+        </label>
+        <div class="form-row">
+          <label>
+            Fecha de inicio
+            <input type="date" [ngModel]="ctStartDate()" (ngModelChange)="ctStartDate.set($event)" />
+          </label>
+          <label>
+            Fecha de fin
+            <input type="date" [ngModel]="ctEndDate()" (ngModelChange)="ctEndDate.set($event)" />
+          </label>
+        </div>
+        <div class="form-row">
+          <label>
+            Renovación
+            <select [ngModel]="ctRenewalType()" (ngModelChange)="ctRenewalType.set($event)">
+              <option value="tacita">Tácita reconducción</option>
+              <option value="manual">Manual</option>
+            </select>
+          </label>
+          <label>
+            Cadencia de revisión
+            <input type="text" placeholder="Trimestral, anual..." [ngModel]="ctReviewFrequency()" (ngModelChange)="ctReviewFrequency.set($event)" />
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Coste contractual (opcional)
+            <input type="number" min="0" step="0.01" [ngModel]="ctCostAmount()" (ngModelChange)="ctCostAmount.set($event)" />
+          </label>
+          <label>Frecuencia del coste
+            <select [ngModel]="ctCostFrequency()" (ngModelChange)="ctCostFrequency.set($event)">
+              <option [ngValue]="null">Sin especificar</option>
+              <option value="MONTHLY">Mensual</option><option value="QUARTERLY">Trimestral</option>
+              <option value="SEMIANNUAL">Semestral</option><option value="ANNUAL">Anual</option>
+              <option value="ONE_OFF">Pago ?nico</option><option value="OTHER">Otra</option>
+            </select>
+          </label>
+        </div>
+        <label class="form-field">Moneda ISO
+          <input type="text" maxlength="3" [ngModel]="ctCurrency()" (ngModelChange)="ctCurrency.set($event.toUpperCase())" />
+        </label>
+        <label class="form-field">
+          Notas
+          <textarea rows="2" placeholder="Observaciones del contrato" [ngModel]="ctNotes()" (ngModelChange)="ctNotes.set($event)"></textarea>
+        </label>
+        @if (ctError()) { <span class="field-error">{{ ctError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeContractModal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="ctSaving()" (clicked)="submitContract()">
+          {{ ctSaving() ? 'Guardando…' : (editingContractId() ? 'Guardar cambios' : 'Crear contrato') }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showDocumentModal()) {
+  <div class="modal-backdrop" (click)="closeDocumentModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Nuevo documento</h4>
+        <button class="close-btn" (click)="closeDocumentModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Título
+          <input type="text" placeholder="Póliza RC, Certificado técnico..." [ngModel]="docTitle()" (ngModelChange)="docTitle.set($event)" />
+        </label>
+        <div class="form-row">
+          <label>
+            Tipo de documento
+            <select [ngModel]="docType()" (ngModelChange)="docType.set($event)">
+              @for (t of documentTypeOptions; track t) { <option [value]="t">{{ t }}</option> }
+            </select>
+          </label>
+          <label>
+            Fecha de vencimiento
+            <input type="date" [ngModel]="docExpiresAt()" (ngModelChange)="docExpiresAt.set($event)" />
+          </label>
+        </div>
+        @if (contracts().length > 0) {
+          <label class="form-field">
+            Contrato asociado (opcional)
+            <select [ngModel]="docContractId()" (ngModelChange)="docContractId.set($event)">
+              <option value="">Sin asociar</option>
+              @for (c of contracts(); track c.id) { <option [value]="c.id">{{ c.serviceType }}</option> }
+            </select>
+          </label>
+        }
+        <label class="form-field">
+          Fichero
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" (change)="onDocumentFileSelected($event)" />
+        </label>
+        @if (docError()) { <span class="field-error">{{ docError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeDocumentModal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="docSaving()" (clicked)="submitDocument()">
+          {{ docSaving() ? 'Subiendo…' : 'Subir documento' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (selectedSupplier; as s) {
+  <div class="drawer-backdrop" (click)="closeSupplierDetail()">
+    <div class="drawer" (click)="$event.stopPropagation()">
+      <div class="drawer__header">
+        <h4>{{ s.name }}</h4>
+        <button class="close-btn" (click)="closeSupplierDetail()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__section-header">
+          <span class="drawer__label">Datos del proveedor</span>
+          <div class="card__actions">
+            <button class="icon-btn" title="Editar" (click)="openEditSupplier(s)">
+              <app-icon name="edit" [size]="14"></app-icon>
+            </button>
+            @if (s.status === 'Activo') {
+              <button class="icon-btn" title="Dar de baja" (click)="deactivateSupplier(s)">
+                <app-icon name="trash" [size]="14"></app-icon>
+              </button>
+            }
+          </div>
+        </div>
+        <div class="drawer__field"><span>Categoría</span><span>{{ s.category }}</span></div>
+        <div class="drawer__field"><span>Estado</span><span>{{ s.status }}</span></div>
+        @if (s.taxId) { <div class="drawer__field"><span>NIF/CIF</span><span>{{ s.taxId }}</span></div> }
+        @if (s.email) { <div class="drawer__field"><span>Email</span><span>{{ s.email }}</span></div> }
+        @if (s.phone) { <div class="drawer__field"><span>Teléfono</span><span>{{ s.phone }}</span></div> }
+        @if (s.iban) { <div class="drawer__field"><span>IBAN</span><span>{{ s.iban }}</span></div> }
+        <div class="drawer__field"><span>Gasto YTD</span><span>{{ fmtEur0(s.ytdSpend) }}</span></div>
+      </div>
+
+      @if (performance(); as perf) {
+        <div class="drawer__section">
+          <div class="drawer__label">Desempeño</div>
+          <div class="drawer__field"><span>Incidencias asignadas</span><span>{{ perf.totalIssuesAssigned }}</span></div>
+          <div class="drawer__field"><span>Incidencias resueltas</span><span>{{ perf.resolvedIssues }}</span></div>
+          <div class="drawer__field"><span>Incidencias abiertas</span><span>{{ perf.openIssues }}</span></div>
+        </div>
+      }
+
+      <div class="drawer__section">
+        <div class="drawer__section-header">
+          <span class="drawer__label">Contratos</span>
+          <app-btn variant="outline" size="sm" (clicked)="openContractModal()">
+            <app-icon name="plus" [size]="12"></app-icon>
+            Nuevo
+          </app-btn>
+        </div>
+        @if (contractsLoading()) {
+          <div class="td-muted">Cargando…</div>
+        } @else if (contracts().length === 0) {
+          <div class="td-muted">Sin contratos registrados.</div>
+        } @else {
+          @for (c of contracts(); track c.id) {
+            <div class="invoice-row">
+              <div>
+                <div class="invoice-row__concept">{{ c.serviceType }}</div>
+                <div class="invoice-row__date">{{ contractCostLabel(c) }}</div>
+                <div class="invoice-row__date">
+                  {{ c.startDate }}{{ c.endDate ? ' → ' + c.endDate : ' · sin fecha de fin' }}
+                </div>
+              </div>
+              <div class="invoice-row__actions">
+                <app-badge [text]="c.status" [variant]="contractStatusVariant(c.status)"></app-badge>
+                <button class="icon-btn" title="Editar" (click)="openContractModal(c)">
+                  <app-icon name="edit" [size]="14"></app-icon>
+                </button>
+                @if (c.status !== 'Cancelado') {
+                  <button class="icon-btn" title="Cancelar contrato" (click)="cancelContract(c)">
+                    <app-icon name="x" [size]="14"></app-icon>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__section-header">
+          <span class="drawer__label">Documentos</span>
+          <app-btn variant="outline" size="sm" (clicked)="openDocumentModal()">
+            <app-icon name="plus" [size]="12"></app-icon>
+            Subir
+          </app-btn>
+        </div>
+        @if (documentsLoading()) {
+          <div class="td-muted">Cargando…</div>
+        } @else if (documents().length === 0) {
+          <div class="td-muted">Sin documentos adjuntos.</div>
+        } @else {
+          @for (doc of documents(); track doc.id) {
+            <div class="invoice-row">
+              <div>
+                <div class="invoice-row__concept">{{ doc.title }}</div>
+                <div class="invoice-row__date">
+                  {{ doc.documentType }}{{ doc.expiresAt ? ' · vence ' + doc.expiresAt : '' }}
+                </div>
+              </div>
+              <div class="invoice-row__actions">
+                <button class="icon-btn" title="Descargar" (click)="downloadDocument(doc)">
+                  <app-icon name="download" [size]="14"></app-icon>
+                </button>
+                <button class="icon-btn" title="Eliminar" (click)="deleteDocument(doc)">
+                  <app-icon name="trash" [size]="14"></app-icon>
+                </button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__section-header">
+          <span class="drawer__label">Facturas</span>
+          <div class="drawer__section-actions">
+            @if (supplierInvoices().some(isOpenInvoiceFn)) {
+              <app-btn variant="outline" size="sm" (clicked)="openPay()">Pagar</app-btn>
+            }
+            <app-btn variant="outline" size="sm" (clicked)="openRegistrarFactura(s.id)">
+              <app-icon name="plus" [size]="12"></app-icon>
+              Registrar
+            </app-btn>
+          </div>
+        </div>
+        @if (invoicesLoading()) {
+          <div class="td-muted">Cargando…</div>
+        } @else if (supplierInvoices().length === 0) {
+          <div class="td-muted">Sin facturas registradas.</div>
+        } @else {
+          @for (inv of supplierInvoices(); track inv.id) {
+            <div class="invoice-row" [class.invoice-row--cancelled]="inv.status === 'Anulada'">
+              <div>
+                <div class="invoice-row__concept">Factura {{ inv.number }} · {{ inv.concept }}</div>
+                <div class="invoice-row__date">
+                  {{ inv.issueDate }}{{ inv.dueDate ? ' · vence ' + inv.dueDate : '' }}
+                  @if (inv.withholdingAmount > 0) { · retención {{ fmtEur(inv.withholdingAmount) }} }
+                </div>
+                <div class="invoice-row__date">
+                  <app-badge [text]="inv.status" [variant]="invoiceStatusVariant(inv.status)"></app-badge>
+                  @if (inv.status === 'Parcial') { Quedan {{ fmtEur(inv.outstanding) }} }
+                  @if (inv.cancelReason) { {{ inv.cancelReason }} }
+                </div>
+              </div>
+              <div class="invoice-row__actions">
+                <span class="invoice-row__amount">{{ fmtEur(inv.total) }}</span>
+                @if (isOpenInvoice(inv)) {
+                  <button class="icon-btn" title="Pagar esta factura" [attr.aria-label]="'Pagar la factura ' + inv.number" (click)="openPay(inv)">
+                    <app-icon name="check" [size]="14"></app-icon>
+                  </button>
+                }
+                @if (inv.status === 'Registrada') {
+                  <button class="icon-btn" title="Anular" [attr.aria-label]="'Anular la factura ' + inv.number" (click)="openCancelInvoice(inv)">
+                    <app-icon name="trash" [size]="14"></app-icon>
+                  </button>
+                }
+                @if (inv.fileName) {
+                  <button class="icon-btn" title="Descargar adjunto" (click)="downloadInvoiceFile(inv)">
+                    <app-icon name="download" [size]="14"></app-icon>
+                  </button>
+                } @else if (inv.status !== 'Anulada') {
+                  <button class="icon-btn" title="Adjuntar fichero" [disabled]="attachingInvoiceId() === inv.id" (click)="triggerAttach(inv.id, invoiceFileInput)">
+                    <app-icon name="upload" [size]="14"></app-icon>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__section-header">
+          <span class="drawer__label">Pagos</span>
+        </div>
+        @if (payments().length === 0) {
+          <div class="td-muted">Sin pagos registrados.</div>
+        } @else {
+          @for (p of payments(); track p.id) {
+            <div class="invoice-row" [class.invoice-row--cancelled]="p.status === 'Deshecho'">
+              <div>
+                <div class="invoice-row__concept">{{ p.date }} · {{ p.method }}{{ p.bankAccountAlias ? ' · ' + p.bankAccountAlias : '' }}</div>
+                <div class="invoice-row__date">
+                  @for (i of p.invoices; track i.invoiceId; let last = $last) { Factura {{ i.number }} ({{ fmtEur(i.amount) }}){{ last ? '' : ', ' }} }
+                  @if (p.status === 'Deshecho') { · Deshecho: {{ p.undoReason }} }
+                </div>
+              </div>
+              <div class="invoice-row__actions">
+                <span class="invoice-row__amount">{{ fmtEur(p.amount) }}</span>
+                @if (p.status === 'Vigente') {
+                  <button class="icon-btn" title="Deshacer el pago" aria-label="Deshacer el pago" (click)="openUndoPayment(p)">
+                    <app-icon name="refresh" [size]="14"></app-icon>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      @if (ledger(); as lg) {
+        <div class="drawer__section">
+          <div class="drawer__section-header">
+            <span class="drawer__label">Mayor del proveedor</span>
+            <span class="ledger-balance">Se le debe {{ fmtEur(lg.balance) }}</span>
+          </div>
+          @if (lg.movements.length === 0) {
+            <div class="td-muted">Sin apuntes.</div>
+          } @else {
+            <div class="ledger-wrap">
+              <table class="ledger">
+                <thead>
+                  <tr><th>Fecha</th><th>Apunte</th><th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th></tr>
+                </thead>
+                <tbody>
+                  @for (m of lg.movements; track $index) {
+                    <tr>
+                      <td>{{ m.date }}</td>
+                      <td>{{ ledgerLabel(m.sourceType, m.debit) }}{{ m.invoiceNumber ? ' ' + m.invoiceNumber : '' }} <span class="td-muted">· {{ m.accountCode }} · as. {{ m.entryNumber }}</span></td>
+                      <td class="num">{{ m.debit ? fmtEur(m.debit) : '' }}</td>
+                      <td class="num">{{ m.credit ? fmtEur(m.credit) : '' }}</td>
+                      <td class="num">{{ fmtEur(m.balance) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}
+
+@if (paying(); as pay) {
+  <app-pagar-proveedor [estateId]="estateId" [supplierId]="selectedSupplierId()!" [supplierName]="selectedSupplier?.name ?? ''"
+    [invoices]="supplierInvoices()" [invoiceId]="pay.invoiceId" (closed)="onPayClosed($event)"></app-pagar-proveedor>
+}
+
+@if (cancellingInvoice(); as ci) {
+  <div class="modal-backdrop modal-backdrop--top" (click)="cancellingInvoice.set(null)">
+    <div class="modal" role="dialog" aria-labelledby="cancel-invoice-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4 id="cancel-invoice-title">Anular la factura {{ ci.number }}</h4>
+        <button class="close-btn" aria-label="Cerrar" (click)="cancellingInvoice.set(null)"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <p class="td-muted">
+          Se contabiliza un contraasiento: el gasto y la deuda con el proveedor desaparecen. La factura queda anulada
+          como documento. Si hay que corregirla, registra otra con los datos buenos (puede llevar el mismo número).
+        </p>
+        <label class="form-field" for="cancel-invoice-reason">
+          Motivo
+          <input id="cancel-invoice-reason" type="text" maxlength="200" placeholder="p. ej. Importe equivocado"
+            [ngModel]="cancelReason()" (ngModelChange)="cancelReason.set($event)" />
+        </label>
+        @if (cancelError()) { <span class="field-error" role="alert">{{ cancelError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="cancellingInvoice.set(null)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="cancelSaving()" (clicked)="confirmCancelInvoice()">
+          {{ cancelSaving() ? 'Anulando…' : 'Anular factura' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (undoingPayment(); as up) {
+  <div class="modal-backdrop modal-backdrop--top" (click)="undoingPayment.set(null)">
+    <div class="modal" role="dialog" aria-labelledby="undo-payment-title" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4 id="undo-payment-title">Deshacer el pago del {{ up.date }}</h4>
+        <button class="close-btn" aria-label="Cerrar" (click)="undoingPayment.set(null)"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <p class="td-muted">
+          Se contabiliza un contraasiento de {{ fmtEur(up.amount) }} y las facturas que saldaba vuelven a estar pendientes.
+        </p>
+        <label class="form-field" for="undo-payment-reason">
+          Motivo
+          <input id="undo-payment-reason" type="text" maxlength="200" placeholder="p. ej. Transferencia devuelta"
+            [ngModel]="undoReason()" (ngModelChange)="undoReason.set($event)" />
+        </label>
+        @if (undoError()) { <span class="field-error" role="alert">{{ undoError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="undoingPayment.set(null)">Volver</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="undoSaving()" (clicked)="confirmUndoPayment()">
+          {{ undoSaving() ? 'Deshaciendo…' : 'Deshacer pago' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+<input #uploadInvoiceInput type="file" style="display: none;" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onInvoiceUpload($event)" />
+<input #invoiceFileInput type="file" style="display: none;" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" (change)="onInvoiceFileChange($event)" />
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

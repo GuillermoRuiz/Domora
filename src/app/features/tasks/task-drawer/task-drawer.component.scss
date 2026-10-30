@@ -1,0 +1,161 @@
+@use '../task-form';
+
+:host { display: contents; }
+
+// Detalle de la tarea: un popup centrado sobre la pantalla, como el resto de diálogos de la app.
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+}
+
+.drawer {
+  position: fixed;
+  // Centrado sin `transform`: con transform, los calendarios `position: fixed` de los campos de fecha
+  // se colocarían respecto al popup y los recortaría su `overflow: hidden`.
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  width: min(720px, calc(100% - 32px));
+  max-height: min(88vh, 900px);
+  z-index: 1001;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  &__header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--color-border);
+  }
+  &__header-end { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  &__kicker { margin: 0; font-size: 16px; font-weight: 700; color: var(--color-text); }
+  &__body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
+  &__state { align-items: flex-start; }
+  &__footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--color-border); }
+}
+
+.title {
+  font-size: 19px; font-weight: 700; line-height: 1.3; resize: none; border-color: transparent !important; padding: 6px 8px !important; margin: 0 -8px;
+  // Una sola línea cuando cabe; crece con el texto (navegadores sin `field-sizing` usan el mínimo).
+  field-sizing: content; min-height: 40px !important;
+  &:hover { border-color: var(--color-border) !important; }
+  &:focus { border-color: var(--color-accent) !important; }
+}
+
+.titlerow {
+  display: flex; align-items: center;
+  .title { flex: 1 1 0; min-width: 0; }
+  .act { flex: none; margin-left: 16px; }
+}
+// Parte fija del título de una tarea de incidencia («#INC-2026-019 · »): solo se edita lo que va después.
+.title-prefix { flex: none; font-size: 19px; font-weight: 700; line-height: 1.3; white-space: pre; }
+
+// Sin decisión pendiente el panel no pinta nada: sin caja propia tampoco suma un hueco más del `gap` del cuerpo.
+app-task-decision-panel { display: contents; }
+
+.statusline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 22px; }
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--color-muted); padding: 2px 8px; border-radius: 20px; background: var(--color-border-light); }
+.decision-resolved { margin: 0; font-size: 13px; color: var(--color-muted); }
+.saving { font-size: 12px; color: var(--color-muted); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.act {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; min-height: 36px; font-size: 14px; font-weight: 500;
+  border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); background: var(--color-surface);
+  &:hover:not(:disabled) { border-color: var(--color-accent); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  &--primary { background: var(--color-primary); color: #fff; border-color: var(--color-accent); }
+  &--danger { color: var(--color-error); margin-left: auto; }
+}
+
+// Pestañas: el mismo aspecto que las de una junta (cápsula con la sección activa en dorado).
+.tabs {
+  display: flex; width: fit-content; max-width: 100%; margin: 0 auto; padding: 4px; border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface));
+  &__tab {
+    flex: none; min-height: 40px; padding: 8px 20px; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--color-muted);
+    font: inherit; font-size: 15px; cursor: pointer; transition: color 0.2s, background-color 0.2s;
+    &:hover:not(&--active) { background: var(--color-surface-hover); color: var(--color-text); }
+    &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+    &--active { background: var(--color-accent); color: var(--color-bg); }
+  }
+}
+.panel { display: flex; flex-direction: column; gap: 16px; &[hidden] { display: none; } }
+
+.section { display: flex; flex-direction: column; gap: 8px; &__label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted); display: flex; align-items: center; gap: 8px; } }
+.schedule-stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; @media (max-width: 560px) { grid-template-columns: minmax(0, 1fr); } }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.schedule { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 14px; span { &::first-letter { text-transform: uppercase; } } .link-btn { flex: 0 0 auto; } }
+.row-actions { display: flex; gap: 6px; }
+
+.progress { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--color-muted); }
+.bar { height: 6px; border-radius: 3px; background: var(--color-border-light); overflow: hidden; span { display: block; height: 100%; background: var(--color-secondary); transition: width 0.2s; } }
+
+.list { display: flex; flex-direction: column; gap: 4px; }
+.list__row { display: flex; align-items: center; gap: 6px; }
+.check { display: flex; align-items: center; gap: 8px; flex: 1; min-height: 32px; font-size: 14px; cursor: pointer; &__done { text-decoration: line-through; color: var(--color-muted); } input { width: 16px; height: 16px; } }
+.icon-btn { width: 28px; height: 28px; border-radius: 50%; color: var(--color-muted); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; &:hover { color: var(--color-error); background: var(--color-bg); } &:focus-visible { outline: 2px solid var(--color-accent); } }
+.inline-add { display: flex; gap: 6px; &--stack { flex-direction: column; align-items: flex-start; textarea { width: 100%; } } }
+
+.linked {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 14px; text-align: left; color: var(--color-text);
+  background: var(--color-bg); border-radius: var(--radius-sm);
+  &:hover { background: var(--color-surface-hover); }
+  &:focus-visible { outline: 2px solid var(--color-accent); }
+  &__type { font-size: 12px; color: var(--color-muted); flex: 0 0 auto; }
+  &__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+}
+.upload { align-self: flex-start; cursor: pointer; position: relative; &:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; } }
+
+.comments { display: flex; flex-direction: column; gap: 10px; }
+.comment {
+  padding: 8px 10px; background: var(--color-bg); border-radius: var(--radius-md);
+  &__head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-muted); strong { color: var(--color-text); } .icon-btn { margin-left: auto; width: 22px; height: 22px; } }
+  p { font-size: 14px; margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+}
+
+
+.skeleton { height: 16px; border-radius: 6px; background: linear-gradient(90deg, var(--color-border-light), var(--color-surface-hover), var(--color-border-light)); background-size: 200% 100%; animation: shimmer 1.2s infinite; &--title { height: 28px; width: 70%; } &--short { width: 40%; } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+@media (max-width: 720px) {
+  .drawer { width: calc(100% - 16px); max-height: 94vh; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+// La incidencia de la que nace la tarea, justo bajo el título: de un vistazo se ve de cuál se trata y se abre de un clic.
+.origin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.origin:hover { border-color: var(--color-accent); }
+.origin:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.origin__text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.origin__kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted); }
+.origin__label { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.origin__go { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--color-accent); }
+
+// Menú de acciones del pie: a la derecha y con un halo dorado.
+.drawer__footer app-dropdown {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 1px var(--color-accent), 0 0 12px 3px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  transition: box-shadow 0.15s;
+  &:hover, &.dropdown--open { box-shadow: 0 0 0 1px var(--color-accent), 0 0 16px 5px color-mix(in srgb, var(--color-accent) 60%, transparent); }
+}

@@ -1,0 +1,101 @@
+<div class="dtf" [class.dtf--date-only]="dateOnly" role="group" [attr.aria-labelledby]="id + '-label'">
+  <span class="dtf__label" [id]="id + '-label'">{{ label }}</span>
+  <div class="dtf__row" #row>
+    <!-- Fecha: botón que abre el calendario (el "outline + chevron" de la referencia) -->
+    <button
+      #dateBtn
+      type="button"
+      class="dtf__control dtf__control--date"
+      [class.dtf__control--invalid]="invalid"
+      [class.dtf__control--open]="open()"
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="open()"
+      [attr.aria-controls]="open() ? id + '-popover' : null"
+      [attr.aria-label]="label + ': fecha, ' + dateLabel()"
+      [attr.aria-describedby]="describedBy"
+      (click)="openPopover(dateBtn)"
+    >
+      <app-icon name="calendar" [size]="16" aria-hidden="true"></app-icon>
+      <span class="dtf__value" [class.dtf__value--empty]="!dateText()">{{ dateText() || "Seleccionar fecha" }}</span>
+      <app-icon class="dtf__chevron" name="chevron-down" [size]="14" aria-hidden="true"></app-icon>
+    </button>
+
+    <!-- Hora: campo propio (hh:mm, 24 h) -->
+    @if (!dateOnly) {
+    <div class="dtf__control dtf__control--time" [class.dtf__control--invalid]="invalid">
+      <app-icon name="clock" [size]="16" aria-hidden="true"></app-icon>
+      <input
+        class="dtf__input field--bare"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        maxlength="5"
+        placeholder="hh:mm"
+        [attr.aria-label]="label + ': hora'"
+        [attr.aria-invalid]="invalid ? 'true' : null"
+        [attr.aria-describedby]="describedBy"
+        [value]="timeText()"
+        (input)="onTimeInput($event)"
+      />
+    </div>
+    }
+  </div>
+
+  @if (hint) {
+    <span class="dtf__hint">{{ hint }}</span>
+  }
+
+  @if (open()) {
+    <div
+      #popover
+      class="dtf-pop"
+      role="dialog"
+      aria-modal="false"
+      [id]="id + '-popover'"
+      [attr.aria-label]="label + ': elegir fecha'"
+      [style.left.px]="position().left"
+      [style.top.px]="position().top"
+    >
+      <header class="cal-head">
+        <button type="button" class="cal-nav" aria-label="Mes anterior" (click)="shiftMonth(-1)">
+          <app-icon name="chevron-left" [size]="16" aria-hidden="true"></app-icon>
+        </button>
+        <span class="cal-title" aria-live="polite">{{ monthLabel() }}</span>
+        <button type="button" class="cal-nav" aria-label="Mes siguiente" (click)="shiftMonth(1)">
+          <app-icon name="chevron-right" [size]="16" aria-hidden="true"></app-icon>
+        </button>
+      </header>
+
+      <div class="cal-weekdays" aria-hidden="true">
+        @for (w of weekdays; track $index) {
+          <span>{{ w }}</span>
+        }
+      </div>
+
+      <div class="cal-grid" role="group" [attr.aria-label]="monthLabel()">
+        @for (cell of cells(); track cell.iso) {
+          @if (cell.inMonth) {
+            <button
+              type="button"
+              class="cal-day"
+              data-day
+              [attr.data-iso]="cell.iso"
+              [class.cal-day--today]="cell.today"
+              [class.cal-day--selected]="cell.iso === dateIso()"
+              [attr.tabindex]="cell.iso === focusIso() ? 0 : -1"
+              [attr.aria-label]="cell.label"
+              [attr.aria-pressed]="cell.iso === dateIso()"
+              [attr.aria-current]="cell.today ? 'date' : null"
+              (click)="selectDay(cell.iso)"
+              (keydown)="onDayKeydown($event)"
+            >
+              {{ cell.day }}
+            </button>
+          } @else {
+            <span class="cal-blank" aria-hidden="true"></span>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

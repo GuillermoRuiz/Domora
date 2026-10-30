@@ -1,0 +1,131 @@
+<div class="hero">
+  <div class="hero__bg-circle"></div>
+  <div class="hero__toolbar">
+    <select class="hero__year-select field--bare" [ngModel]="fiscalYear()" (ngModelChange)="onFiscalYearChange($event)">
+      @for (fy of fiscalYears(); track fy.year) { <option [value]="fy.year">{{ fy.year }}</option> }
+    </select>
+    <span class="hero__status" [class.hero__status--closed]="currentFiscalYear()?.status === 'Cerrado'">
+      {{ currentFiscalYear()?.status === 'Cerrado' ? 'Ejercicio cerrado' : 'Ejercicio abierto' }}
+    </span>
+  </div>
+  <div class="hero__grid">
+    <div class="hero__stat">
+      <span class="hero__label">Presupuesto {{ fiscalYear() }}</span>
+      <span class="hero__value">{{ fmtEur0(totalBudgeted()) }}</span>
+      <span class="hero__sub">{{ approvalLabel() }}</span>
+    </div>
+    <div class="hero__stat">
+      <span class="hero__label">Ejecutado YTD</span>
+      <span class="hero__value">{{ fmtEur0(totalExecuted()) }}</span>
+      <span class="hero__sub hero__sub--gold">{{ totalPct() }}% del total</span>
+    </div>
+    <div class="hero__stat">
+      <span class="hero__label">Disponible</span>
+      <span class="hero__value hero__value--green">{{ fmtEur0(totalBudgeted() - totalExecuted()) }}</span>
+      <span class="hero__sub">Para los próximos meses</span>
+    </div>
+    <div class="hero__action">
+      <app-btn *appPageAction variant="outline" size="lg" (clicked)="openEditModal()">Editar presupuesto</app-btn>
+      @if (!currentFiscalYear()?.approvedAt) {
+        <app-btn variant="outline" size="lg" (clicked)="openApproveModal()">Aprobar</app-btn>
+      }
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__title">Ejecución por partida contable</div>
+  <div class="exec-list">
+    @for (item of budget(); track item.code) {
+      <div class="exec-item">
+        <div class="exec-item__header">
+          <div class="exec-item__name">
+            <span class="exec-item__code">{{ item.code }}</span>
+            {{ item.category }}
+          </div>
+          <div class="exec-item__amounts">
+            <span class="exec-item__spent">{{ fmtEur0(item.executed) }}</span>
+            <span class="exec-item__sep">/</span>
+            {{ fmtEur0(item.budgeted) }}
+            <span class="exec-item__pct" [style.color]="pctColor(pct(item))">{{ pct(item) }}%</span>
+          </div>
+        </div>
+        <div class="exec-bar">
+          <div class="exec-bar__fill" [style.width.%]="pct(item) > 100 ? 100 : pct(item)" [style.background]="pctColor(pct(item))"></div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+@if (showEditModal()) {
+  <div class="modal-backdrop" (click)="closeEditModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Editar presupuesto {{ fiscalYear() }}</h4>
+        <button class="close-btn" (click)="closeEditModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        @for (row of editRows(); track row.accountCode) {
+          <div class="edit-row">
+            <span class="edit-row__code">{{ row.accountCode }}</span>
+            <span class="edit-row__category">{{ row.category }}</span>
+            <input class="edit-row__amount" type="number" min="0" step="1"
+              [ngModel]="row.budgeted"
+              (ngModelChange)="updateRowBudget(row.accountCode, $event)" />
+          </div>
+        }
+        @if (availableAccountsToAdd().length > 0) {
+          <div class="add-row">
+            <label class="form-field" style="flex: 1;">
+              Añadir partida
+              <select [ngModel]="newAccountCode()" (ngModelChange)="newAccountCode.set($event)">
+                <option value="">Selecciona una cuenta…</option>
+                @for (a of availableAccountsToAdd(); track a.code) {
+                  <option [value]="a.code">{{ a.code }} — {{ a.shortName ?? a.name }}</option>
+                }
+              </select>
+            </label>
+            <app-btn variant="outline" size="sm" [disabled]="!newAccountCode()" (clicked)="addRow()">Añadir</app-btn>
+          </div>
+        }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeEditModal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="saving()" (clicked)="saveEditModal()">
+          {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showApproveModal()) {
+  <div class="modal-backdrop" (click)="closeApproveModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Aprobar presupuesto {{ fiscalYear() }}</h4>
+        <button class="close-btn" (click)="closeApproveModal()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Nota de aprobación (opcional)
+          <input type="text" placeholder="Aprobado en junta del 15/03…" [ngModel]="approveNote()" (ngModelChange)="approveNote.set($event)" />
+        </label>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeApproveModal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="approving()" (clicked)="submitApprove()">
+          {{ approving() ? 'Guardando…' : 'Aprobar' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

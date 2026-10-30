@@ -1,0 +1,82 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="inst-form-title" (click)="$event.stopPropagation()" (keydown.escape)="closed.emit()">
+    <div class="modal__header">
+      <h4 id="inst-form-title">{{ editing() ? 'Editar instalación' : 'Nueva instalación' }}</h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <form class="modal__body" (ngSubmit)="submit()" novalidate>
+      <label class="form-field" for="if-name">
+        Nombre *
+        <input id="if-name" name="name" type="text" maxlength="200" placeholder="Ascensor A, Caldera, Cubierta…" autocomplete="off"
+          [ngModel]="name()" (ngModelChange)="name.set($event)" [class.field--error]="nameInvalid()" />
+        @if (nameInvalid()) { <span class="field-error">El nombre es obligatorio</span> }
+      </label>
+
+      <div class="form-row">
+        <label class="form-field" for="if-type">
+          Tipo
+          <select id="if-type" name="type" [ngModel]="typeKey()" (ngModelChange)="typeKey.set($event)">
+            @for (t of typeOptions; track t.key) { <option [value]="t.key">{{ t.label }}</option> }
+          </select>
+        </label>
+        <label class="form-field" for="if-status">
+          Estado
+          <select id="if-status" name="status" [ngModel]="status()" (ngModelChange)="status.set($event)">
+            @for (s of statusOptions; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+          </select>
+        </label>
+      </div>
+
+      @if (typeKey() === 'otro') {
+        <label class="form-field" for="if-other">
+          Descripción del tipo
+          <input id="if-other" name="other" type="text" maxlength="100" placeholder="Por ejemplo: Depósito de agua"
+            [ngModel]="otherText()" (ngModelChange)="otherText.set($event)" />
+        </label>
+      }
+
+      <div class="form-row">
+        <label class="form-field" for="if-location">
+          Ubicación
+          <input id="if-location" name="location" type="text" maxlength="200" placeholder="Portal 1, Azotea…"
+            [ngModel]="location()" (ngModelChange)="location.set($event)" />
+        </label>
+        <label class="form-field" for="if-supplier">
+          Proveedor responsable
+          <select id="if-supplier" name="supplier" [ngModel]="supplierId()" (ngModelChange)="supplierId.set($event)">
+            <option value="">Sin proveedor</option>
+            @for (s of suppliers; track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+          </select>
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label class="form-field" for="if-manufacturer">
+          Fabricante
+          <input id="if-manufacturer" name="manufacturer" type="text" maxlength="150"
+            [ngModel]="manufacturer()" (ngModelChange)="manufacturer.set($event)" />
+        </label>
+        <label class="form-field" for="if-serial">
+          Nº de serie
+          <input id="if-serial" name="serial" type="text" maxlength="100"
+            [ngModel]="serialNumber()" (ngModelChange)="serialNumber.set($event)" />
+        </label>
+      </div>
+
+      <label class="form-field" for="if-notes">
+        Notas
+        <textarea id="if-notes" name="notes" rows="3" [ngModel]="notes()" (ngModelChange)="notes.set($event)"></textarea>
+      </label>
+
+      @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+
+      <div class="modal__footer">
+        <app-btn variant="outline" (clicked)="closed.emit()">Cancelar</app-btn>
+        <app-btn variant="primary" type="submit" [disabled]="saving()">
+          {{ saving() ? 'Guardando…' : (editing() ? 'Guardar cambios' : 'Crear instalación') }}
+        </app-btn>
+      </div>
+    </form>
+  </div>
+</div>

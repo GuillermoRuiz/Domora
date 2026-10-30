@@ -1,0 +1,61 @@
+<div class="table-wrap">
+  <table class="table">
+    <caption class="sr-only">Tareas del periodo seleccionado</caption>
+    <thead>
+      <tr>
+        <th scope="col" class="col-select">
+          <input
+            type="checkbox"
+            class="select-box"
+            [checked]="allChecked()"
+            [indeterminate]="someChecked()"
+            [attr.aria-label]="allChecked() ? 'Deseleccionar todas las tareas' : 'Seleccionar todas las tareas'"
+            (change)="toggleAll()"
+          />
+        </th>
+        <th scope="col">Tarea</th>
+        <th scope="col">Comunidad</th>
+        <th scope="col">Responsable</th>
+        <th scope="col">Fecha</th>
+        <th scope="col">Prioridad</th>
+        <th scope="col">Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (task of tasks(); track task.occurrenceKey) {
+        <tr
+          class="row"
+          [class.row--selected]="selectedKey() === task.occurrenceKey"
+          [class.row--checked]="isChecked(task)"
+          [class.row--done]="task.status === 'COMPLETADA' || task.status === 'CANCELADA'"
+          [class.row--overdue]="task.overdue"
+        >
+          <td class="col-select">
+            <input
+              type="checkbox"
+              class="select-box"
+              [checked]="isChecked(task)"
+              [attr.aria-label]="'Seleccionar: ' + task.title"
+              (change)="toggleOne(task)"
+            />
+          </td>
+          <td class="col-title">
+            <button type="button" class="title" (click)="taskSelected.emit(task)" (dblclick)="taskOpened.emit(task)">
+              <app-icon [name]="types[task.type].icon" [size]="13" aria-hidden="true"></app-icon>
+              <span class="title__text">{{ task.title }}</span>
+              @if (task.recurring) { <app-icon name="repeat" [size]="11" aria-label="Se repite"></app-icon> }
+            </button>
+          </td>
+          <td>{{ task.estate?.name ?? '—' }}</td>
+          <td>{{ task.assignee?.fullName ?? 'Sin asignar' }}</td>
+          <td class="col-date">
+            <span class="date">{{ date(task) }}</span>
+            <span class="time">{{ time(task) }}</span>
+          </td>
+          <td><app-task-priority [priority]="task.priority"></app-task-priority></td>
+          <td><app-task-status [status]="task.status" [overdue]="task.overdue"></app-task-status></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

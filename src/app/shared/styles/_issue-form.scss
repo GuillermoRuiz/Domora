@@ -1,0 +1,189 @@
+// Formulario «Nueva incidencia»: lo comparten el del propietario y el de la gestión para que se vean como el mismo
+// formulario (cabecera con icono, campos con icono, contadores, tarjetas de riesgo, fotos). Cada componente lo incluye
+// en su propia hoja porque los estilos de un componente no salen de él.
+@use 'dialog-shell' as shell;
+
+@mixin issue-form {
+  .backdrop { @include shell.backdrop-shell($padded: true, $z: 1000); }
+  .modal {
+    @include shell.modal-shell(640px, 92vh);
+    padding: 24px 28px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  }
+
+  .head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
+  .head__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+    border-radius: var(--radius-lg);
+  }
+  .head__text { flex: 1; min-width: 0; }
+  .head__text h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--color-text); }
+  .head__text p { margin: 2px 0 0; font-size: 14px; color: var(--color-muted); }
+  .head__close { @include shell.close-btn-chrome; flex-shrink: 0; background: transparent; }
+  .head__close:hover { color: var(--color-text); background: var(--color-bg); }
+  .head__close:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+  .note { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; font-size: 13px; color: var(--color-muted); }
+
+  .form { display: flex; flex-direction: column; gap: 18px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; border: none; margin: 0; padding: 0; }
+  .field__label { font-size: 14px; font-weight: 700; color: var(--color-text); padding: 0; }
+  .field__label .req { color: var(--color-error); }
+  .field__label .opt { font-weight: 400; color: var(--color-muted); }
+  .field__foot { display: flex; justify-content: space-between; gap: 8px; min-height: 16px; }
+  .field__count { margin-left: auto; font-size: 12px; color: var(--color-muted); font-variant-numeric: tabular-nums; }
+  .field__error { font-size: 12.5px; color: var(--color-error); }
+  .field__hint { font-size: 12.5px; color: var(--color-muted); }
+
+  .control,
+  .field input[type='text'],
+  .field input[type='search'],
+  .field select,
+  .field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color-scheme: inherit;
+  }
+  .field textarea { min-height: 110px; resize: vertical; }
+  .field input::placeholder, .field textarea::placeholder { color: var(--color-light); }
+  .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+  .field select:disabled, .field input:disabled { opacity: 0.65; cursor: not-allowed; }
+  .field--invalid { border-color: var(--color-error) !important; }
+
+  // Campo con un icono delante (el <select> o el <input> dejan sitio a la izquierda).
+  .with-icon { position: relative; display: block; }
+  .with-icon > app-icon { position: absolute; top: 50%; left: 12px; transform: translateY(-50%); color: var(--color-muted); pointer-events: none; }
+  .with-icon > select, .with-icon > input { padding-left: 38px !important; }
+
+  .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+
+  .link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    padding: 0;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--color-accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .link-btn:hover { text-decoration: underline; }
+  .link-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+
+  // «¿Hay riesgo o daños activos?»: dos tarjetas.
+  .choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .choice__card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    font: inherit;
+    text-align: left;
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+  }
+  .choice__card:hover { border-color: var(--color-accent); }
+  .choice__card:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .choice__dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--color-muted);
+    border-radius: 50%;
+  }
+  .choice__card[aria-checked='true'] .choice__dot { border-color: var(--color-accent); }
+  .choice__card[aria-checked='true'] .choice__dot::after { content: ''; width: 10px; height: 10px; background: var(--color-accent); border-radius: 50%; }
+  .choice__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .choice__text strong { font-size: 14.5px; font-weight: 700; }
+  .choice__text small { font-size: 12.5px; color: var(--color-muted); }
+  .choice__alert { margin-left: auto; color: var(--color-error); }
+  .choice__card--danger[aria-checked='true'] { background: var(--color-error-bg); border-color: var(--color-error); }
+  .choice__card--danger[aria-checked='true'] .choice__dot { border-color: var(--color-error); }
+  .choice__card--danger[aria-checked='true'] .choice__dot::after { background: var(--color-error); }
+
+  .notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    color: var(--color-text);
+    background: var(--color-blue-bg);
+    border-radius: var(--radius-md);
+  }
+  .notice app-icon { flex-shrink: 0; margin-top: 1px; color: var(--color-blue); }
+  .notice p { margin: 0; font-size: 13px; color: var(--color-muted); }
+  .notice strong { display: block; font-size: 13.5px; color: var(--color-text); }
+
+  // Sección plegable («Información adicional»).
+  .fold { border-top: 1px solid var(--color-border); padding-top: 14px; }
+  .fold__toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 0;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-text);
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .fold__title { margin: 0; font-size: 14px; font-weight: 700; color: var(--color-text); }
+  .fold__title .req { color: var(--color-error); }
+  .fold__toggle .opt { font-weight: 400; color: var(--color-muted); }
+  .fold__toggle app-icon { margin-left: auto; color: var(--color-muted); transition: transform 0.15s; }
+  .fold__toggle[aria-expanded='true'] app-icon { transform: rotate(180deg); }
+  .fold__toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+  .fold__body { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+  .fold__body .field__label { font-size: 13px; font-weight: 600; }
+
+  .similar { padding: 10px 12px; background: color-mix(in srgb, var(--color-accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent); border-radius: var(--radius-md); }
+  .similar__intro { margin: 0 0 8px; font-size: 13px; color: var(--color-text); }
+  .similar ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .similar__item { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .similar__text { display: flex; flex-direction: column; min-width: 0; font-size: 13.5px; }
+  .similar__text strong { color: var(--color-text); overflow-wrap: anywhere; }
+  .similar__text small { font-size: 12px; color: var(--color-muted); }
+  .similar__btn { flex-shrink: 0; padding: 5px 10px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--color-accent); background: transparent; border: 1px solid var(--color-accent); border-radius: 999px; cursor: pointer; }
+  .similar__btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .form__error { margin: 0; font-size: 13.5px; color: var(--color-error); }
+  .foot { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 560px) {
+    .backdrop { padding: 0; align-items: stretch; }
+    .modal { width: 100%; max-height: none; height: 100%; border-radius: 0; padding: 18px 16px; }
+    .row, .choice { grid-template-columns: minmax(0, 1fr); }
+  }
+}

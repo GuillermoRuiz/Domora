@@ -1,0 +1,269 @@
+<app-topbar title="Suscripción" [breadcrumb]="['Plan, uso y facturación']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Suscripción</h1>
+    <p class="page-intro__subtitle">Consulta tu plan, el uso de tu cuenta y la facturación.</p>
+  </div>
+</header>
+
+<div class="page-content">
+  <div class="sub-wrap">
+
+    @if (subscriptionStatus() !== 'Activa') {
+      <div class="status-banner" [class.status-banner--danger]="subscriptionStatus() === 'Vencida' || subscriptionStatus() === 'Bloqueada'">
+        @switch (subscriptionStatus()) {
+          @case ('Periodo de gracia') {
+            <span>Tu suscripción está en periodo de gracia. Regulariza el pago para evitar interrupciones.</span>
+          }
+          @case ('Vencida') {
+            <span>Tu suscripción está vencida. Puedes seguir consultando tus datos, pero no crear ni modificar nada hasta regularizar el pago.</span>
+          }
+          @case ('Bloqueada') {
+            <span>Tu cuenta está suspendida{{ blockReason() ? ': ' + blockReason() : '' }}. Contacta con Domora para regularizarla.</span>
+          }
+        }
+      </div>
+    }
+
+    <!-- Hero -->
+    <div class="hero">
+      <div>
+        <div class="hero__badges">
+          <span class="plan-chip">{{ currentPlan().id }}</span>
+          <span class="hero__renew">{{ billingStatusLabel() }} @if (hasActiveBilling()) { · Renovación el {{ renewalDate() }} }</span>
+        </div>
+        @if (!hasActiveBilling()) {
+          <div class="hero__no-billing">
+            <span>Todavía no tienes un método de pago configurado en Stripe.</span>
+            <app-btn variant="primary" size="sm" [disabled]="billingBusy()" (clicked)="startCheckout()">Configurar pago</app-btn>
+          </div>
+        }
+        <div class="hero__price">{{ totalMonth() | number:'1.0-0' }} <span>€/mes</span></div>
+        <div class="hero__detail">
+          Plan {{ currentPlan().name }} ({{ basePrice() }} €)
+          @if (addonTotal() > 0) { + módulos ({{ addonTotal() }} €) }
+          @if (billing() === 'annual') { <span class="hero__annual">· Facturación anual</span> }
+        </div>
+      </div>
+      <div class="hero__billing">
+        <div class="billing-toggle">
+          <button [class.billing-toggle--active]="billing() === 'monthly'" (click)="setBilling('monthly')">Mensual</button>
+          <button [class.billing-toggle--active]="billing() === 'annual'" (click)="setBilling('annual')">Anual −20%</button>
+        </div>
+        <div class="hero__next">Próxima factura: <strong>{{ totalMonth() | number:'1.0-0' }} €</strong> el {{ renewalDate() }}</div>
+      </div>
+    </div>
+
+    <!-- Uso y límites -->
+    <div>
+      <div class="section-title">Uso actual del plan</div>
+      <div class="usage-grid">
+        <div class="usage-card">
+          <div class="usage-card__label">Fincas gestionadas</div>
+          <div class="usage-card__value">{{ usedFincas() }}<span>/{{ currentPlan().fincasMax }} fincas</span></div>
+          <app-progress-bar [value]="usedFincas()" [max]="currentPlan().fincasMax" [height]="5" color="var(--color-secondary)"></app-progress-bar>
+        </div>
+        <div class="usage-card">
+          <div class="usage-card__label">
+            Propiedades registradas
+            @if (propsWarning()) { <span class="usage-warn">Cerca del límite</span> }
+          </div>
+          <div class="usage-card__value">{{ usedProps() }}<span>/{{ currentPlan().propsMax }} props</span></div>
+          <app-progress-bar [value]="usedProps()" [max]="currentPlan().propsMax" [height]="5" [color]="propsWarning() ? 'var(--color-warning)' : 'var(--color-accent)'"></app-progress-bar>
+        </div>
+        <div class="usage-card">
+          <div class="usage-card__label">Almacenamiento</div>
+          <div class="usage-card__value">{{ usedStorageGB }}<span>/{{ currentPlan().storageGB }} GB</span></div>
+          <app-progress-bar [value]="usedStorageGB" [max]="currentPlan().storageGB" [height]="5" color="var(--color-warning)"></app-progress-bar>
+        </div>
+        <div class="usage-card">
+          <div class="usage-card__label">Firmas electrónicas</div>
+          <div class="usage-card__value">{{ usedFirmas }}<span>este mes</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Planes -->
+    <div>
+      <div class="section-header">
+        <div class="section-title">Planes disponibles</div>
+        <div class="section-note">{{ billing() === 'annual' ? 'Precios con descuento anual (−20%)' : 'Precios mensuales sin compromiso' }}</div>
+      </div>
+      <div class="plans-row">
+        @for (plan of plans(); track plan.id) {
+          <div class="plan-card" [class.plan-card--current]="plan.id === currentPlan().id">
+            @if (plan.id === currentPlan().id) {
+              <div class="plan-card__current-tag">Plan actual</div>
+            }
+            <div class="plan-card__header">
+              <span class="plan-card__name">{{ plan.name }}</span>
+              <div class="plan-card__price">{{ billing() === 'annual' ? plan.annual : plan.monthly }} <span>€/mes</span></div>
+              @if (billing() === 'annual') {
+                <div class="plan-card__save">Ahorras {{ (plan.monthly - plan.annual) * 12 }} €/año</div>
+              }
+              <div class="plan-card__meta">Hasta {{ plan.fincasMax }} fincas · {{ plan.storageGB }} GB</div>
+            </div>
+            <div class="plan-card__features">
+              @for (f of plan.features; track f.label) {
+                <div class="feat-row">
+                  <span class="feat-dot" [class.feat-dot--ok]="f.ok">
+                    @if (f.ok) { <app-icon name="check" [size]="9"></app-icon> } @else { <app-icon name="x" [size]="8"></app-icon> }
+                  </span>
+                  <span [class.feat-row--off]="!f.ok">{{ f.label }}</span>
+                </div>
+              }
+            </div>
+            <div class="plan-card__cta">
+              @if (plan.id === currentPlan().id) {
+                <div class="plan-card__active">Plan activo</div>
+              } @else {
+                <button class="plan-card__btn" (click)="selectPlan(plan)">{{ isUpgrade(plan) ? 'Mejorar plan' : 'Cambiar a este plan' }}</button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="enterprise-banner">
+        <div class="enterprise-banner__left">
+          <div class="enterprise-icon"><app-icon name="building" [size]="18"></app-icon></div>
+          <div>
+            <div class="enterprise-title">Plan Enterprise</div>
+            <div class="enterprise-sub">Fincas ilimitadas, gestor de cuenta dedicado, SLA garantizado y personalización completa</div>
+          </div>
+        </div>
+        <app-btn variant="outline" size="sm" (clicked)="contactSales()">Contactar con ventas</app-btn>
+      </div>
+    </div>
+
+    <!-- Módulos adicionales -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Módulos adicionales</h4>
+          <p>Extiende tu plan con funcionalidades opcionales. Se suman a tu factura mensual.</p>
+        </div>
+        @if (addonTotal() > 0) {
+          <span class="addon-total-chip">+{{ addonTotal() }} €/mes activos</span>
+        }
+      </div>
+      @for (a of addons(); track a.id) {
+        <div class="addon-row">
+          <div class="addon-row__icon" [class.addon-row__icon--active]="a.active"><app-icon [name]="a.icon" [size]="18"></app-icon></div>
+          <div class="addon-row__info">
+            <div class="addon-row__name">{{ a.name }}</div>
+            <div class="addon-row__desc">{{ a.desc }}</div>
+          </div>
+          <div class="addon-row__price">
+            <div>{{ a.price }} €</div>
+            <span>{{ a.unit }}</span>
+          </div>
+          <app-toggle [on]="a.active" (onChange)="toggleAddon(a.id)"></app-toggle>
+        </div>
+      }
+    </div>
+
+    <!-- Facturación -->
+    <div class="card">
+      <h4 class="card-title-lone">Facturación</h4>
+
+      <div class="subsection-label">Método de pago</div>
+      <div class="payment-row">
+        @if (hasActiveBilling()) {
+          <div class="payment-card"><app-icon name="card" [size]="16"></app-icon></div>
+          <div class="payment-row__info">
+            <div class="payment-row__number">Gestionado en Stripe</div>
+            <div class="payment-row__exp">{{ billingStatusLabel() }}</div>
+          </div>
+          <app-btn variant="outline" size="sm" [disabled]="billingBusy()" (clicked)="addPaymentMethod()">Cambiar tarjeta</app-btn>
+          <app-btn variant="outline" size="sm" [disabled]="billingBusy()" (clicked)="manageBillingPortal()">Portal de facturación</app-btn>
+        } @else if (billingInfo()) {
+          <!-- Suscripción cancelada: stripeSubscriptionId sigue presente (nunca se borra), pero no hay nada "activo" — se ofrece volver a suscribirse, y el portal sigue disponible para ver el historial. -->
+          <div class="payment-row__info">
+            <div class="payment-row__number">Suscripción cancelada</div>
+            <div class="payment-row__exp">{{ billingStatusLabel() }}</div>
+          </div>
+          <app-btn variant="outline" size="sm" [disabled]="billingBusy()" (clicked)="manageBillingPortal()">Portal de facturación</app-btn>
+          <app-btn variant="primary" size="sm" [disabled]="billingBusy()" (clicked)="startCheckout()">Configurar pago</app-btn>
+        } @else {
+          <div class="payment-row__info">
+            <div class="payment-row__number">Sin método de pago configurado</div>
+          </div>
+          <app-btn variant="primary" size="sm" [disabled]="billingBusy()" (clicked)="startCheckout()">Configurar pago</app-btn>
+        }
+      </div>
+
+      <div class="subsection-label">Historial de facturas</div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Nº</th><th>Fecha</th><th>Concepto</th><th>Base</th><th>IVA</th><th>Total</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (f of invoices(); track f.id) {
+              <tr>
+                <td class="mono">{{ f.no }}</td>
+                <td class="td-muted">{{ f.date }}</td>
+                <td class="td-muted">{{ f.concept }}</td>
+                <td class="mono td-muted">{{ f.taxBase.toFixed(2) }} €</td>
+                <td class="mono td-muted">{{ f.taxAmount.toFixed(2) }} €</td>
+                <td class="mono">{{ f.total.toFixed(2) }} €</td>
+                <td><span class="status-chip" [class.status-chip--paid]="f.status === 'Pagada'" [class.status-chip--pending]="f.status !== 'Pagada'">{{ f.status }}</span></td>
+                <td class="td-right">
+                  @if (f.status === 'Pagada') {
+                    <button class="link-btn" (click)="downloadInvoice(f)"><app-icon name="download" [size]="13"></app-icon> Descargar</button>
+                  } @else if (hasActiveBilling()) {
+                    <button class="link-btn link-btn--warn" [disabled]="billingBusy()" (click)="payInvoice()">Pagar ahora</button>
+                  } @else {
+                    <span class="td-muted">Pago por transferencia</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="td-muted">Todavía no hay facturas emitidas.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Cancelación -->
+    <div class="card card--danger">
+      <div class="card__header">
+        <div>
+          <h4>Cancelar suscripción</h4>
+          <p>Puedes cancelar en cualquier momento. El acceso se mantendrá activo hasta el final del periodo facturado. Los datos se conservan 90 días tras la cancelación.</p>
+        </div>
+        <app-btn variant="danger" size="sm" [disabled]="billingBusy()" (clicked)="cancelSubscription()">Cancelar suscripción</app-btn>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+@if (planModal()) {
+  <div class="modal-backdrop" (click)="closePlanModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h4>¿Cambiar al plan {{ planModal()!.name }}?</h4>
+      <p>
+        @if (!isUpgrade(planModal()!)) {
+          Pasarás al plan {{ planModal()!.name }} ({{ planModal()!.monthly }} €/mes) con efecto inmediato — podrías perder acceso a funcionalidades del plan actual desde ahora. El nuevo importe se reflejará en tu próxima factura, sin cobros adicionales ahora.
+        } @else {
+          Pasarás al plan {{ planModal()!.name }} ({{ planModal()!.monthly }} €/mes) con efecto inmediato — las nuevas funcionalidades estarán disponibles ya. El nuevo importe se reflejará en tu próxima factura, sin cobros adicionales ahora.
+        }
+      </p>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closePlanModal()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="billingBusy()" (clicked)="confirmPlanChange()">Confirmar cambio</app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

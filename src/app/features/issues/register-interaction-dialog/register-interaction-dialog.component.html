@@ -1,0 +1,282 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ri-title" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h4 id="ri-title">Registrar gestión</h4>
+      <button type="button" class="close-btn" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="x" [size]="16"></app-icon></button>
+    </div>
+
+    <div class="modal__body">
+      <p class="ri-intro">Para algo que ha pasado fuera de Domora: una llamada, un mensaje, una conversación…</p>
+
+      <div class="ri-row">
+        <label class="ri-field">
+          ¿Cómo ha sido?
+          <select aria-label="Medio" (change)="patch({ medium: $any($event.target).value })">
+            @for (m of media; track m.key) { <option [value]="m.key" [selected]="form().medium === m.key">{{ m.label }}</option> }
+          </select>
+        </label>
+        <label class="ri-field">
+          ¿Con quién?
+          <select aria-label="Contraparte" (change)="setParty($any($event.target).value)">
+            @for (p of parties; track p.key) { <option [value]="p.key" [selected]="form().party === p.key">{{ p.label }}</option> }
+          </select>
+        </label>
+      </div>
+
+      <div class="ri-row">
+        @if (usesDirectory() && directory().length > 0) {
+          <label class="ri-field">
+            {{ form().party === 'insurer' ? 'Aseguradora del directorio' : 'Proveedor del directorio' }}
+            <select aria-label="Del directorio" [value]="form().supplierId ?? ''" (change)="setSupplier($any($event.target).value)">
+              <option value="">Otro (lo escribo)</option>
+              @for (s of directory(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+            </select>
+          </label>
+        } @else if (!form().supplierId) {
+          <label class="ri-field">
+            Nombre
+            <input type="text" maxlength="200" placeholder="Mapfre, la propietaria del 3ºB…" aria-label="Con quién has hablado" [value]="form().partyLabel" (input)="patch({ partyLabel: $any($event.target).value })" />
+          </label>
+        }
+        <label class="ri-field">
+          ¿Quién ha contactado?
+          <select aria-label="Quién contactó" (change)="patch({ direction: $any($event.target).value })">
+            <option value="outbound" [selected]="form().direction === 'outbound'">Les he contactado</option>
+            <option value="inbound" [selected]="form().direction === 'inbound'">Me han contactado</option>
+          </select>
+        </label>
+      </div>
+      @if (usesDirectory() && directory().length > 0 && !form().supplierId) {
+        <label class="ri-field">
+          Nombre
+          <input type="text" maxlength="200" placeholder="Mapfre, la propietaria del 3ºB…" aria-label="Con quién has hablado" [value]="form().partyLabel" (input)="patch({ partyLabel: $any($event.target).value })" />
+        </label>
+      }
+
+      <label class="ri-field">
+        ¿Qué ha pasado?
+        <textarea rows="3" maxlength="1000" placeholder="He llamado a Mapfre. Nos darán número de siniestro." aria-label="Qué ha pasado" [value]="form().summary" (input)="patch({ summary: $any($event.target).value })"></textarea>
+      </label>
+
+      @if (claimParty()) {
+        <fieldset class="ri-group" data-section="claim">
+          <legend>Siniestro de seguro</legend>
+          @if (liveClaims().length > 0 && !form().openClaim) {
+            <div class="ri-row">
+            @if (liveClaims().length > 1) {
+              <label class="ri-field">
+                ¿De qué siniestro hablas?
+                <select aria-label="Siniestro" (change)="setClaimId($any($event.target).value)">
+                  <option value="" [selected]="!form().claimId">Elige el siniestro…</option>
+                  @for (c of liveClaims(); track c.id) { <option [value]="c.id" [selected]="form().claimId === c.id">{{ c.insurerName }}{{ c.reference ? ' · ' + c.reference : '' }}</option> }
+                </select>
+              </label>
+            }
+            <label class="ri-field">
+              Estado del siniestro
+              <select aria-label="Estado del siniestro" (change)="setClaimStatus($any($event.target).value)">
+                <option value="" [selected]="!form().claimStatus">Sin cambios</option>
+                @for (s of claimStatuses; track s) { <option [value]="s" [selected]="form().claimStatus === s">{{ claimStatusLabels[s] }}</option> }
+              </select>
+            </label>
+            </div>
+          }
+          <label class="ri-check">
+            <input type="checkbox" [checked]="form().openClaim" (change)="setOpenClaim($any($event.target).checked)" />
+            {{ liveClaims().length > 0 ? 'Se ha abierto otro siniestro' : 'Se ha abierto un siniestro' }}
+          </label>
+          @if (form().openClaim) {
+            @if (form().party === 'owner') {
+              <label class="ri-field ri-field--indent">
+                Aseguradora del propietario
+                <input type="text" maxlength="200" aria-label="Aseguradora del propietario" [value]="form().claimInsurerName" (input)="patch({ claimInsurerName: $any($event.target).value })" />
+              </label>
+            }
+            <label class="ri-field ri-field--indent">
+              Nº de póliza (opcional)
+              <input type="text" maxlength="50" aria-label="Póliza" [value]="form().claimPolicy" (input)="patch({ claimPolicy: $any($event.target).value })" />
+            </label>
+          }
+          @if (form().party === 'insurer' || form().openClaim || liveClaims().length > 0) {
+            <label class="ri-field">
+              Nº de siniestro (opcional)
+              <input type="text" maxlength="100" aria-label="Referencia" [value]="form().claimRef" (input)="patch({ claimRef: $any($event.target).value })" />
+            </label>
+          }
+          @if (form().party === 'insurer') {
+            <label class="ri-check">
+              <input type="checkbox" [checked]="form().assignPro" (change)="setAssignPro($any($event.target).checked)" />
+              Han asignado a un profesional
+            </label>
+            @if (form().assignPro) {
+              @if (professionals().length > 0) {
+                <label class="ri-field ri-field--indent">
+                  Del directorio
+                  <select aria-label="Profesional del directorio" (change)="setAssignSupplier($any($event.target).value)">
+                    <option value="" [selected]="!form().assignProSupplierId">Otro (lo escribo)</option>
+                    @for (s of professionals(); track s.id) { <option [value]="s.id" [selected]="form().assignProSupplierId === s.id">{{ s.name }}</option> }
+                  </select>
+                </label>
+              }
+              @if (!form().assignProSupplierId) {
+                <label class="ri-field ri-field--indent">
+                  Nombre del profesional
+                  <input type="text" maxlength="200" aria-label="Nombre del profesional" [value]="form().assignProName" (input)="patch({ assignProName: $any($event.target).value })" />
+                </label>
+                <label class="ri-field ri-field--indent">
+                  Teléfono (opcional)
+                  <input type="tel" maxlength="30" aria-label="Teléfono del profesional" [value]="form().assignProPhone" (input)="patch({ assignProPhone: $any($event.target).value })" />
+                </label>
+              }
+            }
+          }
+        </fieldset>
+      }
+
+      <fieldset class="ri-group" data-section="next-step">
+        <legend>¿Qué pasa ahora?</legend>
+        <p class="ri-hint">Elige cómo sigue la incidencia: después de cada gestión tiene que quedar un siguiente paso.</p>
+
+        <div class="ri-choices" role="radiogroup" aria-label="Qué pasa ahora">
+          @for (n of nextSteps; track n.key) {
+            <label class="ri-check ri-choice">
+              <input type="radio" name="next-step" [value]="n.key" [checked]="form().nextStep === n.key" (change)="setNextStep(n.key)" />
+              {{ n.label }}
+            </label>
+          }
+        </div>
+
+        @if (form().nextStep === 'task') {
+          <label class="ri-field">
+            ¿Qué hay que hacer?
+            <input type="text" maxlength="300" aria-label="Seguimiento" [value]="form().followUpNote" (input)="patch({ followUpNote: $any($event.target).value })" />
+          </label>
+          <label class="ri-field">
+            ¿A qué hito del recorrido pertenece? (obligatorio)
+            <select aria-label="Hito de la tarea" data-testid="task-milestone" required (change)="patch({ followUpMilestone: $any($event.target).value })">
+              <option value="" [selected]="!form().followUpMilestone">Elige un hito…</option>
+              @for (m of milestones(); track m.ref) { <option [value]="m.ref" [selected]="form().followUpMilestone === m.ref">{{ m.label }}</option> }
+            </select>
+          </label>
+          <label class="ri-field">
+            ¿Cuándo? Aparecerá en Tareas ese día y a esa hora
+            <input type="datetime-local" aria-label="Fecha y hora del recordatorio" [value]="form().followUpAt" (input)="patch({ followUpAt: $any($event.target).value })" />
+          </label>
+          <div class="ri-row">
+            <label class="ri-field">
+              Prioridad
+              <select aria-label="Prioridad de la tarea" (change)="patch({ followUpPriority: $any($event.target).value })">
+                <option value="" [selected]="!form().followUpPriority">La habitual</option>
+                @for (p of priorities; track p.key) { <option [value]="p.key" [selected]="form().followUpPriority === p.key">{{ p.label }}</option> }
+              </select>
+            </label>
+            <label class="ri-field">
+              Responsable
+              <select aria-label="Responsable de la tarea" (change)="patch({ followUpAssigneeId: $any($event.target).value })">
+                <option value="" [selected]="!form().followUpAssigneeId">Sin asignar</option>
+                @for (a of assignees(); track a.id) { <option [value]="a.id" [selected]="form().followUpAssigneeId === a.id">{{ a.name }}</option> }
+              </select>
+            </label>
+          </div>
+        }
+
+        @if (form().nextStep === 'wait') {
+          <label class="ri-field">
+            Avisarme si no responde en
+            <select aria-label="Plazo de la espera" (change)="setWaitDays($any($event.target).value)">
+              @for (c of waitDays; track c.days) { <option [value]="c.days" [selected]="(form().waitDays ?? 0) === c.days">{{ c.label }}</option> }
+            </select>
+          </label>
+        }
+
+        @if (form().nextStep === 'visit') {
+          <label class="ri-field">
+            Fecha y hora de la visita o actuación
+            <input type="datetime-local" aria-label="Fecha de la visita" [value]="form().visitAt" (input)="patch({ visitAt: $any($event.target).value })" />
+          </label>
+        }
+
+        @if (form().nextStep === 'route') {
+          <label class="ri-field">
+            Nueva vía
+            <select aria-label="Nueva vía" (change)="setNewRoute($any($event.target).value)">
+              <option value="" [selected]="!form().newRoute">Elige la vía…</option>
+              @for (r of routes; track r) { <option [value]="r" [selected]="form().newRoute === r">{{ routeLabels[r] }}</option> }
+            </select>
+          </label>
+          <label class="ri-field">
+            Motivo (opcional)
+            <input type="text" maxlength="500" aria-label="Motivo del cambio de vía" [value]="form().routeReason" (input)="patch({ routeReason: $any($event.target).value })" />
+          </label>
+        }
+
+        @if (form().nextStep === 'resolved') {
+          <p class="ri-hint">Al registrar, la incidencia pasa a Resuelta.</p>
+        }
+        @if (form().nextStep === 'none') {
+          <p class="ri-hint">Solo vale si la incidencia ya tiene otra tarea, espera o visita pendiente; si no, se te pedirá definir el siguiente paso.</p>
+        }
+
+        @if (consequenceItems().length > 0) {
+          <app-dropdown
+            ariaLabel="Además"
+            label="Además"
+            [multiple]="true"
+            [items]="consequenceItems()"
+            [selectedIds]="consequenceSelected()"
+            [summary]="consequenceSummary()"
+            [active]="consequenceSelected().length > 0"
+            (selectionChange)="toggleConsequence($any($event.id))"
+          ></app-dropdown>
+        }
+
+        @if (waitsOfParty().length > 0) {
+          @if (form().closeWaitId && waitsOfParty().length > 1) {
+            <label class="ri-field">
+              ¿Cuál?
+              <select aria-label="Espera que se cierra" (change)="patch({ closeWaitId: $any($event.target).value })">
+                @for (w of waitsOfParty(); track w.id) { <option [value]="w.id" [selected]="form().closeWaitId === w.id">{{ w.label ?? 'Sin nombre' }}</option> }
+              </select>
+            </label>
+          }
+        }
+
+        @if (canInformRequester()) {
+          @if (form().informTemplate) {
+            <label class="ri-field">
+              Mensaje
+              <select aria-label="Mensaje al solicitante" (change)="setTemplate($any($event.target).value)">
+                @for (t of templates(); track t.key) { <option [value]="t.key" [selected]="form().informTemplate === t.key">{{ t.label }}</option> }
+              </select>
+            </label>
+            @if (isCustomNotice()) {
+              <label class="ri-field">
+                Mensaje
+                <textarea rows="3" [attr.maxlength]="customMax" aria-label="Texto del mensaje" data-field="custom-text" placeholder="Lo que quieres contarle a quien reportó la incidencia" [value]="form().informText" (input)="patch({ informText: $any($event.target).value })"></textarea>
+                <span class="ri-count">{{ form().informText.length }}/{{ customMax }}</span>
+              </label>
+            }
+            <app-requester-notice-preview
+              [issueId]="issueId()"
+              [template]="form().informTemplate"
+              [text]="isCustomNotice() ? form().informText : null"
+              [when]="noticeWhen()"
+              [label]="noticeLabel()"
+              (stateChange)="noticeState.set($event)"
+            ></app-requester-notice-preview>
+          }
+        }
+      </fieldset>
+
+      @if (problems().length > 0) {
+        <p class="ri-problems" role="alert">{{ problems().join(" ") }}</p>
+      }
+      @if (error()) { <p class="ri-error" role="alert">{{ error() }}</p> }
+    </div>
+
+    <div class="modal__footer">
+      <app-btn variant="outline" size="sm" (clicked)="closed.emit()">Cancelar</app-btn>
+      <app-btn variant="primary" size="sm" [disabled]="busy()" (clicked)="submit()">{{ busy() ? 'Registrando…' : 'Registrar gestión' }}</app-btn>
+    </div>
+  </div>
+</div>

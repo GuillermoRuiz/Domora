@@ -1,0 +1,50 @@
+<div class="board">
+  @for (column of columns(); track column.status) {
+    <section
+      class="column"
+      [class.column--over]="dropTarget() === column.status"
+      [attr.aria-label]="column.label + ': ' + column.tasks.length + ' tareas'"
+      (dragover)="onDragOver($event, column.status)"
+      (dragleave)="dropTarget.set(null)"
+      (drop)="onDrop($event, column.status)"
+    >
+      <header class="column__head">
+        <app-icon [name]="column.icon" [size]="14" aria-hidden="true"></app-icon>
+        <h3>{{ column.label }}</h3>
+        <span class="column__count">{{ column.tasks.length }}</span>
+      </header>
+      <ul class="column__list">
+        @for (task of column.tasks; track task.occurrenceKey) {
+          <li>
+            <button
+              type="button"
+              class="card"
+              [class]="'card card--' + task.priority.toLowerCase()"
+              [class.card--selected]="selectedKey() === task.occurrenceKey"
+              [class.card--overdue]="task.overdue"
+              draggable="true"
+              (dragstart)="onDragStart($event, task)"
+              (dragend)="onDragEnd()"
+              (click)="taskSelected.emit(task)" (dblclick)="taskOpened.emit(task)"
+            >
+              <span class="card__title">
+                <app-icon [name]="types[task.type].icon" [size]="13" aria-hidden="true"></app-icon>
+                <span class="card__text">{{ task.title }}</span>
+                @if (task.recurring) { <app-icon name="repeat" [size]="11" aria-label="Se repite"></app-icon> }
+              </span>
+              <span class="card__meta">{{ date(task) }}</span>
+              @if (task.estate) { <span class="card__meta">{{ task.estate.name }}</span> }
+              <span class="card__foot">
+                <app-task-priority [priority]="task.priority"></app-task-priority>
+                @if (task.overdue) { <span class="card__overdue">Vencida</span> }
+                <span class="card__assignee">{{ task.assignee?.fullName ?? 'Sin asignar' }}</span>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          <li class="column__empty">Sin tareas</li>
+        }
+      </ul>
+    </section>
+  }
+</div>

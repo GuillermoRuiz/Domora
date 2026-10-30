@@ -1,0 +1,30 @@
+:host { display: block; min-width: 0; height: 100%; }
+app-section-card { height: 100%; }
+
+.rec__message { margin: 0; padding: 28px 20px; text-align: center; font-size: 14px; color: var(--color-muted); }
+.rec__message--error { color: var(--color-error); }
+
+.rec__scroll { overflow-x: auto; margin-top: 8px; }
+.rec__table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rec__table th { padding: 10px 10px; text-align: left; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-muted); white-space: nowrap; border-bottom: 1px solid var(--color-border); }
+.rec__table td { padding: 12px 10px; color: var(--color-text); border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+.rec__table tbody tr:last-child td { border-bottom: none; }
+.rec__table th:first-child, .rec__table td:first-child { padding-left: 20px; }
+.rec__table th:last-child, .rec__table td:last-child { width: 1%; }
+.rec__table th:last-child, .rec__table td:last-child { padding-right: 20px; }
+.rec__num { text-align: right; white-space: nowrap; }
+.rec__muted { color: var(--color-muted); white-space: nowrap; }
+.rec__concept { font-weight: 600; overflow-wrap: anywhere; }
+.rec__amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+.rec__actions { display: inline-flex; gap: 6px; }
+
+.rec__btn { padding: 6px 10px; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--color-text); background: none; border: 1px solid var(--color-border); border-radius: var(--radius-md); cursor: pointer; }
+.rec__btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.rec__btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.rec__btn--primary { color: #fff; background: var(--color-accent); border-color: var(--color-accent); }
+.rec__btn--primary:hover { filter: brightness(1.08); color: #fff; }
+
+.rec__pending { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 20px; border-top: 1px solid var(--color-border); background: var(--color-bg); }
+.rec__pending-text { font-size: 14px; color: var(--color-muted); }
+.rec__pending-text strong { color: var(--color-error); }
+.rec__property { display: block; font-size: 12px; font-weight: 400; color: var(--color-muted); }

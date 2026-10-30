@@ -1,0 +1,404 @@
+@if (properties().length > 0) {
+  <section class="pk" aria-label="Resumen de propiedades">
+    <button type="button" class="pk__item" data-kpi="total" (click)="showAll()">
+      <app-kpi-tile align="start" label="Total propiedades" [value]="kpis().total" sub="unidades" icon="building"></app-kpi-tile>
+    </button>
+    <div class="pk__item pk__item--static" data-kpi="housing">
+      <app-kpi-tile align="start" label="Viviendas" [value]="kpis().housing.count" [sub]="'unidades · ' + kpis().housing.percent + ' %'" icon="home"
+        [progress]="kpis().housing.percent" progressColor="var(--chart-1)"></app-kpi-tile>
+    </div>
+    <div class="pk__item pk__item--static" data-kpi="commercial">
+      <app-kpi-tile align="start" label="Locales" [value]="kpis().commercial.count" [sub]="'unidades · ' + kpis().commercial.percent + ' %'" icon="store"
+        [progress]="kpis().commercial.percent" progressColor="var(--chart-2)"></app-kpi-tile>
+    </div>
+    <button type="button" class="pk__item" data-kpi="delinquency" [class.pk__item--active]="debtFilter() === 'owes'" [attr.aria-pressed]="debtFilter() === 'owes'" (click)="toggleDelinquency()">
+      <app-kpi-tile align="start" label="Morosidad" icon="receipt"
+        [value]="kpis().delinquency.loaded ? euro(kpis().delinquency.amount) : '—'"
+        [tone]="kpis().delinquency.amount > 0 ? 'danger' : 'default'"
+        [sub]="kpis().delinquency.loaded ? kpis().delinquency.properties + ' propiedades (' + kpis().delinquency.percent + ' %)' : 'No disponible'"></app-kpi-tile>
+    </button>
+  </section>
+}
+
+<div class="card">
+  @if (properties().length > 0) {
+    <div class="filters" role="search">
+      <div class="filters__search-wrap">
+        <label class="sr-only" for="prop-search">Buscar propiedad</label>
+        <app-icon name="search" [size]="15"></app-icon>
+        <input id="prop-search" class="filters__search" type="search" placeholder="Buscar por referencia, titular, planta..."
+          [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      </div>
+      <label class="filters__field" for="prop-payment">
+        <span>Estado</span>
+        <select id="prop-payment" [ngModel]="paymentFilter()" (ngModelChange)="paymentFilter.set($event)">
+          @for (o of paymentOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+        </select>
+      </label>
+      <label class="filters__field" for="prop-type">
+        <span>Tipo</span>
+        <select id="prop-type" [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event)">
+          @for (o of typeOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+        </select>
+      </label>
+      <label class="filters__field" for="prop-debt">
+        <span>Deuda</span>
+        <select id="prop-debt" [ngModel]="debtFilter()" (ngModelChange)="debtFilter.set($event)">
+          @for (o of debtOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+        </select>
+      </label>
+      <label class="filters__field" for="prop-owner">
+        <span>Propietario</span>
+        <select id="prop-owner" [ngModel]="ownerFilter()" (ngModelChange)="ownerFilter.set($event)">
+          <option value="all">Todos</option>
+          @for (name of ownerOptions(); track name) { <option [value]="name">{{ name }}</option> }
+        </select>
+      </label>
+      <label class="filters__field" for="prop-sort">
+        <span>Ordenar por</span>
+        <select id="prop-sort" [ngModel]="sortKey()" (ngModelChange)="sortKey.set($event)">
+          @for (o of sortOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+        </select>
+      </label>
+      @if (hasFilters()) {
+        <button type="button" class="filters__clear" (click)="clearFilters()">Limpiar filtros</button>
+      }
+    </div>
+  }
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th [attr.aria-sort]="refSort()">
+            <button type="button" class="th-sort" data-sort="ref" (click)="toggleRefSort()">
+              Ref. <app-icon name="sort" [size]="12"></app-icon>
+            </button>
+          </th>
+          <th>Tipo</th>
+          <th>Planta / Ubicación</th>
+          <th>Titular / Propietario</th>
+          <th>Estado</th>
+          <th class="th--num">Cuota mensual</th>
+          <th class="th--num">Saldo pendiente</th>
+          <th class="th--num">Último pago</th>
+          <th class="th--num">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (prop of pagedProperties(); track prop.id) {
+          <tr class="row--clickable" [class.row--selected]="selectedId() === prop.id" [attr.data-property]="prop.id"
+            tabindex="0" [attr.aria-selected]="selectedId() === prop.id" (click)="selectProperty(prop)" (keydown.enter)="selectProperty(prop)">
+            <td class="td--mono">{{ prop.ref }}</td>
+            <td>
+              <span class="prop-type">
+                <app-icon [name]="typeInfo(prop).icon" [size]="16"></app-icon>
+                {{ typeInfo(prop).label }}
+              </span>
+            </td>
+            <td class="td--muted">{{ locationLabel(prop) }}</td>
+            <td>
+              @if (propertyTitular(prop); as titular) {
+                @if (titular !== '—') {
+                  <span class="prop-owner">{{ titular }}</span>
+                } @else {
+                  <span class="td--empty-cell">—</span>
+                }
+              }
+              @for (office of officesOf(prop); track office.term.id) {
+                <span class="office-chip" [attr.data-office]="office.term.role"
+                  [title]="office.label + ': ' + office.term.holderNameSnapshot">{{ office.label }}</span>
+              }
+            </td>
+            <td>
+              @if (paymentPill(prop); as pill) {
+                <app-status-pill [text]="pill.text" [tone]="pill.tone" [dot]="true"></app-status-pill>
+              } @else {
+                <span class="td--empty-cell">—</span>
+              }
+            </td>
+            <td class="td--num">{{ prop.quotaMonthly != null ? euro(prop.quotaMonthly) : '—' }}</td>
+            <td class="td--num" [class.td--owes]="(statusOf(prop)?.balance ?? 0) > 0">
+              {{ statusOf(prop) ? euro(statusOf(prop)!.balance) : '—' }}
+            </td>
+            <td class="td--num td--muted">{{ lastPaymentLabel(prop) }}</td>
+            <td class="td--num td--actions">
+              <button type="button" class="view-btn" (click)="openEditProperty(prop); $event.stopPropagation()">Ver</button>
+              <button type="button" class="action-btn" aria-label="Más acciones" (click)="togglePropertyMenu($event, prop.id); $event.stopPropagation()">
+                <app-icon name="ellipsis" [size]="16"></app-icon>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if (visibleProperties().length > 0) {
+    <nav class="pager" aria-label="Paginación de propiedades">
+      <span class="pager__range" aria-live="polite">{{ rangeLabel() }}</span>
+      <div class="pager__pages">
+        <button type="button" class="pager__btn" data-page="prev" aria-label="Página anterior" [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)">‹</button>
+        @for (btn of pageButtons(); track $index) {
+          @if (btn.page === null) {
+            <span class="pager__gap" aria-hidden="true">{{ btn.label }}</span>
+          } @else {
+            <button type="button" class="pager__btn" [class.pager__btn--current]="btn.page === currentPage()"
+              [attr.data-page]="btn.page" [attr.aria-current]="btn.page === currentPage() ? 'page' : null" (click)="goToPage(btn.page)">{{ btn.label }}</button>
+          }
+        }
+        <button type="button" class="pager__btn" data-page="next" aria-label="Página siguiente" [disabled]="currentPage() === pageCount()" (click)="goToPage(currentPage() + 1)">›</button>
+      </div>
+      <label class="pager__size" for="prop-page-size">
+        <span>Filas por página:</span>
+        <select id="prop-page-size" [ngModel]="pageSize()" (ngModelChange)="setPageSize($event)">
+          @for (n of pageSizes; track n) { <option [ngValue]="n">{{ n }}</option> }
+        </select>
+      </label>
+    </nav>
+  }
+  @if (properties().length > 0 && visibleProperties().length === 0) {
+    <div class="no-requests">
+      <p>Ninguna propiedad coincide con los filtros.</p>
+      <app-btn variant="outline" (clicked)="clearFilters()">Limpiar filtros</app-btn>
+    </div>
+  }
+  @if (propertiesLoaded && properties().length === 0) {
+    <div class="no-requests">
+      <p>Esta finca aún no tiene propiedades.</p>
+      <app-btn variant="secondary" (clicked)="importCatastro.emit()">
+        <app-icon name="building" [size]="14"></app-icon>
+        Importarlas desde el Catastro
+      </app-btn>
+    </div>
+  }
+  @if (properties().length > 0) {
+    <p class="td--muted" style="margin: 12px 20px;">
+      Suma de coeficientes informados: <strong>{{ quotaLabel(quotaSummary().total) }}</strong>
+      @if (quotaSummary().total > 100) {
+        — supera el 100 %, revisa los valores.
+      } @else if (quotaSummary().missing > 0) {
+        · {{ quotaSummary().missing }} {{ quotaSummary().missing === 1 ? 'propiedad sin coeficiente' : 'propiedades sin coeficiente' }}.
+      }
+    </p>
+  }
+</div>
+
+@if (properties().length > 0) {
+  <section class="bottom-panels" aria-label="Altas, cambios y propiedad destacada">
+    <app-property-changes-card [estateId]="estateId"></app-property-changes-card>
+    <app-featured-property-card [property]="featuredProperty()" [facadeUrl]="facadeUrl" [estateId]="estateId" [photoVersion]="photoVersion" [estateName]="estateName"
+      (view)="openFeatured($event)"></app-featured-property-card>
+  </section>
+}
+
+@if (openPropertyMenuId()) {
+  <div class="property-row-menu-backdrop" (click)="closePropertyMenu()"></div>
+  <div class="property-row-menu"
+    [style.top.px]="propertyMenuPosition().top"
+    [style.left.px]="propertyMenuPosition().left"
+    (click)="$event.stopPropagation()">
+    @if (properties().find(p => p.id === openPropertyMenuId()); as prop) {
+      <button type="button" (click)="openEditProperty(prop)">
+        <app-icon name="settings" [size]="14"></app-icon> Editar
+      </button>
+      <button type="button" (click)="openManageMembers(prop)">
+        <app-icon name="users" [size]="14"></app-icon> Gestionar miembros
+      </button>
+      <button type="button" (click)="openAddTitular(prop)">
+        <app-icon name="plus" [size]="14"></app-icon> Añadir titular
+      </button>
+      @if (invitableOwnerOf(prop); as owner) {
+        <button type="button" (click)="inviteExternalOwner(prop)" [title]="'Enviar invitación a ' + owner.email">
+          <app-icon name="mail" [size]="14"></app-icon> Invitar al titular a la app
+        </button>
+      }
+      <button type="button" (click)="openKeyContacts(prop)">
+        <app-icon name="phone" [size]="14"></app-icon> Contactos clave
+      </button>
+      <div class="property-row-menu__separator" role="separator"></div>
+      @if (presidentOf(prop); as president) {
+        <button type="button" (click)="openOfficeDialog(prop, { kind: 'end', office: president })">
+          <app-icon name="x" [size]="14"></app-icon> Cesar como presidente
+        </button>
+      } @else {
+        <button type="button" (click)="openOfficeDialog(prop, { kind: 'appoint', role: 'PRESIDENT' })">
+          <app-icon name="star" [size]="14"></app-icon> Nombrar presidente
+        </button>
+      }
+      <button type="button" (click)="openOfficeDialog(prop, { kind: 'appoint', role: 'VICE_PRESIDENT' })">
+        <app-icon name="shield" [size]="14"></app-icon> Nombrar vicepresidente
+      </button>
+      @for (vice of vicePresidentsOf(prop); track vice.term.id) {
+        <button type="button" (click)="openOfficeDialog(prop, { kind: 'end', office: vice })">
+          <app-icon name="x" [size]="14"></app-icon>
+          Cesar como vicepresidente{{ vicePresidentsOf(prop).length > 1 ? ' (' + vice.term.holderNameSnapshot + ')' : '' }}
+        </button>
+      }
+      <div class="property-row-menu__separator" role="separator"></div>
+      <button type="button" class="property-row-menu__danger" (click)="deleteProperty(prop)">
+        <app-icon name="x" [size]="14"></app-icon> Eliminar
+      </button>
+    }
+  </div>
+}
+
+
+@if (manageMembersPropertyId(); as propId) {
+  <div class="modal-backdrop" (click)="closeManageMembers()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Miembros de la propiedad</h4>
+        <button class="close-btn" (click)="closeManageMembers()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <app-members-section [propertyId]="propId" [canInvite]="false" [canRevoke]="true" [showInvites]="true"></app-members-section>
+    </div>
+  </div>
+}
+
+
+@if (addTitularPropertyId()) {
+  <div class="modal-backdrop" (click)="closeAddTitular()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Añadir titular</h4>
+        <button class="close-btn" (click)="closeAddTitular()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <p class="field-hint">Propietario sin cuenta en Domora: sus datos se usan para los recibos y las notificaciones. Si más adelante se da de alta, se vincula a él.</p>
+        <label class="form-field">
+          Nombre completo o razón social
+          <input id="at-full-name" type="text" autocomplete="off" [ngModel]="atFullName()" (ngModelChange)="atFullName.set($event)" />
+        </label>
+        <label class="form-field">
+          NIF / NIE (opcional)
+          <input id="at-tax-id" type="text" autocomplete="off" [ngModel]="atTaxId()" (ngModelChange)="atTaxId.set($event)" />
+        </label>
+        <label class="form-field">
+          Email (opcional)
+          <input id="at-email" type="email" autocomplete="off" [ngModel]="atEmail()" (ngModelChange)="atEmail.set($event)" />
+          @if (atEmailInvalid()) {
+            <span class="form-error">Email no válido.</span>
+          }
+        </label>
+        <label class="form-field">
+          Teléfono (opcional)
+          <input id="at-phone" type="tel" autocomplete="off" [ngModel]="atPhone()" (ngModelChange)="atPhone.set($event)" />
+        </label>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeAddTitular()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="atSaving() || !atFullName().trim() || atEmailInvalid()" (clicked)="saveAddTitular()">
+          {{ atSaving() ? 'Guardando…' : 'Añadir titular' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+
+@if (showEditProperty()) {
+  <div class="modal-backdrop" (click)="closeEditProperty()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Editar propiedad</h4>
+        <button class="close-btn" (click)="closeEditProperty()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Tipo
+          <select [ngModel]="epType()" (ngModelChange)="epType.set($event)">
+            @for (t of epTypeOptions; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </label>
+        <label class="form-field">
+          Tipo de vía
+          <select [ngModel]="epViaType()" (ngModelChange)="epViaType.set($event)">
+            @for (v of epViaTypeOptions; track v) {
+              <option [value]="v">{{ v }}</option>
+            }
+          </select>
+        </label>
+        <label class="form-field">
+          Nombre de la vía
+          <input type="text" [ngModel]="epViaName()" (ngModelChange)="epViaName.set($event)" />
+        </label>
+        <label class="form-field">
+          Número
+          <input type="text" [ngModel]="epStreetNumber()" (ngModelChange)="epStreetNumber.set($event)" />
+        </label>
+        <label class="form-field">
+          Escalera
+          <input type="text" [ngModel]="epStaircase()" (ngModelChange)="epStaircase.set($event)" />
+        </label>
+        <label class="form-field">
+          Planta
+          <input type="text" [ngModel]="epFloor()" (ngModelChange)="epFloor.set($event)" />
+        </label>
+        <label class="form-field">
+          Puerta
+          <input type="text" [ngModel]="epDoor()" (ngModelChange)="epDoor.set($event)" />
+        </label>
+        <label class="form-field">
+          Municipio
+          <input type="text" [ngModel]="epMunicipality()" (ngModelChange)="epMunicipality.set($event)" />
+        </label>
+        <label class="form-field">
+          Provincia
+          <input type="text" [ngModel]="epProvince()" (ngModelChange)="epProvince.set($event)" />
+        </label>
+        <label class="form-field">
+          Coeficiente de participación (%)
+          <input type="number" min="0" max="100" step="0.01" placeholder="ej. 2,50"
+            [ngModel]="epParticipationQuota()" (ngModelChange)="epParticipationQuota.set($event)" />
+        </label>
+        <label class="form-field">
+          Superficie construida (m²)
+          <input type="number" min="0" step="0.01" placeholder="ej. 85,00"
+            [ngModel]="epBuiltAreaM2()" (ngModelChange)="epBuiltAreaM2.set($event)" />
+        </label>
+        <label class="form-field">
+          Cuota mensual (€)
+          <input id="ep-quota-monthly" type="number" min="0" step="0.01" placeholder="ej. 85,00"
+            [ngModel]="epQuotaMonthly()" (ngModelChange)="epQuotaMonthly.set($event)" />
+          <span class="field-hint">Sin cuota, la propiedad no entra en la generación de recibos.</span>
+        </label>
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeEditProperty()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="epSaving()" (clicked)="saveEditProperty()">
+          {{ epSaving() ? 'Guardando…' : 'Guardar cambios' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}
+
+@if (officeDialog(); as dialog) {
+  <app-office-term-dialog
+    [estateId]="estateId"
+    [propertyId]="dialog.property.id"
+    [propertyLabel]="dialog.property.ref ?? locationLabel(dialog.property)"
+    [mode]="dialog.mode"
+    [terms]="officeTerms()"
+    (saved)="onOfficeSaved()"
+    (closed)="closeOfficeDialog()"
+  ></app-office-term-dialog>
+}
+
+@if (keyContactsFor(); as property) {
+  <app-key-contacts-dialog
+    [estateId]="estateId"
+    [propertyId]="property.id"
+    [propertyLabel]="property.ref ?? locationLabel(property)"
+    (closed)="keyContactsFor.set(null)"
+  ></app-key-contacts-dialog>
+}

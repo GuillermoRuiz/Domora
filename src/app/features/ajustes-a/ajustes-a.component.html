@@ -1,0 +1,41 @@
+<app-topbar title="Ajustes" [breadcrumb]="['Panel de control', 'Ajustes']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Ajustes</h1>
+    <p class="page-intro__subtitle">Configura tu cuenta y las opciones de la plataforma.</p>
+  </div>
+</header>
+
+<div class="page-content">
+  <div class="settings-wrap">
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Cuenta</h4>
+          <p>Tu sesión actual en la plataforma</p>
+        </div>
+      </div>
+      <div class="profile-row">
+        <app-avatar [name]="auth.currentUser()?.fullName ?? ''" [size]="56" bg="var(--color-primary)"></app-avatar>
+        <div>
+          <div class="profile-row__name">{{ auth.currentUser()?.fullName }}</div>
+          <div class="profile-row__sub">Super administrador · acceso a toda la plataforma</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Configuración de plataforma</h4>
+          <p>Catálogo de planes, políticas globales y otras opciones de administración</p>
+        </div>
+      </div>
+      <div class="empty-state">
+        <app-icon name="settings" [size]="28"></app-icon>
+        <p>Todavía no hay opciones de configuración de plataforma disponibles desde aquí. El catálogo de planes se gestiona hoy directamente en el backend (<code>plans.catalog.ts</code>).</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,10 @@
+@use 'dialog-shell' as ds;
+
+.backdrop { @include ds.backdrop-shell($padded: true); }
+// Tan ancho como el detalle de tarea (720px).
+.dialog { @include ds.modal-shell($width: 720px); }
+.dialog__header { @include ds.dialog-header-chrome; }
+.close-btn { @include ds.close-btn-chrome; }
+.dialog__body { @include ds.modal-body-chrome; }
+// El panel ya es una tarjeta con su propio borde: dentro del modal no hace falta el marco.
+.dialog__body ::ng-deep .rv { border: none; padding: 0; background: none; }

@@ -1,0 +1,251 @@
+:host {
+  display: block;
+  min-width: 0;
+  // Las tablas se adaptan al ancho del panel, no al de la ventana.
+  container-type: inline-size;
+}
+.point {
+  display: grid;
+  gap: 12px;
+}
+h2,
+p,
+ul {
+  margin: 0;
+}
+ul {
+  padding: 0;
+  list-style: none;
+}
+.muted {
+  color: var(--color-muted);
+}
+.muted--small {
+  display: block;
+  font-size: 12px;
+  color: var(--color-light);
+}
+.issued {
+  white-space: nowrap;
+  &__by {
+    display: block;
+  }
+  &__at {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--color-light);
+  }
+}
+.actions-col {
+  text-align: right;
+  white-space: nowrap;
+}
+.note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+// ── Cabecera ───────────────────────────────────────────────────────────────
+.point__head {
+  display: grid;
+  gap: 12px;
+}
+.back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover {
+    color: var(--color-accent-hover);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+.point__title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  h2 {
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    overflow-wrap: anywhere;
+  }
+  p {
+    margin-top: 4px;
+    color: var(--color-muted);
+    font-size: 14px;
+  }
+}
+.point__number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-weight: 700;
+}
+
+// ── Resultado ──────────────────────────────────────────────────────────────
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.tally {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    font-size: 14px;
+  }
+  &__value {
+    font-weight: 700;
+    &--green {
+      color: var(--meeting-green, #3FA372);
+    }
+    &--red {
+      color: var(--color-error);
+    }
+  }
+  &__bar {
+    grid-column: 1 / -1;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-border-light);
+    overflow: hidden;
+  }
+  &__fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-muted);
+    &--green {
+      background: var(--meeting-green, #3FA372);
+    }
+    &--red {
+      background: var(--color-error);
+    }
+  }
+}
+
+// ── Tabla de votos ─────────────────────────────────────────────────────────
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  th {
+    padding: 10px 8px;
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  td {
+    padding: 8px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  tbody tr:hover {
+    background: var(--color-surface-hover);
+  }
+}
+.empty {
+  padding: 18px 8px;
+  color: var(--color-muted);
+  text-align: center;
+}
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+  &__avatar {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-blue) 22%, var(--color-surface));
+    font-size: 11px;
+    font-weight: 700;
+  }
+}
+
+@container (max-width: 640px) {
+  // La tabla se convierte en una tarjeta por propiedad
+  .table-scroll {
+    border: 0;
+  }
+  .table {
+    thead {
+      display: none;
+    }
+    tbody,
+    tr,
+    td {
+      display: block;
+    }
+    tr {
+      margin-bottom: 10px;
+      padding: 6px 0;
+      border: 1px solid var(--color-border-light);
+      border-radius: var(--radius-md);
+    }
+    td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 14px;
+      border: 0;
+      text-align: right;
+      &::before {
+        content: attr(data-label);
+        color: var(--color-muted);
+        font-size: 13px;
+        text-align: left;
+      }
+    }
+  }
+}

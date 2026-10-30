@@ -1,0 +1,48 @@
+<app-section-card title="Rendimiento por comunidad" actionLabel="Ver todas" (action)="viewAll.emit()" [padded]="false">
+  @if (error() && !data()) {
+    <p class="performance__message performance__message--error" role="alert">
+      No se pudo cargar el rendimiento.
+      <button type="button" class="performance__retry" (click)="retry()()">Reintentar</button>
+    </p>
+  } @else if (!data()) {
+    <p class="performance__message" role="status">Cargando rendimiento…</p>
+  } @else if (rows().length === 0) {
+    <p class="performance__message">Todavía no tienes comunidades.</p>
+  } @else {
+    <div class="performance__scroll" tabindex="0" role="region" aria-label="Rendimiento por comunidad">
+      <table class="performance" [attr.aria-busy]="loading()">
+        <thead>
+          <tr>
+            <th scope="col" class="performance__rank">#</th>
+            <th scope="col">Comunidad</th>
+            <th scope="col" class="performance__num">Facturado</th>
+            <th scope="col" class="performance__num">Incidencias</th>
+            <th scope="col">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (view of rows(); track view.row.estateId + (view.extra ? ':extra' : '')) {
+            <tr
+              class="performance__row"
+              [class.performance__row--selected]="view.selected"
+              [class.performance__row--extra]="view.extra"
+              [attr.data-estate]="view.row.estateId"
+              [attr.aria-current]="view.selected ? 'true' : null"
+            >
+              <td class="performance__rank">{{ view.row.rank }}</td>
+              <td>
+                <button type="button" class="performance__name" (click)="pick.emit(view.row)">
+                  <span class="performance__dot" aria-hidden="true" [style.background]="view.row.color ?? 'var(--color-accent)'"></span>
+                  {{ view.row.name }}
+                </button>
+              </td>
+              <td class="performance__num">{{ view.billed }}</td>
+              <td class="performance__num">{{ view.row.incidents }}</td>
+              <td><app-status-pill [text]="statusPill(view.row).text" [tone]="statusPill(view.row).tone"></app-status-pill></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</app-section-card>

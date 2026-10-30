@@ -1,0 +1,301 @@
+<div class="kpi-row">
+  <div class="kpi-card">
+    <span class="kpi-card__label">Total</span>
+    <span class="kpi-card__value">{{ totalCount() }}</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">En plazo</span>
+    <span class="kpi-card__value">{{ onTrackCount() }}</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">≤30 días</span>
+    <span class="kpi-card__value">{{ dueSoonCount() }}</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Vencidas</span>
+    <span class="kpi-card__value">{{ overdueCount() }}</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-card__label">Desfavorables</span>
+    <span class="kpi-card__value">{{ unfavorableCount() }}</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__header">
+    <span class="card__title">Inspecciones normativas</span>
+    <div class="card__actions">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Buscar por activo o tipo…"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+      />
+      <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
+        <option value="all">Todos los estados</option>
+        @for (s of statusOptions; track s) { <option [value]="s">{{ s }}</option> }
+      </select>
+      <app-btn *appPageAction variant="primary" size="sm" (clicked)="openNewInspection()">
+        <app-icon name="plus" [size]="13"></app-icon>
+        Nueva inspección
+      </app-btn>
+    </div>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Activo</th>
+        <th>Tipo de inspección</th>
+        <th>Fecha límite</th>
+        <th>Estado</th>
+        <th class="th-right"></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (i of filteredInspections(); track i.id) {
+        <tr class="row--clickable" (click)="openDetail(i)">
+          <td>
+            <div class="asset-name">
+              <span>{{ i.asset.name }}</span>
+              @if (i.asset.location) { <span class="td-muted"> · {{ i.asset.location }}</span> }
+            </div>
+          </td>
+          <td>
+            {{ i.inspectionType.name }}
+            @if (i.inspectionType.requiresOca) { <app-badge text="Requiere OCA" variant="warning"></app-badge> }
+          </td>
+          <td class="td-muted">
+            @if (i.nextDueDate) {
+              {{ i.nextDueDate }} · <app-badge [text]="semaforo(i).label" [variant]="semaforo(i).variant"></app-badge>
+            } @else {
+              <app-badge text="Sin fecha" variant="default"></app-badge>
+            }
+          </td>
+          <td><app-badge [text]="i.status" [variant]="statusBadgeVariant(i.status)"></app-badge></td>
+          <td class="td-right">
+            <button class="icon-btn" title="Eliminar" (click)="deleteInspection(i, $event)">
+              <app-icon name="trash" [size]="14"></app-icon>
+            </button>
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="5" class="td-muted">Todavía no hay inspecciones programadas en esta finca.</td></tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (showNewInspection()) {
+  <div class="modal-backdrop" (click)="closeNewInspection()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h4>Nueva inspección</h4>
+        <button class="close-btn" (click)="closeNewInspection()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+      <div class="modal__body">
+        <label class="form-field">
+          Activo
+          <select [ngModel]="niAssetId()" (ngModelChange)="niAssetId.set($event)" [class.field--error]="niErrors().asset">
+            <option value="" disabled>Selecciona un activo…</option>
+            @for (a of assets(); track a.id) { <option [value]="a.id">{{ a.name }} ({{ a.category }})</option> }
+            <option [value]="newAssetValue">+ Crear un activo nuevo</option>
+          </select>
+          @if (niErrors().asset) { <span class="field-error">Elige o crea un activo</span> }
+        </label>
+        @if (niAssetId() === newAssetValue) {
+          <div class="form-row">
+            <label>
+              Nombre del activo
+              <input type="text" placeholder="Ascensor principal" [ngModel]="niNewAssetName()" (ngModelChange)="niNewAssetName.set($event)" />
+            </label>
+            <label>
+              Categoría
+              <input type="text" placeholder="Ascensores" [ngModel]="niNewAssetCategory()" (ngModelChange)="niNewAssetCategory.set($event)" />
+            </label>
+          </div>
+          <label class="form-field">
+            Ubicación
+            <input type="text" placeholder="Portal 1" [ngModel]="niNewAssetLocation()" (ngModelChange)="niNewAssetLocation.set($event)" />
+          </label>
+        }
+
+        <label class="form-field">
+          Tipo de inspección
+          <select [ngModel]="niTypeId()" (ngModelChange)="niTypeId.set($event)" [class.field--error]="niErrors().type">
+            <option value="" disabled>Selecciona un tipo…</option>
+            @for (t of inspectionTypes(); track t.id) { <option [value]="t.id">{{ t.name }}</option> }
+            <option [value]="newTypeValue">+ Crear un tipo personalizado</option>
+          </select>
+          @if (niErrors().type) { <span class="field-error">Elige o crea un tipo de inspección</span> }
+        </label>
+        @if (niTypeId() === newTypeValue) {
+          <div class="form-row">
+            <label>
+              Código
+              <input type="text" placeholder="CUSTOM_01" [ngModel]="niNewTypeCode()" (ngModelChange)="niNewTypeCode.set($event)" />
+            </label>
+            <label>
+              Nombre
+              <input type="text" placeholder="Nombre del tipo" [ngModel]="niNewTypeName()" (ngModelChange)="niNewTypeName.set($event)" />
+            </label>
+          </div>
+          <label class="form-field">
+            Base legal (opcional)
+            <input type="text" placeholder="Normativa aplicable" [ngModel]="niNewTypeLegalBasis()" (ngModelChange)="niNewTypeLegalBasis.set($event)" />
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="niNewTypeRequiresOca()" (ngModelChange)="niNewTypeRequiresOca.set($event)" />
+            Requiere entidad OCA
+          </label>
+        }
+
+        <div class="form-row">
+          <label>
+            Fecha límite
+            <input type="date" [ngModel]="niNextDueDate()" (ngModelChange)="niNextDueDate.set($event)" />
+          </label>
+          <label>
+            Recordatorio (días antes)
+            <input type="number" min="1" max="365" [ngModel]="niReminderDays()" (ngModelChange)="niReminderDays.set($event)" />
+          </label>
+        </div>
+        <label class="form-field">
+          Notas
+          <textarea rows="2" [ngModel]="niNotes()" (ngModelChange)="niNotes.set($event)"></textarea>
+        </label>
+        @if (niError()) { <span class="field-error">{{ niError() }}</span> }
+      </div>
+      <div class="modal__footer">
+        <app-btn variant="outline" size="sm" (clicked)="closeNewInspection()">Cancelar</app-btn>
+        <app-btn variant="primary" size="sm" [disabled]="niSaving()" (clicked)="submitNewInspection()">
+          {{ niSaving() ? 'Guardando…' : 'Programar' }}
+        </app-btn>
+      </div>
+    </div>
+  </div>
+}
+
+@if (selectedDetail(); as d) {
+  <div class="drawer-backdrop" (click)="closeDetail()">
+    <div class="drawer" (click)="$event.stopPropagation()">
+      <div class="drawer__header">
+        <h4>{{ d.asset.name }}</h4>
+        <button class="close-btn" (click)="closeDetail()"><app-icon name="x" [size]="16"></app-icon></button>
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__label">Datos de la inspección</div>
+        <div class="drawer__field"><span>Tipo</span><span>{{ d.inspectionType.name }}</span></div>
+        @if (d.inspectionType.legalBasis) { <div class="drawer__field"><span>Base legal</span><span>{{ d.inspectionType.legalBasis }}</span></div> }
+        @if (d.inspectionType.requiresOca) { <div class="drawer__field"><span>OCA</span><span>Requerida</span></div> }
+        @if (d.asset.location) { <div class="drawer__field"><span>Ubicación</span><span>{{ d.asset.location }}</span></div> }
+        @if (d.lastDoneDate) { <div class="drawer__field"><span>Última realizada</span><span>{{ d.lastDoneDate }}</span></div> }
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__label">Editar</div>
+        <label class="form-field">
+          Estado
+          <select [ngModel]="editStatus()" (ngModelChange)="editStatus.set($event)">
+            @for (s of statusOptions; track s) { <option [value]="s">{{ s }}</option> }
+          </select>
+        </label>
+        <div class="form-row">
+          <label>
+            Fecha límite
+            <input type="date" [ngModel]="editNextDueDate()" (ngModelChange)="editNextDueDate.set($event)" />
+          </label>
+          <label>
+            Fecha de cita
+            <input type="date" [ngModel]="editAppointmentDate()" (ngModelChange)="editAppointmentDate.set($event)" />
+          </label>
+        </div>
+        <p class="hint">Al guardar con estado "Citada" y fecha de cita, se avisa por email a los inquilinos y propietarios de la finca.</p>
+        <label class="form-field">
+          Notas
+          <textarea rows="2" [ngModel]="editNotes()" (ngModelChange)="editNotes.set($event)"></textarea>
+        </label>
+        <app-btn variant="outline" size="sm" [disabled]="savingEdit()" (clicked)="saveEdit()">
+          {{ savingEdit() ? 'Guardando…' : 'Guardar cambios' }}
+        </app-btn>
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__label">Resultados</div>
+        @if (d.results.length === 0) {
+          <div class="td-muted">Sin resultados registrados todavía.</div>
+        } @else {
+          @for (r of d.results; track r.id) {
+            <div class="invoice-row">
+              <div>
+                <div class="invoice-row__concept">{{ r.date }} · {{ r.outcome }}</div>
+                @if (r.defects) { <div class="invoice-row__date">{{ r.defects }}</div> }
+                @if (r.cost != null) { <div class="invoice-row__date">{{ r.cost }} €</div> }
+              </div>
+              @if (r.certificateKey) {
+                <button class="icon-btn" title="Descargar certificado" (click)="downloadCertificate(r)">
+                  <app-icon name="download" [size]="14"></app-icon>
+                </button>
+              }
+            </div>
+          }
+        }
+        <div class="doc-upload">
+          <div class="form-row">
+            <label>
+              Fecha
+              <input type="date" [ngModel]="resultDate()" (ngModelChange)="resultDate.set($event)" />
+            </label>
+            <label>
+              Resultado
+              <select [ngModel]="resultOutcome()" (ngModelChange)="resultOutcome.set($event)">
+                @for (o of outcomeOptions; track o) { <option [value]="o">{{ o }}</option> }
+              </select>
+            </label>
+          </div>
+          <input type="text" placeholder="Defectos detectados (opcional)" [ngModel]="resultDefects()" (ngModelChange)="resultDefects.set($event)" />
+          <input type="number" placeholder="Coste (opcional)" [ngModel]="resultCost()" (ngModelChange)="resultCost.set($event)" />
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onResultFileSelected($event)" />
+          <app-btn variant="outline" size="sm" [disabled]="savingResult()" (clicked)="submitResult()">
+            {{ savingResult() ? 'Guardando…' : 'Registrar resultado' }}
+          </app-btn>
+        </div>
+      </div>
+
+      <div class="drawer__section">
+        <div class="drawer__label">Acciones correctivas</div>
+        @if (d.correctiveActions.length === 0) {
+          <div class="td-muted">Sin acciones correctivas abiertas.</div>
+        } @else {
+          @for (a of d.correctiveActions; track a.id) {
+            <div class="invoice-row">
+              <div>
+                <div class="invoice-row__concept">{{ a.title }}</div>
+                @if (a.dueDate) { <div class="invoice-row__date">Vence: {{ a.dueDate }}</div> }
+              </div>
+              <select [ngModel]="a.status" (ngModelChange)="updateCorrectiveActionStatus(a, $event)">
+                @for (s of correctiveStatusOptions; track s) { <option [value]="s">{{ s }}</option> }
+              </select>
+            </div>
+          }
+        }
+        <div class="doc-upload">
+          <input type="text" placeholder="Título de la acción" [ngModel]="caTitle()" (ngModelChange)="caTitle.set($event)" />
+          <input type="text" placeholder="Descripción (opcional)" [ngModel]="caDescription()" (ngModelChange)="caDescription.set($event)" />
+          <input type="date" [ngModel]="caDueDate()" (ngModelChange)="caDueDate.set($event)" />
+          <app-btn variant="outline" size="sm" [disabled]="savingCorrectiveAction()" (clicked)="submitCorrectiveAction()">
+            {{ savingCorrectiveAction() ? 'Guardando…' : 'Añadir acción correctiva' }}
+          </app-btn>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

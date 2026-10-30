@@ -1,0 +1,266 @@
+<app-topbar title="Ajustes" [breadcrumb]="['Configuración de tu cuenta']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Ajustes</h1>
+    <p class="page-intro__subtitle">Gestiona tu perfil personal y la configuración de tu cuenta.</p>
+  </div>
+</header>
+
+<div class="page-content">
+  <div class="settings-wrap">
+
+    <!-- Perfil -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Perfil personal</h4>
+          <p>Tus datos de contacto</p>
+        </div>
+        @if (editMode()) {
+          <div class="header-actions">
+            <app-btn variant="outline" size="sm" (clicked)="editMode.set(false)">Cancelar</app-btn>
+            <app-btn variant="primary" size="sm" (clicked)="saveProfile()">Guardar</app-btn>
+          </div>
+        } @else {
+          <app-btn variant="outline" size="sm" (clicked)="editMode.set(true)">Editar</app-btn>
+        }
+      </div>
+
+      <div class="profile-row">
+        <app-avatar [name]="nombre()" [size]="56" bg="#2563EB"></app-avatar>
+        <div>
+          <div class="profile-row__name">{{ nombre() }}</div>
+          <div class="profile-row__sub">Propietaria · 2 inmuebles vinculados</div>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <span>Nombre completo</span>
+        @if (editMode()) { <input [ngModel]="nombre()" (ngModelChange)="nombre.set($event)" /> } @else { <strong>{{ nombre() }}</strong> }
+      </div>
+      <div class="field-row">
+        <span>Email</span>
+        @if (editMode()) { <input [ngModel]="email()" (ngModelChange)="email.set($event)" /> } @else { <strong>{{ email() }}</strong> }
+      </div>
+      <div class="field-row">
+        <span>Teléfono</span>
+        @if (editMode()) { <input [ngModel]="phone()" (ngModelChange)="phone.set($event)" /> } @else { <strong>{{ phone() }}</strong> }
+      </div>
+      <div class="field-row">
+        <span>NIF/NIE</span>
+        @if (editMode()) { <input [ngModel]="nif()" (ngModelChange)="nif.set($event)" /> } @else { <strong>{{ nif() }}</strong> }
+      </div>
+      <div class="field-row">
+        <span>Dirección postal</span>
+        <strong>Carrer de Provença, 248, 2º B, Barcelona</strong>
+      </div>
+    </div>
+
+    <!-- Privacidad y notificaciones por propiedad -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Privacidad y notificaciones</h4>
+          <p>Se configuran por propiedad — puedes comportarte distinto en cada finca</p>
+        </div>
+      </div>
+
+      @if (hasMultipleProperties()) {
+        <div class="field-row">
+          <span>Propiedad</span>
+          <select [ngModel]="selectedPropertyId()" (ngModelChange)="onSelectProperty($event)">
+            @for (p of properties(); track p.id) {
+              <option [value]="p.id">{{ p.estateName }} — {{ p.label }}</option>
+            }
+          </select>
+        </div>
+      } @else if (selectedProperty(); as sp) {
+        <div class="field-row">
+          <span>Finca</span>
+          <strong>{{ sp.estateName }} — {{ sp.label }}</strong>
+        </div>
+      }
+
+      @if (settings(); as s) {
+        <h5 class="section-subtitle">Directorio de vecinos</h5>
+        <div class="sec-row">
+          <div>
+            <div class="sec-row__label">Aparecer en el directorio de la finca</div>
+            <div class="sec-row__sub">Si lo desactivas, otros vecinos no verán tu ficha</div>
+          </div>
+          <app-toggle [on]="s.visibleInDirectory" (onChange)="toggleBoolean('visibleInDirectory')"></app-toggle>
+        </div>
+        <div class="sec-row">
+          <div>
+            <div class="sec-row__label">Mostrar mi teléfono</div>
+          </div>
+          <app-toggle [on]="s.showPhoneInDirectory" (onChange)="toggleBoolean('showPhoneInDirectory')"></app-toggle>
+        </div>
+        <div class="sec-row">
+          <div>
+            <div class="sec-row__label">Mostrar mi email</div>
+          </div>
+          <app-toggle [on]="s.showEmailInDirectory" (onChange)="toggleBoolean('showEmailInDirectory')"></app-toggle>
+        </div>
+        <div class="sec-row">
+          <div>
+            <div class="sec-row__label">Aparecer en el calendario de reservas</div>
+            <div class="sec-row__sub">Tu nombre se mostrará en las reservas de zonas comunes</div>
+          </div>
+          <app-toggle [on]="s.visibleInBookings" (onChange)="toggleBoolean('visibleInBookings')"></app-toggle>
+        </div>
+        <div class="field-row">
+          <span>Quién puede escribirme directamente</span>
+          <select [ngModel]="s.allowDirectMessages" (ngModelChange)="setDirectMessagePolicy($event)">
+            @for (opt of directMessageOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field-row" [class.sec-row--last]="s.displayNamePolicy !== 'alias'">
+          <span>Cómo me ven otros usuarios</span>
+          <select [ngModel]="s.displayNamePolicy" (ngModelChange)="setDisplayNamePolicy($event)">
+            @for (opt of displayNameOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        @if (s.displayNamePolicy === 'alias') {
+          <div class="field-row sec-row--last">
+            <span>Alias a mostrar</span>
+            <input
+              type="text"
+              placeholder="Ej. Familia Pérez"
+              [ngModel]="displayAliasDraft()"
+              (ngModelChange)="displayAliasDraft.set($event)"
+              (blur)="saveDisplayAlias()"
+            />
+          </div>
+        }
+
+        <h5 class="section-subtitle">Notificaciones</h5>
+        <div class="notif-head">
+          <span>Categoría</span>
+          <span>Canal</span>
+        </div>
+        @for (cat of notifCategories; track cat.field) {
+          <div class="notif-row">
+            <div class="notif-row__label">{{ cat.label }}</div>
+            <select [ngModel]="s[cat.field]" (ngModelChange)="setNotifCategory(cat.field, $event)">
+              @for (opt of notifOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+          </div>
+        }
+      } @else if (settingsLoading()) {
+        <p>Cargando ajustes…</p>
+      } @else {
+        <p>No se han podido cargar los ajustes de esta propiedad.</p>
+      }
+    </div>
+
+    <!-- Notificaciones push -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Notificaciones push</h4>
+          <p>Recibe un aviso del sistema en este dispositivo, aunque no tengas Domora abierto</p>
+        </div>
+      </div>
+
+      @if (!pushSupported) {
+        <p>Tu navegador no soporta notificaciones push.</p>
+      } @else {
+        <div class="notif-row">
+          <div class="notif-row__label">Este dispositivo</div>
+          <app-toggle [on]="pushSubscribed()" [disabled]="pushBusy()" (onChange)="togglePush()"></app-toggle>
+        </div>
+      }
+    </div>
+
+    <!-- Método de pago -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Método de pago</h4>
+          <p>Cuenta bancaria para domiciliación de recibos</p>
+        </div>
+      </div>
+
+      <div class="payment-row">
+        <div class="payment-card">IBAN</div>
+        <div class="payment-row__info">
+          <div class="payment-row__number">ES91 2100 ···· ···· ···· 7621</div>
+          <div class="payment-row__sub">Titular: Ana Pujol Mas · Mandato SEPA: MND-0012</div>
+        </div>
+        <app-badge text="Activa" variant="secondary"></app-badge>
+      </div>
+
+      <app-btn variant="outline" size="sm" (clicked)="changeAccount()">Cambiar cuenta bancaria</app-btn>
+    </div>
+
+    <!-- Seguridad -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Seguridad</h4>
+          <p>Contraseña y acceso</p>
+        </div>
+      </div>
+
+      <div class="sec-row">
+        <div>
+          <div class="sec-row__label">Contraseña</div>
+          <div class="sec-row__sub">Última modificación: hace 3 meses</div>
+        </div>
+        <app-btn variant="outline" size="sm" (clicked)="changePassword()">Cambiar contraseña</app-btn>
+      </div>
+
+      <div class="sec-row sec-row--last" style="display: block;">
+        <app-two-factor-enrollment></app-two-factor-enrollment>
+      </div>
+    </div>
+
+    <!-- Privacidad general -->
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h4>Privacidad general</h4>
+          <p>Ajustes de cuenta no ligados a una propiedad</p>
+        </div>
+      </div>
+
+      <div class="sec-row sec-row--last">
+        <div>
+          <div class="sec-row__label">Comunicaciones comerciales</div>
+          <div class="sec-row__sub">Recibir ofertas y novedades de Domora</div>
+        </div>
+        <app-toggle [on]="commercial()" (onChange)="commercial.set(!commercial())"></app-toggle>
+      </div>
+    </div>
+
+    <!-- Zona de riesgo -->
+    <div class="card card--danger">
+      <div class="card__header">
+        <div><h4>Zona de riesgo</h4></div>
+      </div>
+      <div class="sec-row sec-row--last">
+        <div>
+          <div class="sec-row__label sec-row__label--danger">Eliminar cuenta</div>
+          <div class="sec-row__sub">Esta acción es irreversible. Se borrarán todos tus datos.</div>
+        </div>
+        <app-btn variant="danger" size="sm" (clicked)="deleteAccount()">Eliminar cuenta</app-btn>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

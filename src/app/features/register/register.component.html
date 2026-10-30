@@ -1,0 +1,60 @@
+<div class="login">
+  <form class="login__card" (ngSubmit)="submit()">
+    <h1>Domora</h1>
+    <p class="login__subtitle">Crea tu cuenta de propietario</p>
+
+    <label for="register-name">Nombre completo</label>
+    <input class="field--bare"
+      id="register-name"
+      type="text"
+      name="fullName"
+      autocomplete="name"
+      [(ngModel)]="fullName"
+      required
+    />
+
+    <label for="register-email">Email</label>
+    <input class="field--bare"
+      id="register-email"
+      type="email"
+      name="email"
+      autocomplete="email"
+      [(ngModel)]="email"
+      required
+    />
+
+    <label for="register-password">Contraseña</label>
+    <input class="field--bare"
+      id="register-password"
+      type="password"
+      name="password"
+      autocomplete="new-password"
+      [(ngModel)]="password"
+      required
+    />
+
+    <label class="login__checkbox" for="register-terms">
+      <input
+        id="register-terms"
+        type="checkbox"
+        name="termsAccepted"
+        [(ngModel)]="termsAccepted"
+        required
+      />
+      <span>
+        He leído y acepto los <a routerLink="/terminos" target="_blank">Términos y Condiciones</a>
+        y la <a routerLink="/privacidad" target="_blank">Política de Privacidad</a>.
+      </span>
+    </label>
+
+    @if (errorMessage()) {
+      <p class="login__error">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" [disabled]="loading() || !termsAccepted">
+      {{ loading() ? 'Creando cuenta…' : 'Crear cuenta' }}
+    </button>
+
+    <a routerLink="/login" class="login__demo-btn login__back-link">Ya tengo cuenta</a>
+  </form>
+</div>

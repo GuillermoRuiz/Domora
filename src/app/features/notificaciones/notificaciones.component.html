@@ -1,0 +1,98 @@
+<app-topbar title="Notificaciones" [breadcrumb]="['Bandeja']"></app-topbar>
+
+<header class="page-intro">
+  <div class="page-intro__text">
+    <h1 class="page-intro__title">Notificaciones</h1>
+    <p class="page-intro__subtitle">Consulta tus avisos y las tareas pendientes.</p>
+  </div>
+  <div class="page-intro__actions">@if (tab() === 'avisos' && unreadCount() > 0) { <app-btn variant="outline" (clicked)="markAllRead()">Marcar todas como leídas</app-btn> }</div>
+</header>
+
+<div class="page-content">
+  <div class="tabs">
+    <button class="tab" [class.tab--active]="tab() === 'avisos'" (click)="tab.set('avisos')">
+      Avisos
+      @if (unreadCount() > 0) {
+        <span class="tab__count tab__count--badge">{{ unreadCount() }}</span>
+      }
+    </button>
+    @if (isManager()) {
+      <button class="tab" [class.tab--active]="tab() === 'tareas'" (click)="tab.set('tareas')">
+        Tareas
+        @if (pendingTaskCount() > 0) {
+          <span class="tab__count tab__count--badge">{{ pendingTaskCount() }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  <!-- Avisos -->
+  @if (tab() === 'avisos') {
+    <div class="page-header">
+      <div class="filter-pills">
+        <button class="pill" [class.pill--active]="readFilter() === 'all'" (click)="readFilter.set('all')">Todas</button>
+        <button class="pill" [class.pill--active]="readFilter() === 'unread'" (click)="readFilter.set('unread')">Sin leer ({{ unreadCount() }})</button>
+      </div>
+
+    </div>
+
+    <div class="item-list">
+      @if (loading()) {
+        <div class="item-empty">Cargando…</div>
+      } @else if (filteredItems().length === 0) {
+        <div class="item-empty">
+          {{ readFilter() === 'unread' ? 'No tienes avisos sin leer' : 'No tienes avisos todavía' }}
+        </div>
+      } @else {
+        @for (n of filteredItems(); track n.id) {
+          <div class="item-row" [class.item-row--unread]="!n.read" (click)="open(n)">
+            @if (!n.read) { <span class="unread-dot"></span> }
+            <div class="item-row__icon" [class]="'category--' + n.category">
+              <app-icon [name]="categoryIcon(n.category)" [size]="16"></app-icon>
+            </div>
+            <div class="item-row__body">
+              <div class="item-row__meta">
+                <span class="item-row__label" [class]="'category--' + n.category">{{ categoryLabel(n.category) }}</span>
+              </div>
+              <div class="item-row__title" [class.item-row__title--unread]="!n.read">{{ n.title }}</div>
+              @if (n.body) {
+                <div class="item-row__desc">{{ n.body }}</div>
+              }
+            </div>
+            <div class="item-row__date">{{ dateLabel(n.createdAt) }}</div>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- Tareas -->
+  @if (tab() === 'tareas' && isManager()) {
+    <div class="item-list">
+      @if (loading()) {
+        <div class="item-empty">Cargando…</div>
+      } @else if (tasks().length === 0) {
+        <div class="item-empty">No tienes tareas pendientes — estás al día</div>
+      } @else {
+        @for (t of tasks(); track t.kind + (t.estateId ?? '')) {
+          <div class="item-row" (click)="openTask(t)">
+            <div class="item-row__body">
+              <div class="item-row__title">{{ t.title }}</div>
+              @if (t.estateName) {
+                <div class="item-row__desc">{{ t.estateName }}</div>
+              }
+            </div>
+            <span class="task-count">{{ t.count }}</span>
+          </div>
+        }
+      }
+    </div>
+  }
+</div>
+
+@if (toastMessage()) {
+  <div class="toast">
+    <app-icon name="check" [size]="14"></app-icon>
+    {{ toastMessage() }}
+  </div>
+}

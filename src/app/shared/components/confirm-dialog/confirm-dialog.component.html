@@ -1,0 +1,30 @@
+<div class="backdrop" (click)="cancel()">
+  <div
+    #dialog
+    class="dialog"
+    role="alertdialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="titleId"
+    [attr.aria-describedby]="messageId"
+    (click)="$event.stopPropagation()"
+    (keydown)="trapFocus($event)"
+  >
+    <div class="dialog__header">
+      <span class="dialog__icon" [class.dialog__icon--danger]="options.tone === 'danger'" aria-hidden="true">
+        <app-icon name="exclamation" [size]="18"></app-icon>
+      </span>
+      <h4 [id]="titleId">{{ options.title }}</h4>
+    </div>
+
+    <p class="dialog__message" [id]="messageId">{{ options.message }}</p>
+
+    <div class="dialog__footer">
+      <span data-initial-focus>
+        <app-btn variant="outline" size="sm" (clicked)="cancel()">{{ options.cancelLabel ?? 'Cancelar' }}</app-btn>
+      </span>
+      <app-btn [variant]="options.tone === 'danger' ? 'danger' : 'primary'" size="sm" (clicked)="confirm()">
+        {{ options.confirmLabel ?? 'Confirmar' }}
+      </app-btn>
+    </div>
+  </div>
+</div>
