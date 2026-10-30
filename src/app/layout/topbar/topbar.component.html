@@ -31,7 +31,7 @@
       }
     </button>
     <div class="bell-wrap">
-      <button #bell class="topbar__bell" type="button" aria-label="Notificaciones" [attr.aria-expanded]="showDropdown()" (click)="toggleDropdown()">
+      <button #bell class="topbar__bell" type="button" [attr.aria-label]="bellLabel()" [attr.aria-expanded]="showDropdown()" (click)="toggleDropdown()">
         <app-icon name="bell" [size]="18"></app-icon>
         @if (hasUnread()) {
           <span class="topbar__bell-dot"></span>
@@ -61,7 +61,16 @@
               }
             </div>
           }
-          <button class="bell-dropdown__footer" (click)="goToAlerts()">Ver todas</button>
+          @if (state.currentRole() === 'A') {
+            <button class="bell-dropdown__footer" (click)="goToAlerts()">Ver todas</button>
+          } @else {
+            <div class="bell-dropdown__footer-row">
+              <button class="bell-dropdown__footer" data-action="alerts" (click)="goToAlerts()">Ver alertas</button>
+              <button class="bell-dropdown__footer" data-action="notifications" (click)="goToNotifications()">
+                Ver avisos@if (state.notificationsCount() > 0) { ({{ state.notificationsCount() }}) }
+              </button>
+            </div>
+          }
         </div>
       }
     </div>

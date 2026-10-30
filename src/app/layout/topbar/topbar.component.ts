@@ -132,6 +132,16 @@ export class TopbarComponent {
     return TYPE_ICON[type];
   }
 
+  /** Lo que enciende el punto rojo: alertas sin leer de la lista y avisos sin leer de la bandeja. */
+  readonly unreadTotal = computed(() => this.state.notificationsCount() + this.state.alertsCount());
+  readonly bellLabel = computed(() => (this.unreadTotal() > 0 ? `Notificaciones, ${this.unreadTotal()} sin leer` : 'Notificaciones'));
+
+  /** La bandeja de avisos (notificaciones del servidor), aparte del feed de alertas. */
+  goToNotifications(): void {
+    this.closeDropdown();
+    void this.router.navigate([`/${this.state.currentRole().toLowerCase()}/notifications`]);
+  }
+
   goToAlerts(): void {
     this.closeDropdown();
     const role = this.state.currentRole();

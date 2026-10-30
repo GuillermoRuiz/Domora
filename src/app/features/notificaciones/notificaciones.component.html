@@ -5,7 +5,10 @@
     <h1 class="page-intro__title">Notificaciones</h1>
     <p class="page-intro__subtitle">Consulta tus avisos y las tareas pendientes.</p>
   </div>
-  <div class="page-intro__actions">@if (tab() === 'avisos' && unreadCount() > 0) { <app-btn variant="outline" (clicked)="markAllRead()">Marcar todas como leídas</app-btn> }</div>
+  <div class="page-intro__actions">
+    @if (alertsRoute(); as route) { <a class="inbox-link" data-link="alerts" [routerLink]="route"><app-icon name="bell" [size]="14"></app-icon>Ver alertas</a> }
+    @if (tab() === 'avisos' && unreadCount() > 0) { <app-btn variant="outline" (clicked)="markAllRead()">Marcar todas como leídas</app-btn> }
+  </div>
 </header>
 
 <div class="page-content">

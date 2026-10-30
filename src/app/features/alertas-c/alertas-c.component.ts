@@ -1,12 +1,12 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TopbarComponent } from '../../layout/topbar/topbar.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { BtnComponent } from '../../shared/components/btn/btn.component';
 import { AlertItem, AlertType } from '../../core/models';
 import { ResourceReadsService } from '../../core/resource-reads.service';
 import { OWNER_DOCUMENTS_ROUTE, OWNER_ISSUES_ROUTE } from '../../core/legacy-owner-tab-redirect';
-import { OWNER_RECEIPTS_ROUTE, ownerPropertyCommands } from '../../core/owner-routes';
+import { OWNER_NOTIFICATIONS_ROUTE, OWNER_RECEIPTS_ROUTE, ownerPropertyCommands } from '../../core/owner-routes';
 import { StateService } from '../../core/state.service';
 
 type Filter = 'all' | 'unread' | 'pago' | 'comunidad';
@@ -24,11 +24,14 @@ type Filter = 'all' | 'unread' | 'pago' | 'comunidad';
 @Component({
   selector: 'app-alertas-c',
   standalone: true,
-  imports: [TopbarComponent, IconComponent, BtnComponent],
+  imports: [TopbarComponent, IconComponent, BtnComponent, RouterLink],
   templateUrl: './alertas-c.component.html',
   styleUrl: './alertas-c.component.scss'
 })
 export class AlertasCComponent implements OnInit {
+  /** La otra bandeja: los avisos que manda el servidor (solicitudes, mensajes, juntas cerradas…). */
+  readonly notificationsRoute = OWNER_NOTIFICATIONS_ROUTE;
+
   private data = inject(ResourceReadsService);
   private state = inject(StateService);
   private router = inject(Router);

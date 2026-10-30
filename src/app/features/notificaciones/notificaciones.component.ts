@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TopbarComponent } from '../../layout/topbar/topbar.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { BtnComponent } from '../../shared/components/btn/btn.component';
@@ -54,7 +54,7 @@ const CATEGORY_LABEL: Record<NotificationCategory, string> = {
 @Component({
   selector: 'app-notificaciones',
   standalone: true,
-  imports: [TopbarComponent, IconComponent, BtnComponent],
+  imports: [TopbarComponent, IconComponent, BtnComponent, RouterLink],
   templateUrl: './notificaciones.component.html',
   styleUrl: './notificaciones.component.scss',
 })
@@ -64,6 +64,8 @@ export class NotificacionesComponent implements OnInit {
   private router = inject(Router);
 
   isManager = computed(() => this.state.currentRole() === 'B' || this.state.currentRole() === 'A');
+  /** El feed de Alertas (B y C), la otra bandeja; el rol A no lo tiene. */
+  alertsRoute = computed(() => (this.state.currentRole() === 'A' ? null : `/${this.state.currentRole().toLowerCase()}/alerts`));
 
   tab = signal<Tab>('avisos');
   readFilter = signal<ReadFilter>('all');

@@ -18,6 +18,15 @@ async function flushLoad(http: any, alerts: AlertItem[]): Promise<void> {
 }
 
 describe('AlertasCComponent', () => {
+  it('enlaza con la otra bandeja, la de avisos de la gestora', async () => {
+    const { fixture, http, el } = setupComponent(AlertasCComponent);
+    fixture.detectChanges();
+    await flushLoad(http, []);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-link="notifications"]')?.getAttribute('href')).toBe('/c/notifications');
+  });
+
   it('carga las alertas al montar y refleja el contador de no leídas', async () => {
     const { fixture, http, el } = setupComponent(AlertasCComponent);
     fixture.detectChanges();

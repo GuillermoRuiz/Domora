@@ -226,6 +226,13 @@
   text-overflow: ellipsis;
 }
 
+.bell-dropdown__footer-row {
+  display: flex;
+
+  .bell-dropdown__footer { flex: 1; }
+  .bell-dropdown__footer + .bell-dropdown__footer { border-left: 1px solid var(--color-border-light); }
+}
+
 .bell-dropdown__footer {
   border: none;
   border-top: 1px solid var(--color-border-light);

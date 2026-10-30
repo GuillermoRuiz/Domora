@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { API, makeUser, setupComponent, settle } from '../../core/testing/component-harness';
 import { NotificacionesComponent } from './notificaciones.component';
 import type { NotificationItem, TaskItem } from '../../core/models';
@@ -63,6 +64,18 @@ describe('NotificacionesComponent', () => {
 
       expect(h.el.querySelector('.item-row__label')?.textContent?.trim()).toBe('Documento');
       expect(h.component.categoryIcon('document')).toBe('file-text');
+    });
+
+    it('enlaza con el feed de Alertas del rol (B y C); el rol A no lo tiene', async () => {
+      for (const [role, href] of [['C', '/c/alerts'], ['B', '/b/alerts'], ['A', null]] as const) {
+        TestBed.resetTestingModule();
+        const h = setupComponent(NotificacionesComponent, { user: makeUser({ role }) });
+        h.fixture.detectChanges();
+        h.http.match(() => true).forEach((r) => r.flush([]));
+        await settle();
+        h.fixture.detectChanges();
+        expect(h.el.querySelector('[data-link="alerts"]')?.getAttribute('href') ?? null).toBe(href);
+      }
     });
 
     it('la pestaña "Tareas" no aparece para rol C', async () => {
