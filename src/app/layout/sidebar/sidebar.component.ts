@@ -88,12 +88,13 @@ export class SidebarComponent {
       { section: 'OPERACIONES', items: [
         { label: 'Incidencias', route: OWNER_ISSUES_ROUTE, icon: 'wrench' },
         { label: 'Documentación', route: OWNER_DOCUMENTS_ROUTE, icon: 'file-text' },
-        { label: 'Mensajes', route: OWNER_MESSAGES_ROUTE, icon: 'send' },
+        // Mismo contador de no leídos que el botón de mensajes de la barra superior.
+        { label: 'Mensajes', route: OWNER_MESSAGES_ROUTE, icon: 'send', badge: this.state.unreadMessagesCount() },
         { label: 'Juntas', route: OWNER_MEETINGS_ROUTE, icon: 'calendar' },
         { label: 'Recibos y pagos', route: OWNER_RECEIPTS_ROUTE, icon: 'card' },
       ]},
       { section: 'SISTEMA', items: [
-        { label: 'Mi perfil', route: OWNER_SETTINGS_ROUTE, icon: 'settings' },
+        { label: 'Mi perfil', route: OWNER_SETTINGS_ROUTE, icon: 'user' },
       ]},
     ];
   }

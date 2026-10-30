@@ -54,6 +54,8 @@ export class AccountMenuComponent {
 
   /** Pasos de puesta en marcha del despacho por completar (solo el rol B tiene despacho propio). */
   readonly pending = computed(() => (this.state.currentRole() === 'B' ? this.officeSetup.ownPending() : 0));
+  /** El propietario solo tiene «Mi perfil»: «Configuración» llevaría a la misma pantalla. */
+  readonly showSettings = computed(() => this.state.currentRole() !== 'C');
   readonly triggerLabel = computed(() => (this.pending() > 0 ? 'Abrir menú de cuenta, puesta en marcha pendiente' : 'Abrir menú de cuenta'));
 
   toggle(): void {

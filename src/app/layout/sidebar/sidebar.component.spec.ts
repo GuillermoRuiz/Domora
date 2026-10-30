@@ -62,6 +62,21 @@ describe('SidebarComponent', () => {
     http.expectNone(() => true);
   });
 
+  it('rol C: «Mensajes» lleva el contador de no leídos y «Mi perfil» el icono de perfil, como el menú de cuenta', () => {
+    const { fixture, el } = setupComponent(SidebarComponent, { user: makeUser({ role: 'C' }) });
+    const state = TestBed.inject(StateService);
+    fixture.detectChanges();
+    const item = (label: string) =>
+      Array.from(el.querySelectorAll<HTMLAnchorElement>('a.sidebar__item')).find(a => a.textContent?.includes(label))!;
+    expect(item('Mensajes').querySelector('app-badge')).toBeNull();
+
+    state.unreadMessagesCount.set(2);
+    fixture.detectChanges();
+    expect(item('Mensajes').querySelector('app-badge')?.textContent?.trim()).toBe('2');
+    const profile = fixture.componentInstance.navSections.flatMap(section => section.items).find(i => i.label === 'Mi perfil');
+    expect(profile?.icon).toBe('user');
+  });
+
   it('rol C abre Juntas y Recibos y pagos en sus módulos, con o sin propiedad elegida', () => {
     const { fixture, el } = setupComponent(SidebarComponent, { user: makeUser({ role: 'C' }) });
     const scope = TestBed.inject(OwnerScopeService);

@@ -65,7 +65,17 @@ describe('AccountMenuComponent', () => {
     );
   });
 
-  for (const role of ['A', 'B', 'C'] as const) {
+  it('rol C: solo «Mi perfil», sin una «Configuración» que lleve a la misma pantalla', () => {
+    const { fixture, el } = setup('C');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    el.querySelector('button')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('.account-menu__settings')).toBeNull();
+    (el.querySelector('.account-menu__profile') as HTMLButtonElement).click();
+    expect(navigate).toHaveBeenLastCalledWith(['/c/settings']);
+  });
+
+  for (const role of ['A', 'B'] as const) {
     it(`rol ${role}: perfil y configuración conservan la ruta de ajustes`, () => {
       const { fixture, el } = setup(role);
       const navigate = vi
