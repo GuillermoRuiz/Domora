@@ -38,6 +38,7 @@ import {
   generateMeetingPassword,
 } from './meeting-room.util';
 import { resolveFrontendBaseUrl } from '../common/frontend-url';
+import { ownerMeetingsLink } from '../common/owner-links';
 
 /** Fichero multipart tal y como lo entrega multer (sin @types/multer) — mismo tipo que en files.controller.ts. */
 interface UploadedMulterFile {
@@ -721,7 +722,7 @@ export class MeetingsService {
       userIds: [...managerIds, ...residentIds],
       category: 'meeting',
       title: cancelled ? `Junta cancelada: ${meeting.title}` : `Junta celebrada: ${meeting.title}`,
-      link: { B: `/b/estates/${meeting.estateId}?tab=juntas`, C: '/c/alerts' },
+      link: { B: `/b/estates/${meeting.estateId}?tab=juntas`, C: ownerMeetingsLink(meeting.estateId, meeting.id) },
       estateId: meeting.estateId,
     });
   }

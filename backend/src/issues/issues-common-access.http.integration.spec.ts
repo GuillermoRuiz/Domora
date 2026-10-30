@@ -488,11 +488,17 @@ describe('common · quién la ve (miembro ACTIVO, en la base de datos)', () => {
     });
     try {
       expect(
-        (await http().get(`${API}/issues/${common}`).set(auth(tokens.platform)).set('X-Support-Session', session.id))
-          .status,
+        (
+          await http()
+            .get(`${API}/issues/${common}`)
+            .set(auth(tokens.platform))
+            .set('X-Support-Session', session.id)
+        ).status,
       ).toBe(200);
     } finally {
-      await prisma.staffAuditLog.deleteMany({ where: { staffUserId: platformId } });
+      await prisma.staffAuditLog.deleteMany({
+        where: { staffUserId: platformId },
+      });
       await prisma.supportSession.delete({ where: { id: session.id } });
     }
     const foreign = await http()

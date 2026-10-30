@@ -32,6 +32,7 @@ import type {
 import { MEMBERSHIP_SETTINGS_DEFAULTS } from '../property-memberships/membership-settings.defaults';
 import { ACTIVE_ISSUE_STATUSES } from '../issues/issue-status.constants';
 import { type PageParams, resolvePage, toPage } from '../common/pagination';
+import { ownerEstateSectionLink, ownerPropertyLink } from '../common/owner-links';
 
 /** Fichero multipart tal y como lo entrega multer (sin @types/multer). */
 interface UploadedMulterFile {
@@ -756,7 +757,9 @@ export class ResourcesService {
       category: 'communication',
       title: comm.isLegalNotice ? `Notificación fehaciente: ${comm.title}` : `Aviso urgente: ${comm.title}`,
       body: comm.body.slice(0, 200),
-      link: '/c/properties?tab=communications',
+      link: comm.targetPropertyId
+        ? ownerPropertyLink(comm.targetPropertyId, 'communications')
+        : ownerEstateSectionLink(comm.estateId, 'communications'),
       estateId: comm.estateId,
       propertyId: comm.targetPropertyId,
     });

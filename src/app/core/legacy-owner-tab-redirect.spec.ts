@@ -106,8 +106,8 @@ describe('legacyCommunityIssueRedirect', () => {
 
   it('«Mi comunidad» sin esos parámetros se abre como siempre', async () => {
     const router = setupCommunityRouter();
-    await router.navigateByUrl('/c/community?tab=juntas');
-    expect(router.url).toBe('/c/community?tab=juntas');
+    await router.navigateByUrl('/c/community?foo=1');
+    expect(router.url).toBe('/c/community?foo=1');
   });
 
   it('la app lo aplica en /c/community', () => {

@@ -55,7 +55,7 @@ describe('AmenitiesService.cancelBooking — avisos', () => {
       expect.objectContaining({
         userIds: ['resident-1'],
         category: 'booking',
-        link: '/c/properties/prop-1',
+        link: '/c/properties/prop-1?tab=reservas',
       }),
     );
   });

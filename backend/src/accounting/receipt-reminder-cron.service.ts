@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ownerReceiptsLink } from '../common/owner-links';
 
 const REMINDER_BEFORE_DUE_DAYS = 3; // aviso único, unos días antes de que venza
 const REMINDER_REPEAT_DAYS = 7; // mientras siga impago, un recordatorio semanal (no diario)
@@ -84,7 +85,7 @@ export class ReceiptReminderCronService {
           daysBetween(today, receipt.dueDate!) >= 0
             ? `Tu recibo ${receipt.no} vence en ${REMINDER_BEFORE_DUE_DAYS} días`
             : `Tu recibo ${receipt.no} sigue pendiente de pago`,
-        link: `/c/properties/${receipt.propertyId}`,
+        link: ownerReceiptsLink(receipt.propertyId, receipt.id),
         estateId: receipt.estateId,
         propertyId: receipt.propertyId,
       });

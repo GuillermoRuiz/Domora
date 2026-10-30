@@ -19,6 +19,7 @@ import type { GenerateReceiptsDto } from './dto/generate-receipts.dto';
 import type { UpdateReceiptDto } from './dto/update-receipt.dto';
 import type { CreateManualReceiptDto } from './dto/create-manual-receipt.dto';
 import { USER_SECRETS_OMIT } from '../common/secret-omit';
+import { ownerReceiptsLink } from '../common/owner-links';
 
 /** Fichero multipart tal y como lo entrega multer (sin @types/multer). */
 interface UploadedMulterFile {
@@ -319,7 +320,7 @@ export class AccountingService {
           userIds: [ownerUserId],
           category: 'receipt',
           title: `Nuevo recibo disponible: ${label}`,
-          link: `/c/properties/${propertyId}`,
+          link: ownerReceiptsLink(propertyId),
           estateId,
           propertyId,
         }),

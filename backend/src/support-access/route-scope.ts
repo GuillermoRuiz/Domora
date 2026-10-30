@@ -79,7 +79,11 @@ const READ_ONLY_POSTS = new Set([
  * narrows them (odd/tasks/role-a-panel.md S1). Inside a support session the
  * filter is required: without it the answer would cross despachos.
  */
-const DESPACHO_LIST_READS = new Set(['estates', 'estates/overview', 'estates/overview/export.xlsx']);
+const DESPACHO_LIST_READS = new Set([
+  'estates',
+  'estates/overview',
+  'estates/overview/export.xlsx',
+]);
 
 export function isDespachoListRead(template: string): boolean {
   return DESPACHO_LIST_READS.has(template);

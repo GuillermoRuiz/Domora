@@ -8,6 +8,7 @@ import { EstateAccessService } from '../estate-access/estate-access.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { USER_SECRETS_OMIT } from '../common/secret-omit';
+import { OWNER_HOME_LINK, ownerPropertyLink } from '../common/owner-links';
 
 @Injectable()
 export class AdhesionRequestsService {
@@ -243,8 +244,8 @@ export class AdhesionRequestsService {
       body: approved
         ? `Ya formas parte de la comunidad${where}.`
         : `La gestora ha rechazado tu solicitud${where}.`,
-      // `/c/requests` now leads to the owner issues page; a rejected adhesion goes back to «Mi comunidad».
-      link: approved ? '/c/properties' : '/c/community',
+      // An approved adhesion opens the property (when the request names one); otherwise «Mi comunidad».
+      link: approved && request.propertyId ? ownerPropertyLink(request.propertyId) : OWNER_HOME_LINK,
       estateId: request.estateId,
       propertyId: request.propertyId,
     });

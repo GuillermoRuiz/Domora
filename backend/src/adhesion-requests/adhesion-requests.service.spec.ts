@@ -61,7 +61,7 @@ describe('AdhesionRequestsService — avisos al solicitante', () => {
     );
   });
 
-  it('aprobar avisa al solicitante con el nombre de la comunidad y enlace a sus propiedades', async () => {
+  it('aprobar avisa al solicitante con el nombre de la comunidad y enlace a su propiedad', async () => {
     await service.approve('r1', MANAGER);
 
     expect(notifications.notify).toHaveBeenCalledWith({
@@ -69,7 +69,7 @@ describe('AdhesionRequestsService — avisos al solicitante', () => {
       category: 'adhesion',
       title: 'Solicitud de adhesión aprobada',
       body: 'Ya formas parte de la comunidad de Edificio Sol.',
-      link: '/c/properties',
+      link: '/c/properties/p1',
       estateId: 'e1',
       propertyId: 'p1',
     });
