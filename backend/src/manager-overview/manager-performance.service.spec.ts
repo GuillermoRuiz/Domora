@@ -25,7 +25,7 @@ const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
 let admin: AdministratorFixture;
 let other: AdministratorFixture;
-let estates: string[] = [];
+const estates: string[] = [];
 let foreignEstate: string;
 let user: AuthenticatedUser;
 

@@ -112,8 +112,7 @@ export class FiscalYearsService {
       },
     });
     return {
-      reserveMode:
-        settings?.defaultReserveMode ?? ('receipt_share' as ReserveMode),
+      reserveMode: settings?.defaultReserveMode ?? 'receipt_share',
       reserveSharePct: settings?.defaultReserveSharePct ?? null,
       reserveAllocationRule: settings?.defaultReserveAllocationRule ?? null,
       reserveAllocationValue: settings?.defaultReserveAllocationValue ?? null,

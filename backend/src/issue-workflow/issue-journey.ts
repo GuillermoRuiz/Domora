@@ -162,7 +162,6 @@ export interface JourneyOverride {
 
 const VISIT_GRACE_MS = 2 * 60 * 60_000;
 const short = (id: string) => id.slice(0, 8);
-const iso = (d: Date | null | undefined) => (d ? d.toISOString() : undefined);
 
 /** «de Mapfre» / «del proveedor»: el nombre que se dio o, si no, el de la parte. */
 const PARTY_OF = {

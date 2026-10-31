@@ -2293,6 +2293,7 @@ export class IssueWorkflowService {
    * proceso fallido) y no tienen su tarea. Solo DETECTA y abre lo que falta:
    * no inventa trabajo. Se ejecuta desde el barrido periódico del worker.
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- lo llama el barrido periódico, que espera una promesa
   async reconcile(_now: Date = new Date()): Promise<number> {
     return 0;
   }

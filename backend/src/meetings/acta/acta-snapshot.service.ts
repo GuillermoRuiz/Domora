@@ -165,6 +165,7 @@ export function buildActaSnapshot(
     );
     const question = item?.voteTemplate?.questions?.[session.questionIndex];
     if (!item || !question || question.type === 'text') continue;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- tsc lo necesita: sin ella el resumen es `{}`
     const summary = (session.resultSummary ??
       null) as ResultSummaryShape | null;
     const labels = question.options ?? [];

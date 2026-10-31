@@ -41,7 +41,7 @@ let estate: string;
 let otherEstate: string;
 let manager: AuthenticatedUser;
 let userId: string;
-let property: string;
+let _property: string;
 const ids: Record<string, string> = {};
 
 const create = async (
@@ -150,7 +150,7 @@ beforeAll(async () => {
   userId = await createOwnerUser(prisma, {
     fullName: 'Quien asigna (panel proveedores)',
   });
-  property = await createProperty(prisma, estate, { ref: 'P1' });
+  _property = await createProperty(prisma, estate, { ref: 'P1' });
 
   await create('vigente', {
     contactName: 'Marta Ruiz',

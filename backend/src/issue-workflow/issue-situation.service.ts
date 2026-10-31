@@ -97,6 +97,7 @@ export class IssueSituationService {
   ) {}
 
   /** Márgenes de la proyección manual. */
+  // eslint-disable-next-line @typescript-eslint/require-await -- contrato asíncrono (una fuente de márgenes futura puede leerlos)
   private async options(_now: Date): Promise<SituationOptions> {
     return {
       stalledGraceMs: this.flow.stalledGraceMs,
@@ -123,7 +124,7 @@ export class IssueSituationService {
   /** Lo que la proyección necesita, en cinco consultas para cualquier número de incidencias. */
   async loadFacts(
     issueIds: string[],
-    now: Date = new Date(),
+    _now: Date = new Date(),
   ): Promise<Map<string, IssueFacts>> {
     const facts = new Map<string, IssueFacts>();
     if (issueIds.length === 0) return facts;
@@ -323,6 +324,7 @@ export class IssueSituationService {
    * opciones son exactamente los usados al clasificar, por lo que no hay una
    * segunda lectura ni una ventana temporal en la que cambie la situación.
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- contrato asíncrono que comparten las vistas
   async viewsFromClassified(
     issues: ClassifiedIssue[],
     _context?: { administratorId?: string },

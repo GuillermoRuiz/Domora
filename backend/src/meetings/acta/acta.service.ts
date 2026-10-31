@@ -240,7 +240,7 @@ export class ActaService {
       orderBy: { versionNumber: 'desc' },
       include: { savedBy: { select: { fullName: true } } },
     });
-    return row as unknown as FullVersionRow | null;
+    return row;
   }
 
   // ── lectura ──────────────────────────────────────────────────────────────
@@ -290,8 +290,8 @@ export class ActaService {
     return rows.map((row) => ({
       id: row.id,
       versionNumber: row.versionNumber,
-      status: row.status as VersionStatus,
-      statusLabel: STATUS_LABEL[row.status as VersionStatus],
+      status: row.status,
+      statusLabel: STATUS_LABEL[row.status],
       createdAt: row.createdAt.toISOString(),
       savedByName: row.savedBy?.fullName ?? null,
     }));
@@ -545,7 +545,7 @@ export class ActaService {
               id: item.id,
               title: item.title,
               comments: item.comments ?? '',
-            })) as unknown as Prisma.InputJsonValue,
+            })),
             savedByUserId: user.id,
             status: 'draft',
             generatedAt: new Date(),
@@ -567,7 +567,7 @@ export class ActaService {
             estateId: meeting.estateId,
           },
         });
-        return created as unknown as FullVersionRow;
+        return created;
       });
     } catch (error) {
       if (
@@ -845,7 +845,7 @@ export class ActaService {
     });
     if (switchesBack && meeting.actaUploadS3Key)
       await this.storage.delete(meeting.actaUploadS3Key).catch(() => undefined);
-    return this.toView(updated as unknown as FullVersionRow, meeting);
+    return this.toView(updated, meeting);
   }
 
   // ── acta subida ──────────────────────────────────────────────────────────

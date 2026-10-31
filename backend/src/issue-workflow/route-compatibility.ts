@@ -1,6 +1,5 @@
 import type { WaitParty } from '../prisma/client';
 import type { ResolutionRoute } from './resolution-routes';
-import type { IssueTaskKind } from './task-kinds/issue-task-definitions';
 
 /**
  * QUÉ TRABAJO QUEDA INVALIDADO cuando una persona cambia la vía de gestión. La vía (`Issue.resolutionRoute`) es

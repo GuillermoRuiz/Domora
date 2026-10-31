@@ -30,7 +30,7 @@ export function ownerKey(
   owner: { taxIdCountry: string | null; taxId: string | null },
   fallback: string,
 ): string {
-  const taxId = owner.taxId?.replace(/[\s.\-]/g, '').toUpperCase();
+  const taxId = owner.taxId?.replace(/[\s.-]/g, '').toUpperCase();
   return taxId && owner.taxIdCountry
     ? `tax:${owner.taxIdCountry}:${taxId}`
     : fallback;

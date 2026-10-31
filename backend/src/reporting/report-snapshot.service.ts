@@ -94,7 +94,7 @@ export class ReportSnapshotService {
     });
     const expiresAt = new Date(generatedAt.getTime() + RETENTION_MS);
     const id = randomUUID();
-    const stored: SnapshotResult = JSON.parse(
+    const stored = JSON.parse(
       JSON.stringify({
         ...result,
         metadata: {
@@ -103,7 +103,7 @@ export class ReportSnapshotService {
           snapshotExpiresAt: expiresAt.toISOString(),
         },
       }),
-    );
+    ) as SnapshotResult;
     await this.prisma.reportSnapshot.create({
       data: {
         id,

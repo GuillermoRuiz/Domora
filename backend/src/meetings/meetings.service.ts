@@ -281,6 +281,7 @@ export class MeetingsService {
     const titles = (agenda: unknown) =>
       JSON.stringify(
         (Array.isArray(agenda) ? agenda : []).map((item) =>
+          // eslint-disable-next-line @typescript-eslint/no-base-to-string -- solo compara títulos (texto en la práctica)
           String((item as { title?: unknown })?.title ?? '').trim(),
         ),
       );
@@ -745,7 +746,7 @@ export class MeetingsService {
             versionNumber: (latest?.versionNumber ?? 0) + 1,
             generalComments,
             nextSteps,
-            pointComments: pointComments as unknown as Prisma.InputJsonValue,
+            pointComments: pointComments,
             savedByUserId: user.id,
           },
           include: { savedBy: { select: { fullName: true } } },
@@ -1500,6 +1501,7 @@ export class MeetingsService {
         s3Key = meeting.actaUploadS3Key as string;
       } else {
         const content = await this.actaDocx.generateFromModel(
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- tsc lo necesita: documentModel es `unknown`
           canonical.documentModel as unknown as ActaDocumentModel,
         );
         const safeName = meeting.title.trim().replace(/\s+/g, '-') || 'junta';

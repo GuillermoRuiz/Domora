@@ -41,7 +41,7 @@ import {
 } from './dto/register-interaction.dto';
 
 /** Identificador admitido de una integración anterior (cabecera `X-Domora-Legacy-Client`). */
-const LEGACY_CLIENT_PATTERN = /^[A-Za-z0-9._\/-]{1,60}$/;
+const LEGACY_CLIENT_PATTERN = /^[A-Za-z0-9._/-]{1,60}$/;
 
 export interface InteractionEffectResult {
   type: InteractionEffectType;

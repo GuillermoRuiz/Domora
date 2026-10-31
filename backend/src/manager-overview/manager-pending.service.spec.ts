@@ -137,7 +137,7 @@ let other: AdministratorFixture;
 let estate: string;
 let foreignEstate: string;
 let user: AuthenticatedUser;
-let seq = 0;
+let _seq = 0;
 
 const [p1, p2, p3, p4] = [0, 1, 2, 3].map(() => '');
 const props: string[] = [p1, p2, p3, p4];
@@ -292,7 +292,7 @@ beforeAll(async () => {
     status: 'pending' | 'approved',
     estateId = estate,
   ) => {
-    seq += 1;
+    _seq += 1;
     return prisma.adhesionRequest.create({
       data: {
         estateId,

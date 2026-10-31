@@ -40,7 +40,7 @@ interface Case {
 }
 const supplier = id();
 const wait = id();
-const canonical = id();
+const _canonical = id();
 
 const CASES: Case[] = [
   {

@@ -39,8 +39,8 @@ export function validateOwnerRow(
     rowNumber,
     ok: true,
     data: {
-      fullName: fullName!,
-      propertyRef: propertyRef!,
+      fullName: fullName,
+      propertyRef: propertyRef,
       taxId: mappedRow['taxId']?.trim() || undefined,
       email: email || undefined,
       phone: mappedRow['phone']?.trim() || undefined,

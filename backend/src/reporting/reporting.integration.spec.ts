@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import ExcelJS from 'exceljs';
-import { Prisma } from '../prisma/client';
 import { AppModule } from '../app.module';
 import { ReportingService } from './reporting.service';
 import { REPORT_CATALOG } from './definitions/report-catalog';

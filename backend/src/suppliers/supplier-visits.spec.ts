@@ -94,8 +94,8 @@ beforeAll(async () => {
       data: { estateId: otherEstate, name: 'De otra finca', category: 'PCI' },
     })
   ).id;
-  const property = await createProperty(prisma, estate, { ref: 'V1' });
-  const foreignProperty = await createProperty(prisma, otherEstate, {
+  await createProperty(prisma, estate, { ref: 'V1' });
+  await createProperty(prisma, otherEstate, {
     ref: 'V2',
   });
   const issueBase = {

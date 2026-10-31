@@ -19,7 +19,6 @@ import type {
   Meeting,
   MeetingAttendance,
   MeetingVoteDelegation,
-  Property,
   VoteSession,
 } from '../prisma/client';
 import type { QuorumResult } from './meeting-quorum.service';

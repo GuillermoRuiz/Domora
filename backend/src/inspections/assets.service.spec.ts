@@ -39,7 +39,7 @@ let otherEstate: string;
 let user: AuthenticatedUser;
 let typeId: string;
 let supplierId: string;
-let propertyId: string;
+let _propertyId: string;
 let issueCounter = 0;
 
 const asset = (name: string, extra: Record<string, unknown> = {}) =>
@@ -117,7 +117,7 @@ beforeAll(async () => {
     estate: { name: 'Otra finca — instalaciones' },
   });
   user = roleB(admin, [estate]);
-  propertyId = await createProperty(prisma, estate, { ref: 'I1' });
+  _propertyId = await createProperty(prisma, estate, { ref: 'I1' });
   typeId = (
     await prisma.inspectionType.create({
       data: {

@@ -70,11 +70,6 @@ const euros = (cents: number): string =>
     maximumFractionDigits: 2,
   });
 
-function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-
 export const confirmVisitOutcome: TaskKindDefinition<
   ConfirmVisitOutcomePayload,
   ConfirmVisitOutcomeResolution,

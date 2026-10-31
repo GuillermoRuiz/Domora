@@ -236,6 +236,7 @@ export class MeetingVoteDelegationsService {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await -- se mantiene asíncrona: quien la llama la espera y recibe el rechazo como promesa
   private async assertCanRevoke(
     delegation: { delegatorUserId: string },
     user: AuthenticatedUser,

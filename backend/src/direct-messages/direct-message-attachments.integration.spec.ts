@@ -82,6 +82,7 @@ afterAll(async () => {
           .basename(storageRoot)
           .startsWith('domora-message-attachments-test-')
       )
+        // eslint-disable-next-line no-unsafe-finally -- a propósito: nunca borrar fuera del directorio temporal del test
         throw new Error('Unsafe attachment test cleanup path');
       await fs.rm(storageRoot, { recursive: true, force: true });
     }

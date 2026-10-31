@@ -117,7 +117,7 @@ async function createTenant(name: string): Promise<Tenant> {
       administratorId: admin.administratorId,
     },
   });
-  const propertyId = await createProperty(prisma, estateId);
+  await createProperty(prisma, estateId);
   const supplierId = await createSupplier(
     prisma,
     estateId,

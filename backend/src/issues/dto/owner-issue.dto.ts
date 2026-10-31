@@ -39,7 +39,7 @@ export class ListOwnerIssuesQuery {
   @IsOptional() @IsUUID() estateId?: string;
   @IsOptional() @IsString() @MaxLength(100) q?: string;
   @IsOptional()
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.split(',').filter(Boolean) : value,
   )
   @IsArray()

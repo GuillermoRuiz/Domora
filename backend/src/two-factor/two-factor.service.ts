@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { generateSecret, generate, verify, generateURI } from 'otplib';
+import { generateSecret, verify, generateURI } from 'otplib';
 import * as QRCode from 'qrcode';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';

@@ -603,6 +603,7 @@ export class VoteSessionsService {
 
     const updated = await this.prisma.voteSession.update({
       where: { id: sessionId },
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- tsc lo necesita: VoteTallyResult no es InputJsonValue
       data: { resultSummary: result as unknown as object },
     });
 

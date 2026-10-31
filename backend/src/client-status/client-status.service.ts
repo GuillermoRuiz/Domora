@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { AdminStatus, SubscriptionStatus } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompletenessService } from '../completeness/completeness.service';
 import {
@@ -113,14 +112,14 @@ export class ClientStatusService {
       const officeInvoices = invoicesByOffice.get(row.id) ?? [];
       result.set(row.id, {
         clientStatus: clientStatus({
-          status: row.status as AdminStatus,
+          status: row.status,
           deletedAt: row.deletedAt,
-          stripeStatus: row.stripeStatus as SubscriptionStatus | null,
+          stripeStatus: row.stripeStatus,
           onboardingComplete: onboarding.get(row.id) ?? false,
         }),
         paymentStatus: paymentStatus({
-          status: row.status as AdminStatus,
-          stripeStatus: row.stripeStatus as SubscriptionStatus | null,
+          status: row.status,
+          stripeStatus: row.stripeStatus,
           invoices: officeInvoices,
         }),
         pendingInvoices: pendingInvoicesSummary(officeInvoices),

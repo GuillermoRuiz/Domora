@@ -65,6 +65,7 @@ export class DirectMessageAttachmentsService {
         const name =
           file.originalname
             .replace(/^.*[\\/]/, '')
+            // eslint-disable-next-line no-control-regex -- quita a propósito los caracteres de control del nombre
             .replace(/[\u0000-\u001f\u007f]/g, '')
             .slice(0, 255) || 'archivo';
         const s3Key = await this.storage.put(

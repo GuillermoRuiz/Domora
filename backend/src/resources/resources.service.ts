@@ -1274,9 +1274,6 @@ export class ResourcesService {
     );
 
     if (activeBudgetItems.length > 0 || activeCostCentreBudgets.length > 0) {
-      const yearStart = new Date(Date.UTC(currentFiscalYear, 0, 1));
-      const yearEnd = new Date(Date.UTC(currentFiscalYear + 1, 0, 1));
-
       // Lo ejecutado sale del diario, con el mismo criterio que el
       // presupuesto (ledger/executed.ts).
       const [executedByAccountMap, executedByCentreMap] = await Promise.all([

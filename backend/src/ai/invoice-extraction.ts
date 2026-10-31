@@ -64,7 +64,7 @@ export function validateInvoice(value: InvoiceExtraction): string[] {
     'total_amount',
     'withholding_amount',
   ] as const)
-    if (value[field] && !/^-?\d{1,10}\.\d{2}$/.test(value[field]!))
+    if (value[field] && !/^-?\d{1,10}\.\d{2}$/.test(value[field]))
       throw new Error('INVOICE_AMOUNT_INVALID');
   if (
     value.net_amount !== null &&

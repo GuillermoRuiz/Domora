@@ -57,7 +57,7 @@ async function tenant(name: string): Promise<Tenant> {
   const estateId = await createEstate(prisma, admin.administratorId, {
     name: `${name} · finca`,
   });
-  const propertyId = await createProperty(prisma, estateId);
+  await createProperty(prisma, estateId);
   const issue = await prisma.issue.create({
     data: {
       ref: `INC-${randomUUID().slice(0, 8)}`,

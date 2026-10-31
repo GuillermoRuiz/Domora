@@ -9,27 +9,20 @@ import {
   Query,
   Res,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
   Body,
   Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import {
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-  isUUID,
-} from 'class-validator';
+import { isUUID } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from './storage.service';
 import { EstateAccessService } from '../estate-access/estate-access.service';
 import { PropertyAccessService } from '../estate-access/property-access.service';
-import { EstateScopeGuard } from '../estate-access/estate-scope.guard';
+
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { RagAuthorizationService } from '../assistant/rag-authorization.service';
 import { AuditService } from '../gdpr/audit.service';
