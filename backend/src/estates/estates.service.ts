@@ -256,41 +256,6 @@ export class EstatesService {
   }
 
   /**
-   * Búsqueda pública por nombre/dirección — a diferencia de `list()`, NO se
-   * acota por `user.estateIds`: existe justamente para que un rol C sin
-   * finca vinculada todavía pueda encontrar la suya al dar de alta una
-   * propiedad (flujo "vincular a comunidad existente"). Devuelve solo los
-   * campos necesarios para identificarla (nada de IBAN/CIF/reserveTarget).
-   */
-  async search(query: string) {
-    const q = query.trim();
-    if (q.length < 2) return [];
-    const estates = await this.prisma.estate.findMany({
-      where: {
-        deletedAt: null,
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { address: { contains: q, mode: 'insensitive' } },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        address: true,
-        administrator: { select: { name: true } },
-      },
-      orderBy: { name: 'asc' },
-      take: 20,
-    });
-    return estates.map((e) => ({
-      id: e.id,
-      name: e.name,
-      address: e.address,
-      admin: e.administrator.name,
-    }));
-  }
-
-  /**
    * Solo el rol B puede crear fincas, y siempre bajo su propia gestora
    * (`administratorId` del JWT, nunca uno enviado por el cliente). Deja
    * lista su contabilidad en la misma transacción: fecha de corte (primer

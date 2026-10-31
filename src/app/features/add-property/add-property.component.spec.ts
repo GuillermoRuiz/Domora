@@ -5,11 +5,7 @@ import { provideRouter } from '@angular/router';
 import { API, setupComponent, settle } from '../../core/testing/component-harness';
 import { StateService } from '../../core/state.service';
 import { AddPropertyComponent } from './add-property.component';
-import type { LinkEstate, OwnerProperty } from '../../core/models';
-
-function makeLinkEstate(overrides: Partial<LinkEstate> = {}): LinkEstate {
-  return { id: 'e1', name: 'Edificio Sol', address: 'Calle Mayor 1', admin: 'Gestora Med', ...overrides };
-}
+import type { OwnerProperty } from '../../core/models';
 
 function makeOwnerProperty(overrides: Partial<OwnerProperty> = {}): OwnerProperty {
   return { id: 'p1', type: 'Piso', estateId: null, administratorId: null, status: 'Ocupado', ...overrides } as OwnerProperty;
@@ -56,32 +52,18 @@ describe('AddPropertyComponent', () => {
       expect(component.hasFloorDoor).toBe(true);
     });
 
-    it('vincular a comunidad existente: busca en vivo y solo aplica los resultados de la última búsqueda (anti-carrera)', async () => {
-      const { fixture, http, component } = setupComponent(AddPropertyComponent);
+    it('ya no ofrece «Vincular a comunidad existente» ni consulta el catálogo de fincas: arranca en «Solicitar alta»', () => {
+      const { fixture, http, el, component } = setupComponent(AddPropertyComponent);
       fixture.detectChanges();
-
-      component.onLinkSearchInput('ab'); // primera búsqueda, lenta
-      const reqA = http.expectOne((r) => r.url === `${API}/estates/search` && r.params.get('q') === 'ab');
-      component.onLinkSearchInput('abc'); // segunda búsqueda, más rápida
-      const reqB = http.expectOne((r) => r.url === `${API}/estates/search` && r.params.get('q') === 'abc');
-
-      reqB.flush([makeLinkEstate({ id: 'e-abc' })]);
-      await settle();
-      reqA.flush([makeLinkEstate({ id: 'e-ab' })]); // llega tarde — no debe pisar el resultado de "abc"
-      await settle();
-
-      expect(component.linkEstateResults().map((e) => e.id)).toEqual(['e-abc']);
+      expect(component.linkMode()).toBe('request');
+      expect(el.textContent).not.toContain('Vincular a comunidad existente');
+      http.expectNone((r) => r.url.includes('/estates/search'));
     });
 
-    it('canSubmit exige elegir una comunidad en modo "existing" y un nombre en modo "request"', () => {
+    it('canSubmit exige un nombre en modo "request"', () => {
       const { fixture, component } = setupComponent(AddPropertyComponent);
       fixture.detectChanges();
       component.selectedType.set('Piso'); // needsCommunity = true
-
-      component.linkMode.set('existing');
-      expect(component.canSubmit).toBe(false);
-      component.selectLinkEstate(makeLinkEstate());
-      expect(component.canSubmit).toBe(true);
 
       component.linkMode.set('request');
       expect(component.canSubmit).toBe(false);
@@ -92,7 +74,7 @@ describe('AddPropertyComponent', () => {
       expect(component.canSubmit).toBe(true);
     });
 
-    it('vinculando a una comunidad existente, crea la propiedad con el estateId elegido', async () => {
+    it('sin vincular («más tarde»), crea la propiedad sin finca', async () => {
       const { fixture, http, component } = setupComponent(AddPropertyComponent);
       fixture.detectChanges();
       component.selectedType.set('Casa');
@@ -103,6 +85,7 @@ describe('AddPropertyComponent', () => {
       const submitPromise = component.submit();
       const req = http.expectOne((r) => r.url === `${API}/properties` && r.method === 'POST');
       expect(req.request.body).toMatchObject({ type: 'Casa', viaName: 'Gran Vía', municipality: 'Madrid', country: 'ES' });
+      expect(req.request.body.estateId).toBeUndefined();
       req.flush(makeOwnerProperty({ id: 'p-nueva' }));
       await submitPromise;
       fixture.detectChanges();

@@ -144,11 +144,6 @@
             </div>
 
             <div class="mode-options" style="margin-top: 20px;">
-              <button class="mode-option" [class.mode-option--active]="linkMode() === 'existing'" (click)="linkMode.set('existing')">
-                <app-icon name="link" [size]="18"></app-icon>
-                <strong>Vincular a comunidad existente</strong>
-                <span>Busca y selecciona tu comunidad de la lista.</span>
-              </button>
               <button class="mode-option" [class.mode-option--active]="linkMode() === 'request'" (click)="linkMode.set('request')">
                 <app-icon name="building" [size]="18"></app-icon>
                 <strong>Solicitar alta de comunidad</strong>
@@ -162,23 +157,6 @@
                 </button>
               }
             </div>
-
-            @if (linkMode() === 'existing') {
-              <div class="form-group" style="margin-top: 16px;">
-                <label class="form-label">Buscar comunidad <span class="form-label--required">*</span></label>
-                <input class="form-input" type="text" placeholder="Nombre o dirección de la comunidad"
-                  [value]="linkSearch()" (input)="onLinkSearchInput($any($event.target).value)" />
-              </div>
-              <div class="estate-list">
-                @for (e of linkEstateResults(); track e.id) {
-                  <button class="estate-row" [class.estate-row--selected]="selectedLinkEstate()?.id === e.id" (click)="selectLinkEstate(e)">
-                    <strong>{{ e.name }}</strong>
-                    <span>{{ e.address }}</span>
-                    <span class="text-muted">{{ e.admin }}</span>
-                  </button>
-                }
-              </div>
-            }
 
             @if (linkMode() === 'request') {
               <div class="form-grid" style="margin-top: 16px;">
@@ -224,8 +202,6 @@
             <p class="form-hint">
               @if (isEstateMode()) {
                 La propiedad ya está disponible en <strong>{{ state.addPropertyEstateContext()?.name }}</strong>.
-              } @else if (needsCommunity && linkMode() === 'existing') {
-                Se ha enviado la solicitud de vinculación a <strong>{{ selectedLinkEstate()?.name }}</strong>.
               } @else if (needsCommunity && linkMode() === 'request') {
                 Tu propiedad ya está disponible en tu listado. Hemos enviado tu solicitud de alta de <strong>{{ reqCommunityName() }}</strong> a nuestro equipo — te contactaremos para completar el proceso.
               } @else {

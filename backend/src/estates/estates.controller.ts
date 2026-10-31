@@ -15,6 +15,7 @@ import {
   UploadedFile,
   Res,
   StreamableFile,
+  GoneException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
@@ -125,11 +126,12 @@ export class EstatesController {
     });
   }
 
-  // Debe declararse antes de ':estateId' — si no, Nest la matchea como
-  // GET /estates/:estateId con estateId='search'.
+  // Bloqueado: era un catálogo de TODAS las fincas (nombre, dirección y gestora) abierto a cualquier usuario
+  // autenticado, para la vinculación del propietario. Esa vinculación se replanteará con otra solución; mientras,
+  // la ruta se mantiene declarada (antes de ':estateId', que si no la tomaría como un id) solo para responder 410.
   @Get('search')
-  search(@Query('q') q = '') {
-    return this.estatesService.search(q);
+  search(): never {
+    throw new GoneException('La búsqueda de comunidades no está disponible.');
   }
 
   // Igual que 'search': antes de ':estateId'. Vista de rol B (panel de fincas con

@@ -140,27 +140,6 @@ describe('EstatesService', () => {
     });
   });
 
-  describe('searchEstates', () => {
-    it('con menos de 2 caracteres, no llama a la API — devuelve [] directo', async () => {
-      const result = await h.service.searchEstates('a');
-      expect(result).toEqual([]);
-      h.http.expectNone(`${API}/estates/search`);
-    });
-
-    it('con 2+ caracteres, llama a /estates/search con el término', async () => {
-      const promise = h.service.searchEstates('Finca Sol');
-      const req = h.http.expectOne((r) => r.url === `${API}/estates/search` && r.params.get('q') === 'Finca Sol');
-      req.flush([{ id: 'e1', name: 'Finca Sol', address: 'x' }]);
-      expect((await promise)[0].name).toBe('Finca Sol');
-    });
-
-    it('recorta espacios en blanco antes de decidir si busca (" a " sigue sin llegar a 2 caracteres útiles)', async () => {
-      const result = await h.service.searchEstates('  a  ');
-      // trim().length === 1 < 2 → no busca
-      expect(result).toEqual([]);
-    });
-  });
-
   describe('Creditor ID (CID)', () => {
     it('getCreditorIdForEstate lo lee del estate resuelto', async () => {
       const promise = h.service.getCreditorIdForEstate('e1');

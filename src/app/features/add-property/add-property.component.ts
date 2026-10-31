@@ -1,11 +1,10 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { StateService } from '../../core/state.service';
-import { EstatesService } from '../../core/estates.service';
 import { PropertiesService } from '../../core/properties.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { BtnComponent } from '../../shared/components/btn/btn.component';
-import { LinkEstate, MembershipRoleType, OwnerPropertyType, ViaType } from '../../core/models';
+import { MembershipRoleType, OwnerPropertyType, ViaType } from '../../core/models';
 
 import { SelectDropdownDirective } from '../../shared/components/dropdown/select-dropdown.directive';
 interface PropertyTypeOption {
@@ -14,7 +13,11 @@ interface PropertyTypeOption {
   label: string;
 }
 
-type LinkMode = 'existing' | 'request' | 'later';
+/**
+ * Cómo se vincula una propiedad nueva del propietario. «Vincular a comunidad existente» (buscarla en el catálogo de
+ * todas las fincas, GET /estates/search) está retirado: esa vinculación se replanteará con otra solución.
+ */
+type LinkMode = 'request' | 'later';
 
 @Component({
   selector: 'app-add-property',
@@ -25,7 +28,6 @@ type LinkMode = 'existing' | 'request' | 'later';
 })
 export class AddPropertyComponent {
   state = inject(StateService);
-  private estates = inject(EstatesService);
   private properties = inject(PropertiesService);
 
   /**
@@ -51,9 +53,7 @@ export class AddPropertyComponent {
   roleType = signal('');
 
   // Step 3 (rol C) — vinculación a comunidad
-  linkMode = signal<LinkMode>('existing');
-  linkSearch = signal('');
-  selectedLinkEstate = signal<LinkEstate | null>(null);
+  linkMode = signal<LinkMode>('request');
   reqCommunityName = signal('');
   reqCommunityAddress = signal('');
   reqAdminName = signal('');
@@ -66,9 +66,6 @@ export class AddPropertyComponent {
   /** Superficie construida (m²). Opcional, mismo criterio que el coeficiente. */
   builtAreaM2 = signal<number | null>(null);
 
-  /** Resultados de /estates/search — no hay catálogo local, se busca en vivo. */
-  linkEstateResults = signal<LinkEstate[]>([]);
-  private searchToken = 0;
 
   submitting = signal(false);
   submitError = signal<string | null>(null);
@@ -111,10 +108,7 @@ export class AddPropertyComponent {
     this.door.set('');
     this.staircase.set('');
     this.roleType.set('');
-    this.linkMode.set('existing');
-    this.linkSearch.set('');
-    this.linkEstateResults.set([]);
-    this.selectedLinkEstate.set(null);
+    this.linkMode.set('request');
     this.reqCommunityName.set('');
     this.reqCommunityAddress.set('');
     this.reqAdminName.set('');
@@ -133,24 +127,9 @@ export class AddPropertyComponent {
     if (this.step() > 1) this.step.set(this.step() - 1);
   }
 
-  /** Busca fincas en el backend a medida que se escribe (sin debounce dedicado: basta el token anti-carrera). */
-  onLinkSearchInput(value: string): void {
-    this.linkSearch.set(value);
-    this.selectedLinkEstate.set(null);
-    const token = ++this.searchToken;
-    this.estates.searchEstates(value).then((results) => {
-      if (token === this.searchToken) this.linkEstateResults.set(results);
-    });
-  }
-
-  selectLinkEstate(estate: LinkEstate): void {
-    this.selectedLinkEstate.set(estate);
-  }
-
   get canSubmit(): boolean {
     if (this.isEstateMode()) return true; // solo cuota y coeficiente, ambos opcionales
     if (!this.needsCommunity) return true;
-    if (this.linkMode() === 'existing') return !!this.selectedLinkEstate();
     if (this.linkMode() === 'request') return !!this.reqCommunityName().trim();
     return true;
   }
@@ -177,14 +156,9 @@ export class AddPropertyComponent {
           builtAreaM2: this.builtAreaM2() ?? undefined,
         });
       } else {
-        // Solo el modo "existing" resuelve a una finca real (viene de
-        // /estates/search). "request" (comunidad nueva, sin gestora todavía)
-        // no crea una finca directamente — abre un EstateOnboardingRequest
-        // que revisa soporte manualmente (decisión de producto: ningún rol C
-        // puede crear fincas sin supervisión).
-        const estateId =
-          this.linkMode() === 'existing' ? this.selectedLinkEstate()?.id : undefined;
-
+        // El propietario no elige una finca: "request" (comunidad sin gestora todavía) abre un
+        // EstateOnboardingRequest que revisa soporte (ningún rol C crea fincas sin supervisión) y "later" la deja
+        // sin vincular.
         const property = await this.properties.createOwnerProperty({
           type: this.selectedType() as OwnerPropertyType,
           roleType: (this.roleType() || 'Propietario') as MembershipRoleType,
@@ -197,7 +171,6 @@ export class AddPropertyComponent {
           municipality: this.city(),
           province: this.province() || undefined,
           country: 'ES',
-          estateId,
         });
 
         if (this.needsCommunity && this.linkMode() === 'request') {
