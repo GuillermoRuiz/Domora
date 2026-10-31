@@ -12,7 +12,8 @@ import type { AppRole, AuthenticatedUser } from '../auth/auth.types';
 import { DespachoResolverService, isUuid, type DespachoTarget } from './despacho-resolver.service';
 import { StaffAuditService, type StaffAuditEntry } from './staff-audit.service';
 import { SupportSessionsService } from './support-sessions.service';
-import { classifyRoute, isDespachoListRead, isReadOnlyRequest, routeTemplate } from './route-scope';
+import { classifyRoute, isReadOnlyRequest, routeTemplate } from './route-scope';
+import type { SupportScopedRequest } from './support-despacho.decorator';
 
 /** Header carrying the id of the caller's active support session. */
 export const SUPPORT_SESSION_HEADER = 'x-support-session';
@@ -30,7 +31,7 @@ export const SUPPORT_MESSAGES = {
     'No se ha podido registrar el acceso en la auditoría. Inténtalo de nuevo en unos minutos.',
 } as const;
 
-interface GuardedRequest {
+interface GuardedRequest extends SupportScopedRequest {
   user?: AuthenticatedUser;
   method: string;
   headers: Record<string, string | string[] | undefined>;
@@ -44,9 +45,10 @@ interface GuardedRequest {
  * explicit support session of the target despacho, and every role A request
  * to a tenant route is audited (reads, writes and denials). A read whose
  * despacho cannot be resolved (no record in the path, no `?administratorId=`)
- * is allowed inside any valid session and audited without a despacho, except
- * the estate listings, which must name the despacho; a write in that
- * situation is denied.
+ * is allowed inside any valid session and audited without a despacho; a
+ * write in that situation is denied. The accepted session is left on the
+ * request (`supportSession`), so the routes that list or search across
+ * despachos for role A scope to its despacho (`@SupportDespacho()`).
  *
  * Roles B and C, anonymous requests and role A on platform or self routes
  * pass straight through: no lookup, no audit row.
@@ -92,11 +94,6 @@ export class SupportAccessGuard implements CanActivate {
     if (!readOnly && !target) {
       return this.deny(base, target, session.id, SUPPORT_MESSAGES.unresolved);
     }
-    // Estate listings without `?administratorId=` would return every despacho (a malformed one is the
-    // controller's 400).
-    if (readOnly && isDespachoListRead(route) && queried === undefined) {
-      return this.deny(base, target, session.id, SUPPORT_MESSAGES.unresolved);
-    }
     if (administratorId && administratorId !== session.administratorId) {
       return this.deny(base, target, session.id, SUPPORT_MESSAGES.otherDespacho);
     }
@@ -107,6 +104,8 @@ export class SupportAccessGuard implements CanActivate {
       supportSessionId: session.id,
       action: readOnly ? 'read' : 'write',
     });
+    // Listings and searches that span despachos for role A scope to this one (`@SupportDespacho()`).
+    req.supportSession = { id: session.id, administratorId: session.administratorId };
     return true;
   }
 

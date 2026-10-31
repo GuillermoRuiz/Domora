@@ -284,11 +284,13 @@ export class EstateOverviewService {
     };
   }
 
+  /** `administratorId` narrows role A to one despacho (its support session's). */
   async search(
     value: string,
     user: AuthenticatedUser,
+    administratorId?: string,
   ): Promise<EstateManagementSearchResultDto[]> {
-    const scope = this.scope(user);
+    const scope = this.scope(user, administratorId);
     const q = value.trim();
     if (q.length < 2) return [];
     const contains = { contains: q, mode: 'insensitive' as const };

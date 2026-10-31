@@ -74,21 +74,6 @@ const READ_ONLY_POSTS = new Set([
   'estates/:estateId/meetings/convocatoria-preview',
 ]);
 
-/**
- * Reads that list estates of every despacho for role A unless `?administratorId=`
- * narrows them (odd/tasks/role-a-panel.md S1). Inside a support session the
- * filter is required: without it the answer would cross despachos.
- */
-const DESPACHO_LIST_READS = new Set([
-  'estates',
-  'estates/overview',
-  'estates/overview/export.xlsx',
-]);
-
-export function isDespachoListRead(template: string): boolean {
-  return DESPACHO_LIST_READS.has(template);
-}
-
 /** A request that cannot change client data: safe methods or an allowlisted read-only POST. */
 export function isReadOnlyRequest(method: string, template: string): boolean {
   if (isSafeMethod(method)) return true;

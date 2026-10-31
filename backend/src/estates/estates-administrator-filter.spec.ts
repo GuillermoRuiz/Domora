@@ -36,34 +36,40 @@ describe('EstatesController setup-summary despacho filter', () => {
 
   it('role A gets the summary of ?administratorId=', async () => {
     const { ctrl, summaryForAdministrator } = controller();
-    await expect(ctrl.setupSummary(user({ role: 'A' }), OFFICE)).resolves.toEqual([{ estateId: 'e1' }]);
+    await expect(ctrl.setupSummary(user({ role: 'A' }), undefined, OFFICE)).resolves.toEqual([{ estateId: 'e1' }]);
     expect(summaryForAdministrator).toHaveBeenCalledWith(OFFICE);
   });
 
-  it('role A without a despacho gets an empty list', async () => {
+  it('role A without a despacho nor a support session gets an empty list', async () => {
     const { ctrl, summaryForAdministrator } = controller();
-    await expect(ctrl.setupSummary(user({ role: 'A' }), undefined)).resolves.toEqual([]);
+    await expect(ctrl.setupSummary(user({ role: 'A' }), undefined, undefined)).resolves.toEqual([]);
     expect(summaryForAdministrator).not.toHaveBeenCalled();
+  });
+
+  it('role A without ?administratorId= gets the despacho of its support session', async () => {
+    const { ctrl, summaryForAdministrator } = controller();
+    await expect(ctrl.setupSummary(user({ role: 'A' }), OFFICE, undefined)).resolves.toEqual([{ estateId: 'e1' }]);
+    expect(summaryForAdministrator).toHaveBeenCalledWith(OFFICE);
   });
 
   it('role A with a despacho that is not a UUID is a 400', () => {
     const { ctrl, summaryForAdministrator } = controller();
-    expect(() => ctrl.setupSummary(user({ role: 'A' }), 'nope')).toThrow(BadRequestException);
+    expect(() => ctrl.setupSummary(user({ role: 'A' }), undefined, 'nope')).toThrow(BadRequestException);
     expect(summaryForAdministrator).not.toHaveBeenCalled();
   });
 
   it('role B keeps its own despacho from the token and ignores the parameter, even malformed', async () => {
     const { ctrl, summaryForAdministrator } = controller();
     const b = user({ role: 'B', administratorId: OFFICE });
-    await ctrl.setupSummary(b, OTHER);
-    await ctrl.setupSummary(b, 'nope');
-    await ctrl.setupSummary(b, undefined);
+    await ctrl.setupSummary(b, undefined, OTHER);
+    await ctrl.setupSummary(b, undefined, 'nope');
+    await ctrl.setupSummary(b, undefined, undefined);
     expect(summaryForAdministrator.mock.calls).toEqual([[OFFICE], [OFFICE], [OFFICE]]);
   });
 
   it('role B without a despacho still gets an empty list', async () => {
     const { ctrl, summaryForAdministrator } = controller();
-    await expect(ctrl.setupSummary(user({ role: 'B' }), OTHER)).resolves.toEqual([]);
+    await expect(ctrl.setupSummary(user({ role: 'B' }), undefined, OTHER)).resolves.toEqual([]);
     expect(summaryForAdministrator).not.toHaveBeenCalled();
   });
 });

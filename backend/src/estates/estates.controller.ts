@@ -35,6 +35,7 @@ import {
 import { EstateOverviewExcelService } from './estate-overview-excel.service';
 import { EstateCommunityService } from './estate-community.service';
 import { IsOptional, IsString, MaxLength, isUUID } from 'class-validator';
+import { SupportDespacho } from '../support-access/support-despacho.decorator';
 
 /**
  * Role A despacho context (odd/tasks/role-a-panel.md S1): `?administratorId=`
@@ -52,10 +53,17 @@ class EstateOverviewOfficeFilterDto extends EstateOverviewFilterDto {
 /**
  * The despacho filter only exists for role A, so only role A gets it validated;
  * for B and C it is dropped, as before the filter existed (a malformed value is
- * not an error for them).
+ * not an error for them). Without `?administratorId=`, role A is scoped to the
+ * despacho of its support session (`SupportAccessGuard` already refused a
+ * filter naming another despacho), so a listing never crosses despachos.
  */
-function officeFilter(user: AuthenticatedUser, raw: string | undefined): string | undefined {
-  if (user.role !== 'A' || raw === undefined) return undefined;
+function officeFilter(
+  user: AuthenticatedUser,
+  raw: string | undefined,
+  supportDespacho: string | undefined,
+): string | undefined {
+  if (user.role !== 'A') return undefined;
+  if (raw === undefined) return supportDespacho;
   if (!isUUID(raw)) throw new BadRequestException('El despacho indicado no es válido.');
   return raw;
 }
@@ -73,9 +81,10 @@ export class EstatesController {
   @Get()
   list(
     @CurrentUser() user: AuthenticatedUser,
+    @SupportDespacho() supportDespacho: string | undefined,
     @Query('administratorId') administratorId?: string,
   ) {
-    return this.estatesService.list(user, officeFilter(user, administratorId));
+    return this.estatesService.list(user, officeFilter(user, administratorId, supportDespacho));
   }
 
   @Get('overview')
@@ -83,8 +92,9 @@ export class EstatesController {
   overview(
     @Query() query: EstateOverviewOfficeQueryDto,
     @CurrentUser() user: AuthenticatedUser,
+    @SupportDespacho() supportDespacho: string | undefined,
   ) {
-    const scoped: EstateOverviewOfficeQueryDto = { ...query, administratorId: officeFilter(user, query.administratorId) };
+    const scoped: EstateOverviewOfficeQueryDto = { ...query, administratorId: officeFilter(user, query.administratorId, supportDespacho) };
     return this.overviewService.overview(scoped, user);
   }
 
@@ -93,8 +103,10 @@ export class EstatesController {
   managementSearch(
     @Query() query: EstateManagementSearchQueryDto,
     @CurrentUser() user: AuthenticatedUser,
+    @SupportDespacho() supportDespacho: string | undefined,
   ) {
-    return this.overviewService.search(query.q, user);
+    // Role A searches only the despacho of its support session.
+    return this.overviewService.search(query.q, user, officeFilter(user, undefined, supportDespacho));
   }
 
   @Get('overview/export.xlsx')
@@ -102,8 +114,9 @@ export class EstatesController {
   async exportOverview(
     @Query() query: EstateOverviewOfficeFilterDto,
     @CurrentUser() user: AuthenticatedUser,
+    @SupportDespacho() supportDespacho: string | undefined,
   ) {
-    const scoped: EstateOverviewOfficeFilterDto = { ...query, administratorId: officeFilter(user, query.administratorId) };
+    const scoped: EstateOverviewOfficeFilterDto = { ...query, administratorId: officeFilter(user, query.administratorId, supportDespacho) };
     const file = await this.overviewExcel.generate(scoped, user);
     return new StreamableFile(file.content, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -122,14 +135,15 @@ export class EstatesController {
   // Igual que 'search': antes de ':estateId'. Vista de rol B (panel de fincas con
   // su progreso de puesta en marcha), reutilizada por el rol A dentro del despacho
   // seleccionado (odd/tasks/role-a-panel.md S1): A pasa `?administratorId=` (sin él,
-  // lista vacía); B sigue con el despacho de su token e ignora el parámetro.
+  // el despacho de su sesión de soporte); B sigue con el despacho de su token e ignora el parámetro.
   @Get('setup-summary')
   @Roles('A', 'B')
   setupSummary(
     @CurrentUser() user: AuthenticatedUser,
+    @SupportDespacho() supportDespacho: string | undefined,
     @Query('administratorId') administratorId?: string,
   ): Promise<Awaited<ReturnType<EstateSetupService['summaryForAdministrator']>>> {
-    const office = user.role === 'A' ? officeFilter(user, administratorId) : user.administratorId;
+    const office = user.role === 'A' ? officeFilter(user, administratorId, supportDespacho) : user.administratorId;
     if (!office) return Promise.resolve([]);
     return this.estateSetup.summaryForAdministrator(office);
   }

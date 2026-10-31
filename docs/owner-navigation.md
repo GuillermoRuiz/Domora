@@ -101,7 +101,10 @@ lugar de migrarse:
 
 ## Pendiente
 
-- Dentro de una sesión de soporte, una lectura cuyo despacho no se puede
-  deducir (sin id en la ruta ni `?administratorId=`) se permite y se audita
-  sin despacho. Solo los listados de fincas exigen el filtro. Cerrarlo del
-  todo requiere revisar cada ruta de ese tipo.
+- Dentro de una sesión de soporte, `SupportAccessGuard` deja en la petición
+  el despacho de la sesión (`@SupportDespacho()`). Los listados y búsquedas de
+  fincas que cruzan despachos (`estates`, `estates/overview` y su export,
+  `estates/setup-summary`, `estates/management-search`) se acotan a él cuando
+  no llevan `?administratorId=`. El resto de lecturas cuyo despacho no se puede
+  deducir se permiten dentro de la sesión y se auditan sin despacho: para
+  acotarlas, cada una debería leer también `@SupportDespacho()`.
