@@ -4,7 +4,11 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { Prisma, TaxSettlement, TaxSettlementKind } from '../../prisma/client';
+import type {
+  Prisma,
+  TaxSettlement,
+  TaxSettlementKind,
+} from '../../prisma/client';
 import { randomUUID } from 'node:crypto';
 import { JournalService } from '../journal/journal.service';
 import { ensureDefaultBankAccount } from '../chart/ledger-bootstrap';

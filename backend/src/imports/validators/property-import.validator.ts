@@ -11,7 +11,13 @@ export interface PropertyImportRow {
   quotaMonthly?: number;
 }
 
-const PROPERTY_TYPES: OwnerPropertyType[] = ['Piso', 'Casa', 'Parking', 'Trastero', 'Local'];
+const PROPERTY_TYPES: OwnerPropertyType[] = [
+  'Piso',
+  'Casa',
+  'Parking',
+  'Trastero',
+  'Local',
+];
 const DEFAULT_PROPERTY_TYPE: OwnerPropertyType = 'Piso';
 
 function matchPropertyType(raw: string): OwnerPropertyType | null {
@@ -37,7 +43,9 @@ export function validatePropertyRow(
   if (ref) {
     data.ref = ref;
   } else {
-    warnings.push('Sin referencia de unidad — se generará una automáticamente.');
+    warnings.push(
+      'Sin referencia de unidad — se generará una automáticamente.',
+    );
   }
 
   const typeRaw = mappedRow['type']?.trim();
@@ -47,11 +55,15 @@ export function validatePropertyRow(
       data.type = matched;
     } else {
       data.type = DEFAULT_PROPERTY_TYPE;
-      warnings.push(`Tipo "${typeRaw}" no reconocido — se importó como "${DEFAULT_PROPERTY_TYPE}".`);
+      warnings.push(
+        `Tipo "${typeRaw}" no reconocido — se importó como "${DEFAULT_PROPERTY_TYPE}".`,
+      );
     }
   } else {
     data.type = DEFAULT_PROPERTY_TYPE;
-    warnings.push(`Sin tipo de unidad en el origen — se importó como "${DEFAULT_PROPERTY_TYPE}".`);
+    warnings.push(
+      `Sin tipo de unidad en el origen — se importó como "${DEFAULT_PROPERTY_TYPE}".`,
+    );
   }
 
   const quotaRaw = mappedRow['participationQuota']?.trim();

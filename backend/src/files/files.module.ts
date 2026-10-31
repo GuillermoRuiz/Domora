@@ -9,10 +9,7 @@ import { RagAuthorizationModule } from '../assistant/rag-authorization.module';
 
 @Module({
   imports: [EstateAccessModule, RagAuthorizationModule],
-  controllers: [
-    DocumentFilesController,
-    IssuePhotosController,
-  ],
+  controllers: [DocumentFilesController, IssuePhotosController],
   providers: [StorageService],
   exports: [StorageService],
 })

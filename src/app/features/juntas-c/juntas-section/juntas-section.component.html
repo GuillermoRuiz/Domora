@@ -13,7 +13,7 @@
 } @else {
   <div class="juntas-list">
     @for (row of signatures(); track row.meeting.id) {
-      <div class="junta-item">
+      <div class="junta-item" [class.junta-item--highlight]="row.meeting.id === highlightMeetingId" [attr.data-meeting]="row.meeting.id">
         <div class="junta-row">
           <div class="junta-row__info">
             <strong>{{ row.meeting.title }}</strong>
@@ -24,7 +24,7 @@
       </div>
     }
     @for (row of rows(); track row.meeting.id) {
-      <div class="junta-item">
+      <div class="junta-item" [class.junta-item--highlight]="row.meeting.id === highlightMeetingId" [attr.data-meeting]="row.meeting.id">
         <div class="junta-row">
           <div class="junta-row__info">
             <strong>{{ row.meeting.title }}</strong>

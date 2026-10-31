@@ -18,6 +18,15 @@ async function flushLoad(http: any, alerts: AlertItem[]): Promise<void> {
 }
 
 describe('AlertasCComponent', () => {
+  it('enlaza con la otra bandeja, la de avisos de la gestora', async () => {
+    const { fixture, http, el } = setupComponent(AlertasCComponent);
+    fixture.detectChanges();
+    await flushLoad(http, []);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-link="notifications"]')?.getAttribute('href')).toBe('/c/notifications');
+  });
+
   it('carga las alertas al montar y refleja el contador de no leídas', async () => {
     const { fixture, http, el } = setupComponent(AlertasCComponent);
     fixture.detectChanges();
@@ -28,7 +37,7 @@ describe('AlertasCComponent', () => {
     expect(el.textContent).toContain('1 notificación');
   });
 
-  it('un pago urgente navega a "recibos" de la propiedad al pulsar "Ver recibos"', async () => {
+  it('un pago urgente abre Recibos y pagos en su propiedad al pulsar "Ver recibos"', async () => {
     const { fixture, http, el } = setupComponent(AlertasCComponent);
     fixture.detectChanges();
     await flushLoad(http, [makeAlert({ id: 'a1', type: 'pago', urgent: true, propertyId: 'p1', read: true })]);
@@ -40,7 +49,7 @@ describe('AlertasCComponent', () => {
     fixture.detectChanges();
     (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Ver recibos')) as HTMLElement).click();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/c/properties', 'p1'], { queryParams: { tab: 'receipts' } });
+    expect(navigateSpy).toHaveBeenCalledWith(['/c/recibos'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('una incidencia se abre en el módulo de incidencias (no en una propiedad) al pulsar "Ver solicitud"', async () => {

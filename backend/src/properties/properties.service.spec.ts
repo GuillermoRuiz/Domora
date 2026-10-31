@@ -37,12 +37,26 @@ describe('PropertiesService', () => {
 
   beforeEach(() => {
     propertyFindFirst = jest.fn().mockResolvedValue(PROPERTY);
-    propertyUpdate = jest.fn().mockImplementation(({ data }) => Promise.resolve({ ...PROPERTY, ...data }));
-    propertyCreate = jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'new', ...data }));
-    estateFindFirst = jest.fn().mockResolvedValue({ id: 'estate-1', administratorId: 'admin-1' });
+    propertyUpdate = jest
+      .fn()
+      .mockImplementation(({ data }) =>
+        Promise.resolve({ ...PROPERTY, ...data }),
+      );
+    propertyCreate = jest
+      .fn()
+      .mockImplementation(({ data }) =>
+        Promise.resolve({ id: 'new', ...data }),
+      );
+    estateFindFirst = jest
+      .fn()
+      .mockResolvedValue({ id: 'estate-1', administratorId: 'admin-1' });
 
     const prisma = {
-      property: { findFirst: propertyFindFirst, update: propertyUpdate, create: propertyCreate },
+      property: {
+        findFirst: propertyFindFirst,
+        update: propertyUpdate,
+        create: propertyCreate,
+      },
       estate: { findFirst: estateFindFirst },
     } as unknown as PrismaService;
 
@@ -57,8 +71,18 @@ describe('PropertiesService', () => {
 
   describe('resolvePropertyView', () => {
     it('no devuelve credenciales del usuario primario ni datos privados de la finca', async () => {
-      const estate = jest.fn().mockResolvedValue({ id: 'estate-1', administratorId: 'admin-1', name: 'Finca', notes: 'Interna', internalRef: 'FIN-1' });
-      const administrator = jest.fn().mockResolvedValue({ id: 'admin-1', name: 'Gestora', primaryUser: { id: 'u1', fullName: 'Ana' } });
+      const estate = jest.fn().mockResolvedValue({
+        id: 'estate-1',
+        administratorId: 'admin-1',
+        name: 'Finca',
+        notes: 'Interna',
+        internalRef: 'FIN-1',
+      });
+      const administrator = jest.fn().mockResolvedValue({
+        id: 'admin-1',
+        name: 'Gestora',
+        primaryUser: { id: 'u1', fullName: 'Ana' },
+      });
       const memberships = jest.fn().mockResolvedValue([]);
       const prisma = {
         property: { findFirst: propertyFindFirst },
@@ -66,10 +90,22 @@ describe('PropertiesService', () => {
         administrator: { findFirst: administrator },
         propertyMembership: { findMany: memberships },
       } as unknown as PrismaService;
-      const debtors = { computePropertyBalance: jest.fn().mockResolvedValue(0), computePropertyAdvance: jest.fn().mockResolvedValue(0) };
-      const svc = new PropertiesService(prisma, new EstateAccessService(), debtors as unknown as DebtorsService, {} as NotificationsService, new PropertyAccessService(prisma, new EstateAccessService()));
+      const debtors = {
+        computePropertyBalance: jest.fn().mockResolvedValue(0),
+        computePropertyAdvance: jest.fn().mockResolvedValue(0),
+      };
+      const svc = new PropertiesService(
+        prisma,
+        new EstateAccessService(),
+        debtors as unknown as DebtorsService,
+        {} as NotificationsService,
+        new PropertyAccessService(prisma, new EstateAccessService()),
+      );
 
-      const ownerView = await svc.resolvePropertyView('prop-1', user('C', { id: 'owner-1' }));
+      const ownerView = await svc.resolvePropertyView(
+        'prop-1',
+        user('C', { id: 'owner-1' }),
+      );
       // Internal data of the managing company never reaches the owner.
       expect(ownerView.estate).not.toHaveProperty('notes');
       expect(ownerView.estate).not.toHaveProperty('internalRef');
@@ -78,11 +114,29 @@ describe('PropertiesService', () => {
       const adminQuery = administrator.mock.calls[0][0];
       // Solo contacto: nada de plan, MRR, descuentos, notas, motivo de bloqueo ni CIF.
       expect(adminQuery.include).toBeUndefined();
-      expect(Object.keys(adminQuery.select).sort()).toEqual(['contactEmail', 'contactName', 'id', 'name', 'phone', 'primaryUser']);
-      expect(Object.keys(adminQuery.select.primaryUser.select).sort()).toEqual(['email', 'fullName', 'id', 'phone']);
-      expect(memberships.mock.calls[0][0].include.user.omit).toEqual({ ...USER_SECRETS_OMIT, taxId: true, taxIdCountry: true });
+      expect(Object.keys(adminQuery.select).sort()).toEqual([
+        'contactEmail',
+        'contactName',
+        'id',
+        'name',
+        'phone',
+        'primaryUser',
+      ]);
+      expect(Object.keys(adminQuery.select.primaryUser.select).sort()).toEqual([
+        'email',
+        'fullName',
+        'id',
+        'phone',
+      ]);
+      expect(memberships.mock.calls[0][0].include.user.omit).toEqual({
+        ...USER_SECRETS_OMIT,
+        taxId: true,
+        taxIdCountry: true,
+      });
       await svc.resolvePropertyView('prop-1', user('B'));
-      expect(memberships.mock.calls[1][0].include.user.omit).toEqual(USER_SECRETS_OMIT);
+      expect(memberships.mock.calls[1][0].include.user.omit).toEqual(
+        USER_SECRETS_OMIT,
+      );
     });
 
     it('trae el saldo y el anticipo de la propiedad, igual que findById (el panel del propietario lo lee de aquí)', async () => {
@@ -219,8 +273,14 @@ describe('PropertiesService', () => {
       await service.update('prop-1', { participationQuota: null }, user('B'));
       await service.update('prop-1', { participationQuota: 0 }, user('B'));
 
-      expect(propertyUpdate).toHaveBeenNthCalledWith(1, expect.objectContaining({ data: { participationQuota: null } }));
-      expect(propertyUpdate).toHaveBeenNthCalledWith(2, expect.objectContaining({ data: { participationQuota: 0 } }));
+      expect(propertyUpdate).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ data: { participationQuota: null } }),
+      );
+      expect(propertyUpdate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ data: { participationQuota: 0 } }),
+      );
     });
 
     it('rol A puede fijarlo', async () => {
@@ -236,18 +296,24 @@ describe('PropertiesService', () => {
       expect(propertyUpdate).not.toHaveBeenCalled();
 
       await service.update('prop-1', { floor: '3' }, owner());
-      expect(propertyUpdate).toHaveBeenCalledWith({ where: { id: 'prop-1' }, data: { floor: '3' } });
+      expect(propertyUpdate).toHaveBeenCalledWith({
+        where: { id: 'prop-1' },
+        data: { floor: '3' },
+      });
     });
 
     it.each([
       ['0', 0],
       ['null (borrarlo)', null],
-    ])('el propietario tampoco puede mandar %s: se comprueba con !== undefined, no por veracidad', async (_label, value) => {
-      await expect(
-        service.update('prop-1', { participationQuota: value }, owner()),
-      ).rejects.toThrow(ForbiddenException);
-      expect(propertyUpdate).not.toHaveBeenCalled();
-    });
+    ])(
+      'el propietario tampoco puede mandar %s: se comprueba con !== undefined, no por veracidad',
+      async (_label, value) => {
+        await expect(
+          service.update('prop-1', { participationQuota: value }, owner()),
+        ).rejects.toThrow(ForbiddenException);
+        expect(propertyUpdate).not.toHaveBeenCalled();
+      },
+    );
 
     it('un rol B de OTRA gestora no puede tocar el coeficiente', async () => {
       const otherManager = user('B', { administratorId: 'admin-otra' });
@@ -262,26 +328,42 @@ describe('PropertiesService', () => {
   describe('update — cuota mensual', () => {
     it('la gestora puede fijar la cuota tras el alta (antes solo en el alta o importando)', async () => {
       await service.update('prop-1', { quotaMonthly: 85.5 }, user('B'));
-      expect(propertyUpdate).toHaveBeenCalledWith({ where: { id: 'prop-1' }, data: { quotaMonthly: 85.5 } });
+      expect(propertyUpdate).toHaveBeenCalledWith({
+        where: { id: 'prop-1' },
+        data: { quotaMonthly: 85.5 },
+      });
     });
 
     it('el propietario (rol C) no puede cambiarse su propia cuota', async () => {
       await expect(
-        service.update('prop-1', { quotaMonthly: 1 }, user('C', { id: 'owner-1' })),
-      ).rejects.toThrow('Solo la gestora de la finca puede modificar la cuota mensual.');
+        service.update(
+          'prop-1',
+          { quotaMonthly: 1 },
+          user('C', { id: 'owner-1' }),
+        ),
+      ).rejects.toThrow(
+        'Solo la gestora de la finca puede modificar la cuota mensual.',
+      );
       expect(propertyUpdate).not.toHaveBeenCalled();
     });
 
     it('tampoco puede ponerla a 0: se comprueba con !== undefined, no por veracidad', async () => {
       await expect(
-        service.update('prop-1', { quotaMonthly: 0 }, user('C', { id: 'owner-1' })),
+        service.update(
+          'prop-1',
+          { quotaMonthly: 0 },
+          user('C', { id: 'owner-1' }),
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
 
   describe('createForEstate', () => {
     it('guarda el coeficiente indicado', async () => {
-      await service.createForEstate('estate-1', { type: 'Piso', participationQuota: 3.25 });
+      await service.createForEstate('estate-1', {
+        type: 'Piso',
+        participationQuota: 3.25,
+      });
 
       expect(propertyCreate).toHaveBeenCalledWith({
         data: expect.objectContaining({ participationQuota: 3.25 }),
@@ -297,7 +379,10 @@ describe('PropertiesService', () => {
     });
 
     it('guarda la superficie construida indicada', async () => {
-      await service.createForEstate('estate-1', { type: 'Piso', builtAreaM2: 72.5 });
+      await service.createForEstate('estate-1', {
+        type: 'Piso',
+        builtAreaM2: 72.5,
+      });
 
       expect(propertyCreate).toHaveBeenCalledWith({
         data: expect.objectContaining({ builtAreaM2: 72.5 }),
@@ -308,13 +393,22 @@ describe('PropertiesService', () => {
   describe('update — superficie construida (m²)', () => {
     it('la gestora puede fijarla', async () => {
       await service.update('prop-1', { builtAreaM2: 64.3 }, user('B'));
-      expect(propertyUpdate).toHaveBeenCalledWith({ where: { id: 'prop-1' }, data: { builtAreaM2: 64.3 } });
+      expect(propertyUpdate).toHaveBeenCalledWith({
+        where: { id: 'prop-1' },
+        data: { builtAreaM2: 64.3 },
+      });
     });
 
     it('el propietario (rol C) no puede cambiarse su propia superficie', async () => {
       await expect(
-        service.update('prop-1', { builtAreaM2: 1 }, user('C', { id: 'owner-1' })),
-      ).rejects.toThrow('Solo la gestora de la finca puede modificar la superficie construida.');
+        service.update(
+          'prop-1',
+          { builtAreaM2: 1 },
+          user('C', { id: 'owner-1' }),
+        ),
+      ).rejects.toThrow(
+        'Solo la gestora de la finca puede modificar la superficie construida.',
+      );
       expect(propertyUpdate).not.toHaveBeenCalled();
     });
   });
@@ -322,10 +416,14 @@ describe('PropertiesService', () => {
   describe('previewQuotasByArea / applyQuotasByArea', () => {
     function propertiesService(properties: unknown[]) {
       const findMany = jest.fn().mockResolvedValue(properties);
-      const txUpdate = jest.fn().mockImplementation(({ where, data }) =>
-        Promise.resolve({ id: where.id, ...data }),
-      );
-      const $transaction = jest.fn().mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops));
+      const txUpdate = jest
+        .fn()
+        .mockImplementation(({ where, data }) =>
+          Promise.resolve({ id: where.id, ...data }),
+        );
+      const $transaction = jest
+        .fn()
+        .mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops));
       const prisma = {
         property: { findMany, update: txUpdate },
         $transaction,
@@ -345,9 +443,27 @@ describe('PropertiesService', () => {
       // por fila: 33.33+33.33+33.33 = 99.99, no 100 — justo el bug que este
       // algoritmo existe para evitar.
       const { svc } = propertiesService([
-        { id: 'p1', ref: 'A', type: 'Piso', builtAreaM2: 100, participationQuota: null },
-        { id: 'p2', ref: 'B', type: 'Piso', builtAreaM2: 100, participationQuota: null },
-        { id: 'p3', ref: 'C', type: 'Piso', builtAreaM2: 100, participationQuota: null },
+        {
+          id: 'p1',
+          ref: 'A',
+          type: 'Piso',
+          builtAreaM2: 100,
+          participationQuota: null,
+        },
+        {
+          id: 'p2',
+          ref: 'B',
+          type: 'Piso',
+          builtAreaM2: 100,
+          participationQuota: null,
+        },
+        {
+          id: 'p3',
+          ref: 'C',
+          type: 'Piso',
+          builtAreaM2: 100,
+          participationQuota: null,
+        },
       ]);
 
       const preview = await svc.previewQuotasByArea('estate-1');
@@ -362,36 +478,76 @@ describe('PropertiesService', () => {
 
     it('no calcula nada si falta la superficie de alguna propiedad activa — devuelve cuáles faltan', async () => {
       const { svc } = propertiesService([
-        { id: 'p1', ref: 'A', type: 'Piso', builtAreaM2: 100, participationQuota: 50 },
-        { id: 'p2', ref: 'B', type: 'Piso', builtAreaM2: null, participationQuota: 50 },
+        {
+          id: 'p1',
+          ref: 'A',
+          type: 'Piso',
+          builtAreaM2: 100,
+          participationQuota: 50,
+        },
+        {
+          id: 'p2',
+          ref: 'B',
+          type: 'Piso',
+          builtAreaM2: null,
+          participationQuota: 50,
+        },
       ]);
 
       const preview = await svc.previewQuotasByArea('estate-1');
 
       expect(preview.rows).toEqual([]);
-      expect(preview.missingArea).toEqual([{ propertyId: 'p2', ref: 'B', type: 'Piso' }]);
+      expect(preview.missingArea).toEqual([
+        { propertyId: 'p2', ref: 'B', type: 'Piso' },
+      ]);
     });
 
     it('applyQuotasByArea recalcula de nuevo (no confía en un preview viejo) y escribe en una transacción', async () => {
       const { svc, txUpdate, $transaction } = propertiesService([
-        { id: 'p1', ref: 'A', type: 'Piso', builtAreaM2: 60, participationQuota: 999 },
-        { id: 'p2', ref: 'B', type: 'Piso', builtAreaM2: 40, participationQuota: 1 },
+        {
+          id: 'p1',
+          ref: 'A',
+          type: 'Piso',
+          builtAreaM2: 60,
+          participationQuota: 999,
+        },
+        {
+          id: 'p2',
+          ref: 'B',
+          type: 'Piso',
+          builtAreaM2: 40,
+          participationQuota: 1,
+        },
       ]);
 
       const result = await svc.applyQuotasByArea('estate-1');
 
       expect($transaction).toHaveBeenCalledTimes(1);
-      expect(txUpdate).toHaveBeenCalledWith({ where: { id: 'p1' }, data: { participationQuota: 60 } });
-      expect(txUpdate).toHaveBeenCalledWith({ where: { id: 'p2' }, data: { participationQuota: 40 } });
-      expect(result).toEqual(expect.arrayContaining([
-        expect.objectContaining({ id: 'p1', participationQuota: 60 }),
-        expect.objectContaining({ id: 'p2', participationQuota: 40 }),
-      ]));
+      expect(txUpdate).toHaveBeenCalledWith({
+        where: { id: 'p1' },
+        data: { participationQuota: 60 },
+      });
+      expect(txUpdate).toHaveBeenCalledWith({
+        where: { id: 'p2' },
+        data: { participationQuota: 40 },
+      });
+      expect(result).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'p1', participationQuota: 60 }),
+          expect.objectContaining({ id: 'p2', participationQuota: 40 }),
+        ]),
+      );
     });
 
     it('applyQuotasByArea rechaza si falta superficie, sin escribir nada', async () => {
       const { svc, $transaction } = propertiesService([
-        { id: 'p1', ref: 'A', type: 'Piso', builtAreaM2: null, participationQuota: null },
+        {
+          id: 'p1',
+          ref: 'A',
+          type: 'Piso',
+          builtAreaM2: null,
+          participationQuota: null,
+        },
       ]);
 
       await expect(svc.applyQuotasByArea('estate-1')).rejects.toThrow(

@@ -1,4 +1,11 @@
-import { IsIn, IsInt, IsOptional, Min, MinLength, IsString } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  Min,
+  MinLength,
+  IsString,
+} from 'class-validator';
 
 export class OpenVoteSessionDto {
   /** Debe coincidir con el `id` de un AgendaItem dentro de Meeting.agenda. */

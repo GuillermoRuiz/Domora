@@ -97,7 +97,10 @@ async function startStub(): Promise<number> {
       const url = (req.url ?? '').replace(/^\/v1/, '');
       seen.push(`${req.method} ${url}`);
       const json = (status: number, value: unknown) => {
-        res.writeHead(status, { 'content-type': 'application/json', 'x-request-id': 'req_smoke' });
+        res.writeHead(status, {
+          'content-type': 'application/json',
+          'x-request-id': 'req_smoke',
+        });
         res.end(JSON.stringify(value));
       };
       try {
@@ -130,19 +133,21 @@ async function startStub(): Promise<number> {
           });
         const contentMatch = /^\/files\/file-smokeout(\d+)\/content$/.exec(url);
         if (req.method === 'GET' && contentMatch) {
-          const lines = (batches.get(Number(contentMatch[1])) ?? []).map((l) => {
-            const item = JSON.parse(l);
-            return JSON.stringify({
-              id: `batch_req_${item.custom_id}`,
-              custom_id: item.custom_id,
-              response: {
-                status_code: 200,
-                request_id: 'req_smoke',
-                body: completed(synth(item.body)),
-              },
-              error: null,
-            });
-          });
+          const lines = (batches.get(Number(contentMatch[1])) ?? []).map(
+            (l) => {
+              const item = JSON.parse(l);
+              return JSON.stringify({
+                id: `batch_req_${item.custom_id}`,
+                custom_id: item.custom_id,
+                response: {
+                  status_code: 200,
+                  request_id: 'req_smoke',
+                  body: completed(synth(item.body)),
+                },
+                error: null,
+              });
+            },
+          );
           res.writeHead(200, { 'content-type': 'text/plain' });
           return res.end(lines.join('\n') + '\n');
         }
@@ -267,7 +272,10 @@ describe('infraestructura compartida de IA tras retirar Incidencias', () => {
       },
     });
 
-    const calculated = await svc(WeeklyAiService).snapshot(A.estateId, new Date());
+    const calculated = await svc(WeeklyAiService).snapshot(
+      A.estateId,
+      new Date(),
+    );
     const unanswered = calculated.signals.filter((s) =>
       s.fact.includes('proveedor sin respuesta'),
     );
@@ -289,7 +297,9 @@ describe('infraestructura compartida de IA tras retirar Incidencias', () => {
       where: { estateId: A.estateId },
     });
     expect(snapshot.status).toBe('pending');
-    expect(JSON.stringify(snapshot.signals)).toContain('proveedor sin respuesta');
+    expect(JSON.stringify(snapshot.signals)).toContain(
+      'proveedor sin respuesta',
+    );
 
     await svc(AiBatchService).submit();
     await svc(AiBatchService).poll();
@@ -306,12 +316,17 @@ describe('infraestructura compartida de IA tras retirar Incidencias', () => {
   });
 
   it('CONTABILIDAD (facturas): subir un PDF → job → Batch → extracción disponible en la API', async () => {
-    const pdf = Buffer.from('%PDF-1.4\n% factura de prueba sin texto extraíble\n%%EOF\n');
+    const pdf = Buffer.from(
+      '%PDF-1.4\n% factura de prueba sin texto extraíble\n%%EOF\n',
+    );
     const up = await h
       .http()
       .post(`${h.api}/estates/${A.estateId}/ai/invoices/documents`)
       .set(h.auth(A.token))
-      .attach('file', pdf, { filename: 'factura.pdf', contentType: 'application/pdf' });
+      .attach('file', pdf, {
+        filename: 'factura.pdf',
+        contentType: 'application/pdf',
+      });
     expect(up.status).toBe(201);
     await svc(AiWorkerService).work();
     const doc = await h.prisma.aiInvoiceDocument.findUniqueOrThrow({
@@ -343,7 +358,10 @@ describe('infraestructura compartida de IA tras retirar Incidencias', () => {
       where: { estateId: ledgerEstate, kind: 'accounting' },
     });
     expect([job.status, job.lastError]).toEqual(['completed', null]);
-    const token = h.sign('B', A.userId, A.administratorId, [A.estateId, ledgerEstate]);
+    const token = h.sign('B', A.userId, A.administratorId, [
+      A.estateId,
+      ledgerEstate,
+    ]);
     for (const path of ['reconciliation', 'jobs', 'intelligence']) {
       const res = await h
         .http()

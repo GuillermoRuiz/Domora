@@ -17,7 +17,11 @@ import { EstateCommunityService } from './estate-community.service';
 
 @Module({
   imports: [EstateAccessModule, SepaModule, CatastroModule, FilesModule],
-  controllers: [EstatesController, EstateGovernanceController, EstateGeneralController],
+  controllers: [
+    EstatesController,
+    EstateGovernanceController,
+    EstateGeneralController,
+  ],
   providers: [
     EstateGovernanceService,
     EstateGeneralService,

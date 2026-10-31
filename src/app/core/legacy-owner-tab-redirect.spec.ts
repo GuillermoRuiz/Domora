@@ -13,6 +13,8 @@ function setupRouter(): Router {
       { path: 'c/properties/:id', canActivate: [legacyOwnerTabRedirect], component: BlankComponent },
       { path: 'c/incidencias', component: BlankComponent },
       { path: 'c/documentacion', component: BlankComponent },
+      { path: 'c/recibos', component: BlankComponent },
+      { path: 'c/juntas', component: BlankComponent },
     ])],
   });
   return TestBed.inject(Router);
@@ -49,12 +51,24 @@ describe('legacyOwnerTabRedirect', () => {
     expect(router.url).toBe('/c/documentacion?doc=d7');
   });
 
-  it('las demás pestañas de la ficha siguen abriéndose como siempre', async () => {
+  it('?tab=receipts lleva a Recibos y pagos, en esa propiedad', async () => {
     const router = setupRouter();
     await router.navigateByUrl('/c/properties/p1?tab=receipts');
-    expect(router.url).toBe('/c/properties/p1?tab=receipts');
+    expect(router.url).toBe('/c/recibos?propertyId=p1');
+  });
+
+  it('?tab=juntas lleva a Juntas, en esa propiedad', async () => {
+    const router = setupRouter();
     await router.navigateByUrl('/c/properties/p1?tab=juntas');
-    expect(router.url).toBe('/c/properties/p1?tab=juntas');
+    expect(router.url).toBe('/c/juntas?propertyId=p1');
+  });
+
+  it('las demás pestañas de la ficha siguen abriéndose como siempre', async () => {
+    const router = setupRouter();
+    await router.navigateByUrl('/c/properties/p1?tab=communications');
+    expect(router.url).toBe('/c/properties/p1?tab=communications');
+    await router.navigateByUrl('/c/properties/p1?tab=reservas');
+    expect(router.url).toBe('/c/properties/p1?tab=reservas');
     await router.navigateByUrl('/c/properties/p1');
     expect(router.url).toBe('/c/properties/p1');
   });
@@ -92,8 +106,8 @@ describe('legacyCommunityIssueRedirect', () => {
 
   it('«Mi comunidad» sin esos parámetros se abre como siempre', async () => {
     const router = setupCommunityRouter();
-    await router.navigateByUrl('/c/community?tab=juntas');
-    expect(router.url).toBe('/c/community?tab=juntas');
+    await router.navigateByUrl('/c/community?foo=1');
+    expect(router.url).toBe('/c/community?foo=1');
   });
 
   it('la app lo aplica en /c/community', () => {

@@ -29,7 +29,13 @@ const PROPERTY_PRESETS: ColumnPreset[] = [
     targetField: 'ref',
     label: 'Referencia de la unidad',
     required: false,
-    headerGuesses: ['Referencia', 'Nº Finca', 'Numero Finca', 'Elemento', 'Finca Registral'],
+    headerGuesses: [
+      'Referencia',
+      'Nº Finca',
+      'Numero Finca',
+      'Elemento',
+      'Finca Registral',
+    ],
   },
   {
     targetField: 'type',
@@ -41,7 +47,13 @@ const PROPERTY_PRESETS: ColumnPreset[] = [
     targetField: 'participationQuota',
     label: 'Coeficiente de participación (%)',
     required: false,
-    headerGuesses: ['Coeficiente', '% Participación', '% Participacion', 'Coef.', 'Coef'],
+    headerGuesses: [
+      'Coeficiente',
+      '% Participación',
+      '% Participacion',
+      'Coef.',
+      'Coef',
+    ],
   },
   {
     targetField: 'floor',
@@ -98,7 +110,12 @@ const OWNER_PRESETS: ColumnPreset[] = [
     targetField: 'postalAddress',
     label: 'Dirección de correspondencia',
     required: false,
-    headerGuesses: ['Dirección', 'Direccion', 'Correspondencia', 'Dirección Postal'],
+    headerGuesses: [
+      'Dirección',
+      'Direccion',
+      'Correspondencia',
+      'Dirección Postal',
+    ],
   },
 ];
 
@@ -266,7 +283,12 @@ const REMESA_PRESETS: ColumnPreset[] = [
     targetField: 'remesaRef',
     label: 'Referencia de la remesa (agrupa líneas)',
     required: true,
-    headerGuesses: ['Remesa', 'Nº Remesa', 'Numero Remesa', 'Referencia Remesa'],
+    headerGuesses: [
+      'Remesa',
+      'Nº Remesa',
+      'Numero Remesa',
+      'Referencia Remesa',
+    ],
   },
   {
     targetField: 'periodKey',
@@ -463,7 +485,11 @@ export function presetsFor(
 const COMBINING_DIACRITICS = new RegExp('[\\u0300-\\u036f]', 'g');
 
 function normalizeHeader(value: string): string {
-  return value.toLowerCase().trim().normalize('NFD').replace(COMBINING_DIACRITICS, '');
+  return value
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(COMBINING_DIACRITICS, '');
 }
 
 /** Compara cabeceras reales del fichero contra los `headerGuesses` de cada campo — coincidencia exacta tras normalizar acentos/mayúsculas. */

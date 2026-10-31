@@ -34,17 +34,19 @@
   >
     <app-icon name="user" [size]="16"></app-icon><span>Mi perfil</span>
   </button>
-  <button
-    class="account-menu__settings"
-    type="button"
-    role="menuitem"
-    [attr.aria-label]="pending() > 0 ? 'Configuración, puesta en marcha pendiente' : null"
-    tabindex="-1"
-    (click)="openSettings()"
-  >
-    <app-icon name="settings" [size]="16"></app-icon><span>Configuración</span
-    >@if (pending() > 0) { <span class="account-menu__dot account-menu__dot--inline" aria-hidden="true"></span> }<app-icon name="chevron-right" [size]="14"></app-icon>
-  </button>
+  @if (showSettings()) {
+    <button
+      class="account-menu__settings"
+      type="button"
+      role="menuitem"
+      [attr.aria-label]="pending() > 0 ? 'Configuración, puesta en marcha pendiente' : null"
+      tabindex="-1"
+      (click)="openSettings()"
+    >
+      <app-icon name="settings" [size]="16"></app-icon><span>Configuración</span
+      >@if (pending() > 0) { <span class="account-menu__dot account-menu__dot--inline" aria-hidden="true"></span> }<app-icon name="chevron-right" [size]="14"></app-icon>
+    </button>
+  }
   <button
     type="button"
     class="account-menu__theme"

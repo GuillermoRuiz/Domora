@@ -39,7 +39,12 @@ const accounting = new AccountingService(
   new CollectionPostingService(journal, posting),
   { notify: jest.fn() } as unknown as NotificationsService,
 );
-const service = new EstateDashboardService(prisma as unknown as PrismaService, accounting, estateAccess, new LedgerQueryService(prisma as unknown as PrismaService));
+const service = new EstateDashboardService(
+  prisma as unknown as PrismaService,
+  accounting,
+  estateAccess,
+  new LedgerQueryService(prisma as unknown as PrismaService),
+);
 
 let admin: AdministratorFixture;
 let otherAdmin: AdministratorFixture;
@@ -50,7 +55,14 @@ let issueCounter = 0;
 const DAY = 86_400_000;
 const inDays = (n: number) => new Date(Date.now() + n * DAY);
 
-function makeIssue(propertyId: string, opts: { status: 'Abierta' | 'EnReparacion' | 'Resuelta'; date?: Date; deleted?: boolean }) {
+function makeIssue(
+  propertyId: string,
+  opts: {
+    status: 'Abierta' | 'EnReparacion' | 'Resuelta';
+    date?: Date;
+    deleted?: boolean;
+  },
+) {
   issueCounter += 1;
   return prisma.issue.create({
     data: {
@@ -68,7 +80,12 @@ function makeIssue(propertyId: string, opts: { status: 'Abierta' | 'EnReparacion
   });
 }
 
-function makeMeeting(opts: { title: string; at: Date; status?: 'convocada' | 'celebrada' | 'cancelada'; type?: 'ordinaria' | 'extraordinaria' }) {
+function makeMeeting(opts: {
+  title: string;
+  at: Date;
+  status?: 'convocada' | 'celebrada' | 'cancelada';
+  type?: 'ordinaria' | 'extraordinaria';
+}) {
   return prisma.meeting.create({
     data: {
       estateId,
@@ -86,8 +103,12 @@ function makeMeeting(opts: { title: string; at: Date; status?: 'convocada' | 'ce
 }
 
 beforeAll(async () => {
-  admin = await createAdministrator(prisma, { name: 'Gestora de prueba (dashboard)' });
-  otherAdmin = await createAdministrator(prisma, { name: 'Otra gestora (dashboard)' });
+  admin = await createAdministrator(prisma, {
+    name: 'Gestora de prueba (dashboard)',
+  });
+  otherAdmin = await createAdministrator(prisma, {
+    name: 'Otra gestora (dashboard)',
+  });
   estateId = await createLedgerEstate(prisma, admin.administratorId, {
     cutoverDate: new Date(Date.UTC(2099, 0, 1)),
     estate: { name: 'Finca de prueba — dashboard' },
@@ -96,12 +117,34 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  const estateIds = (await prisma.estate.findMany({ where: { administratorId: { in: [admin.administratorId, otherAdmin.administratorId] } }, select: { id: true } })).map((e) => e.id);
+  const estateIds = (
+    await prisma.estate.findMany({
+      where: {
+        administratorId: {
+          in: [admin.administratorId, otherAdmin.administratorId],
+        },
+      },
+      select: { id: true },
+    })
+  ).map((e) => e.id);
   await prisma.issue.deleteMany({ where: { estateId: { in: estateIds } } });
-  await prisma.activityLogEntry.deleteMany({ where: { OR: [{ estateId: { in: estateIds } }, { property: { estateId: { in: estateIds } } }] } });
-  await prisma.supplierContract.deleteMany({ where: { estateId: { in: estateIds } } });
-  await prisma.regulatoryInspection.deleteMany({ where: { estateId: { in: estateIds } } });
-  await prisma.inspectionType.deleteMany({ where: { estateId: { in: estateIds } } });
+  await prisma.activityLogEntry.deleteMany({
+    where: {
+      OR: [
+        { estateId: { in: estateIds } },
+        { property: { estateId: { in: estateIds } } },
+      ],
+    },
+  });
+  await prisma.supplierContract.deleteMany({
+    where: { estateId: { in: estateIds } },
+  });
+  await prisma.regulatoryInspection.deleteMany({
+    where: { estateId: { in: estateIds } },
+  });
+  await prisma.inspectionType.deleteMany({
+    where: { estateId: { in: estateIds } },
+  });
   await prisma.asset.deleteMany({ where: { estateId: { in: estateIds } } });
   await prisma.meeting.deleteMany({ where: { estateId: { in: estateIds } } });
   await prisma.issue.deleteMany({ where: { estateId } });
@@ -133,23 +176,62 @@ describe('EstateDashboardService.summary', () => {
       await createProperty(prisma, estateId, { ref: 'D3' }); // al día
 
       // Deuda: p1 debe 2 recibos, p2 uno devuelto; uno cobrado no cuenta.
-      await issueTestReceipt(prisma, { estateId, propertyId: p1, periodKey: '2099-01', amount: '100.00', status: 'Pendiente' });
-      await issueTestReceipt(prisma, { estateId, propertyId: p1, periodKey: '2099-02', amount: '50.00', status: 'Pendiente' });
-      await issueTestReceipt(prisma, { estateId, propertyId: p2, periodKey: '2099-03', amount: '80.50', status: 'Devuelto' });
-      await issueTestReceipt(prisma, { estateId, propertyId: p2, periodKey: '2099-04', amount: '999.00', status: 'Pagada' });
+      await issueTestReceipt(prisma, {
+        estateId,
+        propertyId: p1,
+        periodKey: '2099-01',
+        amount: '100.00',
+        status: 'Pendiente',
+      });
+      await issueTestReceipt(prisma, {
+        estateId,
+        propertyId: p1,
+        periodKey: '2099-02',
+        amount: '50.00',
+        status: 'Pendiente',
+      });
+      await issueTestReceipt(prisma, {
+        estateId,
+        propertyId: p2,
+        periodKey: '2099-03',
+        amount: '80.50',
+        status: 'Devuelto',
+      });
+      await issueTestReceipt(prisma, {
+        estateId,
+        propertyId: p2,
+        periodKey: '2099-04',
+        amount: '999.00',
+        status: 'Pagada',
+      });
 
       // Incidencias: 2 activas este año, 1 resuelta este año, 1 activa del año pasado, 1 borrada.
       await makeIssue(p1, { status: 'Abierta' });
       await makeIssue(p2, { status: 'EnReparacion' });
       await makeIssue(p1, { status: 'Resuelta' });
-      await makeIssue(p2, { status: 'Abierta', date: new Date(Date.UTC(new Date().getUTCFullYear() - 1, 5, 1)) });
+      await makeIssue(p2, {
+        status: 'Abierta',
+        date: new Date(Date.UTC(new Date().getUTCFullYear() - 1, 5, 1)),
+      });
       await makeIssue(p1, { status: 'Abierta', deleted: true });
 
       // Juntas: la próxima convocada es la de +10 días; pasadas, canceladas y celebradas no cuentan.
       await makeMeeting({ title: 'Pasada', at: inDays(-5) });
-      await makeMeeting({ title: 'Cancelada cercana', at: inDays(2), status: 'cancelada' });
-      await makeMeeting({ title: 'Celebrada', at: inDays(3), status: 'celebrada' });
-      await makeMeeting({ title: 'Lejana', at: inDays(60), type: 'extraordinaria' });
+      await makeMeeting({
+        title: 'Cancelada cercana',
+        at: inDays(2),
+        status: 'cancelada',
+      });
+      await makeMeeting({
+        title: 'Celebrada',
+        at: inDays(3),
+        status: 'celebrada',
+      });
+      await makeMeeting({
+        title: 'Lejana',
+        at: inDays(60),
+        type: 'extraordinaria',
+      });
       await makeMeeting({ title: 'Próxima', at: inDays(10) });
     });
 
@@ -172,14 +254,21 @@ describe('EstateDashboardService.summary', () => {
 
     it('próxima junta = la convocada más cercana en el futuro', async () => {
       const out = await service.summary(estateId, user);
-      expect(out.nextMeeting).toMatchObject({ title: 'Próxima', type: 'ordinaria' });
-      expect(new Date(out.nextMeeting!.scheduledAt).getTime()).toBeGreaterThan(Date.now());
+      expect(out.nextMeeting).toMatchObject({
+        title: 'Próxima',
+        type: 'ordinaria',
+      });
+      expect(new Date(out.nextMeeting!.scheduledAt).getTime()).toBeGreaterThan(
+        Date.now(),
+      );
     });
   });
 
   it('una gestora no puede ver el resumen de la finca de otra', async () => {
     const intruder = roleB(otherAdmin, []);
-    await expect(service.summary(estateId, intruder)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.summary(estateId, intruder)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });
 
@@ -189,7 +278,11 @@ describe('EstateDashboardService.cashflow', () => {
   let propertyId: string;
   let expenseAccountId: string;
 
-  const postExpense = (date: string, euros: number, entryType?: 'regularization') =>
+  const postExpense = (
+    date: string,
+    euros: number,
+    entryType?: 'regularization',
+  ) =>
     journal.post(prisma, {
       estateId: cashEstateId,
       date: new Date(`${date}T00:00:00Z`),
@@ -197,7 +290,10 @@ describe('EstateDashboardService.cashflow', () => {
       sourceType: 'manual',
       concept: 'Gasto de prueba',
       lines: [
-        { account: { accountId: expenseAccountId }, debit: Math.round(euros * 100) },
+        {
+          account: { accountId: expenseAccountId },
+          debit: Math.round(euros * 100),
+        },
         { account: { role: 'cash' }, credit: Math.round(euros * 100) },
       ],
     });
@@ -209,13 +305,41 @@ describe('EstateDashboardService.cashflow', () => {
     });
     cashUser = roleB(admin, [cashEstateId]);
     propertyId = await createProperty(prisma, cashEstateId, { ref: 'C1' });
-    expenseAccountId = (await prisma.chartAccount.findFirstOrThrow({ where: { estateId: cashEstateId, code: '622' } })).id;
+    expenseAccountId = (
+      await prisma.chartAccount.findFirstOrThrow({
+        where: { estateId: cashEstateId, code: '622' },
+      })
+    ).id;
 
     // Ingresos (cuotas emitidas): marzo 150 €, mayo 80 € de 2024; 60 € de 2023.
-    await issueTestReceipt(prisma, { estateId: cashEstateId, propertyId, periodKey: '2024-03', amount: '100.00', status: 'Pendiente' });
-    await issueTestReceipt(prisma, { estateId: cashEstateId, propertyId, periodKey: '2024-03', amount: '50.00', status: 'Pendiente' });
-    await issueTestReceipt(prisma, { estateId: cashEstateId, propertyId, periodKey: '2024-05', amount: '80.00', status: 'Pendiente' });
-    await issueTestReceipt(prisma, { estateId: cashEstateId, propertyId, periodKey: '2023-11', amount: '60.00', status: 'Pendiente' });
+    await issueTestReceipt(prisma, {
+      estateId: cashEstateId,
+      propertyId,
+      periodKey: '2024-03',
+      amount: '100.00',
+      status: 'Pendiente',
+    });
+    await issueTestReceipt(prisma, {
+      estateId: cashEstateId,
+      propertyId,
+      periodKey: '2024-03',
+      amount: '50.00',
+      status: 'Pendiente',
+    });
+    await issueTestReceipt(prisma, {
+      estateId: cashEstateId,
+      propertyId,
+      periodKey: '2024-05',
+      amount: '80.00',
+      status: 'Pendiente',
+    });
+    await issueTestReceipt(prisma, {
+      estateId: cashEstateId,
+      propertyId,
+      periodKey: '2023-11',
+      amount: '60.00',
+      status: 'Pendiente',
+    });
     // Gastos: marzo 40 €, abril 25,50 € de 2024; una regularización que NO es actividad.
     await postExpense('2024-03-10', 40);
     await postExpense('2024-04-02', 25.5);
@@ -226,7 +350,9 @@ describe('EstateDashboardService.cashflow', () => {
     const out = await service.cashflow(cashEstateId, cashUser, 2024);
     expect(out.year).toBe(2024);
     expect(out.months).toHaveLength(12);
-    expect(out.months.map((m) => m.month)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(out.months.map((m) => m.month)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    ]);
     const by = (m: number) => out.months[m - 1];
     expect(by(3)).toEqual({ month: 3, income: 150, expenses: 40 });
     expect(by(4)).toEqual({ month: 4, income: 0, expenses: 25.5 });
@@ -245,7 +371,9 @@ describe('EstateDashboardService.cashflow', () => {
 
   it('lista los ejercicios con movimientos para el selector, incluido el actual', async () => {
     const out = await service.cashflow(cashEstateId, cashUser, 2024);
-    expect(out.years).toEqual(expect.arrayContaining([2023, 2024, new Date().getUTCFullYear()]));
+    expect(out.years).toEqual(
+      expect.arrayContaining([2023, 2024, new Date().getUTCFullYear()]),
+    );
     expect([...out.years].sort((a, b) => a - b)).toEqual(out.years);
   });
 
@@ -255,12 +383,18 @@ describe('EstateDashboardService.cashflow', () => {
   });
 
   it('rechaza un ejercicio absurdo', async () => {
-    await expect(service.cashflow(cashEstateId, cashUser, 1999)).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.cashflow(cashEstateId, cashUser, 2500)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.cashflow(cashEstateId, cashUser, 1999),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.cashflow(cashEstateId, cashUser, 2500),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('una gestora no puede ver los gráficos de la finca de otra', async () => {
-    await expect(service.cashflow(cashEstateId, roleB(otherAdmin, []), 2024)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.cashflow(cashEstateId, roleB(otherAdmin, []), 2024),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
 
@@ -268,8 +402,15 @@ describe('EstateDashboardService.expenseBreakdown', () => {
   let estate: string;
   let breakdownUser: AuthenticatedUser;
 
-  async function expense(code: string, date: string, euros: number, entryType?: 'regularization') {
-    const account = await prisma.chartAccount.findFirstOrThrow({ where: { estateId: estate, code } });
+  async function expense(
+    code: string,
+    date: string,
+    euros: number,
+    entryType?: 'regularization',
+  ) {
+    const account = await prisma.chartAccount.findFirstOrThrow({
+      where: { estateId: estate, code },
+    });
     return journal.post(prisma, {
       estateId: estate,
       date: new Date(`${date}T00:00:00Z`),
@@ -316,18 +457,32 @@ describe('EstateDashboardService.expenseBreakdown', () => {
   it('no incluye la regularización ni los gastos de otros ejercicios, y omite categorías vacías', async () => {
     const out = await service.expenseBreakdown(estate, breakdownUser, 2024);
     expect(out.categories.find((c) => c.key === 'services')).toBeUndefined();
-    expect(out.categories.find((c) => c.key === 'maintenance')!.amount).toBe(400.5); // sin los 999 de regularización
-    const previous = await service.expenseBreakdown(estate, breakdownUser, 2023);
-    expect(previous.categories).toEqual([{ key: 'supplies', label: 'Suministros', amount: 77 }]);
+    expect(out.categories.find((c) => c.key === 'maintenance')!.amount).toBe(
+      400.5,
+    ); // sin los 999 de regularización
+    const previous = await service.expenseBreakdown(
+      estate,
+      breakdownUser,
+      2023,
+    );
+    expect(previous.categories).toEqual([
+      { key: 'supplies', label: 'Suministros', amount: 77 },
+    ]);
   });
 
   it('un ejercicio sin gastos devuelve total 0 y ninguna categoría', async () => {
-    expect(await service.expenseBreakdown(estate, breakdownUser, 2022)).toEqual({ year: 2022, total: 0, categories: [] });
+    expect(await service.expenseBreakdown(estate, breakdownUser, 2022)).toEqual(
+      { year: 2022, total: 0, categories: [] },
+    );
   });
 
   it('valida el ejercicio y el acceso a la finca', async () => {
-    await expect(service.expenseBreakdown(estate, breakdownUser, 1999)).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.expenseBreakdown(estate, roleB(otherAdmin, []), 2024)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.expenseBreakdown(estate, breakdownUser, 1999),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.expenseBreakdown(estate, roleB(otherAdmin, []), 2024),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
 
@@ -336,16 +491,29 @@ describe('EstateDashboardService.milestones', () => {
   let milestonesUser: AuthenticatedUser;
   const dayOffset = (n: number) => {
     const d = new Date();
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + n));
+    return new Date(
+      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + n),
+    );
   };
   const iso = (n: number) => dayOffset(n).toISOString().slice(0, 10);
 
-  async function meeting(title: string, at: Date, status: 'convocada' | 'cancelada' | 'celebrada' = 'convocada') {
+  async function meeting(
+    title: string,
+    at: Date,
+    status: 'convocada' | 'cancelada' | 'celebrada' = 'convocada',
+  ) {
     return prisma.meeting.create({
       data: {
-        estateId: estate, title, type: 'ordinaria', status, scheduledAt1: at,
-        scheduledAt2: new Date(at.getTime() + 30 * 60_000), agenda: [], convokedBy: 'presidente',
-        signerRole: 'administrador', createdByUserId: admin.userId,
+        estateId: estate,
+        title,
+        type: 'ordinaria',
+        status,
+        scheduledAt1: at,
+        scheduledAt2: new Date(at.getTime() + 30 * 60_000),
+        agenda: [],
+        convokedBy: 'presidente',
+        signerRole: 'administrador',
+        createdByUserId: admin.userId,
       },
     });
   }
@@ -363,11 +531,35 @@ describe('EstateDashboardService.milestones', () => {
     await meeting('Junta pasada sin celebrar', dayOffset(-10));
     await meeting('Junta lejana', dayOffset(500));
 
-    const asset = await prisma.asset.create({ data: { estateId: estate, name: 'Ascensor portal 1', category: 'Ascensores' } });
-    const type = await prisma.inspectionType.create({ data: { estateId: estate, code: 'ascensor', name: 'Inspección de ascensor' } });
-    const inspection = (status: 'planificada' | 'citada' | 'vencida' | 'realizada', due: Date | null, appointment: Date | null = null) =>
+    const asset = await prisma.asset.create({
+      data: {
+        estateId: estate,
+        name: 'Ascensor portal 1',
+        category: 'Ascensores',
+      },
+    });
+    const type = await prisma.inspectionType.create({
+      data: {
+        estateId: estate,
+        code: 'ascensor',
+        name: 'Inspección de ascensor',
+      },
+    });
+    const inspection = (
+      status: 'planificada' | 'citada' | 'vencida' | 'realizada',
+      due: Date | null,
+      appointment: Date | null = null,
+    ) =>
       prisma.regulatoryInspection.create({
-        data: { estateId: estate, assetId: asset.id, inspectionTypeId: type.id, status, nextDueDate: due, appointmentDate: appointment, createdByUserId: admin.userId },
+        data: {
+          estateId: estate,
+          assetId: asset.id,
+          inspectionTypeId: type.id,
+          status,
+          nextDueDate: due,
+          appointmentDate: appointment,
+          createdByUserId: admin.userId,
+        },
       });
     await inspection('planificada', dayOffset(40));
     await inspection('citada', dayOffset(90), dayOffset(15)); // la cita manda sobre el vencimiento
@@ -375,10 +567,23 @@ describe('EstateDashboardService.milestones', () => {
     await inspection('realizada', dayOffset(5)); // ya hecha: no es un hito
     await inspection('planificada', null); // sin fecha: no es un hito
 
-    const supplier = await createSupplier(prisma, estate, admin.administratorId, { name: 'Seguros Credimar S.L.' });
+    const supplier = await createSupplier(
+      prisma,
+      estate,
+      admin.administratorId,
+      { name: 'Seguros Credimar S.L.' },
+    );
     const contract = (end: Date | null, cancelled = false) =>
       prisma.supplierContract.create({
-        data: { supplierId: supplier, estateId: estate, serviceType: 'Seguro del edificio', startDate: dayOffset(-300), endDate: end, renewalType: 'manual', cancelledAt: cancelled ? new Date() : null },
+        data: {
+          supplierId: supplier,
+          estateId: estate,
+          serviceType: 'Seguro del edificio',
+          startDate: dayOffset(-300),
+          endDate: end,
+          renewalType: 'manual',
+          cancelledAt: cancelled ? new Date() : null,
+        },
       });
     await contract(dayOffset(60));
     await contract(dayOffset(10), true); // cancelado: no cuenta
@@ -399,15 +604,25 @@ describe('EstateDashboardService.milestones', () => {
 
   it('los títulos dicen qué es cada hito', async () => {
     const { items } = await service.milestones(estate, milestonesUser);
-    expect(items.find((i) => i.kind === 'meeting')!.title).toBe('Junta ordinaria');
-    expect(items.find((i) => i.kind === 'inspection')!.title).toBe('Inspección de ascensor · Ascensor portal 1');
-    expect(items.find((i) => i.kind === 'contract')!.title).toBe('Vence contrato de Seguros Credimar S.L. (Seguro del edificio)');
+    expect(items.find((i) => i.kind === 'meeting')!.title).toBe(
+      'Junta ordinaria',
+    );
+    expect(items.find((i) => i.kind === 'inspection')!.title).toBe(
+      'Inspección de ascensor · Ascensor portal 1',
+    );
+    expect(items.find((i) => i.kind === 'contract')!.title).toBe(
+      'Vence contrato de Seguros Credimar S.L. (Seguro del edificio)',
+    );
   });
 
   it('las juntas llevan hora (ISO); inspecciones y contratos, solo el día', async () => {
     const { items } = await service.milestones(estate, milestonesUser);
-    expect(items.find((i) => i.kind === 'meeting')!.date).toMatch(/T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-    expect(items.find((i) => i.kind === 'contract')!.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(items.find((i) => i.kind === 'meeting')!.date).toMatch(
+      /T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
+    expect(items.find((i) => i.kind === 'contract')!.date).toMatch(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
   });
 
   it('no pasa de seis hitos', async () => {
@@ -417,9 +632,15 @@ describe('EstateDashboardService.milestones', () => {
   });
 
   it('una finca sin nada devuelve la lista vacía y una gestora ajena no puede verla', async () => {
-    const empty = await createLedgerEstate(prisma, admin.administratorId, { estate: { name: 'Finca de prueba — sin hitos' } });
-    expect(await service.milestones(empty, roleB(admin, [empty]))).toEqual({ items: [] });
-    await expect(service.milestones(estate, roleB(otherAdmin, []))).rejects.toBeInstanceOf(ForbiddenException);
+    const empty = await createLedgerEstate(prisma, admin.administratorId, {
+      estate: { name: 'Finca de prueba — sin hitos' },
+    });
+    expect(await service.milestones(empty, roleB(admin, [empty]))).toEqual({
+      items: [],
+    });
+    await expect(
+      service.milestones(estate, roleB(otherAdmin, [])),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
 
@@ -430,10 +651,23 @@ describe('EstateDashboardService.activity', () => {
   let propertyId: string;
   const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000);
 
-  const entry = (summary: string, occurredAt: Date, opts: { estateId?: string | null; propertyId?: string | null; actor?: boolean; subjectType?: 'issue' | 'membership' | 'property' } = {}) =>
+  const entry = (
+    summary: string,
+    occurredAt: Date,
+    opts: {
+      estateId?: string | null;
+      propertyId?: string | null;
+      actor?: boolean;
+      subjectType?: 'issue' | 'membership' | 'property';
+    } = {},
+  ) =>
     prisma.activityLogEntry.create({
       data: {
-        subjectType: opts.subjectType ?? 'issue', subjectId: estate, verb: 'created', summary, occurredAt,
+        subjectType: opts.subjectType ?? 'issue',
+        subjectId: estate,
+        verb: 'created',
+        summary,
+        occurredAt,
         estateId: opts.estateId === undefined ? estate : opts.estateId,
         propertyId: opts.propertyId ?? null,
         actorUserId: opts.actor ? admin.userId : null,
@@ -441,17 +675,32 @@ describe('EstateDashboardService.activity', () => {
     });
 
   beforeAll(async () => {
-    estate = await createLedgerEstate(prisma, admin.administratorId, { estate: { name: 'Finca de prueba — actividad' } });
-    otherEstate = await createLedgerEstate(prisma, admin.administratorId, { estate: { name: 'Otra finca — actividad' } });
+    estate = await createLedgerEstate(prisma, admin.administratorId, {
+      estate: { name: 'Finca de prueba — actividad' },
+    });
+    otherEstate = await createLedgerEstate(prisma, admin.administratorId, {
+      estate: { name: 'Otra finca — actividad' },
+    });
     activityUser = roleB(admin, [estate]);
     propertyId = await createProperty(prisma, estate, { ref: 'A1' });
 
-    await entry('Nueva incidencia: avería en ascensor', ago(10), { actor: true, propertyId });
+    await entry('Nueva incidencia: avería en ascensor', ago(10), {
+      actor: true,
+      propertyId,
+    });
     await entry('Se ha registrado un pago de cuota', ago(120));
-    await entry('Entrada solo con propiedad (sin finca)', ago(60), { estateId: null, propertyId });
+    await entry('Entrada solo con propiedad (sin finca)', ago(60), {
+      estateId: null,
+      propertyId,
+    });
     await entry('Actividad de OTRA finca', ago(5), { estateId: otherEstate });
-    await entry('Nuevo titular en 2ºA', ago(30), { subjectType: 'membership', propertyId });
-    await entry('Importadas 24 propiedades del Catastro', ago(90), { subjectType: 'property' });
+    await entry('Nuevo titular en 2ºA', ago(30), {
+      subjectType: 'membership',
+      propertyId,
+    });
+    await entry('Importadas 24 propiedades del Catastro', ago(90), {
+      subjectType: 'property',
+    });
   });
 
   it('lista la actividad de la finca y de sus propiedades, la más reciente primero', async () => {
@@ -472,29 +721,61 @@ describe('EstateDashboardService.activity', () => {
 
   it('expone quién lo hizo y a qué propiedad se refiere, o null si no consta', async () => {
     const { items } = await service.activity(estate, activityUser);
-    expect(items[0]).toMatchObject({ verb: 'created', subjectType: 'issue', actorName: 'Gestor de prueba', propertyRef: 'A1' });
+    expect(items[0]).toMatchObject({
+      verb: 'created',
+      subjectType: 'issue',
+      actorName: 'Gestor de prueba',
+      propertyRef: 'A1',
+    });
     expect(items[4]).toMatchObject({ actorName: null, propertyRef: null });
     expect(new Date(items[0].occurredAt).getTime()).toBeLessThan(Date.now());
   });
 
   it('puede limitarse a ciertos tipos (altas y cambios de propiedades) y rechaza tipos que no existen', async () => {
-    const { items } = await service.activity(estate, activityUser, undefined, ['membership', 'property']);
-    expect(items.map((i) => i.summary)).toEqual(['Nuevo titular en 2ºA', 'Importadas 24 propiedades del Catastro']);
-    await expect(service.activity(estate, activityUser, undefined, ['membership', 'inventado'])).rejects.toBeInstanceOf(BadRequestException);
+    const { items } = await service.activity(estate, activityUser, undefined, [
+      'membership',
+      'property',
+    ]);
+    expect(items.map((i) => i.summary)).toEqual([
+      'Nuevo titular en 2ºA',
+      'Importadas 24 propiedades del Catastro',
+    ]);
+    await expect(
+      service.activity(estate, activityUser, undefined, [
+        'membership',
+        'inventado',
+      ]),
+    ).rejects.toBeInstanceOf(BadRequestException);
     // el límite se aplica DESPUÉS de filtrar: pedir 1 devuelve la más reciente de esos tipos, no la más reciente de todas
-    expect((await service.activity(estate, activityUser, 1, ['property'])).items.map((i) => i.summary)).toEqual(['Importadas 24 propiedades del Catastro']);
+    expect(
+      (await service.activity(estate, activityUser, 1, ['property'])).items.map(
+        (i) => i.summary,
+      ),
+    ).toEqual(['Importadas 24 propiedades del Catastro']);
   });
 
   it('respeta el límite pedido y rechaza uno absurdo', async () => {
-    expect((await service.activity(estate, activityUser, 2)).items).toHaveLength(2);
-    await expect(service.activity(estate, activityUser, 0)).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.activity(estate, activityUser, 31)).rejects.toBeInstanceOf(BadRequestException);
+    expect(
+      (await service.activity(estate, activityUser, 2)).items,
+    ).toHaveLength(2);
+    await expect(
+      service.activity(estate, activityUser, 0),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.activity(estate, activityUser, 31),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('una finca sin actividad devuelve la lista vacía y una gestora ajena no puede verla', async () => {
-    const quiet = await createLedgerEstate(prisma, admin.administratorId, { estate: { name: 'Finca tranquila' } });
-    expect(await service.activity(quiet, roleB(admin, [quiet]))).toEqual({ items: [] });
-    await expect(service.activity(estate, roleB(otherAdmin, []))).rejects.toBeInstanceOf(ForbiddenException);
+    const quiet = await createLedgerEstate(prisma, admin.administratorId, {
+      estate: { name: 'Finca tranquila' },
+    });
+    expect(await service.activity(quiet, roleB(admin, [quiet]))).toEqual({
+      items: [],
+    });
+    await expect(
+      service.activity(estate, roleB(otherAdmin, [])),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
 
@@ -505,7 +786,10 @@ describe('EstateDashboardService.properties', () => {
   const ids: Record<string, string> = {};
 
   async function property(ref: string, createdAt: Date, quota = '100.00') {
-    const id = await createProperty(prisma, estate, { ref, quotaMonthly: quota });
+    const id = await createProperty(prisma, estate, {
+      ref,
+      quotaMonthly: quota,
+    });
     await prisma.property.update({ where: { id }, data: { createdAt } });
     ids[ref] = id;
     return id;
@@ -528,30 +812,77 @@ describe('EstateDashboardService.properties', () => {
     await property('P7', at(7)); // la más reciente
 
     // Titular con cuenta en P7 y titular importado (sin cuenta) en P6.
-    const ownerId = await createOwnerUser(prisma, { fullName: 'Marta Soler Giménez' });
+    const ownerId = await createOwnerUser(prisma, {
+      fullName: 'Marta Soler Giménez',
+    });
     ownerIds.push(ownerId);
     await prisma.propertyMembership.create({
-      data: { propertyId: ids.P7, userId: ownerId, roleType: 'Propietario', status: 'linked', isPrimaryContact: true, linkedAt: new Date(Date.UTC(2022, 2, 14, 10)) },
+      data: {
+        propertyId: ids.P7,
+        userId: ownerId,
+        roleType: 'Propietario',
+        status: 'linked',
+        isPrimaryContact: true,
+        linkedAt: new Date(Date.UTC(2022, 2, 14, 10)),
+      },
     });
     await prisma.externalOwner.create({
-      data: { propertyId: ids.P6, fullName: 'Inmobiliaria Turia S.L.', roleType: 'Propietario', createdByUserId: admin.userId },
+      data: {
+        propertyId: ids.P6,
+        fullName: 'Inmobiliaria Turia S.L.',
+        roleType: 'Propietario',
+        createdByUserId: admin.userId,
+      },
     });
 
     // P7 debe 80 € (con deuda); P6 tiene una incidencia abierta Y deuda (gana la incidencia); P5 al día con una incidencia resuelta.
-    await issueTestReceipt(prisma, { estateId: estate, propertyId: ids.P7, periodKey: '2024-01', amount: '80.00', status: 'Pendiente' });
-    await issueTestReceipt(prisma, { estateId: estate, propertyId: ids.P6, periodKey: '2024-01', amount: '50.00', status: 'Devuelto' });
-    await issueTestReceipt(prisma, { estateId: estate, propertyId: ids.P5, periodKey: '2024-01', amount: '60.00', status: 'Pagada' });
-    let n = 0;
-    const issue = (propertyId: string, status: 'Abierta' | 'Resuelta') => prisma.issue.create({
-      data: { ref: `PRP-${Date.now()}-${n++}`, estateId: estate, type: 'Fuga', title: 'x', description: 'x', status, priority: 'Normal', source: 'Comunidad', date: new Date() },
+    await issueTestReceipt(prisma, {
+      estateId: estate,
+      propertyId: ids.P7,
+      periodKey: '2024-01',
+      amount: '80.00',
+      status: 'Pendiente',
     });
+    await issueTestReceipt(prisma, {
+      estateId: estate,
+      propertyId: ids.P6,
+      periodKey: '2024-01',
+      amount: '50.00',
+      status: 'Devuelto',
+    });
+    await issueTestReceipt(prisma, {
+      estateId: estate,
+      propertyId: ids.P5,
+      periodKey: '2024-01',
+      amount: '60.00',
+      status: 'Pagada',
+    });
+    let n = 0;
+    const issue = (propertyId: string, status: 'Abierta' | 'Resuelta') =>
+      prisma.issue.create({
+        data: {
+          ref: `PRP-${Date.now()}-${n++}`,
+          estateId: estate,
+          type: 'Fuga',
+          title: 'x',
+          description: 'x',
+          status,
+          priority: 'Normal',
+          source: 'Comunidad',
+          date: new Date(),
+        },
+      });
     await issue(ids.P6, 'Abierta');
     await issue(ids.P5, 'Resuelta');
   });
 
   afterAll(async () => {
-    await prisma.propertyMembership.deleteMany({ where: { propertyId: { in: Object.values(ids) } } });
-    await prisma.externalOwner.deleteMany({ where: { propertyId: { in: Object.values(ids) } } });
+    await prisma.propertyMembership.deleteMany({
+      where: { propertyId: { in: Object.values(ids) } },
+    });
+    await prisma.externalOwner.deleteMany({
+      where: { propertyId: { in: Object.values(ids) } },
+    });
     await prisma.user.deleteMany({ where: { id: { in: ownerIds } } });
   });
 
@@ -563,7 +894,8 @@ describe('EstateDashboardService.properties', () => {
 
   it('muestra el titular con cuenta, o el importado si no tiene, o null', async () => {
     const out = await service.properties(estate, propsUser, 7);
-    const titular = (ref: string) => out.items.find((i) => i.ref === ref)!.titular;
+    const titular = (ref: string) =>
+      out.items.find((i) => i.ref === ref)!.titular;
     expect(titular('P7')).toBe('Marta Soler Giménez');
     expect(titular('P6')).toBe('Inmobiliaria Turia S.L.');
     expect(titular('P5')).toBeNull();
@@ -590,16 +922,30 @@ describe('EstateDashboardService.properties', () => {
   it('propertyStatuses devuelve saldo y estado de TODAS las propiedades de la finca (sin incidencias)', async () => {
     const out = await service.propertyStatuses(estate, propsUser);
     expect(out.items).toHaveLength(7);
-    const by = (ref: string) => out.items.find((i) => i.propertyId === ids[ref])!;
-    expect(by('P7')).toMatchObject({ propertyId: ids.P7, balance: 80, status: 'overdue' });
-    expect(by('P6')).toMatchObject({ propertyId: ids.P6, balance: 50, status: 'overdue' });
-    expect(by('P5')).toMatchObject({ propertyId: ids.P5, balance: 0, status: 'ok' });
+    const by = (ref: string) =>
+      out.items.find((i) => i.propertyId === ids[ref])!;
+    expect(by('P7')).toMatchObject({
+      propertyId: ids.P7,
+      balance: 80,
+      status: 'overdue',
+    });
+    expect(by('P6')).toMatchObject({
+      propertyId: ids.P6,
+      balance: 50,
+      status: 'overdue',
+    });
+    expect(by('P5')).toMatchObject({
+      propertyId: ids.P5,
+      balance: 0,
+      status: 'ok',
+    });
     expect(by('P5')).not.toHaveProperty('openIssues');
   });
 
   it('propertyStatuses incluye el último pago (fecha del último cobro no deshecho) y desde cuándo es titular', async () => {
     const out = await service.propertyStatuses(estate, propsUser);
-    const by = (ref: string) => out.items.find((i) => i.propertyId === ids[ref])!;
+    const by = (ref: string) =>
+      out.items.find((i) => i.propertyId === ids[ref])!;
     expect(by('P5').lastPaymentDate).toBe('2024-01-01'); // recibo cobrado
     expect(by('P7').lastPaymentDate).toBeNull(); // pendiente: nunca ha pagado
     expect(by('P6').lastPaymentDate).toBeNull(); // devuelto: no cuenta como pago
@@ -610,22 +956,55 @@ describe('EstateDashboardService.properties', () => {
 
   it('propertyStatuses se queda con el cobro más reciente y ignora los deshechos', async () => {
     const p8 = await property('P8', new Date(Date.UTC(2026, 0, 8)));
-    await issueTestReceipt(prisma, { estateId: estate, propertyId: p8, periodKey: '2024-01', amount: '40.00', status: 'Pagada' });
-    await issueTestReceipt(prisma, { estateId: estate, propertyId: p8, periodKey: '2024-02', amount: '40.00', status: 'Pagada' });
-    const find = async () => (await service.propertyStatuses(estate, propsUser)).items.find((i) => i.propertyId === p8)!;
+    await issueTestReceipt(prisma, {
+      estateId: estate,
+      propertyId: p8,
+      periodKey: '2024-01',
+      amount: '40.00',
+      status: 'Pagada',
+    });
+    await issueTestReceipt(prisma, {
+      estateId: estate,
+      propertyId: p8,
+      periodKey: '2024-02',
+      amount: '40.00',
+      status: 'Pagada',
+    });
+    const find = async () =>
+      (await service.propertyStatuses(estate, propsUser)).items.find(
+        (i) => i.propertyId === p8,
+      )!;
     expect((await find()).lastPaymentDate).toBe('2024-02-01');
 
-    const latest = (await prisma.collection.findMany({ where: { propertyId: p8 }, orderBy: { date: 'desc' } }))[0];
+    const latest = (
+      await prisma.collection.findMany({
+        where: { propertyId: p8 },
+        orderBy: { date: 'desc' },
+      })
+    )[0];
     const journal = new JournalService();
-    const collections = new CollectionPostingService(journal, new ReceiptPostingService(journal));
-    await prisma.$transaction((tx) => collections.undo(tx, latest.id, { reason: 'prueba' }));
+    const collections = new CollectionPostingService(
+      journal,
+      new ReceiptPostingService(journal),
+    );
+    await prisma.$transaction((tx) =>
+      collections.undo(tx, latest.id, { reason: 'prueba' }),
+    );
     expect((await find()).lastPaymentDate).toBe('2024-01-01'); // el cobro deshecho ya no cuenta
   });
 
   it('respeta el límite, lo valida, y protege el acceso a la finca', async () => {
-    expect((await service.properties(estate, propsUser, 2)).items).toHaveLength(2);
-    await expect(service.properties(estate, propsUser, 0)).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.properties(estate, propsUser, 21)).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.properties(estate, roleB(otherAdmin, []))).rejects.toBeInstanceOf(ForbiddenException);
+    expect((await service.properties(estate, propsUser, 2)).items).toHaveLength(
+      2,
+    );
+    await expect(
+      service.properties(estate, propsUser, 0),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.properties(estate, propsUser, 21),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.properties(estate, roleB(otherAdmin, [])),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

@@ -105,9 +105,12 @@ export class InspectionsCronService {
     });
 
     for (const inspection of dueSoon) {
-      const managerIds = await this.notifications.managerIdsOfEstate(inspection.estateId);
+      const managerIds = await this.notifications.managerIdsOfEstate(
+        inspection.estateId,
+      );
       const daysRemaining = daysBetween(today, inspection.nextDueDate!);
-      const whenLine = daysRemaining <= 1 ? 'vence mañana' : `vence en ${daysRemaining} días`;
+      const whenLine =
+        daysRemaining <= 1 ? 'vence mañana' : `vence en ${daysRemaining} días`;
       const dueDateLabel = inspection.nextDueDate!.toLocaleDateString('es-ES', {
         day: 'numeric',
         month: 'long',

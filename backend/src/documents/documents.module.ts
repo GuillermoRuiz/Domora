@@ -11,7 +11,12 @@ import { OwnerDocumentsService } from './owner-documents.service';
 
 /** Estate document library (odd/tasks/documentos-finca.md). */
 @Module({
-  imports: [FilesModule, RagAuthorizationModule, EstateAccessModule, NotificationsModule],
+  imports: [
+    FilesModule,
+    RagAuthorizationModule,
+    EstateAccessModule,
+    NotificationsModule,
+  ],
   controllers: [LibraryController, OwnerDocumentsController],
   providers: [LibraryService, DocumentAccessService, OwnerDocumentsService],
   exports: [LibraryService, DocumentAccessService],

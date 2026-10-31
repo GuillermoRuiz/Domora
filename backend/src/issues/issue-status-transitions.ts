@@ -5,7 +5,11 @@ import type { IssueStatus } from '../prisma/client';
 export const ISSUE_STATUS_TRANSITION_NOT_ALLOWED =
   'ISSUE_STATUS_TRANSITION_NOT_ALLOWED';
 
-const WORKING: IssueStatus[] = ['Abierta', 'EnReparacion', 'PendienteProveedor'];
+const WORKING: IssueStatus[] = [
+  'Abierta',
+  'EnReparacion',
+  'PendienteProveedor',
+];
 
 /**
  * Matriz MÍNIMA de cambios de estado a mano (`PATCH :id/status` y «resolver» al registrar una interacción). No es una máquina de

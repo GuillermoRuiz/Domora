@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { Router, type CanActivateFn } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { OWNER_HOME } from '../../core/owner-routes';
 
 export const operationsRoleGuard: CanActivateFn = () => {
   const user = inject(AuthService).currentUser();
@@ -9,7 +10,7 @@ export const operationsRoleGuard: CanActivateFn = () => {
     user?.role === 'A'
       ? '/a/admins'
       : user?.role === 'C'
-        ? '/c/properties'
+        ? OWNER_HOME
         : '/login',
   ]);
 };

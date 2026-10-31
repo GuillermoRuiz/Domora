@@ -29,12 +29,20 @@ function emptyFixture(): Fixture {
 
 async function cleanup(fixture: Fixture): Promise<void> {
   if (fixture.meetingIds.length) {
-    await prisma.meetingState.deleteMany({ where: { meetingId: { in: fixture.meetingIds } } });
-    await prisma.meeting.deleteMany({ where: { id: { in: fixture.meetingIds } } });
+    await prisma.meetingState.deleteMany({
+      where: { meetingId: { in: fixture.meetingIds } },
+    });
+    await prisma.meeting.deleteMany({
+      where: { id: { in: fixture.meetingIds } },
+    });
   }
 }
 
-async function createMeeting(overrides: { celebratedAt: Date | null; actaSignedAt?: Date; actaReminderSentAt?: Date }) {
+async function createMeeting(overrides: {
+  celebratedAt: Date | null;
+  actaSignedAt?: Date;
+  actaReminderSentAt?: Date;
+}) {
   const now = new Date();
   return prisma.meeting.create({
     data: {
@@ -57,17 +65,36 @@ async function createMeeting(overrides: { celebratedAt: Date | null; actaSignedA
 
 beforeAll(async () => {
   const admin = await prisma.administrator.create({
-    data: { name: 'Gestora de prueba (cron)', cif: CIF, plan: 'BASE', tier: 'basic', usersMax: 5, status: 'Activa' },
+    data: {
+      name: 'Gestora de prueba (cron)',
+      cif: CIF,
+      plan: 'BASE',
+      tier: 'basic',
+      usersMax: 5,
+      status: 'Activa',
+    },
   });
   administratorId = admin.id;
 
   const estate = await prisma.estate.create({
-    data: { administratorId, name: 'Finca de prueba — cron', type: 'Edificio', address: 'Calle Falsa 2022', location: 'Madrid' },
+    data: {
+      administratorId,
+      name: 'Finca de prueba — cron',
+      type: 'Edificio',
+      address: 'Calle Falsa 2022',
+      location: 'Madrid',
+    },
   });
   estateId = estate.id;
 
   const manager = await prisma.user.create({
-    data: { email: `manager-cron-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Gestora', role: 'B', administratorId },
+    data: {
+      email: `manager-cron-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Gestora',
+      role: 'B',
+      administratorId,
+    },
   });
   managerId = manager.id;
   managerEmail = manager.email;
@@ -84,11 +111,16 @@ describe('MeetingsNotificationsCronService', () => {
   it('recién celebrada (quedan ~9 días de plazo, fuera de la ventana de 3 días), NO avisa todavía', async () => {
     const fx = emptyFixture();
     try {
-      const meeting = await createMeeting({ celebratedAt: new Date(Date.now() - 1 * DAY_MS) });
+      const meeting = await createMeeting({
+        celebratedAt: new Date(Date.now() - 1 * DAY_MS),
+      });
       fx.meetingIds.push(meeting.id);
       const send = jest.fn().mockResolvedValue(undefined);
       const mail = { sendActaReadyToSign: send } as unknown as MailService;
-      const cron = new MeetingsNotificationsCronService(prisma as unknown as PrismaService, mail);
+      const cron = new MeetingsNotificationsCronService(
+        prisma as unknown as PrismaService,
+        mail,
+      );
 
       await cron.run();
 
@@ -101,16 +133,27 @@ describe('MeetingsNotificationsCronService', () => {
   it('a 8 días de celebrada (2 días para el plazo de 10), avisa a la gestora y marca actaReminderSentAt', async () => {
     const fx = emptyFixture();
     try {
-      const meeting = await createMeeting({ celebratedAt: new Date(Date.now() - 8 * DAY_MS) });
+      const meeting = await createMeeting({
+        celebratedAt: new Date(Date.now() - 8 * DAY_MS),
+      });
       fx.meetingIds.push(meeting.id);
       const send = jest.fn().mockResolvedValue(undefined);
       const mail = { sendActaReadyToSign: send } as unknown as MailService;
-      const cron = new MeetingsNotificationsCronService(prisma as unknown as PrismaService, mail);
+      const cron = new MeetingsNotificationsCronService(
+        prisma as unknown as PrismaService,
+        mail,
+      );
 
       await cron.run();
 
-      expect(send).toHaveBeenCalledWith(managerEmail, 'Junta de prueba — cron acta', 2);
-      const updated = await prisma.meeting.findUniqueOrThrow({ where: { id: meeting.id } });
+      expect(send).toHaveBeenCalledWith(
+        managerEmail,
+        'Junta de prueba — cron acta',
+        2,
+      );
+      const updated = await prisma.meeting.findUniqueOrThrow({
+        where: { id: meeting.id },
+      });
       expect(updated.actaReminderSentAt).not.toBeNull();
     } finally {
       await cleanup(fx);
@@ -127,7 +170,10 @@ describe('MeetingsNotificationsCronService', () => {
       fx.meetingIds.push(meeting.id);
       const send = jest.fn().mockResolvedValue(undefined);
       const mail = { sendActaReadyToSign: send } as unknown as MailService;
-      const cron = new MeetingsNotificationsCronService(prisma as unknown as PrismaService, mail);
+      const cron = new MeetingsNotificationsCronService(
+        prisma as unknown as PrismaService,
+        mail,
+      );
 
       await cron.run();
 
@@ -147,7 +193,10 @@ describe('MeetingsNotificationsCronService', () => {
       fx.meetingIds.push(meeting.id);
       const send = jest.fn().mockResolvedValue(undefined);
       const mail = { sendActaReadyToSign: send } as unknown as MailService;
-      const cron = new MeetingsNotificationsCronService(prisma as unknown as PrismaService, mail);
+      const cron = new MeetingsNotificationsCronService(
+        prisma as unknown as PrismaService,
+        mail,
+      );
 
       await cron.run();
 

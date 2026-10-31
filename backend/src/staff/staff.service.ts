@@ -8,7 +8,8 @@ import { EstateAccessService } from '../estate-access/estate-access.service';
 import { StorageService } from '../files/storage.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import type { CreateStaffMemberDto } from './dto/create-staff-member.dto';
-import type { UpdateStaffMemberDto } from './dto/update-staff-member.dto';
+import type { UpdateStaffMemberDto } from './dto/update-staff-member.dto';
+
 import { dateOrNull } from '../common/date-or-null';
 
 /** Fichero multipart tal y como lo entrega multer (sin @types/multer). */

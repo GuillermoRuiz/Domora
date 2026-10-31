@@ -1,4 +1,12 @@
-import { IsDateString, IsOptional, IsString, IsUUID, MaxLength, MinLength, ValidateIf } from 'class-validator';
+import {
+  IsDateString,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 import { OptionalButNotNull } from '../../common/optional-not-null.decorator';
 
 export class CreateSupplierVisitDto {

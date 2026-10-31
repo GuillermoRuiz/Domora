@@ -10,6 +10,7 @@ import { MeetingVoteDelegationsService } from '../../../core/meeting-vote-delega
 import { VoteSessionsService } from '../../../core/vote-sessions.service';
 import { AuthService } from '../../../core/auth.service';
 import { Meeting, MeetingVoteDelegation, VoteSession } from '../../../core/models';
+import { JuntasDataCache } from '../juntas-data-cache';
 
 interface VotableSession {
   session: VoteSession;
@@ -51,12 +52,16 @@ interface JuntaRow {
 export class JuntasSectionComponent implements OnInit {
   @Input({ required: true }) estateId!: string;
   @Input({ required: true }) propertyId!: string;
+  /** Junta a resaltar (enlace `?meeting=<id>` de un aviso). */
+  @Input() highlightMeetingId: string | null = null;
 
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly meetingsSvc = inject(MeetingsService);
   private readonly delegationsSvc = inject(MeetingVoteDelegationsService);
   private readonly voteSessionsSvc = inject(VoteSessionsService);
   readonly auth = inject(AuthService);
+  /** Lecturas compartidas con los demás bloques de la página «Juntas» (si la hay). */
+  private readonly cache = inject(JuntasDataCache, { optional: true });
 
   loading = signal(true);
   rows = signal<JuntaRow[]>([]);
@@ -80,16 +85,16 @@ export class JuntasSectionComponent implements OnInit {
   private async load(): Promise<void> {
     this.loading.set(true);
     try {
-      const allMeetings = await this.meetingsSvc.listMeetingsByEstate(this.estateId);
+      const allMeetings = await (this.cache?.meetings(this.estateId) ?? this.meetingsSvc.listMeetingsByEstate(this.estateId));
       const meetings = allMeetings.filter((m) => m.status === 'convocada');
       const userId = this.auth.currentUser()?.id;
       void this.loadSignatures(allMeetings.filter((m) => m.status === 'celebrada' && !m.actaSignedByPresidenteUserId));
 
       const candidates = await Promise.all(meetings.map(async (meeting) => {
         const [delegations, eligible, voteSessions] = await Promise.all([
-          this.delegationsSvc.list(meeting.id),
+          this.cache?.delegations(meeting.id) ?? this.delegationsSvc.list(meeting.id),
           this.delegationsSvc.listEligibleDelegators(meeting.id, this.propertyId),
-          this.voteSessionsSvc.list(meeting.id),
+          this.cache?.voteSessions(meeting.id) ?? this.voteSessionsSvc.list(meeting.id),
         ]);
         const myDelegation = delegations.find(
           (d) => d.propertyId === this.propertyId && d.delegatorUserId === userId && !d.revokedAt,
@@ -117,7 +122,8 @@ export class JuntasSectionComponent implements OnInit {
     const states = await Promise.all(
       celebradas.map(async (meeting) => {
         try {
-          return (await this.meetingsSvc.getActaSigning(meeting.id)).canSign.presidente ? { meeting } : null;
+          const signing = await (this.cache?.actaSigning(meeting.id) ?? this.meetingsSvc.getActaSigning(meeting.id));
+          return signing.canSign.presidente ? { meeting } : null;
         } catch {
           return null;
         }
@@ -137,6 +143,7 @@ export class JuntasSectionComponent implements OnInit {
     this.signingMeetingId.set(row.meeting.id);
     try {
       await this.meetingsSvc.signActaAsSelf(row.meeting.id, 'presidente');
+      this.cache?.invalidate();
       this.signatures.update((rows) => rows.filter((entry) => entry.meeting.id !== row.meeting.id));
       this.showToast('Firma registrada');
     } catch (error) {
@@ -192,6 +199,7 @@ export class JuntasSectionComponent implements OnInit {
 
   async onDelegationCreated(): Promise<void> {
     this.delegationTargetMeetingId.set(null);
+    this.cache?.invalidate();
     await this.load();
     this.showToast('Delegación registrada');
   }
@@ -201,6 +209,7 @@ export class JuntasSectionComponent implements OnInit {
     if (!(await this.confirmDialog.ask({ title: 'Revocar delegación', message: 'Se revocará tu delegación de voto para esta junta.', confirmLabel: 'Revocar', tone: 'danger' }))) return;
     try {
       await this.delegationsSvc.revoke(row.meeting.id, row.myDelegation.id);
+      this.cache?.invalidate();
       await this.load();
       this.showToast('Delegación revocada');
     } catch (error) {
@@ -228,6 +237,7 @@ export class JuntasSectionComponent implements OnInit {
     try {
       await this.voteSessionsSvc.castVote(meetingId, sessionId, { propertyId: this.propertyId, optionIndex, totpCode: require2fa ? totpCode : undefined });
       this.showToast('Voto registrado');
+      this.cache?.invalidate();
       await this.load();
     } catch (error: any) {
       console.error('Error votando', error);

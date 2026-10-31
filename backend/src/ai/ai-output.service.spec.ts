@@ -5,7 +5,10 @@ const validator = new AiOutputService();
 describe('AI output trust boundary', () => {
   it('rechaza respuestas incompletas y rechazos del modelo', () => {
     expect(() =>
-      validator.parseResponse('invoice-extraction', { status: 'incomplete', output: [] }),
+      validator.parseResponse('invoice-extraction', {
+        status: 'incomplete',
+        output: [],
+      }),
     ).toThrow();
     expect(() =>
       validator.parseResponse('invoice-extraction', {

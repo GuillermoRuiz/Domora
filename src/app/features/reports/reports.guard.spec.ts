@@ -14,6 +14,6 @@ describe('reportsRoleGuard', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: AuthService, useValue: { currentUser: () => role ? { role } : null } }] });
     const result = TestBed.runInInjectionContext(() => reportsRoleGuard({} as never, {} as never));
     if (role === 'B') expect(result).toBe(true);
-    else expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe(role === 'A' ? '/a/admins' : role === 'C' ? '/c/properties' : '/login');
+    else expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe(role === 'A' ? '/a/admins' : role === 'C' ? '/c/community' : '/login');
   });
 });

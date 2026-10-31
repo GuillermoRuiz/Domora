@@ -6,4 +6,5 @@ import { ValidateIf } from 'class-validator';
  * servicios, que solo comprueban `!== undefined`, mandarían el `null` a Prisma (500 o una fecha 1970).
  * Se combina con los validadores del tipo (`@IsString()`, `@IsIn(...)`…).
  */
-export const OptionalButNotNull = () => ValidateIf((_object, value) => value !== undefined);
+export const OptionalButNotNull = () =>
+  ValidateIf((_object, value) => value !== undefined);

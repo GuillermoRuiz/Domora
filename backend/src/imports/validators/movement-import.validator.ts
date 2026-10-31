@@ -1,7 +1,12 @@
 /** Sentido del movimiento: entra dinero, sale, o se traspasa (sale del banco). */
 export type MovementType = 'income' | 'expense' | 'transfer';
 
-import { matchEnumAlias, parseSpanishDate, parseSpanishDecimal, type ValidatedRow } from './parsing.util';
+import {
+  matchEnumAlias,
+  parseSpanishDate,
+  parseSpanishDecimal,
+  type ValidatedRow,
+} from './parsing.util';
 
 export interface MovementImportRow {
   date: Date;
@@ -54,8 +59,10 @@ export function validateMovementRow(
 
   const typeRaw = mappedRow['type']?.trim();
   const type = typeRaw ? matchEnumAlias(typeRaw, TYPE_ALIASES) : null;
-  if (!typeRaw) errors.push('Falta el tipo de movimiento (ingreso/gasto/traspaso).');
-  else if (!type) errors.push(`Tipo de movimiento no reconocido: "${typeRaw}".`);
+  if (!typeRaw)
+    errors.push('Falta el tipo de movimiento (ingreso/gasto/traspaso).');
+  else if (!type)
+    errors.push(`Tipo de movimiento no reconocido: "${typeRaw}".`);
   else data.type = type;
 
   const amountRaw = mappedRow['amount']?.trim();

@@ -18,16 +18,11 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiAccessService } from './ai-access.service';
-import {
-  InvoiceLinkDto,
-} from './ai.dto';
+import { InvoiceLinkDto } from './ai.dto';
 import { InvoiceAiService, type InvoiceUpload } from './invoice-ai.service';
 import { AccountingAiService } from './accounting-ai.service';
 import { AiQueueService } from './ai-queue.service';
-import {
-  type Intelligence,
-  type Signal,
-} from './ai.types';
+import { type Intelligence, type Signal } from './ai.types';
 const pageOf = (value: string | undefined) =>
   Math.max(
     1,

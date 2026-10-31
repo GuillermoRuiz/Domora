@@ -92,7 +92,9 @@ describe('EstateOverviewExcelService', () => {
       ],
     });
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load((await service.generate(filterDto(), user)).content as any);
+    await workbook.xlsx.load(
+      (await service.generate(filterDto(), user)).content as any,
+    );
     expect(workbook.worksheets[0].getCell('B2').value).toBe(
       'Calle Sol 14, Madrid',
     );
@@ -107,7 +109,9 @@ describe('EstateOverviewExcelService', () => {
       pendingLabel: 'Cuotas pendientes',
     });
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load((await service.generate(filterDto(), user)).content as any);
+    await workbook.xlsx.load(
+      (await service.generate(filterDto(), user)).content as any,
+    );
     expect(workbook.worksheets[0].rowCount).toBe(1);
     selectOverview.mockResolvedValue({
       total: 10001,

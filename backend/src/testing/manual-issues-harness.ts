@@ -95,14 +95,21 @@ export const REMOVED_TASK_KINDS = [
   'review_provider_reply',
   'review_duplicate',
 ];
-export const REMOVED_JOB_KINDS = ['incident', 'send', 'reply', 'issue_wait_due'];
+export const REMOVED_JOB_KINDS = [
+  'incident',
+  'send',
+  'reply',
+  'issue_wait_due',
+];
 
 async function created(
   send: () => PromiseLike<{ status: number; body: any }>,
 ): Promise<string> {
   const res = await send();
   if (res.status !== 201)
-    throw new Error(`alta de incidencia ${res.status}: ${JSON.stringify(res.body)}`);
+    throw new Error(
+      `alta de incidencia ${res.status}: ${JSON.stringify(res.body)}`,
+    );
   return res.body.id as string;
 }
 
@@ -244,7 +251,9 @@ export async function startIssueHarness(): Promise<IssueHarness> {
             })
           ).map((e) => e.id);
           const byEstate = { estateId: { in: estateIds } };
-          await prisma.aiReconciliationSuggestion.deleteMany({ where: byEstate });
+          await prisma.aiReconciliationSuggestion.deleteMany({
+            where: byEstate,
+          });
           await prisma.aiInvoiceDocument.deleteMany({ where: byEstate });
           await prisma.aiWeeklySnapshot.deleteMany({ where: byEstate });
           await prisma.aiRequest.deleteMany({ where: byEstate });

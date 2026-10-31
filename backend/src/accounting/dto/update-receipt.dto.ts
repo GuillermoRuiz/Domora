@@ -1,4 +1,10 @@
-import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { PayMethod, ReceiptStatus } from '../../prisma/client';
 
 const STATUSES: ReceiptStatus[] = ['Pagada', 'Pendiente', 'Devuelto'];

@@ -100,7 +100,7 @@ export class WeeklyAiService {
           contracts,
           unpaidCount,
           unpaidTotal,
-          unpaid,
+          _unpaid,
           bankGroups,
           balances,
           expense,

@@ -18,7 +18,11 @@ import type { CreateEstateOnboardingRequestDto } from './dto/create-estate-onboa
 import type { ResolveEstateOnboardingRequestDto } from './dto/resolve-estate-onboarding-request.dto';
 import type { CreateEstatePropertyDto } from './dto/create-estate-property.dto';
 import type { Property } from '../prisma/client';
-import { ESTATE_PRIVATE_OMIT, USER_SECRETS_OMIT, withoutManagerOnlyFields } from '../common/secret-omit';
+import {
+  ESTATE_PRIVATE_OMIT,
+  USER_SECRETS_OMIT,
+  withoutManagerOnlyFields,
+} from '../common/secret-omit';
 
 export interface CoefficientAreaPreviewRow {
   propertyId: string;
@@ -101,19 +105,29 @@ export class PropertiesService {
       where: { status: 'linked', property: { estateId, deletedAt: null } },
       include: { user: { select: { id: true, email: true, fullName: true } } },
     });
-    const byEmail = new Map<string, { userId: string; fullName: string; isOwner: boolean }>();
+    const byEmail = new Map<
+      string,
+      { userId: string; fullName: string; isOwner: boolean }
+    >();
     for (const m of memberships) {
       if (!m.user?.email) continue;
-      const isOwner = m.roleType === 'Propietario' || m.roleType === 'Representante';
+      const isOwner =
+        m.roleType === 'Propietario' || m.roleType === 'Representante';
       const known = byEmail.get(m.user.email);
-      byEmail.set(m.user.email, { userId: m.user.id, fullName: m.user.fullName, isOwner: isOwner || !!known?.isOwner });
+      byEmail.set(m.user.email, {
+        userId: m.user.id,
+        fullName: m.user.fullName,
+        isOwner: isOwner || !!known?.isOwner,
+      });
     }
-    return [...byEmail.entries()].map(([email, { userId, fullName, isOwner }]) => ({
-      email,
-      userId,
-      fullName,
-      isOwner,
-    }));
+    return [...byEmail.entries()].map(
+      ([email, { userId, fullName, isOwner }]) => ({
+        email,
+        userId,
+        fullName,
+        isOwner,
+      }),
+    );
   }
 
   private async findRawById(id: string, user: AuthenticatedUser) {
@@ -298,9 +312,14 @@ export class PropertiesService {
     const property = { ...raw, balance, advance };
 
     const estateRow = property.estateId
-      ? await this.prisma.estate.findFirst({ where: { id: property.estateId }, omit: ESTATE_PRIVATE_OMIT })
+      ? await this.prisma.estate.findFirst({
+          where: { id: property.estateId },
+          omit: ESTATE_PRIVATE_OMIT,
+        })
       : null;
-    const estate = estateRow ? withoutManagerOnlyFields(estateRow, user.role) : null;
+    const estate = estateRow
+      ? withoutManagerOnlyFields(estateRow, user.role)
+      : null;
 
     const administrator = estate
       ? await this.prisma.administrator.findFirst({
@@ -312,7 +331,9 @@ export class PropertiesService {
             phone: true,
             contactName: true,
             contactEmail: true,
-            primaryUser: { select: { id: true, fullName: true, email: true, phone: true } },
+            primaryUser: {
+              select: { id: true, fullName: true, email: true, phone: true },
+            },
           },
         })
       : null;
@@ -320,7 +341,14 @@ export class PropertiesService {
     const memberships = await this.prisma.propertyMembership.findMany({
       where: { propertyId: id, revokedAt: null },
       // El NIF de los demás titulares no es para el propietario.
-      include: { user: { omit: user.role === 'C' ? { ...USER_SECRETS_OMIT, taxId: true, taxIdCountry: true } : USER_SECRETS_OMIT } },
+      include: {
+        user: {
+          omit:
+            user.role === 'C'
+              ? { ...USER_SECRETS_OMIT, taxId: true, taxIdCountry: true }
+              : USER_SECRETS_OMIT,
+        },
+      },
     });
 
     const membership =
@@ -539,8 +567,12 @@ export class PropertiesService {
         // the request, in the same statement (odd/tasks/role-a-panel.md S13).
         lead: {
           create: {
-            name: (dto.adminName?.trim() || `Administración de ${dto.communityName}`).slice(0, 200),
-            contactEmail: dto.adminEmail?.trim() ? dto.adminEmail.trim().slice(0, 200) : null,
+            name: (
+              dto.adminName?.trim() || `Administración de ${dto.communityName}`
+            ).slice(0, 200),
+            contactEmail: dto.adminEmail?.trim()
+              ? dto.adminEmail.trim().slice(0, 200)
+              : null,
             origin: 'solicitud_alta',
           },
         },
@@ -602,7 +634,9 @@ export class PropertiesService {
       // Its lead moves along only while nobody has worked it yet (S13).
       await tx.lead.updateMany({
         where: { onboardingRequestId: id, status: 'nuevo' },
-        data: { status: dto.status === 'contacted' ? 'contactado' : 'descartado' },
+        data: {
+          status: dto.status === 'contacted' ? 'contactado' : 'descartado',
+        },
       });
       return updated;
     });

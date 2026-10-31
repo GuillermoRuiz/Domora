@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, ReceiptKind } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { queryReceiptDebtAt } from '../../debtors/receipt-debt-query';
-import { LedgerQueryService } from '../../ledger/ledger-query.service';
+
 import type { ReportData, ReportInput, ReportScope } from '../reporting.types';
 import {
   agingBucket,

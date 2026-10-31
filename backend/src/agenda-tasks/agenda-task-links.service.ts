@@ -97,7 +97,8 @@ export class AgendaTaskLinksService {
         if (accessible.has(live.estateId)) out.push(live);
         continue;
       }
-      const trashed = ref.type === 'issue' ? trashedIssues.get(ref.id) : undefined;
+      const trashed =
+        ref.type === 'issue' ? trashedIssues.get(ref.id) : undefined;
       if (trashed && !accessible.has(trashed.estateId)) continue;
       out.push({
         type: ref.type,
@@ -142,7 +143,10 @@ export class AgendaTaskLinksService {
         label,
         estateId,
         // Las incidencias ya no son una pestaña de la finca: su vínculo abre la propia incidencia.
-        route: type === 'issue' ? `/b/incidencias/${id}` : `/b/estates/${estateId}?tab=${LINK_TAB[type]}&entity=${id}`,
+        route:
+          type === 'issue'
+            ? `/b/incidencias/${id}`
+            : `/b/estates/${estateId}?tab=${LINK_TAB[type]}&entity=${id}`,
         deleted: false,
       });
     };

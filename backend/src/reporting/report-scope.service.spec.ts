@@ -58,15 +58,30 @@ describe('ReportScopeService', () => {
   });
 
   it('listEstates trae la dirección con una sola consulta de comunidades; resolve sigue pidiendo solo id y nombre', async () => {
-    const row = { id: 'own', name: 'Propia', address: 'Calle Sol', streetNumber: '1', location: 'Madrid' };
+    const row = {
+      id: 'own',
+      name: 'Propia',
+      address: 'Calle Sol',
+      streetNumber: '1',
+      location: 'Madrid',
+    };
     prisma.estate.findMany.mockResolvedValueOnce([row]);
     expect(await service.listEstates(user)).toEqual([row]);
     expect(prisma.estate.findMany).toHaveBeenCalledTimes(1);
-    expect(prisma.estate.findMany.mock.calls[0][0].select).toEqual({ id: true, name: true, address: true, streetNumber: true, location: true });
+    expect(prisma.estate.findMany.mock.calls[0][0].select).toEqual({
+      id: true,
+      name: true,
+      address: true,
+      streetNumber: true,
+      location: true,
+    });
 
     prisma.estate.findMany.mockClear();
     const scope = await service.resolve(user, { scopeMode: 'all' });
-    expect(prisma.estate.findMany.mock.calls[0][0].select).toEqual({ id: true, name: true });
+    expect(prisma.estate.findMany.mock.calls[0][0].select).toEqual({
+      id: true,
+      name: true,
+    });
     expect(scope.estates).toEqual([{ id: 'own', name: 'Propia' }]);
   });
 });

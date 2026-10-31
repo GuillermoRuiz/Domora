@@ -10,7 +10,9 @@ import { Injectable } from '@nestjs/common';
  */
 export interface SupportSignalSource {
   /** Count per despacho id (absent = 0), or null when support is not available. */
-  seriousOpenTickets(administratorIds: string[]): Promise<Map<string, number> | null>;
+  seriousOpenTickets(
+    administratorIds: string[],
+  ): Promise<Map<string, number> | null>;
 }
 
 export const SUPPORT_SIGNAL_SOURCE = Symbol('SUPPORT_SIGNAL_SOURCE');

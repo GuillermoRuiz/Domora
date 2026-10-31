@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ownerReceiptsLink } from '../common/owner-links';
 
 const REMINDER_BEFORE_DUE_DAYS = 3; // aviso único, unos días antes de que venza
 const REMINDER_REPEAT_DAYS = 7; // mientras siga impago, un recordatorio semanal (no diario)
@@ -14,7 +15,9 @@ function startOfDay(d: Date): Date {
 }
 
 function daysBetween(from: Date, to: Date): number {
-  return Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
+  return Math.round(
+    (startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000,
+  );
 }
 
 /**
@@ -39,7 +42,10 @@ export class ReceiptReminderCronService {
     try {
       await this.remindPendingReceipts();
     } catch (error) {
-      this.logger.error('Error enviando recordatorios de recibo pendiente', error);
+      this.logger.error(
+        'Error enviando recordatorios de recibo pendiente',
+        error,
+      );
     }
   }
 
@@ -64,7 +70,10 @@ export class ReceiptReminderCronService {
 
     const due = candidates.filter((receipt) => {
       // Ya se avisó hoy — evita reenviar si el cron corre más de una vez o hay varias réplicas.
-      if (receipt.reminderSentAt && startOfDay(receipt.reminderSentAt).getTime() === today.getTime()) {
+      if (
+        receipt.reminderSentAt &&
+        startOfDay(receipt.reminderSentAt).getTime() === today.getTime()
+      ) {
         return false;
       }
       const daysUntilDue = daysBetween(today, receipt.dueDate!);
@@ -84,7 +93,7 @@ export class ReceiptReminderCronService {
           daysBetween(today, receipt.dueDate!) >= 0
             ? `Tu recibo ${receipt.no} vence en ${REMINDER_BEFORE_DUE_DAYS} días`
             : `Tu recibo ${receipt.no} sigue pendiente de pago`,
-        link: `/c/properties/${receipt.propertyId}`,
+        link: ownerReceiptsLink(receipt.propertyId, receipt.id),
         estateId: receipt.estateId,
         propertyId: receipt.propertyId,
       });

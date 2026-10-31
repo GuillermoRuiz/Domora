@@ -11,7 +11,9 @@ function prismaWith(rows: Record<string, unknown>) {
   const delegates: Record<string, { findUnique: Finder }> = {};
   const delegate = (name: string) =>
     (delegates[name] ??= {
-      findUnique: jest.fn((_args: unknown) => Promise.resolve(rows[name] ?? null)),
+      findUnique: jest.fn((_args: unknown) =>
+        Promise.resolve(rows[name] ?? null),
+      ),
     });
   const prisma = new Proxy(
     {},
@@ -49,21 +51,81 @@ describe('DespachoResolverService', () => {
 
   it.each([
     ['properties/:id', { id: OTHER }, 'property', { estateId: ESTATE }],
-    ['properties/:propertyId/external-owners', { propertyId: OTHER }, 'property', { estateId: ESTATE }],
+    [
+      'properties/:propertyId/external-owners',
+      { propertyId: OTHER },
+      'property',
+      { estateId: ESTATE },
+    ],
     ['issues/:id/status', { id: OTHER }, 'issue', { estateId: ESTATE }],
-    ['issues/:issueId/photos', { issueId: OTHER }, 'issue', { estateId: ESTATE }],
+    [
+      'issues/:issueId/photos',
+      { issueId: OTHER },
+      'issue',
+      { estateId: ESTATE },
+    ],
     ['meetings/:id/acta', { id: OTHER }, 'meeting', { estateId: ESTATE }],
-    ['meetings/:meetingId/attachments', { meetingId: OTHER }, 'meeting', { estateId: ESTATE }],
-    ['receipts/:id/cancel', { id: OTHER }, 'accountingReceipt', { estateId: ESTATE }],
-    ['debtors/:debtorId/actions', { debtorId: OTHER }, 'debtor', { estateId: ESTATE }],
-    ['payment-agreements/:agreementId/cancel', { agreementId: OTHER }, 'paymentAgreement', { debtor: { estateId: ESTATE } }],
-    ['payment-installments/:installmentId/paid', { installmentId: OTHER }, 'paymentAgreementInstallment', { agreement: { debtor: { estateId: ESTATE } } }],
-    ['remesa-lines/:lineId/return', { lineId: OTHER }, 'remesaLine', { property: { estateId: ESTATE } }],
-    ['inspections/corrective-actions/:actionId', { actionId: OTHER }, 'correctiveAction', { inspection: { estateId: ESTATE } }],
+    [
+      'meetings/:meetingId/attachments',
+      { meetingId: OTHER },
+      'meeting',
+      { estateId: ESTATE },
+    ],
+    [
+      'receipts/:id/cancel',
+      { id: OTHER },
+      'accountingReceipt',
+      { estateId: ESTATE },
+    ],
+    [
+      'debtors/:debtorId/actions',
+      { debtorId: OTHER },
+      'debtor',
+      { estateId: ESTATE },
+    ],
+    [
+      'payment-agreements/:agreementId/cancel',
+      { agreementId: OTHER },
+      'paymentAgreement',
+      { debtor: { estateId: ESTATE } },
+    ],
+    [
+      'payment-installments/:installmentId/paid',
+      { installmentId: OTHER },
+      'paymentAgreementInstallment',
+      { agreement: { debtor: { estateId: ESTATE } } },
+    ],
+    [
+      'remesa-lines/:lineId/return',
+      { lineId: OTHER },
+      'remesaLine',
+      { property: { estateId: ESTATE } },
+    ],
+    [
+      'inspections/corrective-actions/:actionId',
+      { actionId: OTHER },
+      'correctiveAction',
+      { inspection: { estateId: ESTATE } },
+    ],
     ['amenities/:id/blackouts', { id: OTHER }, 'amenity', { estateId: ESTATE }],
-    ['bookings/:id/cancel', { id: OTHER }, 'booking', { amenity: { estateId: ESTATE } }],
-    ['external-owners/:id', { id: OTHER }, 'externalOwner', { property: { estateId: ESTATE } }],
-    ['reconciliations/:id', { id: OTHER }, 'reconciliationGroup', { estateId: ESTATE }],
+    [
+      'bookings/:id/cancel',
+      { id: OTHER },
+      'booking',
+      { amenity: { estateId: ESTATE } },
+    ],
+    [
+      'external-owners/:id',
+      { id: OTHER },
+      'externalOwner',
+      { property: { estateId: ESTATE } },
+    ],
+    [
+      'reconciliations/:id',
+      { id: OTHER },
+      'reconciliationGroup',
+      { estateId: ESTATE },
+    ],
   ])('resolves %s through %s', async (template, params, model, row) => {
     const { prisma, delegate } = prismaWith({
       [model]: row,
@@ -82,20 +144,28 @@ describe('DespachoResolverService', () => {
   it('returns null for a route whose despacho cannot be resolved', async () => {
     const { prisma } = prismaWith({});
     await expect(
-      new DespachoResolverService(prisma).resolve('direct-messages/messages/:id', { id: OTHER }),
+      new DespachoResolverService(prisma).resolve(
+        'direct-messages/messages/:id',
+        { id: OTHER },
+      ),
     ).resolves.toBeNull();
     await expect(
       new DespachoResolverService(prisma).resolve('estates', {}),
     ).resolves.toBeNull();
     await expect(
-      new DespachoResolverService(prisma).resolve('assistant/documents/:id/index', { id: OTHER }),
+      new DespachoResolverService(prisma).resolve(
+        'assistant/documents/:id/index',
+        { id: OTHER },
+      ),
     ).resolves.toBeNull();
   });
 
   it('returns null without querying when an id is not a UUID', async () => {
     const { prisma, delegate } = prismaWith({});
     await expect(
-      new DespachoResolverService(prisma).resolve('estates/:estateId', { estateId: 'not-a-uuid' }),
+      new DespachoResolverService(prisma).resolve('estates/:estateId', {
+        estateId: 'not-a-uuid',
+      }),
     ).resolves.toBeNull();
     expect(delegate('estate').findUnique).not.toHaveBeenCalled();
   });
@@ -106,10 +176,14 @@ describe('DespachoResolverService', () => {
       new DespachoResolverService(prisma).resolve('issues/:id', { id: OTHER }),
     ).resolves.toBeNull();
     const failing = {
-      estate: { findUnique: jest.fn(() => Promise.reject(new Error('db down'))) },
+      estate: {
+        findUnique: jest.fn(() => Promise.reject(new Error('db down'))),
+      },
     } as unknown as PrismaService;
     await expect(
-      new DespachoResolverService(failing).resolve('estates/:estateId', { estateId: ESTATE }),
+      new DespachoResolverService(failing).resolve('estates/:estateId', {
+        estateId: ESTATE,
+      }),
     ).resolves.toBeNull();
   });
 });

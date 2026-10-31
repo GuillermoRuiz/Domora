@@ -162,10 +162,7 @@ export class IssuesController {
   // Eliminar la incidencia (borrado lógico): lado gestor.
   @Delete(':id')
   @Roles('A', 'B')
-  deleteIssue(
-    @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  deleteIssue(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.issuesService.deleteIssue(id, user);
   }
 

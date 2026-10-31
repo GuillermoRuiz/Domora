@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import type { ActivitySubjectType, ActivityVerb, Prisma } from '../prisma/client';
+import type {
+  ActivitySubjectType,
+  ActivityVerb,
+  Prisma,
+} from '../prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { EstateAccessService } from '../estate-access/estate-access.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -36,15 +40,27 @@ export class ManagerActivityService {
     private readonly access: EstateAccessService,
   ) {}
 
-  async activity(user: AuthenticatedUser, estateId?: string): Promise<ManagerActivity> {
+  async activity(
+    user: AuthenticatedUser,
+    estateId?: string,
+  ): Promise<ManagerActivity> {
     const ids = resolveScope(this.access, user, estateId);
-    const scope: Prisma.ActivityLogEntryWhereInput[] = [{ estateId: { in: ids } }];
+    const scope: Prisma.ActivityLogEntryWhereInput[] = [
+      { estateId: { in: ids } },
+    ];
     if (!estateId) scope.push({ subjectType: 'message', estateId: null });
     const rows = await this.prisma.activityLogEntry.findMany({
       where: { actorUserId: user.id, OR: scope },
       orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
       take: ACTIVITY_LIMIT,
-      select: { id: true, subjectType: true, verb: true, summary: true, occurredAt: true, estate: { select: { id: true, name: true } } },
+      select: {
+        id: true,
+        subjectType: true,
+        verb: true,
+        summary: true,
+        occurredAt: true,
+        estate: { select: { id: true, name: true } },
+      },
     });
     return {
       items: rows.map((r) => ({

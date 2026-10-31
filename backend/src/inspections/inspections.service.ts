@@ -14,8 +14,10 @@ import type { CreateInspectionDto } from './dto/create-inspection.dto';
 import type { UpdateInspectionDto } from './dto/update-inspection.dto';
 import type { CreateInspectionResultDto } from './dto/create-inspection-result.dto';
 import type { CreateCorrectiveActionDto } from './dto/create-corrective-action.dto';
-import type { UpdateCorrectiveActionDto } from './dto/update-corrective-action.dto';
+import type { UpdateCorrectiveActionDto } from './dto/update-corrective-action.dto';
+
 import { dateOrNull } from '../common/date-or-null';
+import { OWNER_ALERTS_LINK } from '../common/owner-links';
 
 const DETAIL_INCLUDE = {
   asset: true,
@@ -56,7 +58,9 @@ export class InspectionsService {
       include: { inspection: { select: { estateId: true } } },
     });
     if (!action) {
-      throw new NotFoundException(`Acción correctiva ${actionId} no encontrada.`);
+      throw new NotFoundException(
+        `Acción correctiva ${actionId} no encontrada.`,
+      );
     }
     this.estateAccess.assertAccess(action.inspection.estateId, user);
     return action;
@@ -77,8 +81,16 @@ export class InspectionsService {
         ...(filters.search
           ? {
               OR: [
-                { asset: { name: { contains: filters.search, mode: 'insensitive' } } },
-                { inspectionType: { name: { contains: filters.search, mode: 'insensitive' } } },
+                {
+                  asset: {
+                    name: { contains: filters.search, mode: 'insensitive' },
+                  },
+                },
+                {
+                  inspectionType: {
+                    name: { contains: filters.search, mode: 'insensitive' },
+                  },
+                },
               ],
             }
           : {}),
@@ -170,20 +182,33 @@ export class InspectionsService {
       );
     }
 
-    const statusChanged = dto.status !== undefined && dto.status !== existing.status;
+    const statusChanged =
+      dto.status !== undefined && dto.status !== existing.status;
     // `null` borra la cita: no se recurre a la fecha anterior (solo con `undefined`).
-    const appointmentDate = dto.appointmentDate === undefined ? existing.appointmentDate?.toISOString() : dto.appointmentDate;
-    const becomingCitada = statusChanged && dto.status === 'citada' && !!appointmentDate;
+    const appointmentDate =
+      dto.appointmentDate === undefined
+        ? existing.appointmentDate?.toISOString()
+        : dto.appointmentDate;
+    const becomingCitada =
+      statusChanged && dto.status === 'citada' && !!appointmentDate;
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const inspection = await tx.regulatoryInspection.update({
         where: { id },
         data: {
           ...(dto.status !== undefined && { status: dto.status }),
-          ...(dto.nextDueDate !== undefined && { nextDueDate: dateOrNull(dto.nextDueDate) }),
-          ...(dto.appointmentDate !== undefined && { appointmentDate: dateOrNull(dto.appointmentDate) }),
-          ...(dto.lastDoneDate !== undefined && { lastDoneDate: dateOrNull(dto.lastDoneDate) }),
-          ...(dto.reminderDaysBefore !== undefined && { reminderDaysBefore: dto.reminderDaysBefore }),
+          ...(dto.nextDueDate !== undefined && {
+            nextDueDate: dateOrNull(dto.nextDueDate),
+          }),
+          ...(dto.appointmentDate !== undefined && {
+            appointmentDate: dateOrNull(dto.appointmentDate),
+          }),
+          ...(dto.lastDoneDate !== undefined && {
+            lastDoneDate: dateOrNull(dto.lastDoneDate),
+          }),
+          ...(dto.reminderDaysBefore !== undefined && {
+            reminderDaysBefore: dto.reminderDaysBefore,
+          }),
           ...(dto.notes !== undefined && { notes: dto.notes }),
         },
         include: DETAIL_INCLUDE,
@@ -213,7 +238,9 @@ export class InspectionsService {
   }
 
   private async notifyResidentsOfAppointment(
-    inspection: Prisma.RegulatoryInspectionGetPayload<{ include: typeof DETAIL_INCLUDE }>,
+    inspection: Prisma.RegulatoryInspectionGetPayload<{
+      include: typeof DETAIL_INCLUDE;
+    }>,
   ) {
     const residentIds = await this.notifications.residentIds({
       estateId: inspection.estateId,
@@ -228,7 +255,7 @@ export class InspectionsService {
       category: 'inspection',
       title: `Inspección programada: ${inspection.asset.name}`,
       body: `Se ha programado una inspección de "${inspection.asset.name}" (${inspection.inspectionType.name}) para el ${dateLabel}. Es posible que se necesite acceso o que el servicio quede interrumpido durante la visita.`,
-      link: '/c/alerts',
+      link: OWNER_ALERTS_LINK,
       estateId: inspection.estateId,
     });
   }
@@ -357,7 +384,9 @@ export class InspectionsService {
         ...(dto.priority !== undefined && { priority: dto.priority }),
         ...(dto.dueDate !== undefined && { dueDate: dateOrNull(dto.dueDate) }),
         ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.assigneeUserId !== undefined && { assigneeUserId: dto.assigneeUserId }),
+        ...(dto.assigneeUserId !== undefined && {
+          assigneeUserId: dto.assigneeUserId,
+        }),
         ...(dto.supplierId !== undefined && { supplierId: dto.supplierId }),
       },
     });

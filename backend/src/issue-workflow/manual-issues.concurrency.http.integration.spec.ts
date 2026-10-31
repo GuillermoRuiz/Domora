@@ -32,7 +32,10 @@ beforeAll(async () => {
   h = await startIssueHarness();
   A = await h.tenant('Manual concurrencia A');
   provider = await h.supplier(A, { name: 'Fontanería Levante' });
-  insurer = await h.supplier(A, { name: 'Aseguradora Sol', category: 'Seguros' });
+  insurer = await h.supplier(A, {
+    name: 'Aseguradora Sol',
+    category: 'Seguros',
+  });
   openClaim.effects = [
     { type: 'open_claim', insurerSupplierId: insurer },
     { type: 'start_wait', kind: 'insurer_reply', supplierId: insurer },
@@ -153,7 +156,11 @@ describe('concurrencia', () => {
         nextStep: 'task',
         effects: [
           { type: 'end_wait', waitId, reason: 'fulfilled' },
-          { type: 'open_follow_up', note: 'Revisar la respuesta', milestone: 'created' },
+          {
+            type: 'open_follow_up',
+            note: 'Revisar la respuesta',
+            milestone: 'created',
+          },
         ],
       });
     const results = await Promise.all([end(), end()]);
@@ -189,7 +196,8 @@ describe('concurrencia', () => {
       (await h.prisma.issue.findUniqueOrThrow({ where: { id } })).ref;
     const secondRef = await refs(second);
     expect(
-      (await h.http().delete(`${h.api}/issues/${first}`).set(h.auth(A.token))).status,
+      (await h.http().delete(`${h.api}/issues/${first}`).set(h.auth(A.token)))
+        .status,
     ).toBeLessThan(300);
     await h.prisma.issue.deleteMany({ where: { id: second } }); // borrado físico del último
     const next = await h.issue(A);
@@ -197,6 +205,8 @@ describe('concurrencia', () => {
     const counter = await h.prisma.issueReferenceCounter.findUniqueOrThrow({
       where: { year: new Date().getFullYear() },
     });
-    expect(counter.lastValue).toBeGreaterThanOrEqual(numberOf(await refs(next)));
+    expect(counter.lastValue).toBeGreaterThanOrEqual(
+      numberOf(await refs(next)),
+    );
   });
 });

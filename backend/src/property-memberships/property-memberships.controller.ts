@@ -63,7 +63,12 @@ export class PropertyMembershipsController {
     @Body() dto: CreateMembershipInviteDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.invitesService.createInvite(propertyId, dto.roleType, dto.inviteeEmail, user);
+    return this.invitesService.createInvite(
+      propertyId,
+      dto.roleType,
+      dto.inviteeEmail,
+      user,
+    );
   }
 
   // Solo gestora/Domora: el servicio además lo comprueba, pero así ni
@@ -76,7 +81,11 @@ export class PropertyMembershipsController {
     @Body() dto: CreateOwnerInviteDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.invitesService.createOwnerInvite(propertyId, dto.externalOwnerId, user);
+    return this.invitesService.createOwnerInvite(
+      propertyId,
+      dto.externalOwnerId,
+      user,
+    );
   }
 
   @Get('invites')
@@ -124,7 +133,9 @@ export class PropertyMembershipsController {
 /** Sin `:propertyId` en la ruta — la propiedad se resuelve a partir del token, igual que `auth/team-invites/:token`. */
 @Controller('membership-invites')
 export class MembershipInvitesController {
-  constructor(private readonly invitesService: PropertyMembershipInvitesService) {}
+  constructor(
+    private readonly invitesService: PropertyMembershipInvitesService,
+  ) {}
 
   @Public()
   @Get(':token')

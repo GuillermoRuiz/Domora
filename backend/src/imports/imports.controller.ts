@@ -11,7 +11,11 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { ImportSourcePlatform } from '../prisma/client';
-import { ImportsService, IMPORTS_MAX_FILE_BYTES, type UploadedMulterFile } from './imports.service';
+import {
+  ImportsService,
+  IMPORTS_MAX_FILE_BYTES,
+  type UploadedMulterFile,
+} from './imports.service';
 import { CreateImportBatchDto } from './dto/create-import-batch.dto';
 import { ValidateImportDto } from './dto/validate-import.dto';
 import type { ImportEntityType } from './presets/gesfincas-net.presets';
@@ -34,7 +38,10 @@ export class ImportsController {
 
   @Get()
   @Roles('B')
-  list(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  list(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.importsService.listBatches(estateId, user);
   }
 
@@ -65,7 +72,10 @@ export class ImportsController {
   @Post()
   @Roles('B')
   @UseInterceptors(
-    FileInterceptor('file', { defParamCharset: 'utf8', limits: { fileSize: IMPORTS_MAX_FILE_BYTES } }),
+    FileInterceptor('file', {
+      defParamCharset: 'utf8',
+      limits: { fileSize: IMPORTS_MAX_FILE_BYTES },
+    }),
   )
   create(
     @Param('estateId') estateId: string,

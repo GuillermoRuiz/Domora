@@ -8,18 +8,15 @@ import { BadgeComponent } from '../../shared/components/badge/badge.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { BtnComponent } from '../../shared/components/btn/btn.component';
 import { TransferInstructionsModalComponent } from '../../shared/components/transfer-instructions-modal/transfer-instructions-modal.component';
-import { OwnerProperty, Amenity, Booking, LinkEstate, LinkageStatus, PropertyView, AccountingReceipt, Communication, CommunicationCategory, StaffDirectoryEntry} from '../../core/models';
-import { ReceiptsService } from '../../core/receipts.service';
+import { OwnerProperty, Amenity, Booking, LinkEstate, LinkageStatus, PropertyView, Communication, CommunicationCategory, StaffDirectoryEntry} from '../../core/models';
+import { OWNER_HOME, OWNER_ISSUES_ROUTE, OWNER_MESSAGES_ROUTE, OWNER_PROPERTY_TABS, OWNER_RECEIPTS_ROUTE, type OwnerPropertyTab } from '../../core/owner-routes';
 import { ComunicadosService } from '../../core/comunicados.service';
 import { ResourceReadsService } from '../../core/resource-reads.service';
 import { AmenitiesService } from '../../core/amenities.service';
 import { SuppliersStaffService } from '../../core/suppliers-staff.service';
 import { PropertiesService } from '../../core/properties.service';
 import { MembershipsMessagingService } from '../../core/memberships-messaging.service';
-import { ReportsService } from '../../core/reports.service';
-import { DebtorsService } from '../../core/debtors.service';
 import { MembersSectionComponent } from './members-section/members-section.component';
-import { JuntasSectionComponent } from './juntas-section/juntas-section.component';
 
 import { SelectDropdownDirective } from '../../shared/components/dropdown/select-dropdown.directive';
 
@@ -36,7 +33,8 @@ const COMMUNICATION_CATEGORY_LABELS: Record<CommunicationCategory, string> = {
   Evento: 'Evento',
 };
 
-type Tab = 'summary' | 'receipts' | 'communications' | 'reservas' | 'juntas';
+/** Juntas y recibos tienen su propio módulo (/c/juntas, /c/recibos); los enlaces antiguos los redirige `legacyOwnerTabRedirect`. */
+type Tab = OwnerPropertyTab;
 type ReservaFilter = 'all' | 'upcoming' | 'past';
 type VincMode = 'existing' | 'request';
 
@@ -60,7 +58,7 @@ const TYPE_THEME: Record<string, string> = {
 @Component({
   selector: 'app-property-detail',
   standalone: true,
-  imports: [TopbarComponent, BadgeComponent, IconComponent, BtnComponent, CurrencyPipe, DecimalPipe, FormsModule, TransferInstructionsModalComponent, MembersSectionComponent, JuntasSectionComponent, SelectDropdownDirective],
+  imports: [TopbarComponent, BadgeComponent, IconComponent, BtnComponent, CurrencyPipe, DecimalPipe, FormsModule, TransferInstructionsModalComponent, MembersSectionComponent, SelectDropdownDirective],
   templateUrl: './property-detail.component.html',
   styleUrl: './property-detail.component.scss'
 })
@@ -71,16 +69,12 @@ export class PropertyDetailComponent implements OnInit {
   properties = inject(PropertiesService);
   membershipsMessaging = inject(MembershipsMessagingService);
   comunicados = inject(ComunicadosService);
-  receiptsSvc = inject(ReceiptsService);
   resourceReads = inject(ResourceReadsService);
   amenitiesSvc = inject(AmenitiesService);
   suppliersStaff = inject(SuppliersStaffService);
-  reports = inject(ReportsService);
-  debtorsSvc = inject(DebtorsService);
 
   activeTab = signal<Tab>('summary');
 
-  receipts = signal<AccountingReceipt[]>([]);
   communications = signal<(Communication & { read?: boolean })[]>([]);
   /** Total en servidor: puede ser mayor que `communications().length` (lista paginada). */
   communicationsTotal = signal(0);
@@ -95,9 +89,7 @@ export class PropertyDetailComponent implements OnInit {
   tabs = computed<{ id: Tab; label: string }[]>(() => {
     const base: { id: Tab; label: string }[] = [
       { id: 'summary', label: 'Resumen' },
-      { id: 'receipts', label: `Recibos (${this.receipts().length})` },
       { id: 'communications', label: `Comunicados (${this.communicationsTotal()})` },
-      { id: 'juntas', label: 'Juntas' },
     ];
     if (this.amenities().length > 0) {
       base.push({ id: 'reservas', label: 'Reservas' });
@@ -300,51 +292,6 @@ export class PropertyDetailComponent implements OnInit {
   }
 
 
-  // ── Informes contables (fase 12) ────────────────────────────────────
-  downloadingReport = signal<'statement' | 'certificate' | null>(null);
-
-  private triggerDownload(blob: Blob, fileName: string): void {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
-
-  async downloadStatement(format: 'xlsx' | 'pdf'): Promise<void> {
-    const propertyId = this.property?.id;
-    if (!propertyId) return;
-    this.downloadingReport.set('statement');
-    try {
-      const blob = await this.reports.downloadPropertyStatement(propertyId, format);
-      this.triggerDownload(blob, `extracto.${format}`);
-    } catch (error) {
-      console.error('Error descargando el extracto', error);
-      this.showToast('No se pudo descargar el extracto');
-    } finally {
-      this.downloadingReport.set(null);
-    }
-  }
-
-  /** PDF en borrador (ADR D22): sin firmar, no tiene validez legal como certificado. */
-  async downloadDebtCertificate(): Promise<void> {
-    const propertyId = this.property?.id;
-    if (!propertyId) return;
-    this.downloadingReport.set('certificate');
-    try {
-      const blob = await this.debtorsSvc.downloadDebtCertificatePdf(propertyId);
-      this.triggerDownload(blob, 'certificado-deuda.pdf');
-    } catch (error) {
-      console.error('Error descargando el certificado de deuda', error);
-      this.showToast('No se pudo descargar el certificado');
-    } finally {
-      this.downloadingReport.set(null);
-    }
-  }
-
   // ── Vinculación ──────────────────────────────────────────────────────
   linkageStatus = signal<LinkageStatus>('none');
   showVinculacionModal = signal(false);
@@ -490,11 +437,7 @@ export class PropertyDetailComponent implements OnInit {
 
       const estateId = property?.estateId ?? view?.estate?.id ?? null;
       this.resolvedEstateId = estateId;
-      const [myReceipts, myBookings] = await Promise.all([
-        this.receiptsSvc.listReceiptsForUser(this.membershipsMessaging.currentUserId()),
-        this.amenitiesSvc.listMyBookings(),
-      ]);
-      this.receipts.set(myReceipts.filter(r => !r.propertyId || r.propertyId === id));
+      const myBookings = await this.amenitiesSvc.listMyBookings();
       if (estateId) {
         const [amenities, , staffDirectory] = await Promise.all([
           this.amenitiesSvc.listAmenitiesByEstate(estateId),
@@ -514,15 +457,15 @@ export class PropertyDetailComponent implements OnInit {
   }
 
   /**
-   * `?tab=` (deep-link desde «Mi comunidad» y el feed de actividad). `?tab=issues` y `?tab=documents`
-   * ya no llegan aquí: `legacyOwnerTabRedirect` los manda a /c/incidencias y /c/documentacion.
+   * `?tab=` (deep-link desde «Mi comunidad» y los avisos). `?tab=issues`, `documents`, `receipts` y `juntas`
+   * ya no llegan aquí: `legacyOwnerTabRedirect` los manda a sus módulos.
    */
   private applyQueryParamDeepLink(): void {
     const tab = this.route.snapshot.queryParamMap.get('tab');
-    const validTabs: Tab[] = ['summary', 'receipts', 'communications', 'reservas', 'juntas'];
-    if (tab && (validTabs as string[]).includes(tab)) {
-      this.activeTab.set(tab as Tab);
-    }
+    if (!tab || !(OWNER_PROPERTY_TABS as readonly string[]).includes(tab)) return;
+    // Sin instalaciones comunes no hay pestaña «Reservas»: se queda en el resumen.
+    if (tab === 'reservas' && this.amenities().length === 0) return;
+    this.activeTab.set(tab as Tab);
   }
 
   private propertyData = signal<OwnerProperty | null>(null);
@@ -553,73 +496,28 @@ export class PropertyDetailComponent implements OnInit {
     this.payTarget.set({ amount: -balance, concept: 'Saldo pendiente' });
   }
 
-  openPayReceipt(receipt: AccountingReceipt): void {
-    this.payTarget.set({ amount: receipt.amount, concept: `Recibo · ${receipt.period}` });
-  }
-
   closePayModal(): void {
     this.payTarget.set(null);
-  }
-
-  // ── Justificante de pago ─────────────────────────────────────────────
-  private pendingProofReceiptId = signal<string | null>(null);
-  attachingProofId = signal<string | null>(null);
-
-  triggerAttachProof(receiptId: string, input: HTMLInputElement): void {
-    this.pendingProofReceiptId.set(receiptId);
-    input.click();
-  }
-
-  async onProofFileChange(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    const receiptId = this.pendingProofReceiptId();
-    input.value = '';
-    if (!file || !receiptId) return;
-
-    this.attachingProofId.set(receiptId);
-    try {
-      const updated = await this.receiptsSvc.uploadPaymentProof(receiptId, file);
-      this.receipts.set(this.receipts().map(r => r.id === receiptId ? { ...r, proofFileName: updated.proofFileName } : r));
-      this.showToast('Justificante adjuntado correctamente');
-    } catch (error) {
-      console.error('Error adjuntando el justificante', error);
-      this.showToast('No se pudo adjuntar el justificante');
-    } finally {
-      this.attachingProofId.set(null);
-      this.pendingProofReceiptId.set(null);
-    }
-  }
-
-  async downloadProof(receipt: AccountingReceipt): Promise<void> {
-    try {
-      const blob = await this.receiptsSvc.downloadPaymentProof(receipt.id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = receipt.proofFileName || 'justificante';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error descargando el justificante', error);
-      this.showToast('No se pudo descargar el justificante');
-    }
   }
 
   /** Mismo administrador que ya se muestra en la tarjeta de contacto — abre (o crea) la conversación con él. */
   contactAdmin(): void {
     const adminUserId = this.propertyView?.adminContact?.id;
     if (adminUserId) {
-      this.router.navigate(['/c/messages'], { queryParams: { with: adminUserId } });
+      this.router.navigate([OWNER_MESSAGES_ROUTE], { queryParams: { with: adminUserId } });
     } else {
-      this.router.navigate(['/c/messages']);
+      this.router.navigate([OWNER_MESSAGES_ROUTE]);
     }
   }
 
   goBack(): void {
-    this.router.navigate(['/c/community']);
+    this.router.navigate([OWNER_HOME]);
+  }
+
+  /** «Ver recibos y pagos»: el módulo de Recibos, en esta propiedad. */
+  openReceipts(): void {
+    const propertyId = this.property?.id;
+    void this.router.navigate([OWNER_RECEIPTS_ROUTE], { queryParams: propertyId ? { propertyId } : {} });
   }
 
   setTab(tab: Tab): void {
@@ -631,17 +529,10 @@ export class PropertyDetailComponent implements OnInit {
     setTimeout(() => this.toastMessage.set(null), 2500);
   }
 
-  receiptStatusVariant(status: string): 'green' | 'error' | 'warning' | 'default' {
-    if (status === 'Pagada') return 'green';
-    if (status === 'Devuelto') return 'error';
-    if (status === 'Pendiente') return 'warning';
-    return 'default';
-  }
-
   /** Las incidencias son de la comunidad: el botón abre su módulo para crear una, y la propiedad solo dice en qué comunidad. */
   reportIssue(): void {
     const estateId = this.resolvedEstateId;
-    void this.router.navigate(['/c/incidencias'], { queryParams: { new: '1', ...(estateId ? { estateId } : {}) } });
+    void this.router.navigate([OWNER_ISSUES_ROUTE], { queryParams: { new: '1', ...(estateId ? { estateId } : {}) } });
   }
 
   // ── Vinculación actions ──────────────────────────────────────────────

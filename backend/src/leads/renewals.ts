@@ -46,7 +46,10 @@ const DAY_MS = 86_400_000;
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export function nextRenewal(client: RenewalClient, today: Date): Renewal | null {
+export function nextRenewal(
+  client: RenewalClient,
+  today: Date,
+): Renewal | null {
   const monthly = mrrContribution(client, today);
   if (monthly <= 0) return null;
   const date = renewalDate(client);

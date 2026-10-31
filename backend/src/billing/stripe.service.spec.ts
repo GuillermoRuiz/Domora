@@ -20,7 +20,11 @@ describe('StripeService', () => {
     it('cualquier operación real lanza ServiceUnavailableException en vez de un TypeError críptico', async () => {
       const service = new StripeService(configWithout('STRIPE_SECRET_KEY'));
       await expect(
-        service.createCustomer({ email: 'a@b.com', name: 'Test', administratorId: 'admin-1' }),
+        service.createCustomer({
+          email: 'a@b.com',
+          name: 'Test',
+          administratorId: 'admin-1',
+        }),
       ).rejects.toThrow(ServiceUnavailableException);
     });
   });
@@ -28,7 +32,9 @@ describe('StripeService', () => {
   describe('priceIdFor / planForPriceId', () => {
     it('lanza si el Price de un plan no está configurado', () => {
       const service = new StripeService(configWithout('STRIPE_PRICE_STANDARD'));
-      expect(() => service.priceIdFor('STANDARD')).toThrow(ServiceUnavailableException);
+      expect(() => service.priceIdFor('STANDARD')).toThrow(
+        ServiceUnavailableException,
+      );
       expect(service.priceIdFor('BASE')).toBe('price_base');
     });
 

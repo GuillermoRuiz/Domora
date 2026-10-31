@@ -20,10 +20,10 @@ const id = () => randomUUID();
 function registryWithAll(): AgendaTaskKindRegistry {
   const registry = new AgendaTaskKindRegistry();
   for (const def of [
-        confirmVisitOutcome,
-      chaseProvider,
+    confirmVisitOutcome,
+    chaseProvider,
     reviewIssue,
-        approveQuote,
+    approveQuote,
     informRequester,
   ]) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
@@ -40,7 +40,7 @@ interface Case {
 }
 const supplier = id();
 const wait = id();
-const canonical = id();
+const _canonical = id();
 
 const CASES: Case[] = [
   {
@@ -248,7 +248,9 @@ describe('textos de las tareas', () => {
       },
     });
     expect(built.title).toBe('#INC-2026-042 · Ascensor averiado');
-    expect(built.description?.split('\n')[0]).toBe('Aprobar presupuesto de 780 €');
+    expect(built.description?.split('\n')[0]).toBe(
+      'Aprobar presupuesto de 780 €',
+    );
     expect(built.description).toContain('Ascensores Levante');
   });
 

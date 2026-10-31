@@ -132,6 +132,27 @@ export class TopbarComponent {
     return TYPE_ICON[type];
   }
 
+  /**
+   * Lo mismo que enciende el punto rojo. Los avisos sin leer se conocen desde el inicio (resumen del servidor); las
+   * alertas, solo cuando se ha abierto la lista: hasta entonces la etiqueta habla solo de avisos, sin dar por bueno un
+   * total que no incluye las alertas.
+   */
+  readonly bellLabel = computed(() => {
+    const notices = this.state.notificationsCount();
+    if (this.state.recentAlertsLoaded()) {
+      const total = notices + this.state.alertsCount();
+      return total > 0 ? `Notificaciones, ${total} sin leer` : 'Notificaciones';
+    }
+    if (notices === 0) return 'Notificaciones';
+    return `Notificaciones, ${notices} ${notices === 1 ? 'aviso' : 'avisos'} sin leer`;
+  });
+
+  /** La bandeja de avisos (notificaciones del servidor), aparte del feed de alertas. */
+  goToNotifications(): void {
+    this.closeDropdown();
+    void this.router.navigate([`/${this.state.currentRole().toLowerCase()}/notifications`]);
+  }
+
   goToAlerts(): void {
     this.closeDropdown();
     const role = this.state.currentRole();

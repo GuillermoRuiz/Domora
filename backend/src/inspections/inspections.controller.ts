@@ -150,10 +150,6 @@ export class InspectionsController {
     @Body() dto: UpdateCorrectiveActionDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.inspectionsService.updateCorrectiveAction(
-      actionId,
-      dto,
-      user,
-    );
+    return this.inspectionsService.updateCorrectiveAction(actionId, dto, user);
   }
 }

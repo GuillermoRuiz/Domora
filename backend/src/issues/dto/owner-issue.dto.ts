@@ -1,9 +1,37 @@
 import { Transform } from 'class-transformer';
-import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 import type { IssueStatus, IssueType } from '../../prisma/client';
 
-export const ISSUE_STATUSES: IssueStatus[] = ['Abierta', 'EnReparacion', 'PendienteProveedor', 'PendienteInformacion', 'Resuelta', 'Cerrada', 'Retirada'];
-const ISSUE_TYPES: IssueType[] = ['Averia', 'Ruido', 'DanoEstructural', 'Fuga', 'Seguridad', 'Limpieza', 'Otro'];
+export const ISSUE_STATUSES: IssueStatus[] = [
+  'Abierta',
+  'EnReparacion',
+  'PendienteProveedor',
+  'PendienteInformacion',
+  'Resuelta',
+  'Cerrada',
+  'Retirada',
+];
+const ISSUE_TYPES: IssueType[] = [
+  'Averia',
+  'Ruido',
+  'DanoEstructural',
+  'Fuga',
+  'Seguridad',
+  'Limpieza',
+  'Otro',
+];
 
 /** `GET /me/issues` filters. `status` accepts a comma-separated list. */
 export class ListOwnerIssuesQuery {
@@ -11,7 +39,9 @@ export class ListOwnerIssuesQuery {
   @IsOptional() @IsUUID() estateId?: string;
   @IsOptional() @IsString() @MaxLength(100) q?: string;
   @IsOptional()
-  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').filter(Boolean) : value))
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.split(',').filter(Boolean) : value,
+  )
   @IsArray()
   @IsIn(ISSUE_STATUSES, { each: true })
   status?: IssueStatus[];

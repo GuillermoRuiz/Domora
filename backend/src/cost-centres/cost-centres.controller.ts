@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { CostCentresService } from './cost-centres.service';
 import { CreateCostCentreDto } from './dto/create-cost-centre.dto';
 import { UpdateCostCentreDto } from './dto/update-cost-centre.dto';
@@ -17,7 +25,10 @@ export class CostCentresController {
   constructor(private readonly costCentresService: CostCentresService) {}
 
   @Get()
-  list(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  list(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.costCentresService.listCostCentres(estateId, user);
   }
 
@@ -37,6 +48,11 @@ export class CostCentresController {
     @Body() dto: UpdateCostCentreDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.costCentresService.updateCostCentre(estateId, costCentreId, dto, user);
+    return this.costCentresService.updateCostCentre(
+      estateId,
+      costCentreId,
+      dto,
+      user,
+    );
   }
 }

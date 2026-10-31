@@ -3,7 +3,9 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { StateService } from '../../core/state.service';
 import { CommunityScopeService } from '../../core/community-scope.service';
 import { AccountingNavigationService } from '../../core/accounting-navigation.service';
-import { OwnerScopeService } from '../../core/owner-scope.service';
+import {
+  OWNER_DOCUMENTS_ROUTE, OWNER_HOME, OWNER_ISSUES_ROUTE, OWNER_MEETINGS_ROUTE, OWNER_MESSAGES_ROUTE, OWNER_RECEIPTS_ROUTE, OWNER_SETTINGS_ROUTE,
+} from '../../core/owner-routes';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { BadgeComponent } from '../../shared/components/badge/badge.component';
 
@@ -11,9 +13,6 @@ interface NavItem {
   label: string;
   route: string;
   icon: string;
-  queryParams?: Record<string, string>;
-  /** Not highlighted as active (fallback links that point to another section). */
-  inactive?: boolean;
   badge?: number;
 }
 interface NavSection {
@@ -33,7 +32,6 @@ export class SidebarComponent {
   /** Se instancia con el shell para seguir la comunidad de las fichas (/b/estates/:id…) desde el primer momento. */
   private readonly communityScope = inject(CommunityScopeService);
   readonly accountingNavigation = inject(AccountingNavigationService);
-  private readonly ownerScope = inject(OwnerScopeService);
   readonly accountingExpanded = signal(false);
   constructor() {
     effect(() => {
@@ -85,27 +83,20 @@ export class SidebarComponent {
     // Role C
     return [
       { section: 'GENERAL', items: [
-        { label: 'Mi comunidad', route: '/c/community', icon: 'home' },
+        { label: 'Mi comunidad', route: OWNER_HOME, icon: 'home' },
       ]},
       { section: 'OPERACIONES', items: [
-        { label: 'Incidencias', route: '/c/incidencias', icon: 'wrench' },
-        { label: 'Documentación', route: '/c/documentacion', icon: 'file-text' },
-        { label: 'Mensajes', route: '/c/messages', icon: 'send' },
-        this.propertyTab('Juntas', 'juntas', 'calendar'),
-        this.propertyTab('Recibos y pagos', 'receipts', 'card'),
+        { label: 'Incidencias', route: OWNER_ISSUES_ROUTE, icon: 'wrench' },
+        { label: 'Documentación', route: OWNER_DOCUMENTS_ROUTE, icon: 'file-text' },
+        // Mismo contador de no leídos que el botón de mensajes de la barra superior.
+        { label: 'Mensajes', route: OWNER_MESSAGES_ROUTE, icon: 'send', badge: this.state.unreadMessagesCount() },
+        { label: 'Juntas', route: OWNER_MEETINGS_ROUTE, icon: 'calendar' },
+        { label: 'Recibos y pagos', route: OWNER_RECEIPTS_ROUTE, icon: 'card' },
       ]},
       { section: 'SISTEMA', items: [
-        { label: 'Mi perfil', route: '/c/settings', icon: 'settings' },
+        { label: 'Mi perfil', route: OWNER_SETTINGS_ROUTE, icon: 'user' },
       ]},
     ];
-  }
-
-  /** A tab of the owner's selected property; without one it falls back to Mi comunidad. */
-  private propertyTab(label: string, tab: string, icon: string): NavItem {
-    const propertyId = this.ownerScope.selected()?.id;
-    return propertyId
-      ? { label, route: `/c/properties/${propertyId}`, queryParams: { tab }, icon }
-      : { label, route: '/c/community', icon, inactive: true };
   }
 
 }

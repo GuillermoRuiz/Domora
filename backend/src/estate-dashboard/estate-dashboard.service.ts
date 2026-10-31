@@ -1,5 +1,9 @@
 import { issuesOfEstate } from '../issues/issue-estate';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ActivitySubjectType, type ReceiptStatus } from '../prisma/client';
 import { AccountingService } from '../accounting/accounting.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -10,7 +14,11 @@ import { effectiveConvocation } from '../meetings/effective-convocation';
 import { PrismaService } from '../prisma/prisma.service';
 import { EXPENSE_CATEGORIES, expenseCategoryFor } from './expense-categories';
 
-const OPEN_RECEIPT_STATUSES: ReceiptStatus[] = ['Pendiente', 'Parcial', 'Devuelto'];
+const OPEN_RECEIPT_STATUSES: ReceiptStatus[] = [
+  'Pendiente',
+  'Parcial',
+  'Devuelto',
+];
 const PROPERTIES_DEFAULT_LIMIT = 5;
 const PROPERTIES_MAX_LIMIT = 20;
 const ACTIVITY_DEFAULT_LIMIT = 8;
@@ -37,17 +45,37 @@ export class EstateDashboardService {
    * efectiva. Dos consultas acotadas en vez de traerlas todas: las que aún tienen la primera convocatoria por
    * delante y las que están entre la primera y la segunda.
    */
-  private async upcomingMeetings(estateId: string, now: Date, limit: number, horizon?: Date) {
-    const select = { id: true, title: true, type: true, scheduledAt1: true, scheduledAt2: true } as const;
+  private async upcomingMeetings(
+    estateId: string,
+    now: Date,
+    limit: number,
+    horizon?: Date,
+  ) {
+    const select = {
+      id: true,
+      title: true,
+      type: true,
+      scheduledAt1: true,
+      scheduledAt2: true,
+    } as const;
     const [firstCall, secondCall] = await Promise.all([
       this.prisma.meeting.findMany({
-        where: { estateId, status: 'convocada', scheduledAt1: { gte: now, ...(horizon && { lte: horizon }) } },
+        where: {
+          estateId,
+          status: 'convocada',
+          scheduledAt1: { gte: now, ...(horizon && { lte: horizon }) },
+        },
         select,
         orderBy: { scheduledAt1: 'asc' },
         take: limit,
       }),
       this.prisma.meeting.findMany({
-        where: { estateId, status: 'convocada', scheduledAt1: { lt: now }, scheduledAt2: { gte: now, ...(horizon && { lte: horizon }) } },
+        where: {
+          estateId,
+          status: 'convocada',
+          scheduledAt1: { lt: now },
+          scheduledAt2: { gte: now, ...(horizon && { lte: horizon }) },
+        },
         select,
         orderBy: { scheduledAt2: 'asc' },
         take: limit,
@@ -62,17 +90,26 @@ export class EstateDashboardService {
       .slice(0, limit);
   }
 
-  private async assertEstate(estateId: string, user: AuthenticatedUser): Promise<void> {
+  private async assertEstate(
+    estateId: string,
+    user: AuthenticatedUser,
+  ): Promise<void> {
     this.estateAccess.assertAccess(estateId, user);
-    const estate = await this.prisma.estate.findFirst({ where: { id: estateId, deletedAt: null }, select: { id: true } });
-    if (!estate) throw new NotFoundException(`Finca ${estateId} no encontrada.`);
+    const estate = await this.prisma.estate.findFirst({
+      where: { id: estateId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!estate)
+      throw new NotFoundException(`Finca ${estateId} no encontrada.`);
   }
 
   private resolveYear(year: number | undefined): number {
     const current = new Date().getUTCFullYear();
     if (year === undefined) return current;
     if (!Number.isInteger(year) || year < 2000 || year > current + 1) {
-      throw new BadRequestException('El ejercicio debe ser un año entre 2000 y el próximo.');
+      throw new BadRequestException(
+        'El ejercicio debe ser un año entre 2000 y el próximo.',
+      );
     }
     return year;
   }
@@ -87,15 +124,24 @@ export class EstateDashboardService {
     const yearStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
     const byEstate = { deletedAt: null, ...issuesOfEstate(estateId) };
 
-    const [pendingByProperty, openIssues, issuesThisYear, upcomingMeetings] = await Promise.all([
-      this.prisma.accountingReceipt.groupBy({
-        by: ['propertyId'],
-        where: { estateId, status: { in: OPEN_RECEIPT_STATUSES }, outstanding: { gt: 0 } },
-      }),
-      this.prisma.issue.count({ where: { ...byEstate, status: { in: ACTIVE_ISSUE_STATUSES } } }),
-      this.prisma.issue.count({ where: { ...byEstate, date: { gte: yearStart } } }),
-      this.upcomingMeetings(estateId, now, 1),
-    ]);
+    const [pendingByProperty, openIssues, issuesThisYear, upcomingMeetings] =
+      await Promise.all([
+        this.prisma.accountingReceipt.groupBy({
+          by: ['propertyId'],
+          where: {
+            estateId,
+            status: { in: OPEN_RECEIPT_STATUSES },
+            outstanding: { gt: 0 },
+          },
+        }),
+        this.prisma.issue.count({
+          where: { ...byEstate, status: { in: ACTIVE_ISSUE_STATUSES } },
+        }),
+        this.prisma.issue.count({
+          where: { ...byEstate, date: { gte: yearStart } },
+        }),
+        this.upcomingMeetings(estateId, now, 1),
+      ]);
     const nextMeeting = upcomingMeetings[0];
 
     return {
@@ -129,7 +175,9 @@ export class EstateDashboardService {
       this.ledgerQuery.monthlyResult(estateId, fiscalYear),
       this.ledgerQuery.fiscalYears(estateId),
     ]);
-    const years = [...new Set([...fiscalYears, new Date().getUTCFullYear(), fiscalYear])].sort((a, b) => a - b);
+    const years = [
+      ...new Set([...fiscalYears, new Date().getUTCFullYear(), fiscalYear]),
+    ].sort((a, b) => a - b);
     return {
       year: fiscalYear,
       years,
@@ -146,7 +194,11 @@ export class EstateDashboardService {
    * suma del saldo de cada cuenta de gasto, agrupada con `expenseCategoryFor`.
    * Solo categorías con importe positivo, de mayor a menor.
    */
-  async expenseBreakdown(estateId: string, user: AuthenticatedUser, year?: number) {
+  async expenseBreakdown(
+    estateId: string,
+    user: AuthenticatedUser,
+    year?: number,
+  ) {
     await this.assertEstate(estateId, user);
     const fiscalYear = this.resolveYear(year);
     const rows = await this.ledgerQuery.accountBalances(estateId, {
@@ -158,13 +210,18 @@ export class EstateDashboardService {
       const key = expenseCategoryFor(row.code);
       totals.set(key, (totals.get(key) ?? 0) + row.balance.toNumber());
     }
-    const categories = EXPENSE_CATEGORIES
-      .map((c) => ({ key: c.key, label: c.label, amount: Math.round((totals.get(c.key) ?? 0) * 100) / 100 }))
+    const categories = EXPENSE_CATEGORIES.map((c) => ({
+      key: c.key,
+      label: c.label,
+      amount: Math.round((totals.get(c.key) ?? 0) * 100) / 100,
+    }))
       .filter((c) => c.amount > 0)
       .sort((a, b) => b.amount - a.amount);
     return {
       year: fiscalYear,
-      total: Math.round(categories.reduce((sum, c) => sum + c.amount, 0) * 100) / 100,
+      total:
+        Math.round(categories.reduce((sum, c) => sum + c.amount, 0) * 100) /
+        100,
       categories,
     };
   }
@@ -179,8 +236,12 @@ export class EstateDashboardService {
   async milestones(estateId: string, user: AuthenticatedUser) {
     await this.assertEstate(estateId, user);
     const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const horizon = new Date(today.getTime() + MILESTONE_HORIZON_DAYS * 86_400_000);
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const horizon = new Date(
+      today.getTime() + MILESTONE_HORIZON_DAYS * 86_400_000,
+    );
 
     const [meetings, inspections, contracts] = await Promise.all([
       this.upcomingMeetings(estateId, now, MILESTONE_LIMIT, horizon),
@@ -188,17 +249,31 @@ export class EstateDashboardService {
         where: {
           estateId,
           status: { in: ['planificada', 'citada', 'vencida'] },
-          OR: [{ appointmentDate: { not: null } }, { nextDueDate: { not: null } }],
+          OR: [
+            { appointmentDate: { not: null } },
+            { nextDueDate: { not: null } },
+          ],
         },
         select: {
-          id: true, appointmentDate: true, nextDueDate: true,
+          id: true,
+          appointmentDate: true,
+          nextDueDate: true,
           asset: { select: { name: true } },
           inspectionType: { select: { name: true } },
         },
       }),
       this.prisma.supplierContract.findMany({
-        where: { estateId, cancelledAt: null, endDate: { gte: today, lte: horizon } },
-        select: { id: true, serviceType: true, endDate: true, supplier: { select: { name: true } } },
+        where: {
+          estateId,
+          cancelledAt: null,
+          endDate: { gte: today, lte: horizon },
+        },
+        select: {
+          id: true,
+          serviceType: true,
+          endDate: true,
+          supplier: { select: { name: true } },
+        },
         orderBy: { endDate: 'asc' },
         take: MILESTONE_LIMIT,
       }),
@@ -217,14 +292,16 @@ export class EstateDashboardService {
       ...inspections.flatMap((i) => {
         const due = i.appointmentDate ?? i.nextDueDate;
         if (!due || due > horizon) return [];
-        return [{
-          key: `inspection:${i.id}`,
-          kind: 'inspection' as const,
-          title: `${i.inspectionType.name} · ${i.asset.name}`,
-          date: day(due),
-          overdue: due < today,
-          sort: due.getTime(),
-        }];
+        return [
+          {
+            key: `inspection:${i.id}`,
+            kind: 'inspection' as const,
+            title: `${i.inspectionType.name} · ${i.asset.name}`,
+            date: day(due),
+            overdue: due < today,
+            sort: due.getTime(),
+          },
+        ];
       }),
       ...contracts.map((c) => ({
         key: `contract:${c.id}`,
@@ -249,20 +326,36 @@ export class EstateDashboardService {
    * finca y las de sus propiedades, aunque se grabaran solo con la propiedad.
    * `subjects` limita a ciertos tipos de actividad (p. ej. altas y cambios de propiedades).
    */
-  async activity(estateId: string, user: AuthenticatedUser, limit?: number, subjects?: string[]) {
+  async activity(
+    estateId: string,
+    user: AuthenticatedUser,
+    limit?: number,
+    subjects?: string[],
+  ) {
     await this.assertEstate(estateId, user);
     const known = Object.values(ActivitySubjectType) as string[];
-    const unknown = (subjects ?? []).filter((subject) => !known.includes(subject));
+    const unknown = (subjects ?? []).filter(
+      (subject) => !known.includes(subject),
+    );
     if (unknown.length > 0) {
-      throw new BadRequestException(`Tipo de actividad desconocido: ${unknown.join(', ')}.`);
+      throw new BadRequestException(
+        `Tipo de actividad desconocido: ${unknown.join(', ')}.`,
+      );
     }
-    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > ACTIVITY_MAX_LIMIT)) {
-      throw new BadRequestException(`El límite debe estar entre 1 y ${ACTIVITY_MAX_LIMIT}.`);
+    if (
+      limit !== undefined &&
+      (!Number.isInteger(limit) || limit < 1 || limit > ACTIVITY_MAX_LIMIT)
+    ) {
+      throw new BadRequestException(
+        `El límite debe estar entre 1 y ${ACTIVITY_MAX_LIMIT}.`,
+      );
     }
     const rows = await this.prisma.activityLogEntry.findMany({
       where: {
         OR: [{ estateId }, { property: { estateId } }],
-        ...(subjects && subjects.length > 0 ? { subjectType: { in: subjects as ActivitySubjectType[] } } : {}),
+        ...(subjects && subjects.length > 0
+          ? { subjectType: { in: subjects as ActivitySubjectType[] } }
+          : {}),
       },
       orderBy: { occurredAt: 'desc' },
       take: limit ?? ACTIVITY_DEFAULT_LIMIT,
@@ -296,8 +389,13 @@ export class EstateDashboardService {
    */
   async properties(estateId: string, user: AuthenticatedUser, limit?: number) {
     await this.assertEstate(estateId, user);
-    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > PROPERTIES_MAX_LIMIT)) {
-      throw new BadRequestException(`El límite debe estar entre 1 y ${PROPERTIES_MAX_LIMIT}.`);
+    if (
+      limit !== undefined &&
+      (!Number.isInteger(limit) || limit < 1 || limit > PROPERTIES_MAX_LIMIT)
+    ) {
+      throw new BadRequestException(
+        `El límite debe estar entre 1 y ${PROPERTIES_MAX_LIMIT}.`,
+      );
     }
     const where = { estateId, deletedAt: null };
     const [total, rows] = await Promise.all([
@@ -312,12 +410,20 @@ export class EstateDashboardService {
           type: true,
           quotaMonthly: true,
           memberships: {
-            where: { roleType: 'Propietario', status: 'linked', revokedAt: null },
+            where: {
+              roleType: 'Propietario',
+              status: 'linked',
+              revokedAt: null,
+            },
             orderBy: [{ isPrimaryContact: 'desc' }, { linkedAt: 'asc' }],
             take: 1,
             select: { user: { select: { fullName: true } } },
           },
-          externalOwners: { where: { promotedToUserId: null }, take: 1, select: { fullName: true } },
+          externalOwners: {
+            where: { promotedToUserId: null },
+            take: 1,
+            select: { fullName: true },
+          },
         },
       }),
     ]);
@@ -330,7 +436,10 @@ export class EstateDashboardService {
           id: r.id,
           ref: r.ref,
           type: r.type,
-          titular: r.memberships[0]?.user.fullName ?? r.externalOwners[0]?.fullName ?? null,
+          titular:
+            r.memberships[0]?.user.fullName ??
+            r.externalOwners[0]?.fullName ??
+            null,
           quotaMonthly: r.quotaMonthly.toNumber(),
           balance,
           status,
@@ -347,7 +456,10 @@ export class EstateDashboardService {
    */
   async propertyStatuses(estateId: string, user: AuthenticatedUser) {
     await this.assertEstate(estateId, user);
-    const rows = await this.prisma.property.findMany({ where: { estateId, deletedAt: null }, select: { id: true } });
+    const rows = await this.prisma.property.findMany({
+      where: { estateId, deletedAt: null },
+      select: { id: true },
+    });
     const ids = rows.map((r) => r.id);
     const [statuses, payments, owners] = await Promise.all([
       this.statusesFor(ids),
@@ -358,13 +470,23 @@ export class EstateDashboardService {
       }),
       this.prisma.propertyMembership.groupBy({
         by: ['propertyId'],
-        where: { propertyId: { in: ids }, roleType: 'Propietario', status: 'linked', revokedAt: null },
+        where: {
+          propertyId: { in: ids },
+          roleType: 'Propietario',
+          status: 'linked',
+          revokedAt: null,
+        },
         _min: { linkedAt: true },
       }),
     ]);
-    const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
-    const lastPayment = new Map(payments.map((p) => [p.propertyId, day(p._max.date)]));
-    const ownerSince = new Map(owners.map((o) => [o.propertyId, day(o._min.linkedAt)]));
+    const day = (d: Date | null | undefined) =>
+      d ? d.toISOString().slice(0, 10) : null;
+    const lastPayment = new Map(
+      payments.map((p) => [p.propertyId, day(p._max.date)]),
+    );
+    const ownerSince = new Map(
+      owners.map((o) => [o.propertyId, day(o._min.linkedAt)]),
+    );
     return {
       items: rows.map((r) => ({
         propertyId: r.id,
@@ -381,11 +503,15 @@ export class EstateDashboardService {
       where: { propertyId: { in: ids }, status: { in: OPEN_RECEIPT_STATUSES } },
       _sum: { outstanding: true },
     });
-    const balanceBy = new Map(balances.map((b) => [b.propertyId, b._sum.outstanding?.toNumber() ?? 0]));
-    return new Map(ids.map((id) => {
-      const balance = balanceBy.get(id) ?? 0;
-      const status = balance > 0 ? ('overdue' as const) : ('ok' as const);
-      return [id, { balance, status }] as const;
-    }));
+    const balanceBy = new Map(
+      balances.map((b) => [b.propertyId, b._sum.outstanding?.toNumber() ?? 0]),
+    );
+    return new Map(
+      ids.map((id) => {
+        const balance = balanceBy.get(id) ?? 0;
+        const status = balance > 0 ? ('overdue' as const) : ('ok' as const);
+        return [id, { balance, status }] as const;
+      }),
+    );
   }
 }

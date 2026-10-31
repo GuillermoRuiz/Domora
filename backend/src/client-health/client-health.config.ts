@@ -10,7 +10,12 @@ import type { PaymentStatus } from '../client-status/client-status';
  */
 export interface ClientHealthConfig {
   /** Relative weight of each signal. Only available signals count (see `saludIndex`). */
-  weights: { payment: number; usage: number; completeness: number; support: number };
+  weights: {
+    payment: number;
+    usage: number;
+    completeness: number;
+    support: number;
+  };
   /** «En riesgo» when salud is strictly below this value (0-100). */
   atRiskBelow: number;
   /** Score (0-100) of each payment status. */
@@ -55,7 +60,12 @@ export const DEFAULT_CLIENT_HEALTH_CONFIG: ClientHealthConfig = {
   weights: { payment: 40, usage: 35, completeness: 15, support: 10 },
   atRiskBelow: 70,
   paymentScore: { 'Al día': 100, Pendiente: 100, Fallido: 25, Vencido: 0 },
-  usage: { windowDays: 30, expectedActiveDays: 12, minObservedDays: 7, lowActivityBelow: 40 },
+  usage: {
+    windowDays: 30,
+    expectedActiveDays: 12,
+    minObservedDays: 7,
+    lowActivityBelow: 40,
+  },
   onboardingBlockedAfterDays: 14,
   supportPenaltyPerTicket: 50,
 };

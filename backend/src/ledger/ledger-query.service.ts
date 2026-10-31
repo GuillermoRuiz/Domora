@@ -41,19 +41,41 @@ export class LedgerQueryService {
   /** Bulk reporting extension of accountBalances: one parameterized query across estates.
    * Money remains Decimal until serialization. `monthly` changes grouping only.
    */
-  async reportAccountBalances(estateIds: string[], query: BalanceQuery & { monthly?: boolean; accountCode?: string } = {}) {
+  async reportAccountBalances(
+    estateIds: string[],
+    query: BalanceQuery & { monthly?: boolean; accountCode?: string } = {},
+  ) {
     if (!estateIds.length) return [];
-    const conditions = [Prisma.sql`jl."estate_id" IN (${Prisma.join(estateIds.map(id => Prisma.sql`${id}::uuid`))})`];
-    if (query.from) conditions.push(Prisma.sql`jl."date" >= ${query.from}::date`);
+    const conditions = [
+      Prisma.sql`jl."estate_id" IN (${Prisma.join(estateIds.map((id) => Prisma.sql`${id}::uuid`))})`,
+    ];
+    if (query.from)
+      conditions.push(Prisma.sql`jl."date" >= ${query.from}::date`);
     if (query.to) conditions.push(Prisma.sql`jl."date" <= ${query.to}::date`);
-    if (query.fiscalYear !== undefined) conditions.push(Prisma.sql`jl."fiscal_year" = ${query.fiscalYear}`);
-    if (query.accountCode) conditions.push(Prisma.sql`a."code" = ${query.accountCode}`);
-    if (query.excludeEntryTypes?.length) conditions.push(Prisma.sql`jl."entry_type"::text NOT IN (${Prisma.join(query.excludeEntryTypes)})`);
-    const period = query.monthly ? Prisma.sql`to_char(jl."date", 'YYYY-MM')` : Prisma.sql`''::text`;
-    const rows = await this.prisma.$queryRaw<{
-      estate_id: string; account_id: string; code: string; name: string; nature: string; system_role: string | null;
-      period: string; debit: Prisma.Decimal; credit: Prisma.Decimal;
-    }[]>(Prisma.sql`
+    if (query.fiscalYear !== undefined)
+      conditions.push(Prisma.sql`jl."fiscal_year" = ${query.fiscalYear}`);
+    if (query.accountCode)
+      conditions.push(Prisma.sql`a."code" = ${query.accountCode}`);
+    if (query.excludeEntryTypes?.length)
+      conditions.push(
+        Prisma.sql`jl."entry_type"::text NOT IN (${Prisma.join(query.excludeEntryTypes)})`,
+      );
+    const period = query.monthly
+      ? Prisma.sql`to_char(jl."date", 'YYYY-MM')`
+      : Prisma.sql`''::text`;
+    const rows = await this.prisma.$queryRaw<
+      {
+        estate_id: string;
+        account_id: string;
+        code: string;
+        name: string;
+        nature: string;
+        system_role: string | null;
+        period: string;
+        debit: Prisma.Decimal;
+        credit: Prisma.Decimal;
+      }[]
+    >(Prisma.sql`
       SELECT jl."estate_id", a."id" AS account_id, a."code", a."name", a."nature"::text AS nature,
              a."system_role"::text AS system_role, ${period} AS period,
              sum(jl."debit") AS debit, sum(jl."credit") AS credit
@@ -62,24 +84,42 @@ export class LedgerQueryService {
       GROUP BY jl."estate_id", a."id", a."code", a."name", a."nature", a."system_role", ${period}
       ORDER BY jl."estate_id", period, a."code" LIMIT 50001
     `);
-    if (rows.length > 50000) throw new UnprocessableEntityException('El resultado supera 50.000 filas. Reduce el periodo o las comunidades.');
-    return rows.map(row => ({ estateId: row.estate_id, accountId: row.account_id, code: row.code, name: row.name,
-      nature: row.nature, systemRole: row.system_role, period: row.period, debit: new Prisma.Decimal(row.debit),
-      credit: new Prisma.Decimal(row.credit), balance: new Prisma.Decimal(row.debit).minus(row.credit) }));
+    if (rows.length > 50000)
+      throw new UnprocessableEntityException(
+        'El resultado supera 50.000 filas. Reduce el periodo o las comunidades.',
+      );
+    return rows.map((row) => ({
+      estateId: row.estate_id,
+      accountId: row.account_id,
+      code: row.code,
+      name: row.name,
+      nature: row.nature,
+      systemRole: row.system_role,
+      period: row.period,
+      debit: new Prisma.Decimal(row.debit),
+      credit: new Prisma.Decimal(row.credit),
+      balance: new Prisma.Decimal(row.debit).minus(row.credit),
+    }));
   }
 
   /** Shared treasury definition for the individual accounting summary and bulk overview. */
-  async treasuryBalancesForEstates(estateIds: string[]): Promise<Map<string, Prisma.Decimal>> {
+  async treasuryBalancesForEstates(
+    estateIds: string[],
+  ): Promise<Map<string, Prisma.Decimal>> {
     if (!estateIds.length) return new Map();
-    const rows = await this.prisma.$queryRaw<{ estate_id: string; balance: Prisma.Decimal }[]>`
+    const rows = await this.prisma.$queryRaw<
+      { estate_id: string; balance: Prisma.Decimal }[]
+    >`
       SELECT jl."estate_id", sum(jl."debit" - jl."credit") AS balance
       FROM "journal_lines" jl JOIN "chart_accounts" a ON a."id" = jl."account_id"
-      WHERE jl."estate_id" IN (${Prisma.join(estateIds.map(id => Prisma.sql`${id}::uuid`))})
+      WHERE jl."estate_id" IN (${Prisma.join(estateIds.map((id) => Prisma.sql`${id}::uuid`))})
         AND a."code" LIKE '57%'
         AND jl."entry_type"::text NOT IN (${Prisma.join(LedgerQueryService.BALANCE_EXCLUDED)})
       GROUP BY jl."estate_id"
     `;
-    return new Map(rows.map(row => [row.estate_id, new Prisma.Decimal(row.balance)]));
+    return new Map(
+      rows.map((row) => [row.estate_id, new Prisma.Decimal(row.balance)]),
+    );
   }
 
   async accountBalances(
@@ -153,13 +193,26 @@ export class LedgerQueryService {
   }
 
   /** Ver executedByAccount en executed.ts. */
-  executedByAccount(estateIds: string[], fiscalYear: number, accountIds?: string[]) {
+  executedByAccount(
+    estateIds: string[],
+    fiscalYear: number,
+    accountIds?: string[],
+  ) {
     return executedByAccount(this.prisma, estateIds, fiscalYear, accountIds);
   }
 
   /** Ver executedByCostCentre en executed.ts. */
-  executedByCostCentre(estateIds: string[], fiscalYear: number, costCentreIds?: string[]) {
-    return executedByCostCentre(this.prisma, estateIds, fiscalYear, costCentreIds);
+  executedByCostCentre(
+    estateIds: string[],
+    fiscalYear: number,
+    costCentreIds?: string[],
+  ) {
+    return executedByCostCentre(
+      this.prisma,
+      estateIds,
+      fiscalYear,
+      costCentreIds,
+    );
   }
 
   /** Asientos que no son actividad del ejercicio: regularización, cierre, apertura y reparto del resultado. */
@@ -183,9 +236,16 @@ export class LedgerQueryService {
   async monthlyResult(
     estateId: string,
     fiscalYear: number,
-  ): Promise<{ month: number; income: Prisma.Decimal; expenses: Prisma.Decimal }[]> {
+  ): Promise<
+    { month: number; income: Prisma.Decimal; expenses: Prisma.Decimal }[]
+  > {
     const rows = await this.prisma.$queryRaw<
-      { month: number; nature: string; debit: Prisma.Decimal; credit: Prisma.Decimal }[]
+      {
+        month: number;
+        nature: string;
+        debit: Prisma.Decimal;
+        credit: Prisma.Decimal;
+      }[]
     >`
       SELECT extract(month FROM jl."date")::int AS month, a."nature"::text AS nature,
              sum(jl."debit") AS debit, sum(jl."credit") AS credit
@@ -198,7 +258,11 @@ export class LedgerQueryService {
        GROUP BY 1, 2
     `;
     const zero = new Prisma.Decimal(0);
-    const months = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, income: zero, expenses: zero }));
+    const months = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      income: zero,
+      expenses: zero,
+    }));
     for (const row of rows) {
       const target = months[row.month - 1];
       const debit = new Prisma.Decimal(row.debit);
@@ -219,17 +283,28 @@ export class LedgerQueryService {
       excludeEntryTypes: LedgerQueryService.BALANCE_EXCLUDED,
     });
     const zero = new Prisma.Decimal(0);
-    const sum = (rows: AccountBalanceRow[], f: (r: AccountBalanceRow) => Prisma.Decimal) =>
-      rows.reduce((s, r) => s.plus(f(r)), zero);
+    const sum = (
+      rows: AccountBalanceRow[],
+      f: (r: AccountBalanceRow) => Prisma.Decimal,
+    ) => rows.reduce((s, r) => s.plus(f(r)), zero);
     const year = await this.accountBalances(estateId, {
       fiscalYear,
       excludeEntryTypes: LedgerQueryService.RESULT_EXCLUDED,
     });
     return {
       treasury: treasury.get(estateId) ?? zero,
-      reserve: sum(balances.filter((r) => r.systemRole === 'reserve_fund'), (r) => r.balance.negated()),
-      income: sum(year.filter((r) => r.nature === 'income'), (r) => r.credit.minus(r.debit)),
-      expenses: sum(year.filter((r) => r.nature === 'expense'), (r) => r.debit.minus(r.credit)),
+      reserve: sum(
+        balances.filter((r) => r.systemRole === 'reserve_fund'),
+        (r) => r.balance.negated(),
+      ),
+      income: sum(
+        year.filter((r) => r.nature === 'income'),
+        (r) => r.credit.minus(r.debit),
+      ),
+      expenses: sum(
+        year.filter((r) => r.nature === 'expense'),
+        (r) => r.debit.minus(r.credit),
+      ),
     };
   }
 }

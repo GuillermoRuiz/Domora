@@ -56,7 +56,11 @@ export function matchEnumAlias<T extends string>(
   raw: string,
   aliases: Record<string, T>,
 ): T | null {
-  const normalized = raw.trim().toLowerCase().normalize('NFD').replace(COMBINING_DIACRITICS, '');
+  const normalized = raw
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(COMBINING_DIACRITICS, '');
   return aliases[normalized] ?? null;
 }
 

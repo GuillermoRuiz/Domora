@@ -33,8 +33,15 @@ export class MeetingEligibilityService {
       }),
       this.prisma.meetingVoteDelegation.findMany({
         // Un representante externo (sin cuenta) no puede asistir ni votar en Domora.
-        where: { meetingId, propertyId, revokedAt: null, representativeUserId: { not: null } },
-        include: { representativeUser: { select: { id: true, fullName: true } } },
+        where: {
+          meetingId,
+          propertyId,
+          revokedAt: null,
+          representativeUserId: { not: null },
+        },
+        include: {
+          representativeUser: { select: { id: true, fullName: true } },
+        },
       }),
     ]);
     const own = memberships.map((m) => ({
@@ -44,14 +51,22 @@ export class MeetingEligibilityService {
     }));
     const delegated = delegations.flatMap((d) =>
       d.representativeUser
-        ? [{ userId: d.representativeUser.id, name: d.representativeUser.fullName, kind: 'delegated' as const }]
+        ? [
+            {
+              userId: d.representativeUser.id,
+              name: d.representativeUser.fullName,
+              kind: 'delegated' as const,
+            },
+          ]
         : [],
     );
     // Dedupe: si la propia gestora u otro usuario aparece por ambas vías.
-    const byUserId = new Map<string, { userId: string; name: string; kind: 'own' | 'delegated' }>(
-      own.map((e) => [e.userId, e]),
-    );
-    for (const e of delegated) if (!byUserId.has(e.userId)) byUserId.set(e.userId, e);
+    const byUserId = new Map<
+      string,
+      { userId: string; name: string; kind: 'own' | 'delegated' }
+    >(own.map((e) => [e.userId, e]));
+    for (const e of delegated)
+      if (!byUserId.has(e.userId)) byUserId.set(e.userId, e);
     return [...byUserId.values()];
   }
 
@@ -62,7 +77,9 @@ export class MeetingEligibilityService {
    */
   async listHoldersByEstate(
     estateId: string,
-  ): Promise<{ propertyId: string; holders: { userId: string; name: string }[] }[]> {
+  ): Promise<
+    { propertyId: string; holders: { userId: string; name: string }[] }[]
+  > {
     const memberships = await this.prisma.propertyMembership.findMany({
       where: {
         property: { estateId },
@@ -72,16 +89,29 @@ export class MeetingEligibilityService {
       include: { user: { select: { id: true, fullName: true } } },
       orderBy: [{ roleType: 'asc' }, { linkedAt: 'asc' }],
     });
-    const byProperty = new Map<string, Map<string, { userId: string; name: string }>>();
+    const byProperty = new Map<
+      string,
+      Map<string, { userId: string; name: string }>
+    >();
     for (const m of memberships) {
-      const holders = byProperty.get(m.propertyId) ?? new Map<string, { userId: string; name: string }>();
-      if (!holders.has(m.user.id)) holders.set(m.user.id, { userId: m.user.id, name: m.user.fullName });
+      const holders =
+        byProperty.get(m.propertyId) ??
+        new Map<string, { userId: string; name: string }>();
+      if (!holders.has(m.user.id))
+        holders.set(m.user.id, { userId: m.user.id, name: m.user.fullName });
       byProperty.set(m.propertyId, holders);
     }
-    return [...byProperty].map(([propertyId, holders]) => ({ propertyId, holders: [...holders.values()] }));
+    return [...byProperty].map(([propertyId, holders]) => ({
+      propertyId,
+      holders: [...holders.values()],
+    }));
   }
 
-  async assertEligibleForProperty(meetingId: string, propertyId: string, userId: string): Promise<void> {
+  async assertEligibleForProperty(
+    meetingId: string,
+    propertyId: string,
+    userId: string,
+  ): Promise<void> {
     const eligible = await this.listEligibleAttendeeIds(meetingId, propertyId);
     if (!eligible.some((e) => e.userId === userId)) {
       throw new ForbiddenException(

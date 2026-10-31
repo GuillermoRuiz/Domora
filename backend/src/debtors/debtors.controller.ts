@@ -139,7 +139,8 @@ export class EstateDebtorsController {
     @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    const { fileName, content } = await this.debtorsService.generateBalancesExcelFile(estateId, user);
+    const { fileName, content } =
+      await this.debtorsService.generateBalancesExcelFile(estateId, user);
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="${encodeURIComponent(fileName)}"`,

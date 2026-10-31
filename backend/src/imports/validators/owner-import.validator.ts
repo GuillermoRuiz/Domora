@@ -21,7 +21,9 @@ export function validateOwnerRow(
 
   const propertyRef = mappedRow['propertyRef']?.trim();
   if (!propertyRef) {
-    errors.push('Falta la referencia de la unidad a la que vincular este propietario.');
+    errors.push(
+      'Falta la referencia de la unidad a la que vincular este propietario.',
+    );
   }
 
   const email = mappedRow['email']?.trim();
@@ -37,8 +39,8 @@ export function validateOwnerRow(
     rowNumber,
     ok: true,
     data: {
-      fullName: fullName!,
-      propertyRef: propertyRef!,
+      fullName: fullName,
+      propertyRef: propertyRef,
       taxId: mappedRow['taxId']?.trim() || undefined,
       email: email || undefined,
       phone: mappedRow['phone']?.trim() || undefined,

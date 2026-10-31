@@ -52,7 +52,7 @@
     "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.10.1",
     "helmet": "^8.3.0",
-    "nodemailer": "^9.0.4",
+    "nodemailer": "^10.3.1",
     "otplib": "^13.5.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -134,5 +134,8 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "overrides": {
+    "multer": "^2.5.0"
   }
 }

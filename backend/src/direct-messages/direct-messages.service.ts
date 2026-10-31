@@ -15,6 +15,7 @@ import {
   USER_MESSAGING_SETTINGS_DEFAULTS,
   UserMessagingSettingsValues,
 } from './user-messaging-settings.defaults';
+import { OWNER_MESSAGES_LINK } from '../common/owner-links';
 
 /** Lo que se ve en la bandeja cuando el último mensaje de una conversación se ha borrado. */
 export const DELETED_MESSAGE_PREVIEW = 'Este mensaje ha sido borrado';
@@ -210,7 +211,10 @@ export class DirectMessagesService {
    * rol B, los propietarios de las fincas que administra (que lo permitan).
    * No hay contactos B↔B — fuera de alcance.
    */
-  private withEstateScope(user: AuthenticatedUser, estateId?: string): AuthenticatedUser {
+  private withEstateScope(
+    user: AuthenticatedUser,
+    estateId?: string,
+  ): AuthenticatedUser {
     if (!estateId) return user;
     if (!user.estateIds.includes(estateId)) {
       throw new ForbiddenException('No tienes acceso a esta comunidad.');
@@ -218,7 +222,10 @@ export class DirectMessagesService {
     return { ...user, estateIds: [estateId] };
   }
 
-  async listContacts(user: AuthenticatedUser, estateId?: string): Promise<ContactRow[]> {
+  async listContacts(
+    user: AuthenticatedUser,
+    estateId?: string,
+  ): Promise<ContactRow[]> {
     user = this.withEstateScope(user, estateId);
     if (user.estateIds.length === 0) return [];
     const results = new Map<string, Omit<ContactRow, 'conversationId'>>();
@@ -290,7 +297,9 @@ export class DirectMessagesService {
           select: { userId: true, conversationId: true },
         })
       : [];
-    const conversationByUser = new Map(existing.map((row) => [row.userId, row.conversationId]));
+    const conversationByUser = new Map(
+      existing.map((row) => [row.userId, row.conversationId]),
+    );
     return [...results.values()].map((contact) => ({
       ...contact,
       conversationId: conversationByUser.get(contact.userId) ?? null,
@@ -306,7 +315,11 @@ export class DirectMessagesService {
           conversation: {
             include: {
               participants: true,
-              messages: { orderBy: { createdAt: 'desc' }, take: 1, include: { attachments: { select: { name: true }, take: 1 } } },
+              messages: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                include: { attachments: { select: { name: true }, take: 1 } },
+              },
             },
           },
         },
@@ -348,7 +361,10 @@ export class DirectMessagesService {
           lastMessageSenderId: lastMessage?.senderId ?? null,
           lastMessagePreview: lastMessage?.deletedAt
             ? DELETED_MESSAGE_PREVIEW
-            : lastMessage?.text || (lastMessage?.attachments?.[0] ? `Adjunto: ${lastMessage.attachments[0].name}` : ''),
+            : lastMessage?.text ||
+              (lastMessage?.attachments?.[0]
+                ? `Adjunto: ${lastMessage.attachments[0].name}`
+                : ''),
           lastMessageAt: (
             lastMessage?.createdAt ?? row.conversation.createdAt
           ).toISOString(),
@@ -398,7 +414,8 @@ export class DirectMessagesService {
     const readAt = other?.lastReadAt ?? null;
     return messages.reverse().map((message) => ({
       ...message,
-      readByRecipient: message.senderId === user.id && !!readAt && readAt >= message.createdAt,
+      readByRecipient:
+        message.senderId === user.id && !!readAt && readAt >= message.createdAt,
     }));
   }
 
@@ -424,7 +441,10 @@ export class DirectMessagesService {
     return created.id;
   }
 
-  async ensureConversationAccess(dto: Pick<SendDirectMessageDto, 'conversationId' | 'recipientUserId'>, user: AuthenticatedUser): Promise<string> {
+  async ensureConversationAccess(
+    dto: Pick<SendDirectMessageDto, 'conversationId' | 'recipientUserId'>,
+    user: AuthenticatedUser,
+  ): Promise<string> {
     let conversationId = dto.conversationId;
 
     if (!conversationId) {
@@ -465,7 +485,10 @@ export class DirectMessagesService {
   }
 
   /** «Eliminar conversación»: solo desaparece de la lista de quien la elimina; el otro participante y el historial no se tocan. */
-  async hideConversation(conversationId: string, user: AuthenticatedUser): Promise<void> {
+  async hideConversation(
+    conversationId: string,
+    user: AuthenticatedUser,
+  ): Promise<void> {
     await this.assertParticipant(conversationId, user.id);
     const now = new Date();
     await this.prisma.directMessageParticipant.update({
@@ -479,7 +502,11 @@ export class DirectMessagesService {
    * solo a quién). Solo gestión (A/B) y de mejor esfuerzo: un fallo del registro no
    * debe deshacer un mensaje ya enviado. No lleva finca: una conversación no la tiene.
    */
-  async logSent(conversationId: string, messageId: string, sender: AuthenticatedUser): Promise<void> {
+  async logSent(
+    conversationId: string,
+    messageId: string,
+    sender: AuthenticatedUser,
+  ): Promise<void> {
     if (sender.role === 'C') return;
     try {
       const recipient = await this.prisma.directMessageParticipant.findFirst({
@@ -523,7 +550,7 @@ export class DirectMessagesService {
       }),
     ]);
     if (!recipient) return;
-    const link = { B: '/b/messages', C: '/c/messages' };
+    const link = { B: '/b/messages', C: OWNER_MESSAGES_LINK };
     await this.notifications.notify({
       userIds: [recipient.userId],
       category: 'direct_message',

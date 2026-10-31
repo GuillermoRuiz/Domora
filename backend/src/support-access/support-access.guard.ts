@@ -9,17 +9,22 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import type { AppRole, AuthenticatedUser } from '../auth/auth.types';
-import { DespachoResolverService, isUuid, type DespachoTarget } from './despacho-resolver.service';
+import {
+  DespachoResolverService,
+  isUuid,
+  type DespachoTarget,
+} from './despacho-resolver.service';
 import { StaffAuditService, type StaffAuditEntry } from './staff-audit.service';
 import { SupportSessionsService } from './support-sessions.service';
 import { classifyRoute, isReadOnlyRequest, routeTemplate } from './route-scope';
+import type { SupportScopedRequest } from './support-despacho.decorator';
 
 /** Header carrying the id of the caller's active support session. */
 export const SUPPORT_SESSION_HEADER = 'x-support-session';
 
 export const SUPPORT_MESSAGES = {
   noSession:
-    'Estás en modo consulta. Para modificar datos de un despacho inicia una sesión de soporte.',
+    'Para ver o modificar datos de un despacho inicia una sesión de soporte.',
   invalidSession:
     'La sesión de soporte no es válida, ha terminado o ha caducado. Inicia una nueva.',
   otherDespacho:
@@ -30,7 +35,7 @@ export const SUPPORT_MESSAGES = {
     'No se ha podido registrar el acceso en la auditoría. Inténtalo de nuevo en unos minutos.',
 } as const;
 
-interface GuardedRequest {
+interface GuardedRequest extends SupportScopedRequest {
   user?: AuthenticatedUser;
   method: string;
   headers: Record<string, string | string[] | undefined>;
@@ -40,9 +45,14 @@ interface GuardedRequest {
 
 /**
  * Global guard, registered right after RolesGuard (odd/tasks/role-a-panel.md
- * S5): role A is read-only on tenant routes unless it works inside an
+ * S5): role A only reaches tenant routes, to read or to write, inside an
  * explicit support session of the target despacho, and every role A request
- * to a tenant route is audited (reads, writes and denials).
+ * to a tenant route is audited (reads, writes and denials). A read whose
+ * despacho cannot be resolved (no record in the path, no `?administratorId=`)
+ * is allowed inside any valid session and audited without a despacho; a
+ * write in that situation is denied. The accepted session is left on the
+ * request (`supportSession`), so the routes that list or search across
+ * despachos for role A scope to its despacho (`@SupportDespacho()`).
  *
  * Roles B and C, anonymous requests and role A on platform or self routes
  * pass straight through: no lookup, no audit row.
@@ -64,45 +74,54 @@ export class SupportAccessGuard implements CanActivate {
     const user = req.user;
     if (!user || user.role !== 'A') return true;
 
-    const roles = this.reflector.getAllAndOverride<AppRole[] | undefined>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const roles = this.reflector.getAllAndOverride<AppRole[] | undefined>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     const route = routeTemplate(context.getClass(), context.getHandler());
     if (classifyRoute(roles, route) !== 'tenant') return true;
 
     const method = req.method.toUpperCase();
     const target = await this.resolver.resolve(route, req.params ?? {});
     const base = { staffUserId: user.id, method, route };
-
-    if (isReadOnlyRequest(method, route)) {
-      const queried = req.query?.administratorId;
-      await this.recordOrFail({
-        ...base,
-        administratorId: target?.administratorId ?? (isUuid(queried) ? queried : null),
-        estateId: target?.estateId ?? null,
-        supportSessionId: null,
-        action: 'read',
-      });
-      return true;
-    }
+    const readOnly = isReadOnlyRequest(method, route);
+    const queried = req.query?.administratorId;
+    // Reads scoped by `?administratorId=` (estate lists) name their despacho in the query.
+    const administratorId =
+      target?.administratorId ?? (readOnly && isUuid(queried) ? queried : null);
 
     const header = req.headers[SUPPORT_SESSION_HEADER];
     const sessionId = Array.isArray(header) ? header[0] : header;
-    if (!sessionId) return this.deny(base, target, null, SUPPORT_MESSAGES.noSession);
-    const session = isUuid(sessionId) ? await this.sessions.findValid(sessionId, user.id) : null;
-    if (!session) return this.deny(base, target, null, SUPPORT_MESSAGES.invalidSession);
-    if (!target) return this.deny(base, target, session.id, SUPPORT_MESSAGES.unresolved);
-    if (target.administratorId !== session.administratorId) {
-      return this.deny(base, target, session.id, SUPPORT_MESSAGES.otherDespacho);
+    if (!sessionId)
+      return this.deny(base, target, null, SUPPORT_MESSAGES.noSession);
+    const session = isUuid(sessionId)
+      ? await this.sessions.findValid(sessionId, user.id)
+      : null;
+    if (!session)
+      return this.deny(base, target, null, SUPPORT_MESSAGES.invalidSession);
+    if (!readOnly && !target) {
+      return this.deny(base, target, session.id, SUPPORT_MESSAGES.unresolved);
+    }
+    if (administratorId && administratorId !== session.administratorId) {
+      return this.deny(
+        base,
+        target,
+        session.id,
+        SUPPORT_MESSAGES.otherDespacho,
+      );
     }
     await this.recordOrFail({
       ...base,
-      administratorId: target.administratorId,
-      estateId: target.estateId,
+      administratorId,
+      estateId: target?.estateId ?? null,
       supportSessionId: session.id,
-      action: 'write',
+      action: readOnly ? 'read' : 'write',
     });
+    // Listings and searches that span despachos for role A scope to this one (`@SupportDespacho()`).
+    req.supportSession = {
+      id: session.id,
+      administratorId: session.administratorId,
+    };
     return true;
   }
 

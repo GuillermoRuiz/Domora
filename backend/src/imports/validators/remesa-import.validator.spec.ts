@@ -1,6 +1,8 @@
 import { validateRemesaRow } from './remesa-import.validator';
 
-function baseRow(overrides: Record<string, string> = {}): Record<string, string> {
+function baseRow(
+  overrides: Record<string, string> = {},
+): Record<string, string> {
   return {
     remesaRef: 'REM-AGO-2026',
     periodKey: '2026-08',
@@ -32,7 +34,10 @@ describe('validateRemesaRow', () => {
   });
 
   it('respeta la secuencia y el esquema si vienen mapeados', () => {
-    const result = validateRemesaRow(baseRow({ mandateSeq: 'FRST', scheme: 'B2B' }), 2);
+    const result = validateRemesaRow(
+      baseRow({ mandateSeq: 'FRST', scheme: 'B2B' }),
+      2,
+    );
     expect(result.data?.mandateSeq).toBe('FRST');
     expect(result.data?.scheme).toBe('B2B');
     expect(result.warnings).toHaveLength(0);
@@ -50,9 +55,16 @@ describe('validateRemesaRow', () => {
   });
 
   it('fechas de presentación/cargo opcionales, en formato español', () => {
-    const result = validateRemesaRow(baseRow({ presentedAt: '28/08/2026', chargeDate: '01/09/2026' }), 2);
+    const result = validateRemesaRow(
+      baseRow({ presentedAt: '28/08/2026', chargeDate: '01/09/2026' }),
+      2,
+    );
     expect(result.ok).toBe(true);
-    expect(result.data?.presentedAt?.toISOString().slice(0, 10)).toBe('2026-08-28');
-    expect(result.data?.chargeDate?.toISOString().slice(0, 10)).toBe('2026-09-01');
+    expect(result.data?.presentedAt?.toISOString().slice(0, 10)).toBe(
+      '2026-08-28',
+    );
+    expect(result.data?.chargeDate?.toISOString().slice(0, 10)).toBe(
+      '2026-09-01',
+    );
   });
 });

@@ -38,7 +38,9 @@ describe('permisos y aislamiento', () => {
     expect((await get(`/issues/${id}`, B.token)).status).toBe(403);
     expect((await get(`/issues/${id}/journey`, B.token)).status).toBe(403);
     expect((await get(`/issues/${id}/situation`, B.token)).status).toBe(403);
-    expect((await get(`/estates/${A.estateId}/issues`, B.token)).status).toBe(403);
+    expect((await get(`/estates/${A.estateId}/issues`, B.token)).status).toBe(
+      403,
+    );
     expect((await h.route(B, id, 'direct_management')).status).toBe(403);
     expect((await h.status(B, id, 'Cerrada')).status).toBe(403);
     const interact = await h.interact(B, id, {
@@ -66,7 +68,9 @@ describe('permisos y aislamiento', () => {
       supplierId: foreign,
       summary: 'Aviso',
       nextStep: 'wait',
-      effects: [{ type: 'start_wait', kind: 'provider_reply', supplierId: foreign }],
+      effects: [
+        { type: 'start_wait', kind: 'provider_reply', supplierId: foreign },
+      ],
     });
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.status).toBeLessThan(500);
@@ -88,7 +92,9 @@ describe('permisos y aislamiento', () => {
           .send({ status: 'Cerrada' })
       ).status,
     ).toBe(403);
-    expect((await put(`/issues/${id}/resolution-route`, { route: null })).status).toBe(403);
+    expect(
+      (await put(`/issues/${id}/resolution-route`, { route: null })).status,
+    ).toBe(403);
     expect(
       (await post(`/issues/${id}/interactions`, { channel: 'phone' })).status,
     ).toBe(403);
@@ -144,7 +150,10 @@ describe('flujo del propietario', () => {
 
   it('retirar una incidencia con un siniestro abierto está bloqueado', async () => {
     const id = await h.ownerIssue(ownerA, A);
-    const insurer = await h.supplier(A, { name: 'Aseguradora', category: 'Seguros' });
+    const insurer = await h.supplier(A, {
+      name: 'Aseguradora',
+      category: 'Seguros',
+    });
     await h.interact(A, id, {
       channel: 'phone',
       direction: 'outbound',
@@ -207,7 +216,9 @@ describe('recorrido, situación y pelota', () => {
   it('la pelota cambia de manos con cada paso manual: nadie → tercero → administración → nadie al resolver', async () => {
     const id = await h.issue(A);
     const provider = await h.supplier(A, { name: 'Cerrajería' });
-    expect((await get(`/issues/${id}/situation`, A.token)).body.ballInCourt.primary).toBe('nobody');
+    expect(
+      (await get(`/issues/${id}/situation`, A.token)).body.ballInCourt.primary,
+    ).toBe('nobody');
     await h.route(A, id, 'community_provider');
     const ball = async () =>
       (await get(`/issues/${id}/situation`, A.token)).body.ballInCourt.primary;
@@ -219,16 +230,23 @@ describe('recorrido, situación y pelota', () => {
       supplierId: provider,
       summary: 'Aviso',
       nextStep: 'wait',
-      effects: [{ type: 'start_wait', kind: 'provider_reply', supplierId: provider }],
+      effects: [
+        { type: 'start_wait', kind: 'provider_reply', supplierId: provider },
+      ],
     });
     expect(await ball()).toBe('provider');
     expect((await h.status(A, id, 'Resuelta')).status).toBe(200);
-    expect((await get(`/issues/${id}/situation`, A.token)).body.situation).toBe('completed');
+    expect((await get(`/issues/${id}/situation`, A.token)).body.situation).toBe(
+      'completed',
+    );
   });
 
   it('el resumen de la finca cuenta solo los cuatro grupos de trabajo', async () => {
     await h.issue(A);
-    const summary = await get(`/estates/${A.estateId}/issues/situation-summary`, A.token);
+    const summary = await get(
+      `/estates/${A.estateId}/issues/situation-summary`,
+      A.token,
+    );
     expect(summary.status).toBe(200);
     expect(Object.keys(summary.body.filters).sort()).toEqual(
       ['attention', 'resolved', 'waiting'].sort(),

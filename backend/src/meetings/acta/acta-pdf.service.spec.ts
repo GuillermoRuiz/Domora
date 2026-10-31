@@ -9,27 +9,41 @@ const pdf = new ActaPdfService();
 
 const texts: ActaTexts = {
   items: {
-    a1: { text: 'Se presenta el presupuesto anual de la comunidad.', origin: 'generated' },
+    a1: {
+      text: 'Se presenta el presupuesto anual de la comunidad.',
+      origin: 'generated',
+    },
     a2: { text: 'Se pide revisar la iluminación del portal.', origin: 'notes' },
   },
-  observations: { text: 'La junta se desarrolló con normalidad.', origin: 'notes' },
+  observations: {
+    text: 'La junta se desarrolló con normalidad.',
+    origin: 'notes',
+  },
 };
 
 /** Texto de cada página: pdfkit escribe los literales en hexadecimal dentro de los operadores TJ. */
 function pages(buffer: Buffer): string[][] {
   const raw = buffer.toString('latin1');
-  return raw
-    .split('endstream')
-    // Solo los flujos de contenido de página (llevan operadores de texto); se ignoran fuentes y metadatos binarios.
-    .filter((stream) => /\bBT\b/.test(stream))
-    .map((stream) => (stream.match(/<([0-9A-Fa-f]+)>/g) ?? []).map((chunk) => Buffer.from(chunk.slice(1, -1), 'hex').toString('latin1')))
-    .filter((chunks) => chunks.length > 0);
+  return (
+    raw
+      .split('endstream')
+      // Solo los flujos de contenido de página (llevan operadores de texto); se ignoran fuentes y metadatos binarios.
+      .filter((stream) => /\bBT\b/.test(stream))
+      .map((stream) =>
+        (stream.match(/<([0-9A-Fa-f]+)>/g) ?? []).map((chunk) =>
+          Buffer.from(chunk.slice(1, -1), 'hex').toString('latin1'),
+        ),
+      )
+      .filter((chunks) => chunks.length > 0)
+  );
 }
 const flat = (buffer: Buffer) => pages(buffer).flat().join('');
 /** pdfkit justifica con espaciado entre palabras: se compara sin espacios para no depender de ello. */
 const squash = (text: string) => text.replace(/\s+/g, '');
-const includes = (text: string, expected: string) => squash(text).includes(squash(expected));
-const render = (model = buildActaDocument(sampleSnapshot(), texts)) => pdf.render(model, { compress: false, footerNote: 'SHA-256 1a2b3c4d' });
+const includes = (text: string, expected: string) =>
+  squash(text).includes(squash(expected));
+const render = (model = buildActaDocument(sampleSnapshot(), texts)) =>
+  pdf.render(model, { compress: false, footerNote: 'SHA-256 1a2b3c4d' });
 
 /** Junta grande: 70 propiedades presentes y muchos puntos largos, para forzar varias páginas. */
 function bigInput(): ActaSnapshotInput {
@@ -41,14 +55,28 @@ function bigInput(): ActaSnapshotInput {
     door: null,
     participationQuota: '1.40',
   }));
-  input.attendedPropertyIds = new Set(input.properties.slice(0, 60).map((property) => property.id));
+  input.attendedPropertyIds = new Set(
+    input.properties.slice(0, 60).map((property) => property.id),
+  );
   input.delegatedPropertyIds = new Set(['p3', 'p9']);
   const agenda = Array.from({ length: 14 }, (_, index) => ({
     id: `g${index}`,
     title: `Punto número ${index + 1} del orden del día con un título razonablemente largo`,
     comments: `Notas del punto ${index + 1}.`,
     hasVote: index % 2 === 0,
-    ...(index % 2 === 0 ? { voteTemplate: { questions: [{ title: `¿Aprueba el punto ${index + 1}?`, type: 'single_choice', options: ['A favor', 'En contra', 'Abstención'] }] } } : {}),
+    ...(index % 2 === 0
+      ? {
+          voteTemplate: {
+            questions: [
+              {
+                title: `¿Aprueba el punto ${index + 1}?`,
+                type: 'single_choice',
+                options: ['A favor', 'En contra', 'Abstención'],
+              },
+            ],
+          },
+        }
+      : {}),
   }));
   input.meeting.agenda = agenda;
   input.voteSessions = agenda
@@ -74,9 +102,17 @@ function bigInput(): ActaSnapshotInput {
     }));
   return input;
 }
-const longText = 'Se expone el asunto con detalle y se recogen las manifestaciones realizadas por los asistentes. '.repeat(14).trim();
+const longText =
+  'Se expone el asunto con detalle y se recogen las manifestaciones realizadas por los asistentes. '
+    .repeat(14)
+    .trim();
 const bigTexts = (): ActaTexts => ({
-  items: Object.fromEntries(Array.from({ length: 14 }, (_, index) => [`g${index}`, { text: longText, origin: 'notes' as const }])),
+  items: Object.fromEntries(
+    Array.from({ length: 14 }, (_, index) => [
+      `g${index}`,
+      { text: longText, origin: 'notes' as const },
+    ]),
+  ),
   observations: { text: longText, origin: 'notes' },
 });
 
@@ -136,8 +172,15 @@ describe('ActaPdfService — PDF del acta desde el modelo canónico', () => {
 
   it('puntos no tratados, sin votación y sin comentarios salen con su frase real, sin inventar contenido', async () => {
     const text = flat(await render());
-    expect(includes(text, 'El punto quedó tratado sin contenido adicional registrado.')).toBe(true);
-    expect(includes(text, 'Este punto no consta como tratado en la reunión.')).toBe(true);
+    expect(
+      includes(
+        text,
+        'El punto quedó tratado sin contenido adicional registrado.',
+      ),
+    ).toBe(true);
+    expect(
+      includes(text, 'Este punto no consta como tratado en la reunión.'),
+    ).toBe(true);
   });
 
   it('la tabla de asistencia lleva el nombre completo de quien asistió y de quien representa, pero nunca el DNI', async () => {
@@ -153,22 +196,34 @@ describe('ActaPdfService — PDF del acta desde el modelo canónico', () => {
 
   it('la tabla de asistencia no tiene columna de DNI y conserva el resto de rótulos', async () => {
     const text = flat(await render());
-    for (const label of ['PROPIEDAD', 'ASISTENTE', 'COEFICIENTE', 'ASISTENCIA']) expect(includes(text, label)).toBe(true);
+    for (const label of ['PROPIEDAD', 'ASISTENTE', 'COEFICIENTE', 'ASISTENCIA'])
+      expect(includes(text, label)).toBe(true);
     expect(text).not.toContain('DNI');
   });
 
   it('también quita el DNI de las versiones que lo guardaron en el documento', () => {
     const model = buildActaDocument(sampleSnapshot(), texts);
-    const table = printableAttendance(model.labels.attendanceColumns, model.attendance.rows);
-    expect(table.labels).toEqual(['PROPIEDAD', 'ASISTENTE', 'COEFICIENTE', 'ASISTENCIA']);
+    const table = printableAttendance(
+      model.labels.attendanceColumns,
+      model.attendance.rows,
+    );
+    expect(table.labels).toEqual([
+      'PROPIEDAD',
+      'ASISTENTE',
+      'COEFICIENTE',
+      'ASISTENCIA',
+    ]);
     expect(table.rows.every((cells) => cells.length === 4)).toBe(true);
     expect(table.rows.flat().join(' ')).not.toMatch(/12345678Z|87654321X/);
   });
 
   it('con passed null no dice aprobado ni rechazado', async () => {
     const input = snapshotInput();
-    (input.voteSessions[0].resultSummary as { passed: boolean | null }).passed = null;
-    const text = flat(await render(buildActaDocument(buildActaSnapshot(input), texts)));
+    (input.voteSessions[0].resultSummary as { passed: boolean | null }).passed =
+      null;
+    const text = flat(
+      await render(buildActaDocument(buildActaSnapshot(input), texts)),
+    );
     expect(text).not.toContain('resulta aprobada');
     expect(text).not.toContain('resulta rechazada');
     expect(text).not.toContain('ACUERDO:');
@@ -178,7 +233,14 @@ describe('ActaPdfService — PDF del acta desde el modelo canónico', () => {
     const input = snapshotInput();
     input.meeting.actaGeneralComments = null;
     input.meeting.actaNextSteps = null;
-    const text = flat(await render(buildActaDocument(buildActaSnapshot(input), { items: {}, observations: null })));
+    const text = flat(
+      await render(
+        buildActaDocument(buildActaSnapshot(input), {
+          items: {},
+          observations: null,
+        }),
+      ),
+    );
     expect(text).not.toContain('OBSERVACIONES');
     expect(text).not.toContain('ACTUACIONES DERIVADAS');
   });
@@ -186,7 +248,9 @@ describe('ActaPdfService — PDF del acta desde el modelo canónico', () => {
   it('sin hora de fin no hay párrafo de cierre', async () => {
     const input = snapshotInput();
     input.meeting.actualEndAt = null;
-    const text = flat(await render(buildActaDocument(buildActaSnapshot(input), texts)));
+    const text = flat(
+      await render(buildActaDocument(buildActaSnapshot(input), texts)),
+    );
     expect(text).not.toContain('se levanta la sesión');
   });
 
@@ -204,25 +268,43 @@ describe('ActaPdfService — PDF del acta desde el modelo canónico', () => {
     const model = buildActaDocument(buildActaSnapshot(bigInput()), bigTexts());
 
     it('reparte el contenido en varias páginas con numeración, encabezado discreto y cabecera de tabla repetida', async () => {
-      const buffer = await pdf.render(model, { compress: false, footerNote: 'SHA-256 2b3c4d5e' });
+      const buffer = await pdf.render(model, {
+        compress: false,
+        footerNote: 'SHA-256 2b3c4d5e',
+      });
       const perPage = pages(buffer);
       expect(perPage.length).toBeGreaterThanOrEqual(4);
       const total = perPage.length;
-      perPage.forEach((chunks, index) => expect(chunks.join('')).toContain(`Página ${index + 1} de ${total}`));
+      perPage.forEach((chunks, index) =>
+        expect(chunks.join('')).toContain(`Página ${index + 1} de ${total}`),
+      );
       // Encabezado discreto a partir de la 2ª página, no en la primera.
       expect(perPage[0].join('')).not.toContain('Comunidad Sol 12');
       expect(perPage[1].join('')).toContain('Comunidad Sol 12');
-      expect(perPage[1].join('')).toContain('ACTA DE LA JUNTA GENERAL ORDINARIA');
+      expect(perPage[1].join('')).toContain(
+        'ACTA DE LA JUNTA GENERAL ORDINARIA',
+      );
       // La tabla de asistencia ocupa más de una página y repite su cabecera.
-      const withHeader = perPage.filter((chunks) => chunks.join('').includes('PROPIEDAD'));
+      const withHeader = perPage.filter((chunks) =>
+        chunks.join('').includes('PROPIEDAD'),
+      );
       expect(withHeader.length).toBeGreaterThanOrEqual(2);
     });
 
     it('no parte una fila de asistencia: cada fila (propiedad, coeficiente y estado) cae entera en una página', async () => {
       const perPage = pages(await pdf.render(model, { compress: false }));
-      const rowsPerPage = perPage.map((chunks) => chunks.filter((chunk) => /^\d+-[A-G]$/.test(chunk)).length);
-      const quotasPerPage = perPage.map((chunks) => chunks.filter((chunk) => chunk === '1,40 %').length);
-      const statesPerPage = perPage.map((chunks) => chunks.filter((chunk) => chunk === 'Presente' || chunk === 'Representada').length);
+      const rowsPerPage = perPage.map(
+        (chunks) => chunks.filter((chunk) => /^\d+-[A-G]$/.test(chunk)).length,
+      );
+      const quotasPerPage = perPage.map(
+        (chunks) => chunks.filter((chunk) => chunk === '1,40 %').length,
+      );
+      const statesPerPage = perPage.map(
+        (chunks) =>
+          chunks.filter(
+            (chunk) => chunk === 'Presente' || chunk === 'Representada',
+          ).length,
+      );
       expect(rowsPerPage).toEqual(quotasPerPage);
       expect(rowsPerPage).toEqual(statesPerPage);
       expect(rowsPerPage.reduce((a, b) => a + b, 0)).toBe(60);
@@ -231,7 +313,12 @@ describe('ActaPdfService — PDF del acta desde el modelo canónico', () => {
     it('un encabezado de punto nunca se queda solo al final de una página', async () => {
       const perPage = pages(await pdf.render(model, { compress: false }));
       for (const chunks of perPage) {
-        const body = chunks.filter((chunk) => !chunk.startsWith('Página ') && !chunk.includes('ACTA DE LA JUNTA GENERAL') && !chunk.startsWith('Versión'));
+        const body = chunks.filter(
+          (chunk) =>
+            !chunk.startsWith('Página ') &&
+            !chunk.includes('ACTA DE LA JUNTA GENERAL') &&
+            !chunk.startsWith('Versión'),
+        );
         const last = body[body.length - 1] ?? '';
         expect(last).not.toMatch(/^\d+º\s{2}PUNTO NÚMERO/);
         expect(last).not.toBe('DESARROLLO');
@@ -242,21 +329,34 @@ describe('ActaPdfService — PDF del acta desde el modelo canónico', () => {
 
     it('las firmas (presidente y secretario) caen siempre juntas en la misma página', async () => {
       const perPage = pages(await pdf.render(model, { compress: false }));
-      const president = perPage.findIndex((chunks) => chunks.join('').includes('EL/LA PRESIDENTE/A'));
-      const secretary = perPage.findIndex((chunks) => chunks.join('').includes('EL/LA SECRETARIO/A-ADMINISTRADOR/A'));
+      const president = perPage.findIndex((chunks) =>
+        chunks.join('').includes('EL/LA PRESIDENTE/A'),
+      );
+      const secretary = perPage.findIndex((chunks) =>
+        chunks.join('').includes('EL/LA SECRETARIO/A-ADMINISTRADOR/A'),
+      );
       expect(president).toBeGreaterThanOrEqual(0);
       expect(president).toBe(secretary);
     });
 
     it('contiene todos los puntos y todas las votaciones', async () => {
       const text = flat(await pdf.render(model, { compress: false }));
-      for (let n = 1; n <= 14; n++) expect(includes(text, `PUNTO NÚMERO ${n} DEL ORDEN DEL DÍA`)).toBe(true);
+      for (let n = 1; n <= 14; n++)
+        expect(includes(text, `PUNTO NÚMERO ${n} DEL ORDEN DEL DÍA`)).toBe(
+          true,
+        );
       expect(text.match(/Mayoría aplicada: Mayoría simple\./g)?.length).toBe(7);
     });
   });
 
   it('descarta con elegancia caracteres que las fuentes estándar no soportan', async () => {
-    const model = buildActaDocument(sampleSnapshot(), { ...texts, observations: { text: 'Todo bien 😀 y «correcto» — fin ≥ 3', origin: 'notes' } });
+    const model = buildActaDocument(sampleSnapshot(), {
+      ...texts,
+      observations: {
+        text: 'Todo bien 😀 y «correcto» — fin ≥ 3',
+        origin: 'notes',
+      },
+    });
     const text = flat(await pdf.render(model, { compress: false }));
     expect(text).toContain('Todo bien');
     expect(text).toContain('«correcto»');

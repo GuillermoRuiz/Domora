@@ -39,13 +39,11 @@ function fixture() {
         ),
     },
     bankAccount: {
-      findFirst: jest
-        .fn()
-        .mockResolvedValue({
-          id: 'b',
-          estateId: 'e1',
-          chartAccountId: 'account',
-        }),
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'b',
+        estateId: 'e1',
+        chartAccountId: 'account',
+      }),
     },
     bankExtractEntry: {
       findMany: jest.fn().mockResolvedValue([entry]),

@@ -12,7 +12,12 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { AdminPayMethod, AdminStatus, BillingInterval, PlanTier } from '../../prisma/client';
+import {
+  AdminPayMethod,
+  AdminStatus,
+  BillingInterval,
+  PlanTier,
+} from '../../prisma/client';
 
 const PLANS: PlanTier[] = ['BASE', 'STANDARD', 'PREMIUM'];
 const STATUSES: AdminStatus[] = [

@@ -110,9 +110,9 @@ describe('projectJourney: pasado, presente y futuro inmediato', () => {
       action: { type: 'manage_visit', entityId: 'v1-aaaa-bbbb' },
       subtitle: 'Profesional: Peritos SL',
     });
-    expect(labels(by(view.steps, 'upcoming'))).toEqual(expect.arrayContaining([
-      'Después: revisar el resultado',
-    ]));
+    expect(labels(by(view.steps, 'upcoming'))).toEqual(
+      expect.arrayContaining(['Después: revisar el resultado']),
+    );
     expect(view.status).toBe('on_track');
     // Nunca se pinta la rama futura como si estuviera confirmada.
     expect(labels(view.steps)).not.toContain('Incidencia resuelta');
@@ -450,7 +450,11 @@ describe('projectJourney: hitos del sistema frente a hitos propios', () => {
     ]);
     const milestones = view.steps.filter((step) => step.milestone);
 
-    expect(milestones.at(-1)).toMatchObject({ key: 'resolved', label: 'Cierre editado', position: 1_000_000 });
+    expect(milestones.at(-1)).toMatchObject({
+      key: 'resolved',
+      label: 'Cierre editado',
+      position: 1_000_000,
+    });
   });
 
   it('devuelve el estado asociado de los hitos fijos', () => {
@@ -475,22 +479,39 @@ describe('projectJourney: hitos del sistema frente a hitos propios', () => {
       },
     ]);
 
-    expect(view.steps.find((step) => step.key === 'created')?.linkedStatus).toBe('Abierta');
-    expect(view.steps.find((step) => step.key === 'community_insurance:contact')?.linkedStatus).toBe('PendienteProveedor');
+    expect(
+      view.steps.find((step) => step.key === 'created')?.linkedStatus,
+    ).toBe('Abierta');
+    expect(
+      view.steps.find((step) => step.key === 'community_insurance:contact')
+        ?.linkedStatus,
+    ).toBe('PendienteProveedor');
   });
 
   it('un hito asociado queda completado desde la primera vez que la incidencia alcanzó ese estado', () => {
     const reachedAt = at('24T11:00');
-    const view = projectJourney(base({
-      issueStatus: 'Abierta',
-      events: [{
-        id: 'status-1', kind: 'status_changed', date: reachedAt, refId: null, meta: null,
-        fromStatus: 'Abierta', toStatus: 'EnReparacion',
-      }],
-    }), [{ ...custom, linkedStatus: 'EnReparacion' }]);
+    const view = projectJourney(
+      base({
+        issueStatus: 'Abierta',
+        events: [
+          {
+            id: 'status-1',
+            kind: 'status_changed',
+            date: reachedAt,
+            refId: null,
+            meta: null,
+            fromStatus: 'Abierta',
+            toStatus: 'EnReparacion',
+          },
+        ],
+      }),
+      [{ ...custom, linkedStatus: 'EnReparacion' }],
+    );
 
     expect(view.steps.find((step) => step.custom)).toMatchObject({
-      status: 'completed', completedAt: reachedAt.toISOString(), linkedStatus: 'EnReparacion',
+      status: 'completed',
+      completedAt: reachedAt.toISOString(),
+      linkedStatus: 'EnReparacion',
     });
   });
 
@@ -499,7 +520,9 @@ describe('projectJourney: hitos del sistema frente a hitos propios', () => {
     expect(by(open.steps, 'upcoming').map((s) => s.label)).toContain(
       'Hablar con el presidente',
     );
-    expect(by(open.steps, 'upcoming').find((step) => step.custom)?.source?.type).toBe('custom');
+    expect(
+      by(open.steps, 'upcoming').find((step) => step.custom)?.source?.type,
+    ).toBe('custom');
     const done = projectJourney(base({ tasks: [task('t1')] }), [
       { ...custom, doneAt: at('22T09:00') },
     ]);

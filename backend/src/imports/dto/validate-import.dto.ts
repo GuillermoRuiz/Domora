@@ -1,7 +1,13 @@
 import { IsIn, IsObject } from 'class-validator';
 import type { ImportEntityType } from '../presets/gesfincas-net.presets';
 
-const ENTITY_TYPES: ImportEntityType[] = ['property', 'owner', 'movement', 'receipt', 'remesa'];
+const ENTITY_TYPES: ImportEntityType[] = [
+  'property',
+  'owner',
+  'movement',
+  'receipt',
+  'remesa',
+];
 
 export class ValidateImportDto {
   @IsIn(ENTITY_TYPES)

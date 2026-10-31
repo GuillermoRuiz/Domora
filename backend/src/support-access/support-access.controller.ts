@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -14,12 +22,18 @@ export class SupportSessionsController {
   constructor(private readonly sessions: SupportSessionsService) {}
 
   @Post()
-  start(@Body() dto: StartSupportSessionDto, @CurrentUser() user: AuthenticatedUser) {
+  start(
+    @Body() dto: StartSupportSessionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.sessions.start(user.id, dto);
   }
 
   @Post(':id/end')
-  end(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+  end(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.sessions.end(user.id, id);
   }
 

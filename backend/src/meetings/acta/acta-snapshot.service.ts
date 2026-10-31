@@ -53,7 +53,12 @@ export interface ActaSnapshotInput {
     actaGeneralComments: string | null;
     actaNextSteps: string | null;
   };
-  estate: { name: string; address: string | null; streetNumber: string | null; location: string | null };
+  estate: {
+    name: string;
+    address: string | null;
+    streetNumber: string | null;
+    location: string | null;
+  };
   properties: {
     id: string;
     ref: string | null;
@@ -84,7 +89,11 @@ function round2(value: number): number {
 
 /** Referencia mostrable de una propiedad: la misma que ve la gestora en la pantalla de participación. */
 function displayRef(property: ActaSnapshotInput['properties'][number]): string {
-  return property.ref?.trim() || [property.floor, property.door].filter(Boolean).join('') || '—';
+  return (
+    property.ref?.trim() ||
+    [property.floor, property.door].filter(Boolean).join('') ||
+    '—'
+  );
 }
 
 function nonEmpty(text: string | null | undefined): string | null {
@@ -96,27 +105,44 @@ function nonEmpty(text: string | null | undefined): string | null {
  * Construye el snapshot a partir de datos ya leídos. Copia VALORES (texto del coeficiente,
  * recuentos, etiquetas de opción…): nada queda enlazado a filas vivas.
  */
-export function buildActaSnapshot(input: ActaSnapshotInput): ActaSourceSnapshot {
+export function buildActaSnapshot(
+  input: ActaSnapshotInput,
+): ActaSourceSnapshot {
   const { meeting, estate } = input;
-  const agendaRecords = (Array.isArray(meeting.agenda) ? (meeting.agenda as AgendaRecord[]) : []).filter((item) => item && typeof item.id === 'string');
+  const agendaRecords = (
+    Array.isArray(meeting.agenda) ? (meeting.agenda as AgendaRecord[]) : []
+  ).filter((item) => item && typeof item.id === 'string');
 
-  const presentIds = new Set<string>([...input.attendedPropertyIds, ...input.delegatedPropertyIds]);
+  const presentIds = new Set<string>([
+    ...input.attendedPropertyIds,
+    ...input.delegatedPropertyIds,
+  ]);
   const quorum = buildQuorum({
     call: meeting.effectiveConvocation,
     source: 'confirmed',
-    properties: input.properties.map((p) => ({ id: p.id, ref: displayRef(p), participationQuota: p.participationQuota })),
+    properties: input.properties.map((p) => ({
+      id: p.id,
+      ref: displayRef(p),
+      participationQuota: p.participationQuota,
+    })),
     presentIds,
   });
 
-  const byRef = (a: ActaSnapshotAttendanceRow, b: ActaSnapshotAttendanceRow) => a.ref.localeCompare(b.ref, 'es', { numeric: true });
+  const byRef = (a: ActaSnapshotAttendanceRow, b: ActaSnapshotAttendanceRow) =>
+    a.ref.localeCompare(b.ref, 'es', { numeric: true });
   const attendance: ActaSnapshotAttendanceRow[] = input.properties
     .filter((property) => presentIds.has(property.id))
     .map((property) => ({
       propertyId: property.id,
       ref: displayRef(property),
-      participationQuota: property.participationQuota == null ? null : property.participationQuota.toString(),
+      participationQuota:
+        property.participationQuota == null
+          ? null
+          : property.participationQuota.toString(),
       // Una delegación vigente significa «representada», aunque el representante no haya entrado a la sala.
-      status: input.delegatedPropertyIds.has(property.id) ? ('representada' as const) : ('presente' as const),
+      status: input.delegatedPropertyIds.has(property.id)
+        ? ('representada' as const)
+        : ('presente' as const),
       attendeeName: input.attendeeNamesByProperty?.get(property.id) ?? null,
       attendeeDni: input.attendeeDniByProperty?.get(property.id) ?? null,
     }))
@@ -134,18 +160,30 @@ export function buildActaSnapshot(input: ActaSnapshotInput): ActaSourceSnapshot 
 
   const votes: ActaSnapshotVote[] = [];
   for (const session of input.voteSessions) {
-    const item = agendaRecords.find((entry) => entry.id === session.agendaItemId);
+    const item = agendaRecords.find(
+      (entry) => entry.id === session.agendaItemId,
+    );
     const question = item?.voteTemplate?.questions?.[session.questionIndex];
     if (!item || !question || question.type === 'text') continue;
-    const summary = (session.resultSummary ?? null) as ResultSummaryShape | null;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- tsc lo necesita: sin ella el resumen es `{}`
+    const summary = (session.resultSummary ??
+      null) as ResultSummaryShape | null;
     const labels = question.options ?? [];
     const total = session.responseCount;
-    const countOf = (index: number) => summary?.optionTally?.find((entry) => entry.optionIndex === index)?.propertyCount ?? 0;
+    const countOf = (index: number) =>
+      summary?.optionTally?.find((entry) => entry.optionIndex === index)
+        ?.propertyCount ?? 0;
     votes.push({
       voteSessionId: session.id,
       agendaItemId: session.agendaItemId,
       questionIndex: session.questionIndex,
-      question: { title: question.title ?? item.title, type: question.type === 'multiple_choice' ? 'multiple_choice' : 'single_choice' },
+      question: {
+        title: question.title ?? item.title,
+        type:
+          question.type === 'multiple_choice'
+            ? 'multiple_choice'
+            : 'single_choice',
+      },
       majorityType: session.majorityType,
       closedAt: session.closedAt ? session.closedAt.toISOString() : null,
       totalResponses: total,
@@ -176,13 +214,21 @@ export function buildActaSnapshot(input: ActaSnapshotInput): ActaSourceSnapshot 
       scheduledAt2: meeting.scheduledAt2.toISOString(),
       location: nonEmpty(meeting.location),
       effectiveConvocation: meeting.effectiveConvocation,
-      actualStartAt: meeting.actualStartAt ? meeting.actualStartAt.toISOString() : null,
-      actualEndAt: meeting.actualEndAt ? meeting.actualEndAt.toISOString() : null,
-      celebratedAt: meeting.celebratedAt ? meeting.celebratedAt.toISOString() : null,
+      actualStartAt: meeting.actualStartAt
+        ? meeting.actualStartAt.toISOString()
+        : null,
+      actualEndAt: meeting.actualEndAt
+        ? meeting.actualEndAt.toISOString()
+        : null,
+      celebratedAt: meeting.celebratedAt
+        ? meeting.celebratedAt.toISOString()
+        : null,
     },
     community: {
       name: estate.name,
-      address: nonEmpty([estate.address, estate.streetNumber].filter(Boolean).join(' ')),
+      address: nonEmpty(
+        [estate.address, estate.streetNumber].filter(Boolean).join(' '),
+      ),
       locality: nonEmpty(estate.location),
     },
     census: {
@@ -229,12 +275,20 @@ export interface AttendeeIdentities {
  * Nombre completo y DNI de quien asistió a cada propiedad: los asistentes (varios cotitulares se
  * unen con coma) o, si hay una delegación vigente, el representante indicando a quién representa.
  */
-export function composeAttendeeIdentities(attendance: AttendeeRow[], delegations: DelegationNameRow[]): AttendeeIdentities {
+export function composeAttendeeIdentities(
+  attendance: AttendeeRow[],
+  delegations: DelegationNameRow[],
+): AttendeeIdentities {
   const names = new Map<string, string>();
   const dnis = new Map<string, string>();
-  const append = (map: Map<string, string>, propertyId: string, value: string) => {
+  const append = (
+    map: Map<string, string>,
+    propertyId: string,
+    value: string,
+  ) => {
     const known = map.get(propertyId)?.split(', ') ?? [];
-    if (!known.includes(value)) map.set(propertyId, [...known, value].join(', '));
+    if (!known.includes(value))
+      map.set(propertyId, [...known, value].join(', '));
   };
   for (const row of attendance) {
     const name = row.displayName?.trim();
@@ -245,11 +299,20 @@ export function composeAttendeeIdentities(attendance: AttendeeRow[], delegations
   }
   // Una delegación vigente manda: quien figura es el representante, indicando a quién representa.
   for (const row of delegations) {
-    const representative = (row.representativeUser?.fullName ?? row.representativeName)?.trim();
+    const representative = (
+      row.representativeUser?.fullName ?? row.representativeName
+    )?.trim();
     if (!representative) continue;
     const owner = row.delegatorUser?.fullName?.trim();
-    names.set(row.propertyId, owner ? `${representative}, en representación de ${owner}` : representative);
-    const dni = (row.representativeUser?.taxId ?? row.representativeDni)?.trim();
+    names.set(
+      row.propertyId,
+      owner
+        ? `${representative}, en representación de ${owner}`
+        : representative,
+    );
+    const dni = (
+      row.representativeUser?.taxId ?? row.representativeDni
+    )?.trim();
     if (dni) dnis.set(row.propertyId, dni);
     else dnis.delete(row.propertyId);
   }
@@ -270,7 +333,11 @@ export class ActaSnapshotService {
       this.prisma.meetingAttendance.findMany({
         where: { meetingId },
         orderBy: { joinedAt: 'asc' },
-        select: { propertyId: true, displayName: true, user: { select: { taxId: true } } },
+        select: {
+          propertyId: true,
+          displayName: true,
+          user: { select: { taxId: true } },
+        },
       }),
       this.prisma.meetingVoteDelegation.findMany({
         where: { meetingId, revokedAt: null },
@@ -286,23 +353,47 @@ export class ActaSnapshotService {
     return composeAttendeeIdentities(attendance, delegations);
   }
 
-  async capture(meetingId: string, now: Date = new Date()): Promise<ActaSourceSnapshot> {
+  async capture(
+    meetingId: string,
+    now: Date = new Date(),
+  ): Promise<ActaSourceSnapshot> {
     const meeting = await this.prisma.meeting.findUniqueOrThrow({
       where: { id: meetingId },
-      include: { estate: { select: { name: true, address: true, streetNumber: true, location: true } } },
+      include: {
+        estate: {
+          select: {
+            name: true,
+            address: true,
+            streetNumber: true,
+            location: true,
+          },
+        },
+      },
     });
     if (!meeting.effectiveConvocation) {
-      throw new Error('No se puede congelar el acta sin la convocatoria efectiva confirmada.');
+      throw new Error(
+        'No se puede congelar el acta sin la convocatoria efectiva confirmada.',
+      );
     }
     const [properties, attendance, delegations, sessions] = await Promise.all([
       this.prisma.property.findMany({
         where: { estateId: meeting.estateId, deletedAt: null },
-        select: { id: true, ref: true, floor: true, door: true, participationQuota: true },
+        select: {
+          id: true,
+          ref: true,
+          floor: true,
+          door: true,
+          participationQuota: true,
+        },
       }),
       this.prisma.meetingAttendance.findMany({
         where: { meetingId },
         orderBy: { joinedAt: 'asc' },
-        select: { propertyId: true, displayName: true, user: { select: { taxId: true } } },
+        select: {
+          propertyId: true,
+          displayName: true,
+          user: { select: { taxId: true } },
+        },
       }),
       this.prisma.meetingVoteDelegation.findMany({
         where: { meetingId, revokedAt: null },
@@ -323,7 +414,10 @@ export class ActaSnapshotService {
     const identities = composeAttendeeIdentities(attendance, delegations);
     return buildActaSnapshot({
       now,
-      meeting: { ...meeting, effectiveConvocation: meeting.effectiveConvocation },
+      meeting: {
+        ...meeting,
+        effectiveConvocation: meeting.effectiveConvocation,
+      },
       estate: meeting.estate,
       properties,
       attendedPropertyIds: new Set(attendance.map((row) => row.propertyId)),

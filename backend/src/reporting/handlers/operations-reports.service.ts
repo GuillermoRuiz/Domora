@@ -395,7 +395,7 @@ export class OperationsReportsService {
       ];
       if (key === 'issue-resolution') {
         const rows = issues.map((i) => ({
-          estate: names.get(i.estateId!),
+          estate: names.get(i.estateId),
           ref: i.ref,
           status: i.status,
           created: day(i.createdAt),
@@ -451,7 +451,7 @@ export class OperationsReportsService {
                 text('created', 'Creación'),
               ],
               issues.map((i) => ({
-                estate: names.get(i.estateId!),
+                estate: names.get(i.estateId),
                 ref: i.ref,
                 title: i.title,
                 type: i.type,
@@ -471,8 +471,8 @@ export class OperationsReportsService {
           key === 'issues-by-estate'
             ? [
                 {
-                  id: issue.estateId!,
-                  name: names.get(issue.estateId!)!,
+                  id: issue.estateId,
+                  name: names.get(issue.estateId)!,
                 },
               ]
             : key === 'issues-by-category'
@@ -487,7 +487,7 @@ export class OperationsReportsService {
           const id = `${issue.estateId}:${group.id}`;
           const row = grouped.get(id) ?? {
             group: group.name,
-            estate: names.get(issue.estateId!)!,
+            estate: names.get(issue.estateId)!,
             ids: new Set<string>(),
             open: new Set<string>(),
           };

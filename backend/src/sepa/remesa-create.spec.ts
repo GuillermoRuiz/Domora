@@ -53,7 +53,10 @@ const mandatesService = new MandatesService(
   audit,
 );
 const pain008 = new SepaPain008Service();
-const collections = new CollectionPostingService(new JournalService(), new ReceiptPostingService(new JournalService()));
+const collections = new CollectionPostingService(
+  new JournalService(),
+  new ReceiptPostingService(new JournalService()),
+);
 const service = new RemesasService(
   prisma as unknown as PrismaService,
   estateAccess,
@@ -95,7 +98,12 @@ async function freshEstate(): Promise<Ctx> {
     },
   });
   const period = await prisma.accountingPeriod.create({
-    data: { estateId, periodKey: PERIOD_KEY, label: 'Mayo 2099', monthAbbrev: 'MAY' },
+    data: {
+      estateId,
+      periodKey: PERIOD_KEY,
+      label: 'Mayo 2099',
+      monthAbbrev: 'MAY',
+    },
   });
   return { estateId, periodId: period.id };
 }
@@ -151,7 +159,11 @@ function makeReceipt(
     mandateId?: string | null;
   },
 ) {
-  return issueTestReceipt(prisma, { estateId: ctx.estateId, periodKey: PERIOD_KEY, ...opts });
+  return issueTestReceipt(prisma, {
+    estateId: ctx.estateId,
+    periodKey: PERIOD_KEY,
+    ...opts,
+  });
 }
 
 beforeAll(async () => {
@@ -197,18 +209,35 @@ describe('RemesasService.create — selección de candidatos', () => {
   it('guarda el MsgId, el banco de abono y un EndToEndId único por línea (los citan las devoluciones)', async () => {
     const ctx = await freshEstate();
     const titular = await makeTitular('Titular E2E');
-    for (const iban of ['ES7620770024003102575766', 'ES9121000418450200051332']) {
+    for (const iban of [
+      'ES7620770024003102575766',
+      'ES9121000418450200051332',
+    ]) {
       const prop = await makeProperty(ctx, '50.00');
-      await makeMandate(ctx, { propertyId: prop, titularUserId: titular, plainIban: iban });
+      await makeMandate(ctx, {
+        propertyId: prop,
+        titularUserId: titular,
+        plainIban: iban,
+      });
       await makeReceipt(ctx, { propertyId: prop, amount: '50.00' });
     }
     const remesa = await service.create(
       ctx.estateId,
-      { periodKey: PERIOD_KEY, chargeDate: '2099-05-10', scheme: 'CORE', concept: 'Cuota mayo' },
+      {
+        periodKey: PERIOD_KEY,
+        chargeDate: '2099-05-10',
+        scheme: 'CORE',
+        concept: 'Cuota mayo',
+      },
       user,
     );
-    const stored = await prisma.remesaHistoryItem.findUniqueOrThrow({ where: { id: remesa.id }, include: { lines: true } });
-    const bank = await prisma.bankAccount.findFirstOrThrow({ where: { estateId: ctx.estateId, isDefault: true } });
+    const stored = await prisma.remesaHistoryItem.findUniqueOrThrow({
+      where: { id: remesa.id },
+      include: { lines: true },
+    });
+    const bank = await prisma.bankAccount.findFirstOrThrow({
+      where: { estateId: ctx.estateId, isDefault: true },
+    });
     expect(stored.messageId).toBeTruthy();
     expect(stored.bankAccountId).toBe(bank.id);
     const e2e = stored.lines.map((l) => l.endToEndId);
@@ -223,8 +252,15 @@ describe('RemesasService.create — selección de candidatos', () => {
     const ctx = await freshEstate();
     const titular = await makeTitular('Titular Parcial');
     const prop = await makeProperty(ctx, '100.00');
-    await makeMandate(ctx, { propertyId: prop, titularUserId: titular, plainIban: 'ES7620770024003102575766' });
-    const receipt = await makeReceipt(ctx, { propertyId: prop, amount: '100.00' });
+    await makeMandate(ctx, {
+      propertyId: prop,
+      titularUserId: titular,
+      plainIban: 'ES7620770024003102575766',
+    });
+    const receipt = await makeReceipt(ctx, {
+      propertyId: prop,
+      amount: '100.00',
+    });
     await prisma.$transaction((tx) =>
       collections.collect(tx, {
         estateId: ctx.estateId,
@@ -235,11 +271,18 @@ describe('RemesasService.create — selección de candidatos', () => {
         receiptIds: [receipt.id],
       }),
     );
-    const dto = { periodKey: PERIOD_KEY, chargeDate: '2099-05-10', scheme: 'CORE' as const, concept: 'Cuota mayo' };
+    const dto = {
+      periodKey: PERIOD_KEY,
+      chargeDate: '2099-05-10',
+      scheme: 'CORE' as const,
+      concept: 'Cuota mayo',
+    };
     const first = await service.create(ctx.estateId, dto, user);
     expect(first.totalAmount.toString()).toBe('60');
 
-    await expect(service.create(ctx.estateId, dto, user)).rejects.toThrow(/No hay recibos pendientes/);
+    await expect(service.create(ctx.estateId, dto, user)).rejects.toThrow(
+      /No hay recibos pendientes/,
+    );
     await service.cancel(first.id, user);
     const again = await service.create(ctx.estateId, dto, user);
     expect(again.linesCount).toBe(1);

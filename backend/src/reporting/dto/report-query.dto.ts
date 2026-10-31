@@ -31,12 +31,9 @@ export class ReportFiltersDto implements ReportFilters {
   ])
   receiptKind?: string;
   @IsOptional() @IsIn(['current', 'history']) assignmentMode?:
-    | 'current'
-    | 'history';
+    'current' | 'history';
   @IsOptional() @IsIn(['invoiced', 'accrued', 'paid']) spendBasis?:
-    | 'invoiced'
-    | 'accrued'
-    | 'paid';
+    'invoiced' | 'accrued' | 'paid';
   @IsOptional() @IsInt() @Min(1) @Max(3650) days?: number;
 }
 

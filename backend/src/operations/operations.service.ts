@@ -178,8 +178,9 @@ export class OperationsService {
       ...Object.fromEntries(
         ISSUE_SITUATION_FILTER_KEYS.map((key) => [
           key,
-          classified.filter((c) => inSituationFilter(key, c.situation, c.status))
-            .length,
+          classified.filter((c) =>
+            inSituationFilter(key, c.situation, c.status),
+          ).length,
         ]),
       ),
     };
@@ -201,10 +202,9 @@ export class OperationsService {
         })
       : [];
     const byId = new Map(found.map((issue) => [issue.id, issue]));
-    const views = await this.situation.viewsFromClassified(
-      pageRows,
-      { administratorId: user.administratorId! },
-    );
+    const views = await this.situation.viewsFromClassified(pageRows, {
+      administratorId: user.administratorId!,
+    });
     const items: IssueListItemDto[] = pageIds.flatMap((id) => {
       const issue = byId.get(id);
       const view = views.get(id);
@@ -233,7 +233,12 @@ export class OperationsService {
 }
 
 function firstLine(text: string): string {
-  return text.split(/\r?\n/).find((line) => line.trim())?.trim() ?? '';
+  return (
+    text
+      .split(/\r?\n/)
+      .find((line) => line.trim())
+      ?.trim() ?? ''
+  );
 }
 
 /** Primer día incluido de un filtro de fecha de alta («últimos 7 días», «este año»). */

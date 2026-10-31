@@ -3,7 +3,7 @@ import { ApiClientService } from './api-client.service';
 import { CommunityScopeService } from './community-scope.service';
 import { TenantContextService } from './tenant-context.service';
 import { ESTATE_TYPE_FROM_API, ESTATE_TYPE_TO_API } from './api-shared';
-import { Estate, EstateSepaBilling, EstateSetupStatus, EstateSetupSummary, LinkEstate } from './models';
+import { Estate, EstateSepaBilling, EstateSetupStatus, EstateSetupSummary } from './models';
 import { EstateOverview, EstateOverviewQuery, EstateManagementSearchResult } from './estate-overview.models';
 
 /** Paleta curada — mismo criterio de contraste AA con texto blanco que el resto del tema. */
@@ -139,12 +139,6 @@ export class EstatesService {
     creditorId?: string; creditorIban?: string; creditorBic?: string; creditorPostalAddress?: string;
   }): Promise<EstateSepaBilling> {
     return this.api.patch<EstateSepaBilling>(`/estates/${estateId}/sepa-billing`, patch);
-  }
-
-  /** Búsqueda de fincas por nombre/dirección para el flujo "vincular a comunidad existente" — no acotada a las fincas propias del usuario. */
-  async searchEstates(q: string): Promise<LinkEstate[]> {
-    if (q.trim().length < 2) return [];
-    return this.api.get<LinkEstate[]>('/estates/search', { q });
   }
 
   async getCreditorIdForEstate(estateId: string): Promise<string | null> {

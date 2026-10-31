@@ -1,5 +1,4 @@
 import { Component, ElementRef, HostListener, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import {
@@ -11,6 +10,7 @@ import {
 } from '../../core/owner-issues.models';
 import { OwnerIssuesService } from '../../core/owner-issues.service';
 import { OwnerScopeService } from '../../core/owner-scope.service';
+import { bindOwnerScopeToRoute } from '../../core/owner-scope-route';
 import { StateService } from '../../core/state.service';
 import { TopbarComponent } from '../../layout/topbar/topbar.component';
 import { SelectDropdownDirective } from '../../shared/components/dropdown/select-dropdown.directive';
@@ -120,17 +120,20 @@ export class IncidenciasCComponent {
   readonly communities = computed(() =>
     this.scope.groups().flatMap((g) => (g.estateId ? [{ id: g.estateId, name: g.estateName }] : [])),
   );
-  /** Comunidad pedida por la URL (`?estateId=`): se aplica en cuanto se conocen las propiedades. */
-  private readonly requestedEstateId = signal<string | null>(null);
 
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
   private listSeq = 0;
 
   constructor() {
-    // Same as «Mi comunidad»: load the owner's properties, again whenever one is added or removed.
-    effect(() => {
-      this.state.propertiesVersion();
-      void this.scope.load();
+    // Same as «Mi comunidad»: load the owner's properties (again whenever one is added or removed); `?estateId=`
+    // (from «Mi comunidad» or a property) chooses that community, i.e. its first property.
+    bindOwnerScopeToRoute(['estateId'], (params) => {
+      this.selectedId.set(params.get('issue'));
+      // `?new=1` (quick actions and old links) opens the creation modal once; the param is dropped right away.
+      if (params.get('new') === '1') {
+        this.openCreate();
+        void this.router.navigate([], { relativeTo: this.route, queryParams: { new: null }, queryParamsHandling: 'merge', replaceUrl: true });
+      }
     });
     // The list follows the scope, the search and the filters.
     effect(() => {
@@ -142,29 +145,6 @@ export class IncidenciasCComponent {
       untracked(() => {
         if (ready) void this.reload();
       });
-    });
-    // `?estateId=` (desde «Mi comunidad» o una propiedad) elige esa comunidad: se pasa a su primera propiedad.
-    effect(() => {
-      const wanted = this.requestedEstateId();
-      if (!wanted || !this.scope.loaded()) return;
-      const property = this.scope.items().find((p) => p.estateId === wanted);
-      untracked(() => {
-        this.requestedEstateId.set(null);
-        if (property && this.estateId() !== wanted) this.scope.select(property.id);
-      });
-    });
-    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      this.selectedId.set(params.get('issue'));
-      const estateId = params.get('estateId');
-      if (estateId) {
-        this.requestedEstateId.set(estateId);
-        void this.router.navigate([], { relativeTo: this.route, queryParams: { estateId: null }, queryParamsHandling: 'merge', replaceUrl: true });
-      }
-      // `?new=1` (quick actions and old links) opens the creation modal once; the param is dropped right away.
-      if (params.get('new') === '1') {
-        this.openCreate();
-        void this.router.navigate([], { relativeTo: this.route, queryParams: { new: null }, queryParamsHandling: 'merge', replaceUrl: true });
-      }
     });
   }
 

@@ -9,7 +9,12 @@ import { resolveScope, shiftMonths } from './manager-scope';
 /** Meses de la comparativa de las fichas (D35). */
 export const COMPARISON_MONTHS = 6;
 
-const ACTIVE_ISSUE_STATUSES = ['Abierta', 'EnReparacion', 'PendienteProveedor', 'PendienteInformacion'] as const;
+const ACTIVE_ISSUE_STATUSES = [
+  'Abierta',
+  'EnReparacion',
+  'PendienteProveedor',
+  'PendienteInformacion',
+] as const;
 
 /**
  * Variación frente a hace 6 meses (D44): `new` si antes no había nada y ahora sí
@@ -36,11 +41,19 @@ export interface ManagerKpis {
 }
 
 export function buildChange(value: number, previous: number): KpiChange {
-  if (previous === 0) return value === 0 ? { type: 'percent', value: 0 } : { type: 'new' };
-  return { type: 'percent', value: Math.round(((value - previous) / Math.abs(previous)) * 1000) / 10 };
+  if (previous === 0)
+    return value === 0 ? { type: 'percent', value: 0 } : { type: 'new' };
+  return {
+    type: 'percent',
+    value: Math.round(((value - previous) / Math.abs(previous)) * 1000) / 10,
+  };
 }
 
-const card = (value: number, previous: number): KpiCard => ({ value, previous, change: buildChange(value, previous) });
+const card = (value: number, previous: number): KpiCard => ({
+  value,
+  previous,
+  change: buildChange(value, previous),
+});
 
 /**
  * Fichas KPI de la «Vista general» del gestor. Cada una se calcula "ahora" y
@@ -55,10 +68,24 @@ export class ManagerKpisService {
     private readonly ledgerQuery: LedgerQueryService,
   ) {}
 
-  async kpis(user: AuthenticatedUser, estateId?: string, now: Date = new Date()): Promise<ManagerKpis> {
+  async kpis(
+    user: AuthenticatedUser,
+    estateId?: string,
+    now: Date = new Date(),
+  ): Promise<ManagerKpis> {
     const ids = resolveScope(this.access, user, estateId);
     const before = shiftMonths(now, -COMPARISON_MONTHS);
-    const [estates, estatesPrev, issues, issuesPrev, dues, duesPrev, requests, requestsPrev, meetings] = await Promise.all([
+    const [
+      estates,
+      estatesPrev,
+      issues,
+      issuesPrev,
+      dues,
+      duesPrev,
+      requests,
+      requestsPrev,
+      meetings,
+    ] = await Promise.all([
       this.estatesAt(ids, now),
       this.estatesAt(ids, before),
       this.activeIssuesAt(ids, now),
@@ -84,7 +111,11 @@ export class ManagerKpisService {
   private estatesAt(ids: string[], at: Date): Promise<number> {
     if (!ids.length) return Promise.resolve(0);
     return this.prisma.estate.count({
-      where: { id: { in: ids }, createdAt: { lte: at }, OR: [{ deletedAt: null }, { deletedAt: { gt: at } }] },
+      where: {
+        id: { in: ids },
+        createdAt: { lte: at },
+        OR: [{ deletedAt: null }, { deletedAt: { gt: at } }],
+      },
     });
   }
 
@@ -116,7 +147,10 @@ export class ManagerKpisService {
       accountCode: '430',
       excludeEntryTypes: LedgerQueryService.BALANCE_EXCLUDED,
     });
-    const total = rows.reduce((sum, row) => sum.plus(row.balance), new Prisma.Decimal(0));
+    const total = rows.reduce(
+      (sum, row) => sum.plus(row.balance),
+      new Prisma.Decimal(0),
+    );
     return Number(total.toDecimalPlaces(2));
   }
 
@@ -124,19 +158,34 @@ export class ManagerKpisService {
   private pendingRequestsAt(ids: string[], at: Date): Promise<number> {
     if (!ids.length) return Promise.resolve(0);
     return this.prisma.adhesionRequest.count({
-      where: { estateId: { in: ids }, submittedAt: { lte: at }, OR: [{ resolvedAt: null }, { resolvedAt: { gt: at } }] },
+      where: {
+        estateId: { in: ids },
+        submittedAt: { lte: at },
+        OR: [{ resolvedAt: null }, { resolvedAt: { gt: at } }],
+      },
     });
   }
 
   /** Convocadas en los 6 meses siguientes frente a las celebradas en los 6 anteriores. */
-  private async meetingsAround(ids: string[], now: Date): Promise<{ next: number; previous: number }> {
+  private async meetingsAround(
+    ids: string[],
+    now: Date,
+  ): Promise<{ next: number; previous: number }> {
     if (!ids.length) return { next: 0, previous: 0 };
     const [next, previous] = await Promise.all([
       this.prisma.meeting.count({
-        where: { estateId: { in: ids }, status: 'convocada', scheduledAt1: { gt: now, lte: shiftMonths(now, COMPARISON_MONTHS) } },
+        where: {
+          estateId: { in: ids },
+          status: 'convocada',
+          scheduledAt1: { gt: now, lte: shiftMonths(now, COMPARISON_MONTHS) },
+        },
       }),
       this.prisma.meeting.count({
-        where: { estateId: { in: ids }, status: { in: ['celebrada', 'firmada'] }, scheduledAt1: { gte: shiftMonths(now, -COMPARISON_MONTHS), lte: now } },
+        where: {
+          estateId: { in: ids },
+          status: { in: ['celebrada', 'firmada'] },
+          scheduledAt1: { gte: shiftMonths(now, -COMPARISON_MONTHS), lte: now },
+        },
       }),
     ]);
     return { next, previous };

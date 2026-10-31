@@ -388,6 +388,10 @@
   </div>
 }
 
+@if (supportPendingPath(); as path) {
+  <app-support-session-dialog (started)="enterDespacho(path)" (closed)="supportPendingPath.set(null)"></app-support-session-dialog>
+}
+
 @if (inviteOpen() && admin()) {
   <app-admin-invite-dialog [administratorId]="admin()!.id" [adminName]="admin()!.name" (closed)="inviteOpen.set(false)"></app-admin-invite-dialog>
 }

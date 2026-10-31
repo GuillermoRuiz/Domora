@@ -332,11 +332,7 @@ export class IssuesService {
    * Una incidencia es SIEMPRE de la comunidad (no de una vivienda): la puede dar de alta la gestión (en nombre de la comunidad) o
    * cualquier miembro ACTIVO de ella (comprobado en la base de datos). Quien la reporta queda en `IssueReport`: es reportante, no dueño.
    */
-  async create(
-    estateId: string,
-    dto: CreateIssueDto,
-    user: AuthenticatedUser,
-  ) {
+  async create(estateId: string, dto: CreateIssueDto, user: AuthenticatedUser) {
     const estate = await this.prisma.estate.findFirst({
       where: { id: estateId, deletedAt: null },
       select: { id: true },
@@ -490,8 +486,7 @@ export class IssuesService {
       }
     }
     // El reportante vuelve a ver SU incidencia con la misma proyección que cualquier vecino.
-    if (user.role === 'C')
-      return presentIssueForResident(issue, user.id, true);
+    if (user.role === 'C') return presentIssueForResident(issue, user.id, true);
     return hideAssetLink(
       { ...issue, timeline: withAuthorName(issue.timeline, user) },
       user,
@@ -572,7 +567,9 @@ export class IssuesService {
     const reporters = reportersInformedElsewhere
       ? []
       : await this.reporterUserIds(issue.id);
-    const userIds = [...new Set([...reporters, ...affected.map((a) => a.userId)])];
+    const userIds = [
+      ...new Set([...reporters, ...affected.map((a) => a.userId)]),
+    ];
     if (userIds.length === 0) return;
     await this.notifications.notify({
       userIds,
@@ -588,7 +585,10 @@ export class IssuesService {
    * detalle, panel del propietario, informes), y se retira lo que seguía vivo por ella: sus tareas, sus esperas, sus visitas
    * planificadas. Las fotos y el historial no se tocan (quedan por si hay que recuperarla).
    */
-  async deleteIssue(issueId: string, user: AuthenticatedUser): Promise<{ deleted: true }> {
+  async deleteIssue(
+    issueId: string,
+    user: AuthenticatedUser,
+  ): Promise<{ deleted: true }> {
     if (user.role !== 'A' && user.role !== 'B')
       throw new ForbiddenException('Solo la gestión elimina incidencias.');
     const issue = await this.assertIssueAccess(issueId, user);
@@ -596,9 +596,14 @@ export class IssuesService {
     await this.prisma.$transaction(async (tx) => {
       // Se serializa con todo lo que actúa sobre la incidencia (envíos, resoluciones, barrido): lo que llegue después la ve borrada.
       await tx.$queryRaw`SELECT 1 FROM "issues" WHERE "id" = ${issue.id}::uuid FOR UPDATE`;
-      const current = await tx.issue.findUniqueOrThrow({ where: { id: issue.id } });
+      const current = await tx.issue.findUniqueOrThrow({
+        where: { id: issue.id },
+      });
       if (current.deletedAt) return;
-      await tx.issue.update({ where: { id: issue.id }, data: { deletedAt: now } });
+      await tx.issue.update({
+        where: { id: issue.id },
+        data: { deletedAt: now },
+      });
       // Las tareas NO se borran: el historial de la incidencia las referencia (decisión, resultado, responsable, comentarios,
       // adjuntos). Se cierran y se archivan: salen de la agenda y de los barridos, y se conservan para la auditoría.
       const tasks = await tx.agendaTask.updateMany({
@@ -758,7 +763,11 @@ export class IssuesService {
     if (current.status !== status && issue.estateId && workflow) {
       // Resuelta o cerrada: ya no se espera a nadie ni hace falta ninguna decisión pendiente. (Cerrar con la comunicación de
       // «resuelta» por decidir se rechaza arriba: la liquidación nunca llega a retirarla en silencio.)
-      if (status === 'Resuelta' || status === 'Cerrada' || status === 'Retirada')
+      if (
+        status === 'Resuelta' ||
+        status === 'Cerrada' ||
+        status === 'Retirada'
+      )
         await workflow.settleIssueLifecycle(tx, issue.id, status);
       // Reabrir una resuelta: «tu incidencia figura como resuelta» ya no es cierto.
       else if (!ACTIVE_ISSUE_STATUSES.includes(current.status))

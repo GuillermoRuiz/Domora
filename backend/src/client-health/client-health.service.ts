@@ -3,9 +3,15 @@ import type { PlanTier } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompletenessService } from '../completeness/completeness.service';
 import { ClientStatusService } from '../client-status/client-status.service';
-import type { ClientStatus, PaymentStatus } from '../client-status/client-status';
+import type {
+  ClientStatus,
+  PaymentStatus,
+} from '../client-status/client-status';
 import { UsageService } from '../usage/usage.service';
-import { CLIENT_HEALTH_CONFIG, type ClientHealthConfig } from './client-health.config';
+import {
+  CLIENT_HEALTH_CONFIG,
+  type ClientHealthConfig,
+} from './client-health.config';
 import {
   attentionReasons,
   compareAttention,
@@ -19,12 +25,18 @@ import {
   type SaludMotivo,
   type SignalBreakdown,
 } from './client-health';
-import { SUPPORT_SIGNAL_SOURCE, type SupportSignalSource } from './support-signal';
+import {
+  SUPPORT_SIGNAL_SOURCE,
+  type SupportSignalSource,
+} from './support-signal';
 
 const DAY_MS = 86_400_000;
 
 /** Paying client statuses: the only ones the «Churn risk» KPI counts. */
-const PAYING: ReadonlySet<ClientStatus> = new Set<ClientStatus>(['Activo', 'En onboarding']);
+const PAYING: ReadonlySet<ClientStatus> = new Set<ClientStatus>([
+  'Activo',
+  'En onboarding',
+]);
 
 export interface OfficeUsageFacts {
   activeDays: number;
@@ -89,7 +101,8 @@ export class ClientHealthService {
     private readonly completeness: CompletenessService,
     private readonly clientStatus: ClientStatusService,
     private readonly usage: UsageService,
-    @Inject(SUPPORT_SIGNAL_SOURCE) private readonly support: SupportSignalSource,
+    @Inject(SUPPORT_SIGNAL_SOURCE)
+    private readonly support: SupportSignalSource,
     @Inject(CLIENT_HEALTH_CONFIG) private readonly config: ClientHealthConfig,
   ) {}
 
@@ -97,12 +110,16 @@ export class ClientHealthService {
     const offices = await this.compute(null, now);
     return {
       atRiskBelow: this.config.atRiskBelow,
-      churnRisk: offices.filter((o) => o.atRisk && PAYING.has(o.clientStatus)).length,
+      churnRisk: offices.filter((o) => o.atRisk && PAYING.has(o.clientStatus))
+        .length,
       offices,
     };
   }
 
-  async office(administratorId: string, now = new Date()): Promise<OfficeHealth> {
+  async office(
+    administratorId: string,
+    now = new Date(),
+  ): Promise<OfficeHealth> {
     const [office] = await this.compute(administratorId, now);
     if (!office) throw new NotFoundException('Despacho no encontrado.');
     return office;
@@ -127,35 +144,51 @@ export class ClientHealthService {
   }
 
   /** `administratorId` null = every live despacho. */
-  private async compute(administratorId: string | null, now: Date): Promise<OfficeHealth[]> {
+  private async compute(
+    administratorId: string | null,
+    now: Date,
+  ): Promise<OfficeHealth[]> {
     const admins = await this.prisma.administrator.findMany({
-      where: administratorId ? { deletedAt: null, id: administratorId } : { deletedAt: null },
+      where: administratorId
+        ? { deletedAt: null, id: administratorId }
+        : { deletedAt: null },
       orderBy: { name: 'asc' },
       select: { id: true, name: true, plan: true, createdAt: true },
     });
     if (admins.length === 0) return [];
     const ids = admins.map((a) => a.id);
-    const from = new Date(now.getTime() - (this.config.usage.windowDays - 1) * DAY_MS);
+    const from = new Date(
+      now.getTime() - (this.config.usage.windowDays - 1) * DAY_MS,
+    );
 
-    const [completenessRows, usage, firstCapturedDay, staff, tickets] = await Promise.all([
-      administratorId
-        ? this.completeness.detail(administratorId).then((row) => [row])
-        : this.completeness.overview().then((o) => o.offices),
-      this.usage.summary(from, now),
-      this.usage.firstCapturedDay(),
-      this.prisma.user.groupBy({
-        by: ['administratorId'],
-        where: { role: 'B', deletedAt: null, administratorId: { in: ids } },
-        _count: { _all: true },
-      }),
-      this.support.seriousOpenTickets(ids),
-    ]);
+    const [completenessRows, usage, firstCapturedDay, staff, tickets] =
+      await Promise.all([
+        administratorId
+          ? this.completeness.detail(administratorId).then((row) => [row])
+          : this.completeness.overview().then((o) => o.offices),
+        this.usage.summary(from, now),
+        this.usage.firstCapturedDay(),
+        this.prisma.user.groupBy({
+          by: ['administratorId'],
+          where: { role: 'B', deletedAt: null, administratorId: { in: ids } },
+          _count: { _all: true },
+        }),
+        this.support.seriousOpenTickets(ids),
+      ]);
 
-    const completeness = new Map(completenessRows.map((c) => [c.administratorId, c]));
-    const onboarding = new Map(ids.map((id) => [id, completeness.get(id)?.onboardingComplete ?? false]));
+    const completeness = new Map(
+      completenessRows.map((c) => [c.administratorId, c]),
+    );
+    const onboarding = new Map(
+      ids.map((id) => [id, completeness.get(id)?.onboardingComplete ?? false]),
+    );
     const statuses = await this.clientStatus.forAdministrators(ids, onboarding);
-    const usageByOffice = new Map(usage.despachos.map((d) => [d.administratorId, d]));
-    const staffByOffice = new Map(staff.map((s) => [s.administratorId, s._count._all]));
+    const usageByOffice = new Map(
+      usage.despachos.map((d) => [d.administratorId, d]),
+    );
+    const staffByOffice = new Map(
+      staff.map((s) => [s.administratorId, s._count._all]),
+    );
 
     const result: OfficeHealth[] = [];
     for (const admin of admins) {
@@ -168,7 +201,10 @@ export class ClientHealthService {
         activeDays: used?.activeDays ?? 0,
         activeUsers: used?.activeUsers ?? 0,
         staffUsers: staffByOffice.get(admin.id) ?? 0,
-        observedDays: observedUsageDays({ today: now, createdAt: admin.createdAt, firstCapturedDay }, this.config),
+        observedDays: observedUsageDays(
+          { today: now, createdAt: admin.createdAt, firstCapturedDay },
+          this.config,
+        ),
       };
       const base = {
         administratorId: admin.id,
@@ -182,11 +218,19 @@ export class ClientHealthService {
       };
 
       if (status.clientStatus === 'Cancelado') {
-        result.push({ ...base, salud: null, atRisk: false, motivo: null, signals: [], attention: [] });
+        result.push({
+          ...base,
+          salud: null,
+          atRisk: false,
+          motivo: null,
+          signals: [],
+          attention: [],
+        });
         continue;
       }
 
-      const seriousTickets = tickets === null ? null : (tickets.get(admin.id) ?? 0);
+      const seriousTickets =
+        tickets === null ? null : (tickets.get(admin.id) ?? 0);
       const usageScore = usageSignal(facts, this.config);
       const health = saludIndex(
         {

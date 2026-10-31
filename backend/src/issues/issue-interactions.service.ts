@@ -41,7 +41,7 @@ import {
 } from './dto/register-interaction.dto';
 
 /** Identificador admitido de una integración anterior (cabecera `X-Domora-Legacy-Client`). */
-const LEGACY_CLIENT_PATTERN = /^[A-Za-z0-9._\/-]{1,60}$/;
+const LEGACY_CLIENT_PATTERN = /^[A-Za-z0-9._/-]{1,60}$/;
 
 export interface InteractionEffectResult {
   type: InteractionEffectType;
@@ -137,7 +137,10 @@ export class IssueInteractionsService {
         where: { id: ref, issueId, templateKey: null },
         select: { label: true },
       });
-      if (!found) throw new BadRequestException('El hito indicado no existe en esta incidencia.');
+      if (!found)
+        throw new BadRequestException(
+          'El hito indicado no existe en esta incidencia.',
+        );
       return found.label ?? 'Hito';
     }
     return SYSTEM_MILESTONE_LABELS[ref] ?? ref;
@@ -437,11 +440,21 @@ export class IssueInteractionsService {
             const task = await this.workflow.openTask(tx, {
               issueId: issue.id,
               kind: 'review_issue',
-              payload: { reason: 'follow_up', note: effect.note, milestone: effect.milestone },
-              milestoneLabel: await this.milestoneLabel(tx, issue.id, effect.milestone),
+              payload: {
+                reason: 'follow_up',
+                note: effect.note,
+                milestone: effect.milestone,
+              },
+              milestoneLabel: await this.milestoneLabel(
+                tx,
+                issue.id,
+                effect.milestone,
+              ),
               // Misma nota a otra hora es otro recordatorio; la misma nota a la misma hora es la misma tarea.
               discriminator: `follow_up:${createHash('sha1')
-                .update(`${effect.note}|${effect.dueAt ?? ''}|${effect.milestone}`)
+                .update(
+                  `${effect.note}|${effect.dueAt ?? ''}|${effect.milestone}`,
+                )
                 .digest('hex')
                 .slice(0, 10)}`,
               createdBy: 'system',

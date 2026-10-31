@@ -130,3 +130,5 @@
   align-items: center;
   gap: 8px;
 }
+
+.junta-item--highlight { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: var(--radius-md); }

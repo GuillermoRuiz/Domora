@@ -1,10 +1,23 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ExternalOwnersService } from './external-owners.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { EstateScopeGuard } from '../estate-access/estate-scope.guard';
-import { CreateExternalOwnerDto, UpdateExternalOwnerDto } from './dto/external-owner.dto';
+import {
+  CreateExternalOwnerDto,
+  UpdateExternalOwnerDto,
+} from './dto/external-owner.dto';
 
 // Solo gestora (B) o Domora (A): un titular externo lleva NIF, email,
 // teléfono y dirección postal de un propietario sin cuenta. Sin @Roles, el

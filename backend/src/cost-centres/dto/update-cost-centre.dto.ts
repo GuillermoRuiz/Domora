@@ -1,4 +1,10 @@
-import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { OptionalButNotNull } from '../../common/optional-not-null.decorator';
 
 const STATUSES = ['Activo', 'Archivado'] as const;

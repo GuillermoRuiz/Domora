@@ -63,7 +63,7 @@ describe('ActivityCComponent', () => {
     expect(navigateSpy).toHaveBeenLastCalledWith(['/c/incidencias'], { queryParams: { issue: 'abc' } });
 
     (items[2] as HTMLElement).click();
-    expect(navigateSpy).toHaveBeenLastCalledWith(['/c/properties', 'p1'], { queryParams: { tab: 'receipts' } });
+    expect(navigateSpy).toHaveBeenLastCalledWith(['/c/recibos'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('un documento abre la página de Documentación con ese documento (o sin selección si no hay id)', async () => {

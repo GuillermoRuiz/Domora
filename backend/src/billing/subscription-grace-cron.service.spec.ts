@@ -13,10 +13,9 @@ describe('SubscriptionGraceCronService', () => {
     const prisma = {
       administratorSubscription: { findMany },
     } as unknown as PrismaService;
-    service = new SubscriptionGraceCronService(
-      prisma,
-      { restrictForExpiredGrace } as unknown as BillingService,
-    );
+    service = new SubscriptionGraceCronService(prisma, {
+      restrictForExpiredGrace,
+    } as unknown as BillingService);
   });
 
   it('consulta por past_due + gracia vencida + gestora todavía Activa', async () => {
@@ -33,7 +32,10 @@ describe('SubscriptionGraceCronService', () => {
   });
 
   it('restringe cada gestora candidata vía BillingService.restrictForExpiredGrace', async () => {
-    findMany.mockResolvedValue([{ administratorId: 'admin-1' }, { administratorId: 'admin-2' }]);
+    findMany.mockResolvedValue([
+      { administratorId: 'admin-1' },
+      { administratorId: 'admin-2' },
+    ]);
     await service.run();
     expect(restrictForExpiredGrace).toHaveBeenCalledWith('admin-1');
     expect(restrictForExpiredGrace).toHaveBeenCalledWith('admin-2');

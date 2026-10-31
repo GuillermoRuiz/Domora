@@ -8,7 +8,9 @@ function manager(estateIds: string[] = ['e1', 'e2']): AuthenticatedUser {
 
 function daysFromNow(days: number): Date {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + days));
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + days),
+  );
 }
 
 describe('TasksService', () => {
@@ -34,14 +36,24 @@ describe('TasksService', () => {
   });
 
   it('un propietario (rol C) no tiene tareas de gestión y no consulta nada', async () => {
-    const owner: AuthenticatedUser = { id: 'c1', role: 'C', estateIds: ['e1'], administratorId: null };
+    const owner: AuthenticatedUser = {
+      id: 'c1',
+      role: 'C',
+      estateIds: ['e1'],
+      administratorId: null,
+    };
 
     await expect(service.list(owner)).resolves.toEqual([]);
     expect(prisma.adhesionRequest.groupBy).not.toHaveBeenCalled();
   });
 
   describe('soporte (rol A)', () => {
-    const support: AuthenticatedUser = { id: 'a1', role: 'A', estateIds: [], administratorId: null };
+    const support: AuthenticatedUser = {
+      id: 'a1',
+      role: 'A',
+      estateIds: [],
+      administratorId: null,
+    };
 
     it('solo ve las altas de comunidad pendientes', async () => {
       prisma.estateOnboardingRequest.count.mockResolvedValue(3);
@@ -56,7 +68,9 @@ describe('TasksService', () => {
           link: '/a/admins',
         },
       ]);
-      expect(prisma.estateOnboardingRequest.count).toHaveBeenCalledWith({ where: { status: 'pending' } });
+      expect(prisma.estateOnboardingRequest.count).toHaveBeenCalledWith({
+        where: { status: 'pending' },
+      });
       expect(prisma.adhesionRequest.groupBy).not.toHaveBeenCalled();
     });
 
@@ -79,11 +93,22 @@ describe('TasksService', () => {
       await service.list(manager(['e1']));
 
       const scope = { in: ['e1'] };
-      expect(prisma.adhesionRequest.groupBy.mock.calls[0][0].where.estateId).toEqual(scope);
-      expect(prisma.issue.findMany.mock.calls[0][0].where.estateId).toEqual(scope);
-      expect(prisma.regulatoryInspection.findMany.mock.calls[0][0].where.estateId).toEqual(scope);
-      expect(prisma.correctiveAction.findMany.mock.calls[0][0].where.inspection.estateId).toEqual(scope);
-      expect(prisma.meeting.findMany.mock.calls[0][0].where.estateId).toEqual(scope);
+      expect(
+        prisma.adhesionRequest.groupBy.mock.calls[0][0].where.estateId,
+      ).toEqual(scope);
+      expect(prisma.issue.findMany.mock.calls[0][0].where.estateId).toEqual(
+        scope,
+      );
+      expect(
+        prisma.regulatoryInspection.findMany.mock.calls[0][0].where.estateId,
+      ).toEqual(scope);
+      expect(
+        prisma.correctiveAction.findMany.mock.calls[0][0].where.inspection
+          .estateId,
+      ).toEqual(scope);
+      expect(prisma.meeting.findMany.mock.calls[0][0].where.estateId).toEqual(
+        scope,
+      );
       expect(prisma.estate.findMany.mock.calls[0][0].where.id).toEqual(scope);
     });
 
@@ -96,8 +121,22 @@ describe('TasksService', () => {
       const tasks = await service.list(manager());
 
       expect(tasks).toEqual([
-        { kind: 'adhesion_requests', estateId: 'e2', estateName: 'Bloque Luna', title: '1 solicitud de adhesión pendiente', count: 1, link: '/b/estates/e2?tab=requests' },
-        { kind: 'adhesion_requests', estateId: 'e1', estateName: 'Edificio Sol', title: '2 solicitudes de adhesión pendientes', count: 2, link: '/b/estates/e1?tab=requests' },
+        {
+          kind: 'adhesion_requests',
+          estateId: 'e2',
+          estateName: 'Bloque Luna',
+          title: '1 solicitud de adhesión pendiente',
+          count: 1,
+          link: '/b/estates/e2?tab=requests',
+        },
+        {
+          kind: 'adhesion_requests',
+          estateId: 'e1',
+          estateName: 'Edificio Sol',
+          title: '2 solicitudes de adhesión pendientes',
+          count: 2,
+          link: '/b/estates/e1?tab=requests',
+        },
       ]);
     });
 
@@ -110,8 +149,16 @@ describe('TasksService', () => {
 
       const [task] = await service.list(manager());
 
-      expect(prisma.issue.findMany.mock.calls[0][0].where).toMatchObject({ status: 'Abierta', deletedAt: null });
-      expect(task).toMatchObject({ kind: 'issues_open', estateId: 'e1', count: 2, link: '/b/estates/e1?tab=issues' });
+      expect(prisma.issue.findMany.mock.calls[0][0].where).toMatchObject({
+        status: 'Abierta',
+        deletedAt: null,
+      });
+      expect(task).toMatchObject({
+        kind: 'issues_open',
+        estateId: 'e1',
+        count: 2,
+        link: '/b/estates/e1?tab=issues',
+      });
     });
 
     it('inspecciones: distingue vencidas (incluida una con fecha pasada que el cron aún no ha marcado) de las próximas a vencer', async () => {
@@ -125,9 +172,18 @@ describe('TasksService', () => {
       const tasks = await service.list(manager());
 
       expect(tasks.filter((t) => t.kind === 'inspections_overdue')).toEqual([
-        expect.objectContaining({ estateId: 'e1', count: 2, title: '2 inspecciones vencidas', link: '/b/estates/e1?tab=inspections' }),
+        expect.objectContaining({
+          estateId: 'e1',
+          count: 2,
+          title: '2 inspecciones vencidas',
+          link: '/b/estates/e1?tab=inspections',
+        }),
       ]);
-      expect(tasks.filter((t) => t.kind === 'inspections_due_soon').map((t) => [t.estateId, t.count])).toEqual([
+      expect(
+        tasks
+          .filter((t) => t.kind === 'inspections_due_soon')
+          .map((t) => [t.estateId, t.count]),
+      ).toEqual([
         ['e2', 1],
         ['e1', 1],
       ]);
@@ -144,15 +200,29 @@ describe('TasksService', () => {
     });
 
     it('acciones correctivas vencidas y juntas pendientes de cerrar', async () => {
-      prisma.correctiveAction.findMany.mockResolvedValue([{ inspection: { estateId: 'e1' } }]);
-      prisma.meeting.findMany.mockResolvedValue([{ estateId: 'e1' }, { estateId: 'e1' }]);
+      prisma.correctiveAction.findMany.mockResolvedValue([
+        { inspection: { estateId: 'e1' } },
+      ]);
+      prisma.meeting.findMany.mockResolvedValue([
+        { estateId: 'e1' },
+        { estateId: 'e1' },
+      ]);
 
       const tasks = await service.list(manager());
 
       expect(tasks).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ kind: 'corrective_actions_overdue', count: 1, title: '1 acción correctiva vencida' }),
-          expect.objectContaining({ kind: 'meetings_to_close', count: 2, title: '2 juntas pendientes de cerrar', link: '/b/estates/e1?tab=juntas' }),
+          expect.objectContaining({
+            kind: 'corrective_actions_overdue',
+            count: 1,
+            title: '1 acción correctiva vencida',
+          }),
+          expect.objectContaining({
+            kind: 'meetings_to_close',
+            count: 2,
+            title: '2 juntas pendientes de cerrar',
+            link: '/b/estates/e1?tab=juntas',
+          }),
         ]),
       );
       expect(prisma.meeting.findMany.mock.calls[0][0].where).toMatchObject({
@@ -162,23 +232,33 @@ describe('TasksService', () => {
     });
 
     it('descarta las fincas que ya no existen (borradas) aunque haya datos', async () => {
-      prisma.adhesionRequest.groupBy.mockResolvedValue([{ estateId: 'e-borrada', _count: { _all: 1 } }]);
+      prisma.adhesionRequest.groupBy.mockResolvedValue([
+        { estateId: 'e-borrada', _count: { _all: 1 } },
+      ]);
 
       await expect(service.list(manager(['e-borrada']))).resolves.toEqual([]);
     });
 
     it('ordena por prioridad de tipo y luego por nombre de finca', async () => {
-      prisma.adhesionRequest.groupBy.mockResolvedValue([{ estateId: 'e1', _count: { _all: 1 } }]);
+      prisma.adhesionRequest.groupBy.mockResolvedValue([
+        { estateId: 'e1', _count: { _all: 1 } },
+      ]);
       prisma.issue.findMany.mockResolvedValue([{ estateId: 'e2' }]);
       prisma.meeting.findMany.mockResolvedValue([{ estateId: 'e1' }]);
 
       const kinds = (await service.list(manager())).map((t) => t.kind);
 
-      expect(kinds).toEqual(['adhesion_requests', 'meetings_to_close', 'issues_open']);
+      expect(kinds).toEqual([
+        'adhesion_requests',
+        'meetings_to_close',
+        'issues_open',
+      ]);
     });
 
     it('countPending suma los recuentos de todas las tareas', async () => {
-      prisma.adhesionRequest.groupBy.mockResolvedValue([{ estateId: 'e1', _count: { _all: 2 } }]);
+      prisma.adhesionRequest.groupBy.mockResolvedValue([
+        { estateId: 'e1', _count: { _all: 2 } },
+      ]);
       prisma.issue.findMany.mockResolvedValue([{ estateId: 'e2' }]);
 
       await expect(service.countPending(manager())).resolves.toBe(3);

@@ -66,7 +66,7 @@ describe('Operations routing', () => {
   });
   for (const [role, destination] of [
     ['A', '/a/admins'],
-    ['C', '/c/properties'],
+    ['C', '/c/community'],
     [null, '/login'],
   ] as const) {
     it(`does not expose management pages to role ${role}`, () => {

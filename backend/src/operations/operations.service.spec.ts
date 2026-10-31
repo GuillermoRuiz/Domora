@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  ValidationPipe,
+} from '@nestjs/common';
 import { OperationsService } from './operations.service';
 import { IssuesQueryDto } from './operations-query.dto';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -236,9 +240,7 @@ describe('OperationsService', () => {
     it('attaches the projected situation to each row', async () => {
       const { service, situation } = withIssues();
       const view = { issueId: 'i1', situation: 'requires_attention' };
-      situation.viewsFromClassified.mockResolvedValue(
-        new Map([['i1', view]]),
-      );
+      situation.viewsFromClassified.mockResolvedValue(new Map([['i1', view]]));
       const result = await service.issues(user, {
         filter: 'attention',
         pageSize: 1,
@@ -299,16 +301,32 @@ describe('OperationsService', () => {
   });
 
   it('accepts the two states that only the issue flow sets as a status filter', async () => {
-    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
     for (const status of ['PendienteInformacion', 'Retirada'])
       expect(
-        ((await pipe.transform({ status }, { type: 'query', metatype: IssuesQueryDto })) as IssuesQueryDto).status,
+        (
+          (await pipe.transform(
+            { status },
+            { type: 'query', metatype: IssuesQueryDto },
+          )) as IssuesQueryDto
+        ).status,
       ).toBe(status);
   });
   it('has no category query parameter: an issue is always an incidencia', async () => {
-    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
     await expect(
-      pipe.transform({ category: 'Incidencia' }, { type: 'query', metatype: IssuesQueryDto }),
+      pipe.transform(
+        { category: 'Incidencia' },
+        { type: 'query', metatype: IssuesQueryDto },
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
   it('applies status to rows while retaining scope-wide statistics', async () => {

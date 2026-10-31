@@ -11,11 +11,13 @@ const DAY_MS = 86_400_000;
  * día exacto -3, cada 7 días mientras está vencido, y el guard de "ya
  * avisado hoy".
  */
-function receipt(overrides: Partial<{
-  id: string;
-  dueDate: Date;
-  reminderSentAt: Date | null;
-}> = {}) {
+function receipt(
+  overrides: Partial<{
+    id: string;
+    dueDate: Date;
+    reminderSentAt: Date | null;
+  }> = {},
+) {
   return {
     id: 'receipt-1',
     no: '2026/01-001',
@@ -46,17 +48,21 @@ describe('ReceiptReminderCronService', () => {
     const prisma = {
       accountingReceipt: { findMany, update },
     } as unknown as PrismaService;
-    service = new ReceiptReminderCronService(
-      prisma,
-      { notify } as unknown as NotificationsService,
-    );
+    service = new ReceiptReminderCronService(prisma, {
+      notify,
+    } as unknown as NotificationsService);
   });
 
   it('avisa exactamente 3 días antes del vencimiento', async () => {
     findMany.mockResolvedValue([receipt({ dueDate: daysFromToday(3) })]);
     await service.run();
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ userIds: ['owner-1'], category: 'receipt' }));
-    expect(update).toHaveBeenCalledWith({ where: { id: 'receipt-1' }, data: { reminderSentAt: expect.any(Date) } });
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({ userIds: ['owner-1'], category: 'receipt' }),
+    );
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'receipt-1' },
+      data: { reminderSentAt: expect.any(Date) },
+    });
   });
 
   it('no avisa a 2 ni a 4 días del vencimiento (solo el día exacto -3)', async () => {

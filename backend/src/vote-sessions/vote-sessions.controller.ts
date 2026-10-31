@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { VoteSessionsService } from './vote-sessions.service';
 import { OpenVoteSessionDto } from './dto/open-vote-session.dto';
 import { CastVoteDto } from './dto/cast-vote.dto';
@@ -14,7 +22,10 @@ export class VoteSessionsController {
   constructor(private readonly voteSessions: VoteSessionsService) {}
 
   @Get()
-  list(@Param('meetingId') meetingId: string, @CurrentUser() user: AuthenticatedUser) {
+  list(
+    @Param('meetingId') meetingId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.voteSessions.list(meetingId, user);
   }
 
@@ -29,7 +40,10 @@ export class VoteSessionsController {
 
   /** Propiedades con deuda vencida (art. 15.2 LPH), para que la gestora vea a quién no puede registrar voto (solo Rol A/B). */
   @Get('debts')
-  listDebts(@Param('meetingId') meetingId: string, @CurrentUser() user: AuthenticatedUser) {
+  listDebts(
+    @Param('meetingId') meetingId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.voteSessions.listDebts(meetingId, user);
   }
 

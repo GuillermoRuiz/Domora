@@ -1,4 +1,7 @@
-import type { ClientStatus, PaymentStatus } from '../client-status/client-status';
+import type {
+  ClientStatus,
+  PaymentStatus,
+} from '../client-status/client-status';
 import type { ClientHealthConfig } from './client-health.config';
 
 /**
@@ -10,9 +13,13 @@ import type { ClientHealthConfig } from './client-health.config';
 
 const DAY_MS = 86_400_000;
 const round1 = (value: number): number => Math.round(value * 10) / 10;
-const utcDay = (date: Date): number => Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+const utcDay = (date: Date): number =>
+  Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 
-export function paymentSignal(status: PaymentStatus, config: ClientHealthConfig): number {
+export function paymentSignal(
+  status: PaymentStatus,
+  config: ClientHealthConfig,
+): number {
   return config.paymentScore[status];
 }
 
@@ -20,7 +27,10 @@ export function paymentSignal(status: PaymentStatus, config: ClientHealthConfig)
  * Serious open support tickets. `null` = the support module does not exist
  * yet (S16): the signal is unavailable, never a deduction.
  */
-export function supportSignal(seriousTickets: number | null, config: ClientHealthConfig): number | null {
+export function supportSignal(
+  seriousTickets: number | null,
+  config: ClientHealthConfig,
+): number | null {
   if (seriousTickets === null) return null;
   return Math.max(0, 100 - seriousTickets * config.supportPenaltyPerTicket);
 }
@@ -37,7 +47,11 @@ export function observedUsageDays(
   if (!input.firstCapturedDay) return 0;
   const today = utcDay(input.today);
   const windowStart = today - (config.usage.windowDays - 1) * DAY_MS;
-  const start = Math.max(windowStart, utcDay(input.createdAt), utcDay(input.firstCapturedDay));
+  const start = Math.max(
+    windowStart,
+    utcDay(input.createdAt),
+    utcDay(input.firstCapturedDay),
+  );
   return start > today ? 0 : Math.round((today - start) / DAY_MS) + 1;
 }
 
@@ -63,17 +77,33 @@ export interface UsageInput {
  * scored: null, so short history never punishes it. The expected active days
  * scale with the observed days.
  */
-export function usageSignal(input: UsageInput, config: ClientHealthConfig): UsageSignal | null {
+export function usageSignal(
+  input: UsageInput,
+  config: ClientHealthConfig,
+): UsageSignal | null {
   const { windowDays, expectedActiveDays, minObservedDays } = config.usage;
   if (input.observedDays < minObservedDays) return null;
-  const expected = Math.max(1, Math.round((expectedActiveDays * input.observedDays) / windowDays));
+  const expected = Math.max(
+    1,
+    Math.round((expectedActiveDays * input.observedDays) / windowDays),
+  );
   const frequency = Math.min(1, input.activeDays / expected) * 100;
-  const adoption = input.staffUsers > 0 ? Math.min(1, input.activeUsers / input.staffUsers) * 100 : input.activeUsers > 0 ? 100 : 0;
-  return { score: round1((frequency + adoption) / 2), frequency: round1(frequency), adoption: round1(adoption) };
+  const adoption =
+    input.staffUsers > 0
+      ? Math.min(1, input.activeUsers / input.staffUsers) * 100
+      : input.activeUsers > 0
+        ? 100
+        : 0;
+  return {
+    score: round1((frequency + adoption) / 2),
+    frequency: round1(frequency),
+    adoption: round1(adoption),
+  };
 }
 
 export type HealthSignalKey = 'payment' | 'usage' | 'completeness' | 'support';
-export type SaludMotivoCode = 'payment' | 'low_usage' | 'low_adoption' | 'completeness' | 'support';
+export type SaludMotivoCode =
+  'payment' | 'low_usage' | 'low_adoption' | 'completeness' | 'support';
 
 export interface HealthSignals {
   payment: number;
@@ -105,7 +135,12 @@ export interface SaludResult {
 }
 
 /** Also the tie-break order of the motivo. */
-const SIGNAL_ORDER: HealthSignalKey[] = ['payment', 'usage', 'completeness', 'support'];
+const SIGNAL_ORDER: HealthSignalKey[] = [
+  'payment',
+  'usage',
+  'completeness',
+  'support',
+];
 
 const MOTIVO_LABEL: Record<SaludMotivoCode, string> = {
   payment: 'Pagos pendientes',
@@ -121,14 +156,20 @@ const MOTIVO_LABEL: Record<SaludMotivoCode, string> = {
  * with the largest deduction; ties go to the first in SIGNAL_ORDER. Usage is
  * named «Baja adopción» when the staff share is its weaker half.
  */
-export function saludIndex(signals: HealthSignals, config: ClientHealthConfig): SaludResult {
+export function saludIndex(
+  signals: HealthSignals,
+  config: ClientHealthConfig,
+): SaludResult {
   const scores: Record<HealthSignalKey, number | null> = {
     payment: signals.payment,
     usage: signals.usage?.score ?? null,
     completeness: signals.completeness,
     support: signals.support,
   };
-  const totalWeight = SIGNAL_ORDER.reduce((sum, key) => sum + (scores[key] === null ? 0 : config.weights[key]), 0);
+  const totalWeight = SIGNAL_ORDER.reduce(
+    (sum, key) => sum + (scores[key] === null ? 0 : config.weights[key]),
+    0,
+  );
 
   let weighted = 0;
   // Assigned inside the callback: typed through `as` so control flow does not narrow it to null.
@@ -136,30 +177,52 @@ export function saludIndex(signals: HealthSignals, config: ClientHealthConfig): 
   const breakdown = SIGNAL_ORDER.map((key): SignalBreakdown => {
     const score = scores[key];
     const weight = config.weights[key];
-    if (score === null || totalWeight === 0) return { key, score, weight, deduction: 0, available: score !== null };
+    if (score === null || totalWeight === 0)
+      return { key, score, weight, deduction: 0, available: score !== null };
     weighted += weight * score;
     // Compared unrounded and un-normalised (same denominator) so ties are exact.
     const lost = weight * (100 - score);
     if (lost > 0 && (!worst || lost > worst.lost)) worst = { key, lost };
-    return { key, score, weight, deduction: round1(lost / totalWeight), available: true };
+    return {
+      key,
+      score,
+      weight,
+      deduction: round1(lost / totalWeight),
+      available: true,
+    };
   });
 
   const salud = totalWeight === 0 ? 100 : round1(weighted / totalWeight);
-  return { salud, motivo: worst ? motivoFor(worst.key, signals) : null, signals: breakdown };
+  return {
+    salud,
+    motivo: worst ? motivoFor(worst.key, signals) : null,
+    signals: breakdown,
+  };
 }
 
 function motivoFor(key: HealthSignalKey, signals: HealthSignals): SaludMotivo {
   const code: SaludMotivoCode =
-    key === 'usage' ? (signals.usage && signals.usage.adoption < signals.usage.frequency ? 'low_adoption' : 'low_usage') : key;
+    key === 'usage'
+      ? signals.usage && signals.usage.adoption < signals.usage.frequency
+        ? 'low_adoption'
+        : 'low_usage'
+      : key;
   return { code, label: MOTIVO_LABEL[code] };
 }
 
 /** «En riesgo» is a flag, never a client status: below the threshold, and never for Cancelado. */
-export function isAtRisk(salud: number | null, clientStatus: ClientStatus, config: ClientHealthConfig): boolean {
-  return clientStatus !== 'Cancelado' && salud !== null && salud < config.atRiskBelow;
+export function isAtRisk(
+  salud: number | null,
+  clientStatus: ClientStatus,
+  config: ClientHealthConfig,
+): boolean {
+  return (
+    clientStatus !== 'Cancelado' && salud !== null && salud < config.atRiskBelow
+  );
 }
 
-export type AttentionReasonCode = 'overdue_payment' | 'serious_tickets' | 'low_activity' | 'onboarding_blocked';
+export type AttentionReasonCode =
+  'overdue_payment' | 'serious_tickets' | 'low_activity' | 'onboarding_blocked';
 
 export interface AttentionReason {
   code: AttentionReasonCode;
@@ -187,21 +250,46 @@ export interface AttentionInput {
  * bloqueado (a required step still pending `onboardingBlockedAfterDays` after
  * signup). Cancelado despachos never need attention. Sorted by severity.
  */
-export function attentionReasons(input: AttentionInput, config: ClientHealthConfig): AttentionReason[] {
+export function attentionReasons(
+  input: AttentionInput,
+  config: ClientHealthConfig,
+): AttentionReason[] {
   if (input.clientStatus === 'Cancelado') return [];
   const reasons: AttentionReason[] = [];
   if (input.paymentStatus === 'Vencido' || input.paymentStatus === 'Fallido') {
-    reasons.push({ code: 'overdue_payment', label: 'Pagos vencidos', severity: 3 });
+    reasons.push({
+      code: 'overdue_payment',
+      label: 'Pagos vencidos',
+      severity: 3,
+    });
   }
   if (input.seriousTickets !== null && input.seriousTickets > 0) {
-    reasons.push({ code: 'serious_tickets', label: 'Incidencias graves sin resolver', severity: 3 });
+    reasons.push({
+      code: 'serious_tickets',
+      label: 'Incidencias graves sin resolver',
+      severity: 3,
+    });
   }
-  if (input.usageScore !== null && input.usageScore < config.usage.lowActivityBelow) {
-    reasons.push({ code: 'low_activity', label: 'Baja actividad', severity: 2 });
+  if (
+    input.usageScore !== null &&
+    input.usageScore < config.usage.lowActivityBelow
+  ) {
+    reasons.push({
+      code: 'low_activity',
+      label: 'Baja actividad',
+      severity: 2,
+    });
   }
   const ageDays = (input.now.getTime() - input.createdAt.getTime()) / DAY_MS;
-  if (!input.onboardingComplete && ageDays >= config.onboardingBlockedAfterDays) {
-    reasons.push({ code: 'onboarding_blocked', label: 'Onboarding bloqueado', severity: 1 });
+  if (
+    !input.onboardingComplete &&
+    ageDays >= config.onboardingBlockedAfterDays
+  ) {
+    reasons.push({
+      code: 'onboarding_blocked',
+      label: 'Onboarding bloqueado',
+      severity: 1,
+    });
   }
   return reasons.sort((a, b) => b.severity - a.severity);
 }
@@ -218,7 +306,8 @@ export function compareAttention(a: Sortable, b: Sortable): number {
   return (
     top(b) - top(a) ||
     b.reasons.length - a.reasons.length ||
-    (a.salud ?? Number.POSITIVE_INFINITY) - (b.salud ?? Number.POSITIVE_INFINITY) ||
+    (a.salud ?? Number.POSITIVE_INFINITY) -
+      (b.salud ?? Number.POSITIVE_INFINITY) ||
     a.name.localeCompare(b.name, 'es')
   );
 }

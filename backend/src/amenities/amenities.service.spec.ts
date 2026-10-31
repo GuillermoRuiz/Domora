@@ -4,7 +4,10 @@ import type { PrismaService } from '../prisma/prisma.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { AppRole, AuthenticatedUser } from '../auth/auth.types';
 
-function user(role: AppRole, overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
+function user(
+  role: AppRole,
+  overrides: Partial<AuthenticatedUser> = {},
+): AuthenticatedUser {
   return {
     id: 'user-1',
     role,
@@ -35,18 +38,20 @@ describe('AmenitiesService.cancelBooking — avisos', () => {
 
   beforeEach(() => {
     bookingFindFirst = jest.fn().mockResolvedValue(BOOKING);
-    bookingUpdate = jest.fn().mockImplementation(({ data }) => Promise.resolve({ ...BOOKING, ...data }));
+    bookingUpdate = jest
+      .fn()
+      .mockImplementation(({ data }) =>
+        Promise.resolve({ ...BOOKING, ...data }),
+      );
     notify = jest.fn().mockResolvedValue(undefined);
 
     const prisma = {
       booking: { findFirst: bookingFindFirst, update: bookingUpdate },
     } as unknown as PrismaService;
 
-    service = new AmenitiesService(
-      prisma,
-      new EstateAccessService(),
-      { notify } as unknown as NotificationsService,
-    );
+    service = new AmenitiesService(prisma, new EstateAccessService(), {
+      notify,
+    } as unknown as NotificationsService);
   });
 
   it('la gestora cancela la reserva de un vecino: avisa al vecino', async () => {
@@ -55,13 +60,17 @@ describe('AmenitiesService.cancelBooking — avisos', () => {
       expect.objectContaining({
         userIds: ['resident-1'],
         category: 'booking',
-        link: '/c/properties/prop-1',
+        link: '/c/properties/prop-1?tab=reservas',
       }),
     );
   });
 
   it('el vecino cancela su propia reserva: no se avisa a sí mismo', async () => {
-    await service.cancelBooking('booking-1', undefined, user('C', { id: 'resident-1' }));
+    await service.cancelBooking(
+      'booking-1',
+      undefined,
+      user('C', { id: 'resident-1' }),
+    );
     expect(notify).not.toHaveBeenCalled();
   });
 });

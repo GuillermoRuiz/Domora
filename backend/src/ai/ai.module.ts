@@ -28,7 +28,6 @@ import { EstateAiController } from './ai.controller';
     AiResultsService,
     AiBatchService,
     AiWorkerService,
-    
   ],
   controllers: [EstateAiController],
 })

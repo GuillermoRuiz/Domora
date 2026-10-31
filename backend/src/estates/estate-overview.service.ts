@@ -1,6 +1,4 @@
-import {
-  issuesOfEstate,
-} from '../issues/issue-estate';
+import { issuesOfEstate } from '../issues/issue-estate';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Prisma } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -32,7 +30,7 @@ export function ownerKey(
   owner: { taxIdCountry: string | null; taxId: string | null },
   fallback: string,
 ): string {
-  const taxId = owner.taxId?.replace(/[\s.\-]/g, '').toUpperCase();
+  const taxId = owner.taxId?.replace(/[\s.-]/g, '').toUpperCase();
   return taxId && owner.taxIdCountry
     ? `tax:${owner.taxIdCountry}:${taxId}`
     : fallback;
@@ -284,11 +282,13 @@ export class EstateOverviewService {
     };
   }
 
+  /** `administratorId` narrows role A to one despacho (its support session's). */
   async search(
     value: string,
     user: AuthenticatedUser,
+    administratorId?: string,
   ): Promise<EstateManagementSearchResultDto[]> {
-    const scope = this.scope(user);
+    const scope = this.scope(user, administratorId);
     const q = value.trim();
     if (q.length < 2) return [];
     const contains = { contains: q, mode: 'insensitive' as const };

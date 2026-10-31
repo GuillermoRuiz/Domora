@@ -19,14 +19,22 @@ let userId: string;
 
 beforeAll(async () => {
   const user = await prisma.user.create({
-    data: { email: `2fa-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Test User', role: 'C' },
+    data: {
+      email: `2fa-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Test User',
+      role: 'C',
+    },
   });
   userId = user.id;
 });
 
 afterEach(async () => {
   await prisma.twoFactorBackupCode.deleteMany({ where: { userId } });
-  await prisma.user.update({ where: { id: userId }, data: { totpSecret: null, totpEnabled: false } });
+  await prisma.user.update({
+    where: { id: userId },
+    data: { totpSecret: null, totpEnabled: false },
+  });
 });
 
 afterAll(async () => {
@@ -59,7 +67,9 @@ describe('TwoFactorService', () => {
   it('verifyAndEnable con código incorrecto NO deja el secreto a medio activar', async () => {
     const { secret } = await service.generateEnrollment(userId);
 
-    await expect(service.verifyAndEnable(userId, secret, '000000')).rejects.toThrow();
+    await expect(
+      service.verifyAndEnable(userId, secret, '000000'),
+    ).rejects.toThrow();
 
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     expect(user.totpSecret).toBeNull();
@@ -70,13 +80,19 @@ describe('TwoFactorService', () => {
     const { secret } = await service.generateEnrollment(userId);
     const token = await generate({ secret });
 
-    const { backupCodes } = await service.verifyAndEnable(userId, secret, token);
+    const { backupCodes } = await service.verifyAndEnable(
+      userId,
+      secret,
+      token,
+    );
 
     expect(backupCodes).toHaveLength(10);
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     expect(user.totpEnabled).toBe(true);
     expect(user.totpSecret).toBe(secret);
-    const stored = await prisma.twoFactorBackupCode.findMany({ where: { userId } });
+    const stored = await prisma.twoFactorBackupCode.findMany({
+      where: { userId },
+    });
     expect(stored).toHaveLength(10);
     // Los códigos se guardan hasheados, nunca en claro.
     expect(stored.every((c) => c.codeHash !== backupCodes[0])).toBe(true);
@@ -103,10 +119,18 @@ describe('TwoFactorService', () => {
   it('verifyCode acepta un código de respaldo, y lo consume — no sirve una segunda vez', async () => {
     const { secret } = await service.generateEnrollment(userId);
     const token = await generate({ secret });
-    const { backupCodes } = await service.verifyAndEnable(userId, secret, token);
+    const { backupCodes } = await service.verifyAndEnable(
+      userId,
+      secret,
+      token,
+    );
 
-    await expect(service.verifyCode(userId, backupCodes[0])).resolves.toBe(true);
-    await expect(service.verifyCode(userId, backupCodes[0])).resolves.toBe(false);
+    await expect(service.verifyCode(userId, backupCodes[0])).resolves.toBe(
+      true,
+    );
+    await expect(service.verifyCode(userId, backupCodes[0])).resolves.toBe(
+      false,
+    );
   });
 
   it('verifyCode rechaza si la cuenta no tiene 2FA activado', async () => {
@@ -123,16 +147,23 @@ describe('TwoFactorService', () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     expect(user.totpEnabled).toBe(false);
     expect(user.totpSecret).toBeNull();
-    const stored = await prisma.twoFactorBackupCode.findMany({ where: { userId } });
+    const stored = await prisma.twoFactorBackupCode.findMany({
+      where: { userId },
+    });
     expect(stored).toHaveLength(0);
   });
 
   it('regenerateBackupCodes reemplaza los códigos anteriores, que dejan de servir', async () => {
     const { secret } = await service.generateEnrollment(userId);
     const token = await generate({ secret });
-    const { backupCodes: oldCodes } = await service.verifyAndEnable(userId, secret, token);
+    const { backupCodes: oldCodes } = await service.verifyAndEnable(
+      userId,
+      secret,
+      token,
+    );
 
-    const { backupCodes: newCodes } = await service.regenerateBackupCodes(userId);
+    const { backupCodes: newCodes } =
+      await service.regenerateBackupCodes(userId);
 
     expect(newCodes).toHaveLength(10);
     await expect(service.verifyCode(userId, oldCodes[0])).resolves.toBe(false);

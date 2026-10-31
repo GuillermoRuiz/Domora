@@ -1,5 +1,14 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, type AssetOperationalStatus, type RegulatoryInspectionStatus } from '../prisma/client';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  Prisma,
+  type AssetOperationalStatus,
+  type RegulatoryInspectionStatus,
+} from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstateAccessService } from '../estate-access/estate-access.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -13,9 +22,14 @@ export const REVIEW_SOON_DAYS = 30;
 /** Horizonte del calendario de revisiones: ~6 meses. */
 const UPCOMING_HORIZON_DAYS = 183;
 const UPCOMING_LIMIT = 50;
-const PENDING_INSPECTION_STATUSES: RegulatoryInspectionStatus[] = ['planificada', 'citada', 'vencida'];
+const PENDING_INSPECTION_STATUSES: RegulatoryInspectionStatus[] = [
+  'planificada',
+  'citada',
+  'vencida',
+];
 
-export type InstallationDisplayStatus = AssetOperationalStatus | 'revision_proxima' | 'revision_vencida';
+export type InstallationDisplayStatus =
+  AssetOperationalStatus | 'revision_proxima' | 'revision_vencida';
 
 const DAY_MS = 86_400_000;
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
@@ -47,7 +61,8 @@ export class AssetsService {
     user: AuthenticatedUser,
   ) {
     this.estateAccess.assertAccess(estateId, user);
-    if (dto.supplierId) await this.assertSupplierInEstate(estateId, dto.supplierId);
+    if (dto.supplierId)
+      await this.assertSupplierInEstate(estateId, dto.supplierId);
     return this.prisma.asset.create({
       data: {
         estateId,
@@ -70,13 +85,22 @@ export class AssetsService {
     user: AuthenticatedUser,
   ) {
     this.estateAccess.assertAccess(estateId, user);
-    const asset = await this.prisma.asset.findFirst({ where: { id: assetId, estateId }, select: { id: true } });
-    if (!asset) throw new NotFoundException(`Instalación ${assetId} no encontrada en esta finca.`);
+    const asset = await this.prisma.asset.findFirst({
+      where: { id: assetId, estateId },
+      select: { id: true },
+    });
+    if (!asset)
+      throw new NotFoundException(
+        `Instalación ${assetId} no encontrada en esta finca.`,
+      );
     // `name` y `category` son obligatorios: un null explícito no puede borrarlos.
     if (dto.name === null || dto.category === null) {
-      throw new BadRequestException('El nombre y el tipo de la instalación no se pueden vaciar.');
+      throw new BadRequestException(
+        'El nombre y el tipo de la instalación no se pueden vaciar.',
+      );
     }
-    if (dto.supplierId) await this.assertSupplierInEstate(estateId, dto.supplierId);
+    if (dto.supplierId)
+      await this.assertSupplierInEstate(estateId, dto.supplierId);
     return this.prisma.asset.update({
       where: { id: assetId },
       data: {
@@ -113,20 +137,35 @@ export class AssetsService {
       this.prisma.regulatoryInspection.findMany({
         where: { estateId },
         select: {
-          id: true, assetId: true, status: true, lastDoneDate: true, nextDueDate: true, appointmentDate: true,
+          id: true,
+          assetId: true,
+          status: true,
+          lastDoneDate: true,
+          nextDueDate: true,
+          appointmentDate: true,
           inspectionType: { select: { name: true } },
         },
       }),
     ]);
     const issueCounts = await this.prisma.issue.groupBy({
       by: ['assetId'],
-      where: { assetId: { in: assets.map((a) => a.id) }, deletedAt: null, status: { in: ACTIVE_ISSUE_STATUSES } },
+      where: {
+        assetId: { in: assets.map((a) => a.id) },
+        deletedAt: null,
+        status: { in: ACTIVE_ISSUE_STATUSES },
+      },
       _count: { _all: true },
     });
-    const openIssuesBy = new Map(issueCounts.map((c) => [c.assetId, c._count._all]));
+    const openIssuesBy = new Map(
+      issueCounts.map((c) => [c.assetId, c._count._all]),
+    );
 
     const now = new Date();
-    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const today = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+    );
     const daysUntil = (d: Date) => Math.round((d.getTime() - today) / DAY_MS);
 
     const pending = inspections
@@ -138,13 +177,23 @@ export class AssetsService {
 
     const items = assets.map((asset) => {
       const own = inspections.filter((i) => i.assetId === asset.id);
-      const lastDone = own.reduce<Date | null>((best, i) => (i.lastDoneDate && (!best || i.lastDoneDate > best) ? i.lastDoneDate : best), null);
-      const next = pending.filter((i) => i.assetId === asset.id).sort((a, b) => a.due.getTime() - b.due.getTime())[0] ?? null;
+      const lastDone = own.reduce<Date | null>(
+        (best, i) =>
+          i.lastDoneDate && (!best || i.lastDoneDate > best)
+            ? i.lastDoneDate
+            : best,
+        null,
+      );
+      const next =
+        pending
+          .filter((i) => i.assetId === asset.id)
+          .sort((a, b) => a.due.getTime() - b.due.getTime())[0] ?? null;
       const daysLeft = next ? next.daysLeft : null;
       let displayStatus: InstallationDisplayStatus = asset.operationalStatus;
       if (asset.operationalStatus === 'operativa' && daysLeft !== null) {
         if (daysLeft < 0) displayStatus = 'revision_vencida';
-        else if (daysLeft <= REVIEW_SOON_DAYS) displayStatus = 'revision_proxima';
+        else if (daysLeft <= REVIEW_SOON_DAYS)
+          displayStatus = 'revision_proxima';
       }
       return {
         id: asset.id,
@@ -189,9 +238,18 @@ export class AssetsService {
   }
 
   /** El proveedor tiene que ser de esta misma finca (los proveedores no se comparten entre fincas). */
-  private async assertSupplierInEstate(estateId: string, supplierId: string): Promise<void> {
-    const supplier = await this.prisma.supplier.findFirst({ where: { id: supplierId, estateId }, select: { id: true } });
-    if (!supplier) throw new BadRequestException('El proveedor indicado no pertenece a esta finca.');
+  private async assertSupplierInEstate(
+    estateId: string,
+    supplierId: string,
+  ): Promise<void> {
+    const supplier = await this.prisma.supplier.findFirst({
+      where: { id: supplierId, estateId },
+      select: { id: true },
+    });
+    if (!supplier)
+      throw new BadRequestException(
+        'El proveedor indicado no pertenece a esta finca.',
+      );
   }
 
   /** Catálogo global (estateId NULL, sembrado por migración) + los tipos personalizados de esta finca. */

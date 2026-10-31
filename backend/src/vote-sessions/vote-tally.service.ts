@@ -64,7 +64,8 @@ export class VoteTallyService {
       select: { propertyId: true, optionIndex: true, optionIndexes: true },
     });
 
-    const denominatorBasis: 'censo' | 'presentes' = majorityType === 'mayoriaSimple' ? 'presentes' : 'censo';
+    const denominatorBasis: 'censo' | 'presentes' =
+      majorityType === 'mayoriaSimple' ? 'presentes' : 'censo';
 
     let denominatorProperties = census;
     if (denominatorBasis === 'presentes') {
@@ -83,16 +84,26 @@ export class VoteTallyService {
     // (ej. votó sin haber sido marcada presente, caso raro pero posible si
     // el pase de lista se deshace después) no cuenta como favorable.
     const denominatorIds = new Set(denominatorProperties.map((p) => p.id));
-    const favorableResponses = responses.filter((r) => r.optionIndex === 0 && denominatorIds.has(r.propertyId));
+    const favorableResponses = responses.filter(
+      (r) => r.optionIndex === 0 && denominatorIds.has(r.propertyId),
+    );
     const favorableProperties = denominatorProperties.filter((p) =>
       favorableResponses.some((r) => r.propertyId === p.id),
     );
 
     const ownersDenominatorCount = denominatorProperties.length;
     const ownersFavorablePct =
-      ownersDenominatorCount > 0 ? round2((favorableProperties.length / ownersDenominatorCount) * 100) : 0;
-    const favorableQuota = favorableProperties.reduce((sum, p) => sum + Number(p.participationQuota ?? 0), 0);
-    const quotaFavorablePct = quotaDenominatorTotal > 0 ? round2((favorableQuota / quotaDenominatorTotal) * 100) : 0;
+      ownersDenominatorCount > 0
+        ? round2((favorableProperties.length / ownersDenominatorCount) * 100)
+        : 0;
+    const favorableQuota = favorableProperties.reduce(
+      (sum, p) => sum + Number(p.participationQuota ?? 0),
+      0,
+    );
+    const quotaFavorablePct =
+      quotaDenominatorTotal > 0
+        ? round2((favorableQuota / quotaDenominatorTotal) * 100)
+        : 0;
 
     let passed: boolean | null = null;
     if (questionType === 'single_choice') {
@@ -109,7 +120,12 @@ export class VoteTallyService {
     // restringido al denominador legal), es informativo, no el veredicto.
     const tallyMap = new Map<number, number>();
     for (const r of responses) {
-      const indexes = questionType === 'multiple_choice' ? r.optionIndexes : r.optionIndex != null ? [r.optionIndex] : [];
+      const indexes =
+        questionType === 'multiple_choice'
+          ? r.optionIndexes
+          : r.optionIndex != null
+            ? [r.optionIndex]
+            : [];
       for (const idx of indexes) {
         tallyMap.set(idx, (tallyMap.get(idx) ?? 0) + 1);
       }

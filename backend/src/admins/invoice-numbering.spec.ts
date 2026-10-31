@@ -12,7 +12,9 @@ import { createPrismaClient } from '../prisma/create-prisma-client';
  * que la siguiente reutilizase un número ya usado.
  */
 // Veinte transacciones a la vez abren conexiones nuevas: en máquinas lentas (Windows) superan el maxWait de 2 s por defecto.
-const prisma = createPrismaClient(undefined, { transactionOptions: { maxWait: 20_000 } });
+const prisma = createPrismaClient(undefined, {
+  transactionOptions: { maxWait: 20_000 },
+});
 
 const SERIES = 'TEST';
 const YEAR = 2999; // ejercicio inventado: no colisiona con datos reales

@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import ExcelJS from 'exceljs';
-import { Prisma } from '../prisma/client';
 import { AppModule } from '../app.module';
 import { ReportingService } from './reporting.service';
 import { REPORT_CATALOG } from './definitions/report-catalog';
@@ -70,14 +69,12 @@ beforeAll(async () => {
   );
   await app.init();
   // Deliberately false tenant/estate claims: fresh DB resolution is the security boundary.
-  token = app
-    .get(JwtService)
-    .sign({
-      sub: first.userId,
-      role: 'B',
-      administratorId: second.administratorId,
-      estateIds: [foreign],
-    });
+  token = app.get(JwtService).sign({
+    sub: first.userId,
+    role: 'B',
+    administratorId: second.administratorId,
+    estateIds: [foreign],
+  });
 });
 
 afterAll(async () => {
@@ -159,14 +156,12 @@ describe('Reporting real API isolation and exports', () => {
       .send({ scopeMode: 'all', administratorId: second.administratorId })
       .expect(400);
     for (const role of ['A', 'C']) {
-      const denied = app
-        .get(JwtService)
-        .sign({
-          sub: first.userId,
-          role,
-          administratorId: first.administratorId,
-          estateIds: [own],
-        });
+      const denied = app.get(JwtService).sign({
+        sub: first.userId,
+        role,
+        administratorId: first.administratorId,
+        estateIds: [own],
+      });
       await request(app.getHttpServer())
         .get('/api/v1/reports/catalog')
         .set('Authorization', `Bearer ${denied}`)
@@ -293,10 +288,20 @@ describe('Reporting real API isolation and exports', () => {
       expect(result.metadata.reportKey).toBe(definition.key);
       expect(Array.isArray(result.sections)).toBe(true);
       for (const format of definition.formats) {
-        const exported = await service.execute(definition.key, dto, roleB(first, []), format, result.metadata.snapshotId);
+        const exported = await service.execute(
+          definition.key,
+          dto,
+          roleB(first, []),
+          format,
+          result.metadata.snapshotId,
+        );
         expect(exported.result.sections).toEqual(result.sections);
         expect(exported.result.summary).toEqual(result.summary);
-        expect(exported.document!.content.subarray(0, format === 'pdf' ? 5 : 2).toString()).toBe(format === 'pdf' ? '%PDF-' : 'PK');
+        expect(
+          exported
+            .document!.content.subarray(0, format === 'pdf' ? 5 : 2)
+            .toString(),
+        ).toBe(format === 'pdf' ? '%PDF-' : 'PK');
       }
     }
   });
@@ -315,18 +320,16 @@ describe('Reporting real API isolation and exports', () => {
     expect(center.result.sections[0].totals?.debit).toBe(existing.totalDebit);
     expect(center.result.sections[0].totals?.credit).toBe(existing.totalCredit);
     const figures = await app.get(LedgerQueryService).estateFigures(own, 2025);
-    const result = await app
-      .get(ReportingService)
-      .execute(
-        'income-expenses-summary',
-        {
-          scopeMode: 'selected',
-          estateIds: [own],
-          from: '2025-01-01',
-          to: '2025-12-31',
-        },
-        actor,
-      );
+    const result = await app.get(ReportingService).execute(
+      'income-expenses-summary',
+      {
+        scopeMode: 'selected',
+        estateIds: [own],
+        from: '2025-01-01',
+        to: '2025-12-31',
+      },
+      actor,
+    );
     expect(
       result.result.summary.find((s) => s.label === 'Ingresos por devengo')
         ?.value,
@@ -392,14 +395,12 @@ describe('Reporting real API isolation and exports', () => {
       .set(auth())
       .send({ ...query, to: '2025-11-30', format: 'xlsx', snapshotId: id })
       .expect(409);
-    const otherToken = app
-      .get(JwtService)
-      .sign({
-        sub: second.userId,
-        role: 'B',
-        administratorId: second.administratorId,
-        estateIds: [foreign],
-      });
+    const otherToken = app.get(JwtService).sign({
+      sub: second.userId,
+      role: 'B',
+      administratorId: second.administratorId,
+      estateIds: [foreign],
+    });
     await request(app.getHttpServer())
       .post('/api/v1/reports/meeting-finance/export')
       .set('Authorization', `Bearer ${otherToken}`)

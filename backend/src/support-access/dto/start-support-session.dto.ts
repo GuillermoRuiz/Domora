@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 const trim = ({ value }: { value: unknown }) =>

@@ -1,4 +1,11 @@
-import { BadRequestException, Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+  Req,
+} from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import { BillingService } from './billing.service';
@@ -37,7 +44,10 @@ export class BillingController {
 
   @Post('change-plan')
   @Roles('B')
-  changePlan(@Body() dto: ChangePlanDto, @CurrentUser() user: AuthenticatedUser) {
+  changePlan(
+    @Body() dto: ChangePlanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.billing.changePlan(user, dto);
   }
 
@@ -65,7 +75,9 @@ export class BillingController {
       throw new BadRequestException('Falta la cabecera stripe-signature.');
     }
     if (!req.rawBody) {
-      throw new BadRequestException('No se recibió el cuerpo crudo de la petición.');
+      throw new BadRequestException(
+        'No se recibió el cuerpo crudo de la petición.',
+      );
     }
     await this.billing.handleWebhookEvent(req.rawBody, signature);
     return { received: true };

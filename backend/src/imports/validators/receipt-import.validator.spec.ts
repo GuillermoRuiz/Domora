@@ -1,6 +1,8 @@
 import { validateReceiptRow } from './receipt-import.validator';
 
-function baseRow(overrides: Record<string, string> = {}): Record<string, string> {
+function baseRow(
+  overrides: Record<string, string> = {},
+): Record<string, string> {
   return {
     no: '2026/08-001',
     periodKey: '2026-08',
@@ -51,20 +53,31 @@ describe('validateReceiptRow', () => {
   });
 
   it('reconoce alias de estado y forma de pago en español', () => {
-    expect(validateReceiptRow(baseRow({ status: 'cobrado' }), 2).data?.status).toBe('Pagada');
-    expect(validateReceiptRow(baseRow({ method: 'domiciliado' }), 2).data?.method).toBe('Domiciliacion');
+    expect(
+      validateReceiptRow(baseRow({ status: 'cobrado' }), 2).data?.status,
+    ).toBe('Pagada');
+    expect(
+      validateReceiptRow(baseRow({ method: 'domiciliado' }), 2).data?.method,
+    ).toBe('Domiciliacion');
   });
 
   it('recibo domiciliado sin IBAN: avisa pero no bloquea', () => {
-    const result = validateReceiptRow(baseRow({ method: 'Domiciliacion', iban: '' }), 2);
+    const result = validateReceiptRow(
+      baseRow({ method: 'Domiciliacion', iban: '' }),
+      2,
+    );
     expect(result.ok).toBe(true);
-    expect(result.warnings.some((w) => w.includes('domiciliado sin IBAN'))).toBe(true);
+    expect(
+      result.warnings.some((w) => w.includes('domiciliado sin IBAN')),
+    ).toBe(true);
   });
 
   it('sin nombre de propietario: avisa pero no bloquea (el recibo se importa igual)', () => {
     const result = validateReceiptRow(baseRow({ ownerName: '' }), 2);
     expect(result.ok).toBe(true);
-    expect(result.warnings.some((w) => w.includes('Sin nombre de propietario'))).toBe(true);
+    expect(
+      result.warnings.some((w) => w.includes('Sin nombre de propietario')),
+    ).toBe(true);
   });
 
   it('faltan campos obligatorios: bloquea con un error por campo', () => {
@@ -74,8 +87,13 @@ describe('validateReceiptRow', () => {
   });
 
   it('estado no reconocido: bloquea con error', () => {
-    const result = validateReceiptRow(baseRow({ status: 'no-es-un-estado' }), 2);
+    const result = validateReceiptRow(
+      baseRow({ status: 'no-es-un-estado' }),
+      2,
+    );
     expect(result.ok).toBe(false);
-    expect(result.errors.some((e) => e.includes('Estado no reconocido'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('Estado no reconocido'))).toBe(
+      true,
+    );
   });
 });

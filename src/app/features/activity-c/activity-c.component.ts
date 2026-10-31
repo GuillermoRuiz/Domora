@@ -5,6 +5,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ActivityItem, ActivityType } from '../../core/models';
 import { ResourceReadsService } from '../../core/resource-reads.service';
 import { OWNER_DOCUMENTS_ROUTE, OWNER_ISSUES_ROUTE, ownerDocumentQueryParams, ownerIssueQueryParams } from '../../core/legacy-owner-tab-redirect';
+import { OWNER_RECEIPTS_ROUTE } from '../../core/owner-routes';
 
 const ACTIVITY_LIMIT = 100;
 
@@ -73,6 +74,6 @@ export class ActivityCComponent implements OnInit {
       this.router.navigate([OWNER_DOCUMENTS_ROUTE], { queryParams: ownerDocumentQueryParams(item.id) });
       return;
     }
-    this.router.navigate(['/c/properties', item.propertyId], { queryParams: { tab: 'receipts' } });
+    this.router.navigate([OWNER_RECEIPTS_ROUTE], { queryParams: { propertyId: item.propertyId } });
   }
 }

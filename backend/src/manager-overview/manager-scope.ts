@@ -25,7 +25,9 @@ export function shiftMonths(from: Date, months: number): Date {
   const day = target.getUTCDate();
   target.setUTCDate(1);
   target.setUTCMonth(target.getUTCMonth() + months);
-  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  const lastDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
   target.setUTCDate(Math.min(day, lastDay));
   return target;
 }
@@ -42,18 +44,38 @@ export interface EstateYear {
  * Ejercicio vigente de cada finca: su fila de `fiscal_years` que contiene hoy; si todavía
  * no tiene fila, el año natural en curso (como hace el módulo de ejercicios).
  */
-export async function currentFiscalYears(prisma: PrismaService, ids: string[], today: Date): Promise<EstateYear[]> {
+export async function currentFiscalYears(
+  prisma: PrismaService,
+  ids: string[],
+  today: Date,
+): Promise<EstateYear[]> {
   const rows = await prisma.fiscalYear.findMany({
-    where: { estateId: { in: ids }, startDate: { lte: today }, endDate: { gte: today } },
+    where: {
+      estateId: { in: ids },
+      startDate: { lte: today },
+      endDate: { gte: today },
+    },
     select: { estateId: true, year: true, startDate: true, endDate: true },
     orderBy: { year: 'desc' },
   });
   const byEstate = new Map<string, EstateYear>();
   for (const r of rows) {
-    if (!byEstate.has(r.estateId)) byEstate.set(r.estateId, { estateId: r.estateId, year: r.year, start: r.startDate, end: r.endDate });
+    if (!byEstate.has(r.estateId))
+      byEstate.set(r.estateId, {
+        estateId: r.estateId,
+        year: r.year,
+        start: r.startDate,
+        end: r.endDate,
+      });
   }
   const year = today.getUTCFullYear();
   return ids.map(
-    (id) => byEstate.get(id) ?? { estateId: id, year, start: new Date(Date.UTC(year, 0, 1)), end: new Date(Date.UTC(year, 11, 31)) },
+    (id) =>
+      byEstate.get(id) ?? {
+        estateId: id,
+        year,
+        start: new Date(Date.UTC(year, 0, 1)),
+        end: new Date(Date.UTC(year, 11, 31)),
+      },
   );
 }

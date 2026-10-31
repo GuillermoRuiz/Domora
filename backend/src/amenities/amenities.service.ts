@@ -14,6 +14,10 @@ import type { CreateAmenityDto } from './dto/create-amenity.dto';
 import type { UpdateAmenityDto } from './dto/update-amenity.dto';
 import { dbErrorText } from '../prisma/prisma-errors';
 import type { CreateAmenityBlackoutDto } from './dto/create-amenity-blackout.dto';
+import {
+  ownerEstateSectionLink,
+  ownerPropertyLink,
+} from '../common/owner-links';
 
 function slotHour(slot: string): number {
   return Number(slot.split(':')[0]);
@@ -301,8 +305,8 @@ export class AmenitiesService {
         title: `Tu reserva de "${booking.amenity.name}" fue cancelada`,
         body: reason ?? null,
         link: booking.propertyId
-          ? `/c/properties/${booking.propertyId}`
-          : '/c/properties',
+          ? ownerPropertyLink(booking.propertyId, 'reservas')
+          : ownerEstateSectionLink(booking.amenity.estateId, 'reservas'),
         estateId: booking.amenity.estateId,
         propertyId: booking.propertyId,
       });

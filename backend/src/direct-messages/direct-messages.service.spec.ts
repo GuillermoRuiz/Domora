@@ -449,33 +449,50 @@ describe('DirectMessagesService — edición y borrado (Postgres real)', () => {
   afterAll(async () => {
     if (!conversationId) return;
     await prisma.directMessage.deleteMany({ where: { conversationId } });
-    await prisma.directMessageParticipant.deleteMany({ where: { conversationId } });
+    await prisma.directMessageParticipant.deleteMany({
+      where: { conversationId },
+    });
     await prisma.conversation.delete({ where: { id: conversationId } });
   });
 
   it('abre la conversación con el primer mensaje', async () => {
     const b = user(bUserId, 'B', [estateId], administratorId);
-    const first = await service.sendMessage({ recipientUserId: cUserId, text: 'Hola' }, b);
+    const first = await service.sendMessage(
+      { recipientUserId: cUserId, text: 'Hola' },
+      b,
+    );
     conversationId = first.conversationId;
     const rows = await service.listConversations(b);
-    expect(rows.find((row) => row.id === conversationId)?.lastMessagePreview).toBe('Hola');
+    expect(
+      rows.find((row) => row.id === conversationId)?.lastMessagePreview,
+    ).toBe('Hola');
   });
 
   it('edita el texto, marca editedAt y rechaza que otro usuario lo toque', async () => {
     const b = user(bUserId, 'B', [estateId], administratorId);
-    const message = await service.sendMessage({ conversationId, text: 'Texto original' }, b);
+    const message = await service.sendMessage(
+      { conversationId, text: 'Texto original' },
+      b,
+    );
     const edited = await edits.edit(message.id, 'Texto corregido', b);
     expect(edited.text).toBe('Texto corregido');
     expect(edited.editedAt).toBeInstanceOf(Date);
-    await expect(edits.edit(message.id, 'Intruso', user(cUserId, 'C', [estateId]))).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(edits.remove(message.id, user(cUserId, 'C', [estateId]))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      edits.edit(message.id, 'Intruso', user(cUserId, 'C', [estateId])),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      edits.remove(message.id, user(cUserId, 'C', [estateId])),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('al borrar el mensaje queda sin texto, la bandeja lo avisa y el otro lado no lo cuenta como no leído', async () => {
     const b = user(bUserId, 'B', [estateId], administratorId);
     const c = user(cUserId, 'C', [estateId]);
     await service.markRead(conversationId, c);
-    const message = await service.sendMessage({ conversationId, text: 'Se arrepiente' }, b);
+    const message = await service.sendMessage(
+      { conversationId, text: 'Se arrepiente' },
+      b,
+    );
     await edits.remove(message.id, b);
     const thread = await service.listMessages(conversationId, b);
     const deleted = thread.find((row) => row.id === message.id)!;
@@ -490,39 +507,83 @@ describe('DirectMessagesService — edición y borrado (Postgres real)', () => {
   it('readByRecipient pasa a true cuando el otro participante abre la conversación', async () => {
     const b = user(bUserId, 'B', [estateId], administratorId);
     const c = user(cUserId, 'C', [estateId]);
-    const message = await service.sendMessage({ conversationId, text: 'Ya lo ves?' }, b);
-    expect((await service.listMessages(conversationId, b)).find((row) => row.id === message.id)?.readByRecipient).toBe(false);
+    const message = await service.sendMessage(
+      { conversationId, text: 'Ya lo ves?' },
+      b,
+    );
+    expect(
+      (await service.listMessages(conversationId, b)).find(
+        (row) => row.id === message.id,
+      )?.readByRecipient,
+    ).toBe(false);
     await service.markRead(conversationId, c);
-    expect((await service.listMessages(conversationId, b)).find((row) => row.id === message.id)?.readByRecipient).toBe(true);
+    expect(
+      (await service.listMessages(conversationId, b)).find(
+        (row) => row.id === message.id,
+      )?.readByRecipient,
+    ).toBe(true);
   });
 
   it('eliminar la conversación solo la oculta para quien la elimina y un mensaje nuevo la devuelve con todo su historial', async () => {
     const b = user(bUserId, 'B', [estateId], administratorId);
     const c = user(cUserId, 'C', [estateId]);
-    const historyBefore = (await service.listMessages(conversationId, b)).length;
+    const historyBefore = (await service.listMessages(conversationId, b))
+      .length;
 
     await service.hideConversation(conversationId, b);
-    expect((await service.listConversations(b)).some((row) => row.id === conversationId)).toBe(false);
-    expect((await service.listConversations(c)).some((row) => row.id === conversationId)).toBe(true);
-    expect(await service.listMessages(conversationId, b)).toHaveLength(historyBefore);
+    expect(
+      (await service.listConversations(b)).some(
+        (row) => row.id === conversationId,
+      ),
+    ).toBe(false);
+    expect(
+      (await service.listConversations(c)).some(
+        (row) => row.id === conversationId,
+      ),
+    ).toBe(true);
+    expect(await service.listMessages(conversationId, b)).toHaveLength(
+      historyBefore,
+    );
     // El contacto sigue apuntando a la conversación eliminada para poder mostrar su historial antes de escribir.
-    expect((await service.listContacts(b)).find((contact) => contact.userId === cUserId)?.conversationId).toBe(conversationId);
-    await expect(service.hideConversation(conversationId, user('00000000-0000-4000-8000-000000000000', 'B', []))).rejects.toBeInstanceOf(ForbiddenException);
+    expect(
+      (await service.listContacts(b)).find(
+        (contact) => contact.userId === cUserId,
+      )?.conversationId,
+    ).toBe(conversationId);
+    await expect(
+      service.hideConversation(
+        conversationId,
+        user('00000000-0000-4000-8000-000000000000', 'B', []),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
 
     // Quien escribe de nuevo (aquí desde el contacto, sin conversationId) reutiliza la conversación y su historial.
-    await service.sendMessage({ recipientUserId: cUserId, text: 'Retomamos la conversación' }, b);
-    const back = (await service.listConversations(b)).find((row) => row.id === conversationId);
+    await service.sendMessage(
+      { recipientUserId: cUserId, text: 'Retomamos la conversación' },
+      b,
+    );
+    const back = (await service.listConversations(b)).find(
+      (row) => row.id === conversationId,
+    );
     expect(back?.lastMessagePreview).toBe('Retomamos la conversación');
-    expect(await service.listMessages(conversationId, b)).toHaveLength(historyBefore + 1);
+    expect(await service.listMessages(conversationId, b)).toHaveLength(
+      historyBefore + 1,
+    );
   });
 
   it('si la otra persona había eliminado la conversación, un mensaje nuevo se la devuelve', async () => {
     const b = user(bUserId, 'B', [estateId], administratorId);
     const c = user(cUserId, 'C', [estateId]);
     await service.hideConversation(conversationId, c);
-    expect((await service.listConversations(c)).some((row) => row.id === conversationId)).toBe(false);
+    expect(
+      (await service.listConversations(c)).some(
+        (row) => row.id === conversationId,
+      ),
+    ).toBe(false);
     await service.sendMessage({ conversationId, text: 'Sigues ahí?' }, b);
-    const row = (await service.listConversations(c)).find((item) => item.id === conversationId);
+    const row = (await service.listConversations(c)).find(
+      (item) => item.id === conversationId,
+    );
     expect(row?.unreadCount).toBeGreaterThan(0);
   });
 });

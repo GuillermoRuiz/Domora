@@ -63,7 +63,10 @@ export class FiscalYearsService {
     const existing = await this.prisma.fiscalYear.findUnique({
       where: { estateId_year: { estateId, year } },
     });
-    return existing ?? virtualFiscalYear(estateId, year, await this.defaultReserve(estateId));
+    return (
+      existing ??
+      virtualFiscalYear(estateId, year, await this.defaultReserve(estateId))
+    );
   }
 
   /** Para el selector de año: filas persistidas + el año en curso si todavía no tiene una (así el desplegable nunca queda vacío). */
@@ -75,7 +78,14 @@ export class FiscalYearsService {
     });
     const currentYear = new Date().getFullYear();
     if (!rows.some((r) => r.year === currentYear)) {
-      return [virtualFiscalYear(estateId, currentYear, await this.defaultReserve(estateId)), ...rows];
+      return [
+        virtualFiscalYear(
+          estateId,
+          currentYear,
+          await this.defaultReserve(estateId),
+        ),
+        ...rows,
+      ];
     }
     return rows;
   }
@@ -102,7 +112,7 @@ export class FiscalYearsService {
       },
     });
     return {
-      reserveMode: settings?.defaultReserveMode ?? ('receipt_share' as ReserveMode),
+      reserveMode: settings?.defaultReserveMode ?? 'receipt_share',
       reserveSharePct: settings?.defaultReserveSharePct ?? null,
       reserveAllocationRule: settings?.defaultReserveAllocationRule ?? null,
       reserveAllocationValue: settings?.defaultReserveAllocationValue ?? null,
@@ -136,9 +146,10 @@ export class FiscalYearsService {
       where: { estateId_year: { estateId, year } },
       data: {
         reserveMode: dto.reserveMode,
-        reserveSharePct: dto.reserveSharePct === null || dto.reserveSharePct === undefined
-          ? null
-          : new Prisma.Decimal(dto.reserveSharePct),
+        reserveSharePct:
+          dto.reserveSharePct === null || dto.reserveSharePct === undefined
+            ? null
+            : new Prisma.Decimal(dto.reserveSharePct),
         reserveAllocationRule: dto.reserveAllocationRule ?? null,
         reserveAllocationValue:
           dto.reserveAllocationValue === null ||

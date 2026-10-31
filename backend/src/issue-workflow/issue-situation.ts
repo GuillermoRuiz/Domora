@@ -84,7 +84,10 @@ export const ATTENTION_TASK_STATUSES: AgendaTaskStatus[] =
  * así que lo que se muestra dentro de la incidencia («Siguiente paso», «Quién tiene la pelota») es la primera línea de la
  * descripción, que dice la acción («Aprobar el envío de la consulta a X»).
  */
-export function taskActionLabel(task: { title: string; description?: string | null }): string {
+export function taskActionLabel(task: {
+  title: string;
+  description?: string | null;
+}): string {
   const first = task.description?.split('\n')[0]?.trim();
   return first ? first : task.title;
 }

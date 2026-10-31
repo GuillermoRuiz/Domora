@@ -4,6 +4,7 @@ import { roleGuard } from './core/role.guard';
 import { roleHomeRedirect } from './core/role-home';
 import { communityScopeRedirect } from './core/community-scope.service';
 import { legacyCommunityIssueRedirect, legacyOwnerTabRedirect } from './core/legacy-owner-tab-redirect';
+import { ownerCommunitySectionRedirect } from './core/owner-section-redirect';
 import { reportsRoleGuard } from './features/reports/reports.guard';
 import { legacyEstateOperationsGuard, operationsRoleGuard } from './features/operations/operations-routing';
 
@@ -198,7 +199,7 @@ export const routes: Routes = [
 
       // Role C
       {
-        path: 'c/community', canActivate: [legacyCommunityIssueRedirect],
+        path: 'c/community', canActivate: [legacyCommunityIssueRedirect, ownerCommunitySectionRedirect],
         loadComponent: () => import('./features/community-c/community-c.component').then(m => m.CommunityCComponent)
       },
       // «Mi comunidad» sustituye a «Mis propiedades» como inicio del propietario; los enlaces antiguos siguen funcionando.
@@ -216,6 +217,14 @@ export const routes: Routes = [
       {
         path: 'c/incidencias',
         loadComponent: () => import('./features/incidencias-c/incidencias-c.component').then(m => m.IncidenciasCComponent)
+      },
+      {
+        path: 'c/juntas',
+        loadComponent: () => import('./features/juntas-c/juntas-c.component').then(m => m.JuntasCComponent)
+      },
+      {
+        path: 'c/recibos',
+        loadComponent: () => import('./features/recibos-c/recibos-c.component').then(m => m.RecibosCComponent)
       },
       {
         path: 'c/documentacion',

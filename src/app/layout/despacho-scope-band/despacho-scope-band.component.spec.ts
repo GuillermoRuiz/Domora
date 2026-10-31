@@ -119,4 +119,31 @@ describe('DespachoScopeBandComponent', () => {
     expect(el.querySelector('.scope-band__denial')?.textContent).toContain(SUPPORT_MESSAGES.invalidSession);
     expect(button(el, 'Reiniciar modo soporte')).toBeDefined();
   });
+  it('on a role B screen, losing the support session sends the user back to the despacho ficha', async () => {
+    const { el, http } = await mountWithDespacho([session()]);
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/b/estates/e1');
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    button(el, 'Finalizar')!.click();
+    http.expectOne(`${API}/support-sessions/s1/end`).flush(session({ endedAt: new Date().toISOString() }));
+    await settle();
+    TestBed.tick();
+
+    expect(navigate).toHaveBeenCalledWith(['/a/admins', 'd1']);
+  });
+
+  it('on a role A screen, ending the session does not navigate', async () => {
+    const { el, http } = await mountWithDespacho([session()]);
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/a/admins/d1');
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    button(el, 'Finalizar')!.click();
+    http.expectOne(`${API}/support-sessions/s1/end`).flush(session({ endedAt: new Date().toISOString() }));
+    await settle();
+    TestBed.tick();
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
 });

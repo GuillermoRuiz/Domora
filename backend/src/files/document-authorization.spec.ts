@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { DocumentFilesController } from './files.controller';
 import { LibraryService } from '../documents/library.service';
@@ -115,16 +119,27 @@ describe('Original document authorization uses current database state', () => {
   it('records every download in the access log', async () => {
     const { audit, controller, response } = fixture();
     await controller.download(DOC_ID, user, response);
-    expect(audit.logAccess).toHaveBeenCalledWith(user, 'document', 'download', 'document-a', 'Acta');
+    expect(audit.logAccess).toHaveBeenCalledWith(
+      user,
+      'document',
+      'download',
+      'document-a',
+      'Acta',
+    );
   });
   it('a document without a stored type is served with the type of its file extension', async () => {
     const { controller, response } = fixture();
     await controller.download(DOC_ID, user, response);
-    expect(response.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+    expect(response.setHeader).toHaveBeenCalledWith(
+      'Content-Type',
+      'application/pdf',
+    );
   });
   it('a file missing from storage answers 404 with a clear message, not a 500', async () => {
     const { storage, audit, controller, response } = fixture();
-    storage.get.mockRejectedValue(Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' }));
+    storage.get.mockRejectedValue(
+      Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' }),
+    );
     await expect(controller.download(DOC_ID, user, response)).rejects.toThrow(
       new NotFoundException('El fichero de este documento no está disponible.'),
     );
@@ -134,41 +149,79 @@ describe('Original document authorization uses current database state', () => {
     const answer = async (setup: (f: ReturnType<typeof fixture>) => void) => {
       const f = fixture();
       setup(f);
-      const error = await f.controller.download(DOC_ID, user, f.response).catch((e: unknown) => e);
+      const error = await f.controller
+        .download(DOC_ID, user, f.response)
+        .catch((e: unknown) => e);
       expect(f.storage.get).not.toHaveBeenCalled();
-      return { type: (error as object).constructor.name, status: (error as NotFoundException).getStatus(), body: (error as NotFoundException).getResponse() };
+      return {
+        type: (error as object).constructor.name,
+        status: (error as NotFoundException).getStatus(),
+        body: (error as NotFoundException).getResponse(),
+      };
     };
-    const missing = await answer((f) => f.prisma.document.findFirst.mockResolvedValue(null));
-    const otherCommunity = await answer((f) => f.prisma.estate.findMany.mockResolvedValue([]));
-    const notVisible = await answer((f) => f.prisma.document.findMany.mockResolvedValue([]));
-    expect(missing).toEqual({ type: 'NotFoundException', status: 404, body: { message: 'Documento no encontrado.', error: 'Not Found', statusCode: 404 } });
+    const missing = await answer((f) =>
+      f.prisma.document.findFirst.mockResolvedValue(null),
+    );
+    const otherCommunity = await answer((f) =>
+      f.prisma.estate.findMany.mockResolvedValue([]),
+    );
+    const notVisible = await answer((f) =>
+      f.prisma.document.findMany.mockResolvedValue([]),
+    );
+    expect(missing).toEqual({
+      type: 'NotFoundException',
+      status: 404,
+      body: {
+        message: 'Documento no encontrado.',
+        error: 'Not Found',
+        statusCode: 404,
+      },
+    });
     expect(otherCommunity).toEqual(missing);
     expect(notVisible).toEqual(missing);
   });
   it('a malformed document id is rejected with 400 before touching the database', async () => {
     const { prisma, controller, response } = fixture();
-    await expect(controller.download('abc', user, response)).rejects.toThrow(new BadRequestException('Identificador de documento no válido.'));
+    await expect(controller.download('abc', user, response)).rejects.toThrow(
+      new BadRequestException('Identificador de documento no válido.'),
+    );
     expect(prisma.document.findFirst).not.toHaveBeenCalled();
   });
   it('a generated document may only point at the file of its origin', async () => {
     const { prisma, storage, controller, response } = fixture();
     prisma.document.findFirst.mockResolvedValue({
-      id: 'document-a', estateId: 'community-a', title: 'Acta', source: 'generated',
-      sourceRef: 'meeting:11111111-1111-1111-1111-111111111111', s3Key: 'documents/other-estate/secret.pdf',
+      id: 'document-a',
+      estateId: 'community-a',
+      title: 'Acta',
+      source: 'generated',
+      sourceRef: 'meeting:11111111-1111-1111-1111-111111111111',
+      s3Key: 'documents/other-estate/secret.pdf',
     });
-    await expect(controller.download(DOC_ID, user, response)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      controller.download(DOC_ID, user, response),
+    ).rejects.toBeInstanceOf(ForbiddenException);
     expect(storage.get).not.toHaveBeenCalled();
   });
   it('downloads are never cached: Cache-Control private, no-store (G11)', async () => {
     const { controller, response } = fixture();
     await controller.download(DOC_ID, user, response);
-    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
-    expect(response.setHeader).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
+    expect(response.setHeader).toHaveBeenCalledWith(
+      'Cache-Control',
+      'private, no-store',
+    );
+    expect(response.setHeader).toHaveBeenCalledWith(
+      'X-Content-Type-Options',
+      'nosniff',
+    );
   });
   it('the file name goes in Content-Disposition with an ASCII fallback and the RFC 5987 UTF-8 form (G12)', async () => {
     const { prisma, controller, response } = fixture();
     prisma.document.findFirst.mockResolvedValue({
-      id: 'document-a', estateId: 'community-a', s3Key: 'documents/community-a/f.pdf', title: 'Acta "junta" año 2026.pdf', targetPropertyId: null,
+      id: 'document-a',
+      estateId: 'community-a',
+      s3Key: 'documents/community-a/f.pdf',
+      title: 'Acta "junta" año 2026.pdf',
+      targetPropertyId: null,
     });
     await controller.download(DOC_ID, user, response);
     expect(response.setHeader).toHaveBeenCalledWith(
@@ -179,28 +232,56 @@ describe('Original document authorization uses current database state', () => {
   it('a title without extension downloads with the extension of the original file', async () => {
     const { prisma, controller, response } = fixture();
     prisma.document.findFirst.mockResolvedValue({
-      id: 'document-a', estateId: 'community-a', s3Key: 'documents/community-a/uuid-poliza.pdf', title: 'Póliza (2026)', targetPropertyId: null,
+      id: 'document-a',
+      estateId: 'community-a',
+      s3Key: 'documents/community-a/uuid-poliza.pdf',
+      title: 'Póliza (2026)',
+      targetPropertyId: null,
     });
     await controller.download(DOC_ID, user, response);
-    expect(response.setHeader).toHaveBeenCalledWith('Content-Disposition', `attachment; filename="Poliza (2026).pdf"; filename*=UTF-8''P%C3%B3liza%20%282026%29.pdf`);
+    expect(response.setHeader).toHaveBeenCalledWith(
+      'Content-Disposition',
+      `attachment; filename="Poliza (2026).pdf"; filename*=UTF-8''P%C3%B3liza%20%282026%29.pdf`,
+    );
   });
   it('a preview is audited as view and a download as download; download is the default (G14)', async () => {
     const view = fixture();
     await view.controller.download(DOC_ID, user, view.response, 'view');
-    expect(view.audit.logAccess).toHaveBeenCalledWith(user, 'document', 'view', 'document-a', 'Acta');
+    expect(view.audit.logAccess).toHaveBeenCalledWith(
+      user,
+      'document',
+      'view',
+      'document-a',
+      'Acta',
+    );
     const explicit = fixture();
-    await explicit.controller.download(DOC_ID, user, explicit.response, 'download');
-    expect(explicit.audit.logAccess).toHaveBeenCalledWith(user, 'document', 'download', 'document-a', 'Acta');
+    await explicit.controller.download(
+      DOC_ID,
+      user,
+      explicit.response,
+      'download',
+    );
+    expect(explicit.audit.logAccess).toHaveBeenCalledWith(
+      user,
+      'document',
+      'download',
+      'document-a',
+      'Acta',
+    );
   });
   it('an unknown purpose is rejected with 400 before touching the database', async () => {
     const { prisma, controller, response } = fixture();
-    await expect(controller.download(DOC_ID, user, response, 'print')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      controller.download(DOC_ID, user, response, 'print'),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.document.findFirst).not.toHaveBeenCalled();
   });
   it('a denied preview answers the same 404 and is not audited', async () => {
     const { prisma, audit, controller, response } = fixture();
     prisma.document.findMany.mockResolvedValue([]);
-    await expect(controller.download(DOC_ID, user, response, 'view')).rejects.toThrow(new NotFoundException('Documento no encontrado.'));
+    await expect(
+      controller.download(DOC_ID, user, response, 'view'),
+    ).rejects.toThrow(new NotFoundException('Documento no encontrado.'));
     expect(audit.logAccess).not.toHaveBeenCalled();
   });
   it('denies uploads after staff role was revoked, despite a previous B token', async () => {

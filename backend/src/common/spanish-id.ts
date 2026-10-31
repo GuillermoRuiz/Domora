@@ -9,6 +9,10 @@ export function normalizeSpanishId(value: string): string {
 export function isValidDniOrNie(value: string): boolean {
   const id = normalizeSpanishId(value);
   if (!/^([0-9]{8}|[XYZ][0-9]{7})[A-Z]$/.test(id)) return false;
-  const digits = id.replace('X', '0').replace('Y', '1').replace('Z', '2').slice(0, 8);
+  const digits = id
+    .replace('X', '0')
+    .replace('Y', '1')
+    .replace('Z', '2')
+    .slice(0, 8);
   return DNI_LETTERS[Number(digits) % 23] === id[8];
 }

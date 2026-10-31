@@ -1,12 +1,28 @@
-import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AdminActivityType, BillingInterval, Prisma, type PlanTier } from '../prisma/client';
+import {
+  AdminActivityType,
+  BillingInterval,
+  Prisma,
+  type PlanTier,
+} from '../prisma/client';
 import type Stripe from 'stripe';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminsService } from '../admins/admins.service';
 import { StripeService } from './stripe.service';
 import { resolveFrontendBaseUrl } from '../common/frontend-url';
-import { deriveAdminStatusFromStripe, detachedSubscriptionRef, isActiveStripeSubscription, resolvesPastDueGrace } from '../common/subscription-status';
+import {
+  deriveAdminStatusFromStripe,
+  detachedSubscriptionRef,
+  isActiveStripeSubscription,
+  resolvesPastDueGrace,
+} from '../common/subscription-status';
 import { PLAN_TIERS } from '../admins/plans.catalog';
 import { monthlyAmountFromPrice } from '../platform-metrics/mrr';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -16,7 +32,10 @@ import type { ChangePlanDto } from './dto/billing.dto';
 /** Las 3 fases del aviso de morosidad — ver ID 17 (período de gracia). */
 type BillingNotifyPhase = 'warning' | 'restricted' | 'recovered';
 
-const BILLING_NOTIFY_COPY: Record<BillingNotifyPhase, { title: string; body: string }> = {
+const BILLING_NOTIFY_COPY: Record<
+  BillingNotifyPhase,
+  { title: string; body: string }
+> = {
   warning: {
     title: 'Tu pago falló — regularizalo antes de 7 días',
     body: 'No pudimos cobrar tu suscripción. Actualiza tu método de pago o tu cuenta pasará a solo lectura.',
@@ -80,9 +99,13 @@ export class BillingService {
    * mensaje claro. Recibe la relación ya cargada por `requireAdmin` — nunca
    * vuelve a consultarla.
    */
-  private requireSubscription(sub: { stripeSubscriptionId: string | null; status: string | null } | null) {
+  private requireSubscription(
+    sub: { stripeSubscriptionId: string | null; status: string | null } | null,
+  ) {
     if (!isActiveStripeSubscription(sub)) {
-      throw new ConflictException('Todavía no tienes una suscripción activa en Stripe.');
+      throw new ConflictException(
+        'Todavía no tienes una suscripción activa en Stripe.',
+      );
     }
     return sub;
   }
@@ -101,7 +124,9 @@ export class BillingService {
    * se caiga por una condición de carrera de un doble clic.
    */
   private async ensureCustomer(
-    admin: Prisma.AdministratorGetPayload<{ include: { billing: true; subscription: true } }>,
+    admin: Prisma.AdministratorGetPayload<{
+      include: { billing: true; subscription: true };
+    }>,
   ) {
     if (admin.subscription) return admin.subscription;
 
@@ -137,7 +162,9 @@ export class BillingService {
     });
   }
 
-  async createCheckoutSession(user: AuthenticatedUser): Promise<{ url: string }> {
+  async createCheckoutSession(
+    user: AuthenticatedUser,
+  ): Promise<{ url: string }> {
     const admin = await this.requireAdmin(user);
     // La comprobación de datos de facturación completos vive en
     // ensureCustomer() (única fuente de verdad, ver su comentario) — sin
@@ -171,7 +198,9 @@ export class BillingService {
     return { url };
   }
 
-  async createSetupPaymentMethodSession(user: AuthenticatedUser): Promise<{ url: string }> {
+  async createSetupPaymentMethodSession(
+    user: AuthenticatedUser,
+  ): Promise<{ url: string }> {
     const admin = await this.requireAdmin(user);
     const sub = await this.ensureCustomer(admin);
     const url = await this.stripe.createSetupCheckoutSession({
@@ -192,7 +221,9 @@ export class BillingService {
   async openPortal(user: AuthenticatedUser): Promise<{ url: string }> {
     const admin = await this.requireAdmin(user);
     if (!admin.subscription) {
-      throw new ConflictException('Todavía no tienes una suscripción de Stripe asociada.');
+      throw new ConflictException(
+        'Todavía no tienes una suscripción de Stripe asociada.',
+      );
     }
     const url = await this.stripe.createPortalSession({
       customerId: admin.subscription.stripeCustomerId,
@@ -222,7 +253,11 @@ export class BillingService {
     const sub = this.requireSubscription(admin.subscription);
     const newPriceId = this.stripe.priceIdFor(dto.plan);
     const quantity = PLAN_TIERS[dto.plan][0].max;
-    await this.stripe.changePlan(sub.stripeSubscriptionId, newPriceId, quantity);
+    await this.stripe.changePlan(
+      sub.stripeSubscriptionId,
+      newPriceId,
+      quantity,
+    );
   }
 
   async cancelSubscription(user: AuthenticatedUser): Promise<void> {
@@ -274,7 +309,10 @@ export class BillingService {
    * 1/12) y el intervalo de facturación — compartido entre
    * onCheckoutSessionCompleted y onSubscriptionUpdated.
    */
-  private mrrFromItem(item: Stripe.SubscriptionItem | undefined): { mrr?: Prisma.Decimal; billingInterval?: BillingInterval } {
+  private mrrFromItem(item: Stripe.SubscriptionItem | undefined): {
+    mrr?: Prisma.Decimal;
+    billingInterval?: BillingInterval;
+  } {
     const recurring = item?.price.recurring;
     const monthly = monthlyAmountFromPrice({
       unitAmount: item?.price.unit_amount,
@@ -284,17 +322,32 @@ export class BillingService {
     });
     return {
       ...(monthly !== undefined && { mrr: new Prisma.Decimal(monthly) }),
-      ...(recurring && { billingInterval: recurring.interval === 'year' ? BillingInterval.year : BillingInterval.month }),
+      ...(recurring && {
+        billingInterval:
+          recurring.interval === 'year'
+            ? BillingInterval.year
+            : BillingInterval.month,
+      }),
     };
   }
 
-  private async onCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
+  private async onCheckoutSessionCompleted(
+    session: Stripe.Checkout.Session,
+  ): Promise<void> {
     if (session.mode === 'setup') {
-      const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+      const customerId =
+        typeof session.customer === 'string'
+          ? session.customer
+          : session.customer?.id;
       const setupIntentId =
-        typeof session.setup_intent === 'string' ? session.setup_intent : session.setup_intent?.id;
+        typeof session.setup_intent === 'string'
+          ? session.setup_intent
+          : session.setup_intent?.id;
       if (customerId && setupIntentId) {
-        await this.stripe.setDefaultPaymentMethodFromSetupIntent(customerId, setupIntentId);
+        await this.stripe.setDefaultPaymentMethodFromSetupIntent(
+          customerId,
+          setupIntentId,
+        );
       }
       return;
     }
@@ -302,10 +355,17 @@ export class BillingService {
 
     const administratorId = session.metadata?.['administrator_id'];
     const subscriptionId =
-      typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
-    const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+      typeof session.subscription === 'string'
+        ? session.subscription
+        : session.subscription?.id;
+    const customerId =
+      typeof session.customer === 'string'
+        ? session.customer
+        : session.customer?.id;
     if (!administratorId || !subscriptionId || !customerId) {
-      this.logger.warn(`checkout.session.completed sin metadata suficiente (session ${session.id}).`);
+      this.logger.warn(
+        `checkout.session.completed sin metadata suficiente (session ${session.id}).`,
+      );
       return;
     }
     if (await this.wasDetached(subscriptionId)) return;
@@ -325,10 +385,15 @@ export class BillingService {
     // subscriptionId) — así que van en paralelo: este webhook conviene
     // confirmarlo rápido, Stripe reintenta si tarda.
     const [previous, subscription] = await Promise.all([
-      this.prisma.administratorSubscription.findUnique({ where: { administratorId } }),
+      this.prisma.administratorSubscription.findUnique({
+        where: { administratorId },
+      }),
       this.stripe.retrieveSubscription(subscriptionId),
     ]);
-    if (isActiveStripeSubscription(previous) && previous.stripeSubscriptionId !== subscriptionId) {
+    if (
+      isActiveStripeSubscription(previous) &&
+      previous.stripeSubscriptionId !== subscriptionId
+    ) {
       this.logger.error(
         `Doble checkout detectado para la gestora ${administratorId}: la suscripción ${previous.stripeSubscriptionId} ya estaba activa y ahora se registra también ${subscriptionId}. Ambas están cobrando en Stripe — hay que cancelar una manualmente desde el dashboard de Stripe.`,
       );
@@ -369,7 +434,9 @@ export class BillingService {
     if (phase) await this.notifyBillingPhase(administratorId, phase);
   }
 
-  private async onSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
+  private async onSubscriptionUpdated(
+    subscription: Stripe.Subscription,
+  ): Promise<void> {
     const existing = await this.prisma.administratorSubscription.findUnique({
       where: { stripeSubscriptionId: subscription.id },
     });
@@ -383,7 +450,8 @@ export class BillingService {
     // facturación manual»), whose id was cleared. Linking it again by its
     // metadata would turn the despacho back into a canceled Stripe client.
     if (!existing && (await this.wasDetached(subscription.id))) return;
-    const administratorId = existing?.administratorId ?? subscription.metadata?.['administrator_id'];
+    const administratorId =
+      existing?.administratorId ?? subscription.metadata?.['administrator_id'];
     if (!administratorId) {
       this.logger.warn(
         `customer.subscription.updated para una suscripción no registrada y sin metadata resoluble (${subscription.id}).`,
@@ -397,7 +465,9 @@ export class BillingService {
     const quantity = item?.quantity;
     const amount = this.mrrFromItem(item);
     const customerId =
-      typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
+      typeof subscription.customer === 'string'
+        ? subscription.customer
+        : subscription.customer.id;
 
     // Refleja en Administrator el plan/cupo/importe REAL vigente en
     // Stripe — el cambio de plan (proration_behavior: 'none') y la
@@ -450,10 +520,13 @@ export class BillingService {
       return { applied: true as const, phase };
     });
     if (!outcome.applied) {
-      this.logger.log(`customer.subscription.updated ignorado: la suscripción ${subscription.id} se desvinculó mientras se procesaba.`);
+      this.logger.log(
+        `customer.subscription.updated ignorado: la suscripción ${subscription.id} se desvinculó mientras se procesaba.`,
+      );
       return;
     }
-    if (outcome.phase) await this.notifyBillingPhase(administratorId, outcome.phase);
+    if (outcome.phase)
+      await this.notifyBillingPhase(administratorId, outcome.phase);
 
     // «Solicitud de baja»: solo en la transición a cancelar al cierre del periodo.
     if (subscription.cancel_at_period_end && !existing?.cancelAtPeriodEnd) {
@@ -542,7 +615,12 @@ export class BillingService {
     tx: Prisma.TransactionClient,
     administratorId: string,
     stripeStatus: string,
-    extra: { plan?: PlanTier | null; usersMax?: number; mrr?: Prisma.Decimal; billingInterval?: BillingInterval },
+    extra: {
+      plan?: PlanTier | null;
+      usersMax?: number;
+      mrr?: Prisma.Decimal;
+      billingInterval?: BillingInterval;
+    },
   ): Promise<BillingNotifyPhase | null> {
     const admin = await tx.administrator.findUnique({
       where: { id: administratorId },
@@ -569,9 +647,16 @@ export class BillingService {
         // estado terminal previo) o en un estado manual — un reintento más
         // de Stripe no cambia nada aquí.
       } else if (resolvesPastDueGrace(stripeStatus)) {
-        const newStatus = deriveAdminStatusFromStripe(admin.status, stripeStatus);
+        const newStatus = deriveAdminStatusFromStripe(
+          admin.status,
+          stripeStatus,
+        );
         if (newStatus === 'Vencida') {
-          await this.restrictAdministrator(tx, administratorId, `Stripe: ${stripeStatus}`);
+          await this.restrictAdministrator(
+            tx,
+            administratorId,
+            `Stripe: ${stripeStatus}`,
+          );
           phase = 'restricted';
         } else if (newStatus === 'Activa') {
           await this.reactivateAdministrator(tx, administratorId);
@@ -588,14 +673,21 @@ export class BillingService {
       }
     }
 
-    if (extra.plan || extra.usersMax !== undefined || extra.mrr !== undefined || extra.billingInterval) {
+    if (
+      extra.plan ||
+      extra.usersMax !== undefined ||
+      extra.mrr !== undefined ||
+      extra.billingInterval
+    ) {
       await tx.administrator.update({
         where: { id: administratorId },
         data: {
           ...(extra.plan && { plan: extra.plan }),
           ...(extra.usersMax !== undefined && { usersMax: extra.usersMax }),
           ...(extra.mrr !== undefined && { mrr: extra.mrr }),
-          ...(extra.billingInterval && { billingInterval: extra.billingInterval }),
+          ...(extra.billingInterval && {
+            billingInterval: extra.billingInterval,
+          }),
         },
       });
     }
@@ -608,7 +700,8 @@ export class BillingService {
     administratorId: string,
     phase: BillingNotifyPhase,
   ): Promise<void> {
-    const userIds = await this.notifications.administratorTeamUserIds(administratorId);
+    const userIds =
+      await this.notifications.administratorTeamUserIds(administratorId);
     const copy = BILLING_NOTIFY_COPY[phase];
     await this.notifications.notify({
       userIds,
@@ -627,7 +720,11 @@ export class BillingService {
    */
   async restrictForExpiredGrace(administratorId: string): Promise<void> {
     await this.prisma.$transaction((tx) =>
-      this.restrictAdministrator(tx, administratorId, '7 días de pago pendiente sin regularizar'),
+      this.restrictAdministrator(
+        tx,
+        administratorId,
+        '7 días de pago pendiente sin regularizar',
+      ),
     );
     await this.notifyBillingPhase(administratorId, 'restricted');
   }
@@ -651,14 +748,21 @@ export class BillingService {
         {},
       );
     });
-    if (existing && phase) await this.notifyBillingPhase(existing.administratorId, phase);
+    if (existing && phase)
+      await this.notifyBillingPhase(existing.administratorId, phase);
   }
 
   /** `invoice.parent.subscription_details` en vez de un `invoice.subscription` plano — así lo modela esta versión de la API. */
-  private async administratorIdFromInvoice(invoice: Stripe.Invoice): Promise<string | null> {
-    const metaId = invoice.parent?.subscription_details?.metadata?.['administrator_id'];
+  private async administratorIdFromInvoice(
+    invoice: Stripe.Invoice,
+  ): Promise<string | null> {
+    const metaId =
+      invoice.parent?.subscription_details?.metadata?.['administrator_id'];
     if (metaId) return metaId;
-    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+    const customerId =
+      typeof invoice.customer === 'string'
+        ? invoice.customer
+        : invoice.customer?.id;
     if (!customerId) return null;
     const sub = await this.prisma.administratorSubscription.findFirst({
       where: { stripeCustomerId: customerId },
@@ -705,7 +809,9 @@ export class BillingService {
 
     const administratorId = await this.administratorIdFromInvoice(invoice);
     if (!administratorId) {
-      this.logger.warn(`invoice.finalized sin gestora resoluble (invoice ${invoice.id}).`);
+      this.logger.warn(
+        `invoice.finalized sin gestora resoluble (invoice ${invoice.id}).`,
+      );
       return;
     }
 
@@ -748,7 +854,10 @@ export class BillingService {
       // arriba no es atómica con la inserción, así que un P2002 en
       // stripe_invoice_id significa que la otra entrega ganó — no es un
       // fallo real.
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
         return;
       }
       // Cualquier otro error aquí significa que Stripe YA cobró este
@@ -769,7 +878,9 @@ export class BillingService {
   }
 
   /** Best-effort: si `invoice.finalized` todavía no se procesó, `updateMany` no encuentra fila y no falla — la reconciliación llega cuando ese evento aterrice. */
-  private async onInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+  private async onInvoicePaymentSucceeded(
+    invoice: Stripe.Invoice,
+  ): Promise<void> {
     if (!invoice.id) return;
     await this.prisma.adminInvoice.updateMany({
       where: { stripeInvoiceId: invoice.id },
@@ -777,7 +888,10 @@ export class BillingService {
     });
     // «Pago recibido» de Actividad reciente (rol A). Por el cliente de Stripe y
     // no por la factura fiscal: `invoice.finalized` puede no haber llegado aún.
-    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+    const customerId =
+      typeof invoice.customer === 'string'
+        ? invoice.customer
+        : invoice.customer?.id;
     if (!customerId || invoice.amount_paid == null) return;
     const sub = await this.prisma.administratorSubscription.findFirst({
       where: { stripeCustomerId: customerId },
@@ -806,12 +920,20 @@ export class BillingService {
       where: { externalRef: detachedSubscriptionRef(subscriptionId) },
       select: { id: true },
     });
-    if (tombstone) this.logger.log(`Evento de Stripe ignorado: la suscripción ${subscriptionId} se desvinculó al pasar a facturación manual.`);
+    if (tombstone)
+      this.logger.log(
+        `Evento de Stripe ignorado: la suscripción ${subscriptionId} se desvinculó al pasar a facturación manual.`,
+      );
     return !!tombstone;
   }
 
   /** Activity entry for a business event of a despacho; idempotent by `externalRef` because Stripe retries webhooks. */
-  private async recordBusinessEvent(administratorId: string, type: AdminActivityType, title: string, externalRef: string): Promise<void> {
+  private async recordBusinessEvent(
+    administratorId: string,
+    type: AdminActivityType,
+    title: string,
+    externalRef: string,
+  ): Promise<void> {
     await this.prisma.adminActivityItem.createMany({
       data: [{ administratorId, type, title, externalRef }],
       skipDuplicates: true,
@@ -843,7 +965,10 @@ export class BillingService {
   }
 }
 
-const EUROS = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const EUROS = new Intl.NumberFormat('es-ES', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 /** «143,99 €» with a plain space, as the activity titles are read as text. */
 function formatEuros(value: number): string {
@@ -852,5 +977,10 @@ function formatEuros(value: number): string {
 
 /** dd/mm/aaaa of a Stripe timestamp, in UTC like Stripe's periods. */
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+  return date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }

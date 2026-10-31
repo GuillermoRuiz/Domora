@@ -7,10 +7,18 @@ const API_PREFIX = ['api', 'v1'];
  * health/root probes. A request to them neither marks the user active nor adds
  * a module.
  */
-export const USAGE_IGNORED_MODULES: ReadonlySet<string> = new Set(['auth', 'notifications', 'push', 'health']);
+export const USAGE_IGNORED_MODULES: ReadonlySet<string> = new Set([
+  'auth',
+  'notifications',
+  'push',
+  'health',
+]);
 
 const isStatic = (segment: string | undefined): segment is string =>
-  !!segment && !segment.startsWith(':') && !segment.startsWith('*') && !segment.includes('{');
+  !!segment &&
+  !segment.startsWith(':') &&
+  !segment.startsWith('*') &&
+  !segment.includes('{');
 
 /**
  * Module key of a controller, from its own `@Controller(path)` (never the
@@ -24,10 +32,15 @@ const isStatic = (segment: string | undefined): segment is string =>
  * - the `me/...` namespace is skipped (`me/issues` → `issues`);
  * - noise controllers (USAGE_IGNORED_MODULES) and the root return null.
  */
-export function moduleKeyFromControllerPath(controllerPath: string | undefined): string | null {
+export function moduleKeyFromControllerPath(
+  controllerPath: string | undefined,
+): string | null {
   if (!controllerPath) return null;
   let segments = controllerPath.split('/').filter(Boolean);
-  if (segments.length >= API_PREFIX.length && API_PREFIX.every((p, i) => segments[i].toLowerCase() === p)) {
+  if (
+    segments.length >= API_PREFIX.length &&
+    API_PREFIX.every((p, i) => segments[i].toLowerCase() === p)
+  ) {
     segments = segments.slice(API_PREFIX.length);
   }
   if (segments[0]?.toLowerCase() === 'me') segments = segments.slice(1);

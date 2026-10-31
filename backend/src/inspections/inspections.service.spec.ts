@@ -64,13 +64,11 @@ describe('InspectionsService', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
       asset: {
-        findFirst: jest
-          .fn()
-          .mockResolvedValue({
-            id: 'asset-1',
-            name: 'Ascensor principal',
-            estateId: 'estate-1',
-          }),
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'asset-1',
+          name: 'Ascensor principal',
+          estateId: 'estate-1',
+        }),
       },
       correctiveAction: {
         findUnique: jest.fn(),
@@ -155,11 +153,21 @@ describe('InspectionsService', () => {
         ...baseInspection,
         appointmentDate: new Date('2026-10-01'),
       });
-      txRegulatoryInspectionUpdate.mockResolvedValue({ ...detailPayload, status: 'citada', appointmentDate: null });
+      txRegulatoryInspectionUpdate.mockResolvedValue({
+        ...detailPayload,
+        status: 'citada',
+        appointmentDate: null,
+      });
 
-      await service.update('insp-1', { status: 'citada', appointmentDate: null } as any, user('B'));
+      await service.update(
+        'insp-1',
+        { status: 'citada', appointmentDate: null } as any,
+        user('B'),
+      );
 
-      expect(txRegulatoryInspectionUpdate.mock.calls[0][0].data.appointmentDate).toBeNull();
+      expect(
+        txRegulatoryInspectionUpdate.mock.calls[0][0].data.appointmentDate,
+      ).toBeNull();
       expect(notifications.notify).not.toHaveBeenCalled();
     });
 

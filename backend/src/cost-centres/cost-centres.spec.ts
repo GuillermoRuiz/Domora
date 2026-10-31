@@ -1,9 +1,17 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstateAccessService } from '../estate-access/estate-access.service';
 import { CostCentresService } from './cost-centres.service';
 import type { AppRole, AuthenticatedUser } from '../auth/auth.types';
-import { createAdministrator, createLedgerEstate, purgeAdministrator } from '../testing/db-fixtures';
+import {
+  createAdministrator,
+  createLedgerEstate,
+  purgeAdministrator,
+} from '../testing/db-fixtures';
 import { JournalService } from '../ledger/journal/journal.service';
 import { TreasuryPostingService } from '../ledger/posting/treasury-posting.service';
 import { createPrismaClient } from '../prisma/create-prisma-client';
@@ -17,7 +25,10 @@ import { createPrismaClient } from '../prisma/create-prisma-client';
  */
 const prisma = createPrismaClient();
 const estateAccess = new EstateAccessService();
-const service = new CostCentresService(prisma as unknown as PrismaService, estateAccess);
+const service = new CostCentresService(
+  prisma as unknown as PrismaService,
+  estateAccess,
+);
 const treasury = new TreasuryPostingService(new JournalService());
 
 jest.setTimeout(60_000);
@@ -43,7 +54,10 @@ function emptyFixture(): Fixture {
   return { costCentreIds: [] };
 }
 
-async function makeCostCentre(fixture: Fixture, overrides: Partial<{ name: string }> = {}) {
+async function makeCostCentre(
+  fixture: Fixture,
+  overrides: Partial<{ name: string }> = {},
+) {
   const c = await prisma.costCentre.create({
     data: {
       estateId,
@@ -81,19 +95,27 @@ async function cleanup(fixture: Fixture): Promise<void> {
   });
   const usedIds = new Set(used.map((l) => l.costCentreId));
   await prisma.costCentre.deleteMany({
-    where: { id: { in: fixture.costCentreIds.filter((id) => !usedIds.has(id)) } },
+    where: {
+      id: { in: fixture.costCentreIds.filter((id) => !usedIds.has(id)) },
+    },
   });
 }
 
 beforeAll(async () => {
-  const admin = await createAdministrator(prisma, { name: 'Gestora de prueba (centros de coste)' });
+  const admin = await createAdministrator(prisma, {
+    name: 'Gestora de prueba (centros de coste)',
+  });
   administratorId = admin.administratorId;
   bUserId = admin.userId;
   const currentYear = new Date().getFullYear();
   estateId = await createLedgerEstate(prisma, administratorId, {
     cutoverDate: new Date(`${currentYear - 1}-01-01T00:00:00Z`),
   });
-  accountId = (await prisma.chartAccount.findFirstOrThrow({ where: { estateId, code: '622' } })).id;
+  accountId = (
+    await prisma.chartAccount.findFirstOrThrow({
+      where: { estateId, code: '622' },
+    })
+  ).id;
   user = ROLE_B(bUserId, [estateId]);
 });
 
@@ -106,7 +128,11 @@ describe('CostCentresService — CRUD', () => {
   it('crea un centro de coste con status "Activo" por defecto', async () => {
     const fx = emptyFixture();
     try {
-      const created = await service.createCostCentre(estateId, { name: 'Ascensor Portal A' } as any, user);
+      const created = await service.createCostCentre(
+        estateId,
+        { name: 'Ascensor Portal A' } as any,
+        user,
+      );
       fx.costCentreIds.push(created.id);
       expect(created.status).toBe('Activo');
     } finally {
@@ -118,9 +144,9 @@ describe('CostCentresService — CRUD', () => {
     const fx = emptyFixture();
     try {
       await makeCostCentre(fx, { name: 'Jardín' });
-      await expect(service.createCostCentre(estateId, { name: 'Jardín' } as any, user)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.createCostCentre(estateId, { name: 'Jardín' } as any, user),
+      ).rejects.toThrow(ConflictException);
     } finally {
       await cleanup(fx);
     }
@@ -130,9 +156,16 @@ describe('CostCentresService — CRUD', () => {
     const fx = emptyFixture();
     try {
       const centre = await makeCostCentre(fx);
-      const updated = await service.updateCostCentre(estateId, centre.id, { status: 'Archivado' } as any, user);
+      const updated = await service.updateCostCentre(
+        estateId,
+        centre.id,
+        { status: 'Archivado' } as any,
+        user,
+      );
       expect(updated.status).toBe('Archivado');
-      const stillThere = await prisma.costCentre.findUnique({ where: { id: centre.id } });
+      const stillThere = await prisma.costCentre.findUnique({
+        where: { id: centre.id },
+      });
       expect(stillThere).not.toBeNull();
     } finally {
       await cleanup(fx);
@@ -144,11 +177,22 @@ describe('CostCentresService — CRUD', () => {
     try {
       const centre = await makeCostCentre(fx);
       const otherEstate = await prisma.estate.create({
-        data: { administratorId, name: 'Otra finca', type: 'Edificio', address: 'x', location: 'x' },
+        data: {
+          administratorId,
+          name: 'Otra finca',
+          type: 'Edificio',
+          address: 'x',
+          location: 'x',
+        },
       });
       try {
         await expect(
-          service.updateCostCentre(otherEstate.id, centre.id, { name: 'x' } as any, ROLE_B(bUserId, [otherEstate.id])),
+          service.updateCostCentre(
+            otherEstate.id,
+            centre.id,
+            { name: 'x' } as any,
+            ROLE_B(bUserId, [otherEstate.id]),
+          ),
         ).rejects.toThrow(NotFoundException);
       } finally {
         await prisma.estate.delete({ where: { id: otherEstate.id } });
@@ -160,7 +204,9 @@ describe('CostCentresService — CRUD', () => {
 
   it('deniega el acceso a una finca fuera del scope del usuario', async () => {
     const outsider = ROLE_B(bUserId, ['00000000-0000-0000-0000-000000000000']);
-    await expect(service.listCostCentres(estateId, outsider)).rejects.toThrow(ForbiddenException);
+    await expect(service.listCostCentres(estateId, outsider)).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 });
 

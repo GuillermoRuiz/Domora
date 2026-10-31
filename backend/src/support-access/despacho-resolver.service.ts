@@ -12,19 +12,88 @@ export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && UUID.test(value);
 }
 
-type EstateLookup = (prisma: PrismaService, id: string) => Promise<string | null | undefined>;
+type EstateLookup = (
+  prisma: PrismaService,
+  id: string,
+) => Promise<string | null | undefined>;
 
 /** Named route params that identify a record of one estate, in precedence order. */
 const BY_PARAM: [param: string, lookup: EstateLookup][] = [
   ['estateId', (p, id) => Promise.resolve(id)],
-  ['propertyId', async (p, id) => (await p.property.findUnique({ where: { id }, select: { estateId: true } }))?.estateId],
-  ['meetingId', async (p, id) => (await p.meeting.findUnique({ where: { id }, select: { estateId: true } }))?.estateId],
-  ['issueId', async (p, id) => (await p.issue.findUnique({ where: { id }, select: { estateId: true } }))?.estateId],
-  ['debtorId', async (p, id) => (await p.debtor.findUnique({ where: { id }, select: { estateId: true } }))?.estateId],
-  ['agreementId', async (p, id) => (await p.paymentAgreement.findUnique({ where: { id }, select: { debtor: { select: { estateId: true } } } }))?.debtor.estateId],
-  ['installmentId', async (p, id) => (await p.paymentAgreementInstallment.findUnique({ where: { id }, select: { agreement: { select: { debtor: { select: { estateId: true } } } } } }))?.agreement.debtor.estateId],
-  ['lineId', async (p, id) => (await p.remesaLine.findUnique({ where: { id }, select: { property: { select: { estateId: true } } } }))?.property.estateId],
-  ['actionId', async (p, id) => (await p.correctiveAction.findUnique({ where: { id }, select: { inspection: { select: { estateId: true } } } }))?.inspection.estateId],
+  [
+    'propertyId',
+    async (p, id) =>
+      (
+        await p.property.findUnique({
+          where: { id },
+          select: { estateId: true },
+        })
+      )?.estateId,
+  ],
+  [
+    'meetingId',
+    async (p, id) =>
+      (
+        await p.meeting.findUnique({
+          where: { id },
+          select: { estateId: true },
+        })
+      )?.estateId,
+  ],
+  [
+    'issueId',
+    async (p, id) =>
+      (await p.issue.findUnique({ where: { id }, select: { estateId: true } }))
+        ?.estateId,
+  ],
+  [
+    'debtorId',
+    async (p, id) =>
+      (await p.debtor.findUnique({ where: { id }, select: { estateId: true } }))
+        ?.estateId,
+  ],
+  [
+    'agreementId',
+    async (p, id) =>
+      (
+        await p.paymentAgreement.findUnique({
+          where: { id },
+          select: { debtor: { select: { estateId: true } } },
+        })
+      )?.debtor.estateId,
+  ],
+  [
+    'installmentId',
+    async (p, id) =>
+      (
+        await p.paymentAgreementInstallment.findUnique({
+          where: { id },
+          select: {
+            agreement: { select: { debtor: { select: { estateId: true } } } },
+          },
+        })
+      )?.agreement.debtor.estateId,
+  ],
+  [
+    'lineId',
+    async (p, id) =>
+      (
+        await p.remesaLine.findUnique({
+          where: { id },
+          select: { property: { select: { estateId: true } } },
+        })
+      )?.property.estateId,
+  ],
+  [
+    'actionId',
+    async (p, id) =>
+      (
+        await p.correctiveAction.findUnique({
+          where: { id },
+          select: { inspection: { select: { estateId: true } } },
+        })
+      )?.inspection.estateId,
+  ],
 ];
 
 /**
@@ -38,25 +107,123 @@ const BY_PARAM: [param: string, lookup: EstateLookup][] = [
  * `assistant/documents/:id/index` stay unresolved (role A writes denied).
  */
 const BY_SEGMENT: Record<string, EstateLookup> = {
-  properties: async (p, id) => (await p.property.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  issues: async (p, id) => (await p.issue.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  meetings: async (p, id) => (await p.meeting.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  receipts: async (p, id) => (await p.accountingReceipt.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  amenities: async (p, id) => (await p.amenity.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  bookings: async (p, id) => (await p.booking.findUnique({ where: { id }, select: { amenity: { select: { estateId: true } } } }))?.amenity.estateId,
-  communications: async (p, id) => (await p.communication.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  'external-owners': async (p, id) => (await p.externalOwner.findUnique({ where: { id }, select: { property: { select: { estateId: true } } } }))?.property.estateId,
-  inspections: async (p, id) => (await p.regulatoryInspection.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  collections: async (p, id) => (await p.collection.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  journal: async (p, id) => (await p.journalEntry.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  payroll: async (p, id) => (await p.payrollRecord.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  remesas: async (p, id) => (await p.remesaHistoryItem.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  'reserve-fund-applications': async (p, id) => (await p.reserveFundApplication.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  'return-files': async (p, id) => (await p.returnFile.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  'supplier-payments': async (p, id) => (await p.supplierPayment.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  suspense: async (p, id) => (await p.suspenseItem.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  'tax-settlements': async (p, id) => (await p.taxSettlement.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
-  reconciliations: async (p, id) => (await p.reconciliationGroup.findUnique({ where: { id }, select: { estateId: true } }))?.estateId,
+  properties: async (p, id) =>
+    (await p.property.findUnique({ where: { id }, select: { estateId: true } }))
+      ?.estateId,
+  issues: async (p, id) =>
+    (await p.issue.findUnique({ where: { id }, select: { estateId: true } }))
+      ?.estateId,
+  meetings: async (p, id) =>
+    (await p.meeting.findUnique({ where: { id }, select: { estateId: true } }))
+      ?.estateId,
+  receipts: async (p, id) =>
+    (
+      await p.accountingReceipt.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  amenities: async (p, id) =>
+    (await p.amenity.findUnique({ where: { id }, select: { estateId: true } }))
+      ?.estateId,
+  bookings: async (p, id) =>
+    (
+      await p.booking.findUnique({
+        where: { id },
+        select: { amenity: { select: { estateId: true } } },
+      })
+    )?.amenity.estateId,
+  communications: async (p, id) =>
+    (
+      await p.communication.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  'external-owners': async (p, id) =>
+    (
+      await p.externalOwner.findUnique({
+        where: { id },
+        select: { property: { select: { estateId: true } } },
+      })
+    )?.property.estateId,
+  inspections: async (p, id) =>
+    (
+      await p.regulatoryInspection.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  collections: async (p, id) =>
+    (
+      await p.collection.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  journal: async (p, id) =>
+    (
+      await p.journalEntry.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  payroll: async (p, id) =>
+    (
+      await p.payrollRecord.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  remesas: async (p, id) =>
+    (
+      await p.remesaHistoryItem.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  'reserve-fund-applications': async (p, id) =>
+    (
+      await p.reserveFundApplication.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  'return-files': async (p, id) =>
+    (
+      await p.returnFile.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  'supplier-payments': async (p, id) =>
+    (
+      await p.supplierPayment.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  suspense: async (p, id) =>
+    (
+      await p.suspenseItem.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  'tax-settlements': async (p, id) =>
+    (
+      await p.taxSettlement.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
+  reconciliations: async (p, id) =>
+    (
+      await p.reconciliationGroup.findUnique({
+        where: { id },
+        select: { estateId: true },
+      })
+    )?.estateId,
 };
 
 /**

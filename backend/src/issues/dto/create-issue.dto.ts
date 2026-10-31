@@ -8,7 +8,10 @@ import {
 } from 'class-validator';
 import { IssueType, Priority } from '../../prisma/client';
 import { ISSUE_REPORT_CHANNELS } from '../issue-report.constants';
-import { RESOLUTION_ROUTES, type ResolutionRoute } from '../../issue-workflow/resolution-routes';
+import {
+  RESOLUTION_ROUTES,
+  type ResolutionRoute,
+} from '../../issue-workflow/resolution-routes';
 
 const ISSUE_TYPES: IssueType[] = [
   'Averia',

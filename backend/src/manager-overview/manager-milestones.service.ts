@@ -15,7 +15,11 @@ export interface MilestoneItem {
   estateName: string;
   /** Junta: instante ISO; revisión y contrato: AAAA-MM-DD. */
   date: string;
-  target: { section: 'juntas' | 'instalaciones' | 'proveedores'; estateId: string; refId: string };
+  target: {
+    section: 'juntas' | 'instalaciones' | 'proveedores';
+    estateId: string;
+    refId: string;
+  };
 }
 
 export interface MilestonesResult {
@@ -28,7 +32,8 @@ export const MILESTONE_DAYS = 30;
 export const MILESTONE_LIMIT = 100;
 
 const DAY_MS = 86_400_000;
-const startOfUtcDay = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+const startOfUtcDay = (d: Date) =>
+  new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 /**
@@ -45,35 +50,65 @@ export class ManagerMilestonesService {
     private readonly access: EstateAccessService,
   ) {}
 
-  async milestones(user: AuthenticatedUser, estateId?: string, now: Date = new Date()): Promise<MilestonesResult> {
+  async milestones(
+    user: AuthenticatedUser,
+    estateId?: string,
+    now: Date = new Date(),
+  ): Promise<MilestonesResult> {
     const ids = resolveScope(this.access, user, estateId);
     if (!ids.length) return { items: [] };
     const today = startOfUtcDay(now);
-    const horizon = new Date(today.getTime() + (MILESTONE_DAYS + 1) * DAY_MS - 1);
-    const estates = await this.prisma.estate.findMany({ where: { id: { in: ids }, deletedAt: null }, select: { id: true, name: true } });
+    const horizon = new Date(
+      today.getTime() + (MILESTONE_DAYS + 1) * DAY_MS - 1,
+    );
+    const estates = await this.prisma.estate.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+      select: { id: true, name: true },
+    });
     const names = new Map(estates.map((e) => [e.id, e.name]));
     const live = [...names.keys()];
     const nameOf = (id: string) => names.get(id) as string;
 
     const [meetings, inspections, contracts] = await Promise.all([
       this.prisma.meeting.findMany({
-        where: { estateId: { in: live }, status: 'convocada', scheduledAt1: { gte: now, lte: horizon } },
+        where: {
+          estateId: { in: live },
+          status: 'convocada',
+          scheduledAt1: { gte: now, lte: horizon },
+        },
         select: { id: true, estateId: true, title: true, scheduledAt1: true },
       }),
       this.prisma.regulatoryInspection.findMany({
         where: {
           estateId: { in: live },
           status: { in: ['planificada', 'citada'] },
-          OR: [{ appointmentDate: { not: null } }, { nextDueDate: { not: null } }],
+          OR: [
+            { appointmentDate: { not: null } },
+            { nextDueDate: { not: null } },
+          ],
         },
         select: {
-          id: true, estateId: true, appointmentDate: true, nextDueDate: true,
-          asset: { select: { name: true } }, inspectionType: { select: { name: true } },
+          id: true,
+          estateId: true,
+          appointmentDate: true,
+          nextDueDate: true,
+          asset: { select: { name: true } },
+          inspectionType: { select: { name: true } },
         },
       }),
       this.prisma.supplierContract.findMany({
-        where: { estateId: { in: live }, cancelledAt: null, endDate: { gte: today, lte: horizon } },
-        select: { id: true, estateId: true, serviceType: true, endDate: true, supplier: { select: { name: true } } },
+        where: {
+          estateId: { in: live },
+          cancelledAt: null,
+          endDate: { gte: today, lte: horizon },
+        },
+        select: {
+          id: true,
+          estateId: true,
+          serviceType: true,
+          endDate: true,
+          supplier: { select: { name: true } },
+        },
       }),
     ]);
 
@@ -85,22 +120,32 @@ export class ManagerMilestonesService {
         estateId: m.estateId,
         estateName: nameOf(m.estateId),
         date: m.scheduledAt1.toISOString(),
-        target: { section: 'juntas' as const, estateId: m.estateId, refId: m.id },
+        target: {
+          section: 'juntas' as const,
+          estateId: m.estateId,
+          refId: m.id,
+        },
         sort: m.scheduledAt1.getTime(),
       })),
       ...inspections.flatMap((i) => {
         const due = i.appointmentDate ?? i.nextDueDate;
         if (!due || due < today || due > horizon) return [];
-        return [{
-          id: `inspection:${i.id}`,
-          kind: 'inspection' as const,
-          title: `${i.inspectionType.name} · ${i.asset.name}`,
-          estateId: i.estateId,
-          estateName: nameOf(i.estateId),
-          date: isoDay(due),
-          target: { section: 'instalaciones' as const, estateId: i.estateId, refId: i.id },
-          sort: due.getTime(),
-        }];
+        return [
+          {
+            id: `inspection:${i.id}`,
+            kind: 'inspection' as const,
+            title: `${i.inspectionType.name} · ${i.asset.name}`,
+            estateId: i.estateId,
+            estateName: nameOf(i.estateId),
+            date: isoDay(due),
+            target: {
+              section: 'instalaciones' as const,
+              estateId: i.estateId,
+              refId: i.id,
+            },
+            sort: due.getTime(),
+          },
+        ];
       }),
       ...contracts.map((c) => ({
         id: `contract:${c.id}`,
@@ -109,7 +154,11 @@ export class ManagerMilestonesService {
         estateId: c.estateId,
         estateName: nameOf(c.estateId),
         date: isoDay(c.endDate as Date),
-        target: { section: 'proveedores' as const, estateId: c.estateId, refId: c.id },
+        target: {
+          section: 'proveedores' as const,
+          estateId: c.estateId,
+          refId: c.id,
+        },
         sort: (c.endDate as Date).getTime(),
       })),
     ];

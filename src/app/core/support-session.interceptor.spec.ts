@@ -49,21 +49,14 @@ describe('supportSessionInterceptor', () => {
   beforeEach(() => sessionStorage.clear());
   afterEach(() => sessionStorage.clear());
 
-  it('adds the header to non-GET API requests while a session is active', async () => {
+  it('adds the header to every API request while a session is active (reads need it too)', async () => {
     const h = setup(roleA);
     await withActiveSession(h);
-    for (const method of ['POST', 'PATCH', 'PUT', 'DELETE']) {
+    for (const method of ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']) {
       void firstValueFrom(h.client.request(method, `${API}/estates/e1`, { body: {} }));
       const req = h.http.expectOne((r) => r.method === method && r.url === `${API}/estates/e1`);
       expect(req.request.headers.get(SUPPORT_SESSION_HEADER)).toBe('s1');
     }
-  });
-
-  it('never adds it to GET requests', async () => {
-    const h = setup(roleA);
-    await withActiveSession(h);
-    void firstValueFrom(h.client.get(`${API}/estates`));
-    expect(h.http.expectOne(`${API}/estates`).request.headers.has(SUPPORT_SESSION_HEADER)).toBe(false);
   });
 
   it('never adds it to requests outside the API', async () => {

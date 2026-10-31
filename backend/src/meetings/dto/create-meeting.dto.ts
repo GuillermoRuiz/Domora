@@ -61,8 +61,15 @@ export class VoteTemplateDto {
 
 export class AgendaItemDto {
   @IsOptional()
-  @IsIn(['annual_accounts_approval', 'annual_budget_approval', 'community_officers_appointment'])
-  systemKey?: 'annual_accounts_approval' | 'annual_budget_approval' | 'community_officers_appointment';
+  @IsIn([
+    'annual_accounts_approval',
+    'annual_budget_approval',
+    'community_officers_appointment',
+  ])
+  systemKey?:
+    | 'annual_accounts_approval'
+    | 'annual_budget_approval'
+    | 'community_officers_appointment';
 
   @IsOptional()
   @IsBoolean()

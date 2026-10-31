@@ -25,11 +25,13 @@ describe('IssuesService.sendNotification — avisos reales (no solo histórico)'
     prisma = {
       issue: { findFirst: jest.fn().mockResolvedValue(ISSUE) },
       issueReport: {
-        findMany: jest.fn().mockResolvedValue([
-          { reporterUserId: 'own-1' },
-          { reporterUserId: 'own-2' },
-          { reporterUserId: 'own-1' },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { reporterUserId: 'own-1' },
+            { reporterUserId: 'own-2' },
+            { reporterUserId: 'own-1' },
+          ]),
       },
       issueNotification: { create: jest.fn().mockResolvedValue({ id: 'n1' }) },
     };

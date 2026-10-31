@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstateAccessService } from '../estate-access/estate-access.service';
@@ -13,7 +19,11 @@ import type {
   UpdateSupplierContractDto,
 } from './dto/update-supplier-contract.dto';
 import type { SupplierContract, SupplierDocumentType } from '../prisma/client';
-import { annualizedContractCost, contractStatus, type SupplierContractStatus } from './contract-rules';
+import {
+  annualizedContractCost,
+  contractStatus,
+  type SupplierContractStatus,
+} from './contract-rules';
 import { dateOrNull } from '../common/date-or-null';
 export type { SupplierContractStatus } from './contract-rules';
 
@@ -24,7 +34,6 @@ interface UploadedMulterFile {
   size: number;
   buffer: Buffer;
 }
-
 
 /** Umbral compartido con el feed de alertas (`ResourcesService`) — un contrato entra en "Por vencer" 30 días antes de `endDate`. */
 export const CONTRACT_EXPIRING_SOON_DAYS = 30;
@@ -63,44 +72,65 @@ export class SuppliersService {
     const supplierIds = suppliers.map((s) => s.id);
     const yearStart = new Date(Date.UTC(new Date().getFullYear(), 0, 1));
 
-    const [ytdBySupplier, pendingBySupplier, recentInvoices, expiringByContract, expiringByDocument] =
-      await Promise.all([
-        this.prisma.supplierInvoice.groupBy({
-          by: ['supplierId'],
-          where: { supplierId: { in: supplierIds }, status: { not: 'Anulada' }, issueDate: { gte: yearStart } },
-          _sum: { total: true },
-        }),
-        this.prisma.supplierInvoice.groupBy({
-          by: ['supplierId'],
-          where: { supplierId: { in: supplierIds }, status: { in: ['Registrada', 'Parcial'] } },
-          _count: { _all: true },
-        }),
-        this.prisma.supplierInvoice.findMany({
-          where: { supplierId: { in: supplierIds }, status: { not: 'Anulada' } },
-          orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
-          distinct: ['supplierId'],
-          select: { supplierId: true, issueDate: true, total: true },
-        }),
-        this.prisma.supplierContract.findMany({
-          where: {
-            supplierId: { in: supplierIds },
-            cancelledAt: null,
-            endDate: { not: null, lte: this.expiryThreshold() },
-          },
-          select: { supplierId: true },
-        }),
-        this.prisma.supplierDocument.findMany({
-          where: {
-            supplierId: { in: supplierIds },
-            expiresAt: { not: null, lte: this.expiryThreshold() },
-          },
-          select: { supplierId: true },
-        }),
-      ]);
+    const [
+      ytdBySupplier,
+      pendingBySupplier,
+      recentInvoices,
+      expiringByContract,
+      expiringByDocument,
+    ] = await Promise.all([
+      this.prisma.supplierInvoice.groupBy({
+        by: ['supplierId'],
+        where: {
+          supplierId: { in: supplierIds },
+          status: { not: 'Anulada' },
+          issueDate: { gte: yearStart },
+        },
+        _sum: { total: true },
+      }),
+      this.prisma.supplierInvoice.groupBy({
+        by: ['supplierId'],
+        where: {
+          supplierId: { in: supplierIds },
+          status: { in: ['Registrada', 'Parcial'] },
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.supplierInvoice.findMany({
+        where: { supplierId: { in: supplierIds }, status: { not: 'Anulada' } },
+        orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
+        distinct: ['supplierId'],
+        select: { supplierId: true, issueDate: true, total: true },
+      }),
+      this.prisma.supplierContract.findMany({
+        where: {
+          supplierId: { in: supplierIds },
+          cancelledAt: null,
+          endDate: { not: null, lte: this.expiryThreshold() },
+        },
+        select: { supplierId: true },
+      }),
+      this.prisma.supplierDocument.findMany({
+        where: {
+          supplierId: { in: supplierIds },
+          expiresAt: { not: null, lte: this.expiryThreshold() },
+        },
+        select: { supplierId: true },
+      }),
+    ]);
 
-    const ytdMap = new Map(ytdBySupplier.map((r) => [r.supplierId, r._sum.total]));
-    const pendingMap = new Map(pendingBySupplier.map((r) => [r.supplierId, r._count._all]));
-    const lastInvoiceMap = new Map(recentInvoices.map((i) => [i.supplierId, { date: i.issueDate, amount: i.total }]));
+    const ytdMap = new Map(
+      ytdBySupplier.map((r) => [r.supplierId, r._sum.total]),
+    );
+    const pendingMap = new Map(
+      pendingBySupplier.map((r) => [r.supplierId, r._count._all]),
+    );
+    const lastInvoiceMap = new Map(
+      recentInvoices.map((i) => [
+        i.supplierId,
+        { date: i.issueDate, amount: i.total },
+      ]),
+    );
     const expiringSet = new Set([
       ...expiringByContract.map((c) => c.supplierId),
       ...expiringByDocument.map((d) => d.supplierId),
@@ -120,7 +150,10 @@ export class SuppliersService {
   }
 
   /** Valida que el proveedor pertenezca a la finca del path antes de leer/escribir nada suyo. */
-  private async assertSupplierInEstate(estateId: string, supplierId: string): Promise<void> {
+  private async assertSupplierInEstate(
+    estateId: string,
+    supplierId: string,
+  ): Promise<void> {
     const supplier = await this.prisma.supplier.findUnique({
       where: { id: supplierId },
       select: { estateId: true },
@@ -130,7 +163,11 @@ export class SuppliersService {
     }
   }
 
-  async createSupplier(estateId: string, dto: CreateSupplierDto, user: AuthenticatedUser) {
+  async createSupplier(
+    estateId: string,
+    dto: CreateSupplierDto,
+    user: AuthenticatedUser,
+  ) {
     this.estateAccess.assertAccess(estateId, user);
     if (!user.administratorId) {
       throw new ForbiddenException('Usuario sin gestora asociada.');
@@ -139,7 +176,8 @@ export class SuppliersService {
       data: {
         ...dto,
         // Sugerencia del art. 33.5 del RGAT: suministros y seguros no van al 347.
-        excludedFrom347: dto.excludedFrom347 ?? EXCLUDED_347_CATEGORIES.includes(dto.category),
+        excludedFrom347:
+          dto.excludedFrom347 ?? EXCLUDED_347_CATEGORIES.includes(dto.category),
         estateId,
         administratorId: user.administratorId,
       },
@@ -168,15 +206,21 @@ export class SuppliersService {
         data: {
           ...(dto.name !== undefined && { name: dto.name }),
           ...(dto.category !== undefined && { category: dto.category }),
-          ...(dto.taxIdCountry !== undefined && { taxIdCountry: dto.taxIdCountry }),
+          ...(dto.taxIdCountry !== undefined && {
+            taxIdCountry: dto.taxIdCountry,
+          }),
           ...(dto.taxId !== undefined && { taxId: dto.taxId }),
           ...(dto.vatNumber !== undefined && { vatNumber: dto.vatNumber }),
           ...(dto.email !== undefined && { email: dto.email }),
           ...(dto.phone !== undefined && { phone: dto.phone }),
-          ...(dto.contactName !== undefined && { contactName: dto.contactName }),
+          ...(dto.contactName !== undefined && {
+            contactName: dto.contactName,
+          }),
           ...(dto.iban !== undefined && { iban: dto.iban }),
           ...(dto.status !== undefined && { status: dto.status }),
-          ...(dto.excludedFrom347 !== undefined && { excludedFrom347: dto.excludedFrom347 }),
+          ...(dto.excludedFrom347 !== undefined && {
+            excludedFrom347: dto.excludedFrom347,
+          }),
         },
       });
       await tx.activityLogEntry.create({
@@ -224,10 +268,16 @@ export class SuppliersService {
     this.estateAccess.assertAccess(estateId, user);
     await this.assertInvoiceInSupplier(estateId, supplierId, invoiceId);
     if (!file) {
-      throw new NotFoundException('No se recibió ningún fichero (campo "file").');
+      throw new NotFoundException(
+        'No se recibió ningún fichero (campo "file").',
+      );
     }
     this.storage.assertAllowed(file.mimetype, file.size);
-    const s3Key = await this.storage.put(`supplier-invoices/${invoiceId}`, file.originalname, file.buffer);
+    const s3Key = await this.storage.put(
+      `supplier-invoices/${invoiceId}`,
+      file.originalname,
+      file.buffer,
+    );
     return this.prisma.supplierInvoice.update({
       where: { id: invoiceId },
       data: { fileName: file.originalname, mimeType: file.mimetype, s3Key },
@@ -256,7 +306,9 @@ export class SuppliersService {
   // ── Supplier contracts ───────────────────────────────────────────────────
 
   private expiryThreshold(): Date {
-    return new Date(Date.now() + CONTRACT_EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000);
+    return new Date(
+      Date.now() + CONTRACT_EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000,
+    );
   }
 
   /**
@@ -273,11 +325,17 @@ export class SuppliersService {
     return contractStatus(contract);
   }
 
-  private withStatus<T extends SupplierContract>(contract: T): T & { status: SupplierContractStatus } {
+  private withStatus<T extends SupplierContract>(
+    contract: T,
+  ): T & { status: SupplierContractStatus } {
     return { ...contract, status: this.deriveContractStatus(contract) };
   }
 
-  async listSupplierContracts(estateId: string, supplierId: string, user: AuthenticatedUser) {
+  async listSupplierContracts(
+    estateId: string,
+    supplierId: string,
+    user: AuthenticatedUser,
+  ) {
     this.estateAccess.assertAccess(estateId, user);
     await this.assertSupplierInEstate(estateId, supplierId);
     const contracts = await this.prisma.supplierContract.findMany({
@@ -304,20 +362,29 @@ export class SuppliersService {
       },
     });
     const now = new Date();
-    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const today = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+    );
     const rows = contracts.map(({ _count, ...c }) => {
       // Coste anualizado con la regla única del backend; null si no se puede (puntual, «otro» o sin importe).
       const annualCost = annualizedContractCost(c.costAmount, c.costFrequency);
       return {
-      ...this.withStatus(c),
-      daysLeft: c.endDate ? Math.round((c.endDate.getTime() - today) / 86_400_000) : null,
+        ...this.withStatus(c),
+        daysLeft: c.endDate
+          ? Math.round((c.endDate.getTime() - today) / 86_400_000)
+          : null,
         annualCost,
         monthlyCost: annualCost ? annualCost.div(12).toDecimalPlaces(2) : null,
         documentCount: _count.documents,
       };
     });
-    const rank = (c: (typeof rows)[number]) => (c.status === 'Cancelado' ? 2 : c.daysLeft === null ? 1 : 0);
-    return rows.sort((a, b) => rank(a) - rank(b) || (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
+    const rank = (c: (typeof rows)[number]) =>
+      c.status === 'Cancelado' ? 2 : c.daysLeft === null ? 1 : 0;
+    return rows.sort(
+      (a, b) => rank(a) - rank(b) || (a.daysLeft ?? 0) - (b.daysLeft ?? 0),
+    );
   }
 
   async createSupplierContract(
@@ -337,7 +404,8 @@ export class SuppliersService {
         startDate: new Date(dto.startDate),
         endDate: dto.endDate ? new Date(dto.endDate) : null,
         renewalType: dto.renewalType,
-        costAmount: dto.costAmount == null ? null : new Prisma.Decimal(dto.costAmount),
+        costAmount:
+          dto.costAmount == null ? null : new Prisma.Decimal(dto.costAmount),
         costFrequency: dto.costFrequency ?? null,
         currency: dto.currency ?? 'EUR',
         reviewFrequency: dto.reviewFrequency,
@@ -347,13 +415,18 @@ export class SuppliersService {
     return this.withStatus(contract);
   }
 
-  private async assertContractInSupplier(supplierId: string, contractId: string): Promise<void> {
+  private async assertContractInSupplier(
+    supplierId: string,
+    contractId: string,
+  ): Promise<void> {
     const contract = await this.prisma.supplierContract.findUnique({
       where: { id: contractId },
       select: { supplierId: true },
     });
     if (!contract || contract.supplierId !== supplierId) {
-      throw new NotFoundException('Contrato no encontrado para este proveedor.');
+      throw new NotFoundException(
+        'Contrato no encontrado para este proveedor.',
+      );
     }
   }
 
@@ -371,13 +444,24 @@ export class SuppliersService {
       where: { id: contractId },
       data: {
         ...(dto.serviceType !== undefined && { serviceType: dto.serviceType }),
-        ...(dto.contractNumber !== undefined && { contractNumber: dto.contractNumber?.trim() || null }),
-        ...(dto.startDate !== undefined && { startDate: new Date(dto.startDate) }),
+        ...(dto.contractNumber !== undefined && {
+          contractNumber: dto.contractNumber?.trim() || null,
+        }),
+        ...(dto.startDate !== undefined && {
+          startDate: new Date(dto.startDate),
+        }),
         ...(dto.endDate !== undefined && { endDate: dateOrNull(dto.endDate) }),
         ...(dto.renewalType !== undefined && { renewalType: dto.renewalType }),
-        ...(dto.reviewFrequency !== undefined && { reviewFrequency: dto.reviewFrequency }),
-        ...(dto.costAmount !== undefined && { costAmount: dto.costAmount === null ? null : new Prisma.Decimal(dto.costAmount) }),
-        ...(dto.costFrequency !== undefined && { costFrequency: dto.costFrequency }),
+        ...(dto.reviewFrequency !== undefined && {
+          reviewFrequency: dto.reviewFrequency,
+        }),
+        ...(dto.costAmount !== undefined && {
+          costAmount:
+            dto.costAmount === null ? null : new Prisma.Decimal(dto.costAmount),
+        }),
+        ...(dto.costFrequency !== undefined && {
+          costFrequency: dto.costFrequency,
+        }),
         ...(dto.currency !== undefined && { currency: dto.currency }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
       },
@@ -397,7 +481,10 @@ export class SuppliersService {
     await this.assertContractInSupplier(supplierId, contractId);
     const contract = await this.prisma.supplierContract.update({
       where: { id: contractId },
-      data: { cancelledAt: new Date(), cancelledReason: dto.cancelledReason ?? null },
+      data: {
+        cancelledAt: new Date(),
+        cancelledReason: dto.cancelledReason ?? null,
+      },
     });
     return this.withStatus(contract);
   }
@@ -417,18 +504,32 @@ export class SuppliersService {
     this.estateAccess.assertAccess(estateId, user);
     await this.assertSupplierInEstate(estateId, supplierId);
     await this.assertContractInSupplier(supplierId, contractId);
-    const current = await this.prisma.supplierContract.findUniqueOrThrow({ where: { id: contractId } });
-    if (current.cancelledAt) throw new BadRequestException('Un contrato cancelado no se puede renovar.');
-    if (!current.endDate) throw new BadRequestException('El contrato no tiene fecha de fin: no hay nada que renovar.');
+    const current = await this.prisma.supplierContract.findUniqueOrThrow({
+      where: { id: contractId },
+    });
+    if (current.cancelledAt)
+      throw new BadRequestException(
+        'Un contrato cancelado no se puede renovar.',
+      );
+    if (!current.endDate)
+      throw new BadRequestException(
+        'El contrato no tiene fecha de fin: no hay nada que renovar.',
+      );
 
     const newEnd = dateOrNull(dto.newEndDate) as Date;
     const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
     if (newEnd.getTime() <= current.endDate.getTime()) {
-      throw new BadRequestException('El nuevo vencimiento debe ser posterior al vencimiento actual.');
+      throw new BadRequestException(
+        'El nuevo vencimiento debe ser posterior al vencimiento actual.',
+      );
     }
     if (newEnd.getTime() <= today.getTime()) {
-      throw new BadRequestException('El nuevo vencimiento debe ser posterior a hoy.');
+      throw new BadRequestException(
+        'El nuevo vencimiento debe ser posterior a hoy.',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -438,14 +539,25 @@ export class SuppliersService {
         where: { id: contractId, cancelledAt: null, endDate: current.endDate },
         data: {
           endDate: newEnd,
-          ...(dto.costAmount !== undefined && { costAmount: dto.costAmount === null ? null : new Prisma.Decimal(dto.costAmount) }),
-          ...(dto.costFrequency !== undefined && { costFrequency: dto.costFrequency }),
+          ...(dto.costAmount !== undefined && {
+            costAmount:
+              dto.costAmount === null
+                ? null
+                : new Prisma.Decimal(dto.costAmount),
+          }),
+          ...(dto.costFrequency !== undefined && {
+            costFrequency: dto.costFrequency,
+          }),
         },
       });
       if (count === 0) {
-        throw new ConflictException('El contrato ha cambiado mientras se renovaba: recárgalo e inténtalo de nuevo.');
+        throw new ConflictException(
+          'El contrato ha cambiado mientras se renovaba: recárgalo e inténtalo de nuevo.',
+        );
       }
-      const contract = await tx.supplierContract.findUniqueOrThrow({ where: { id: contractId } });
+      const contract = await tx.supplierContract.findUniqueOrThrow({
+        where: { id: contractId },
+      });
       const renewal = await tx.supplierContractRenewal.create({
         data: {
           contractId,
@@ -481,7 +593,11 @@ export class SuppliersService {
    * Últimas renovaciones de los contratos de la finca (la más reciente primero) con su contrato y
    * proveedor, y el importe anualizado cuando se puede calcular.
    */
-  async listEstateRenewals(estateId: string, user: AuthenticatedUser, limit = 100) {
+  async listEstateRenewals(
+    estateId: string,
+    user: AuthenticatedUser,
+    limit = 100,
+  ) {
     this.estateAccess.assertAccess(estateId, user);
     const take = Math.min(Math.max(Math.trunc(limit) || 100, 1), 500);
     const rows = await this.prisma.supplierContractRenewal.findMany({
@@ -489,7 +605,13 @@ export class SuppliersService {
       orderBy: [{ renewedAt: 'desc' }, { createdAt: 'desc' }],
       take,
       include: {
-        contract: { select: { id: true, serviceType: true, supplier: { select: { id: true, name: true, category: true } } } },
+        contract: {
+          select: {
+            id: true,
+            serviceType: true,
+            supplier: { select: { id: true, name: true, category: true } },
+          },
+        },
       },
     });
     return rows.map((r) => ({
@@ -511,7 +633,11 @@ export class SuppliersService {
 
   // ── Supplier documents ───────────────────────────────────────────────────
 
-  async listSupplierDocuments(estateId: string, supplierId: string, user: AuthenticatedUser) {
+  async listSupplierDocuments(
+    estateId: string,
+    supplierId: string,
+    user: AuthenticatedUser,
+  ) {
     this.estateAccess.assertAccess(estateId, user);
     await this.assertSupplierInEstate(estateId, supplierId);
     return this.prisma.supplierDocument.findMany({
@@ -523,7 +649,12 @@ export class SuppliersService {
   async uploadSupplierDocument(
     estateId: string,
     supplierId: string,
-    opts: { title: string; documentType: SupplierDocumentType; expiresAt?: string; contractId?: string },
+    opts: {
+      title: string;
+      documentType: SupplierDocumentType;
+      expiresAt?: string;
+      contractId?: string;
+    },
     file: UploadedMulterFile,
     user: AuthenticatedUser,
   ) {
@@ -533,10 +664,16 @@ export class SuppliersService {
       await this.assertContractInSupplier(supplierId, opts.contractId);
     }
     if (!file) {
-      throw new NotFoundException('No se recibió ningún fichero (campo "file").');
+      throw new NotFoundException(
+        'No se recibió ningún fichero (campo "file").',
+      );
     }
     this.storage.assertAllowed(file.mimetype, file.size);
-    const s3Key = await this.storage.put(`supplier-documents/${supplierId}`, file.originalname, file.buffer);
+    const s3Key = await this.storage.put(
+      `supplier-documents/${supplierId}`,
+      file.originalname,
+      file.buffer,
+    );
     return this.prisma.supplierDocument.create({
       data: {
         supplierId,
@@ -560,7 +697,9 @@ export class SuppliersService {
       select: { supplierId: true, s3Key: true, fileName: true, mimeType: true },
     });
     if (!doc || doc.supplierId !== supplierId) {
-      throw new NotFoundException('Documento no encontrado para este proveedor.');
+      throw new NotFoundException(
+        'Documento no encontrado para este proveedor.',
+      );
     }
     return doc;
   }
@@ -601,7 +740,11 @@ export class SuppliersService {
    * resolvedAt real, y derivarlo del timeline sería una métrica que
    * aparenta precisión sin tenerla.
    */
-  async getSupplierPerformance(estateId: string, supplierId: string, user: AuthenticatedUser) {
+  async getSupplierPerformance(
+    estateId: string,
+    supplierId: string,
+    user: AuthenticatedUser,
+  ) {
     this.estateAccess.assertAccess(estateId, user);
     await this.assertSupplierInEstate(estateId, supplierId);
     const assignments = await this.prisma.issueProviderAssignment.findMany({
@@ -610,7 +753,9 @@ export class SuppliersService {
       select: { issue: { select: { status: true } } },
     });
     const RESOLVED_STATUSES = new Set(['Resuelta', 'Cerrada']);
-    const resolvedIssues = assignments.filter((a) => RESOLVED_STATUSES.has(a.issue.status)).length;
+    const resolvedIssues = assignments.filter((a) =>
+      RESOLVED_STATUSES.has(a.issue.status),
+    ).length;
     return {
       totalIssuesAssigned: assignments.length,
       resolvedIssues,

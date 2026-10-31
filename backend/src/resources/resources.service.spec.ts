@@ -227,7 +227,7 @@ describe('ResourcesService — comunicados (tablón de anuncios)', () => {
           category: 'communication',
           title: 'Aviso urgente: Corte de agua',
           body: 'El jueves se corta el agua de 9 a 13h.',
-          link: '/c/properties?tab=communications',
+          link: `/c/community?tab=communications&estateId=${ESTATE}`,
           estateId: ESTATE,
           propertyId: null,
         });

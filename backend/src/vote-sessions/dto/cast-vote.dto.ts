@@ -1,4 +1,11 @@
-import { IsArray, IsInt, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+} from 'class-validator';
 
 export class CastVoteDto {
   @IsUUID()

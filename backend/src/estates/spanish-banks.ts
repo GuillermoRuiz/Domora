@@ -23,7 +23,9 @@ const SPANISH_BANKS: Record<string, string> = {
   '2103': 'Unicaja',
 };
 
-export function bankNameFromIban(iban: string | null | undefined): string | null {
+export function bankNameFromIban(
+  iban: string | null | undefined,
+): string | null {
   const clean = (iban ?? '').replace(/\s/g, '').toUpperCase();
   if (!clean.startsWith('ES') || clean.length < 8) return null;
   return SPANISH_BANKS[clean.slice(4, 8)] ?? null;

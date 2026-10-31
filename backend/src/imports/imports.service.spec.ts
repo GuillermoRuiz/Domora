@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { JournalService } from '../ledger/journal/journal.service';
 import type { ReceiptPostingService } from '../ledger/posting/receipt-posting.service';
 import type { CollectionPostingService } from '../ledger/posting/collection-posting.service';
@@ -19,7 +24,10 @@ import type { AppRole, AuthenticatedUser } from '../auth/auth.types';
 const ESTATE = 'estate-1';
 const ADMIN = 'gestora-1';
 
-function user(role: AppRole, estateIds: string[] = [ESTATE]): AuthenticatedUser {
+function user(
+  role: AppRole,
+  estateIds: string[] = [ESTATE],
+): AuthenticatedUser {
   return { id: 'u1', role, estateIds, administratorId: ADMIN };
 }
 
@@ -41,7 +49,9 @@ function makeBatch(overrides: Partial<ImportBatch> = {}): ImportBatch {
   } as ImportBatch;
 }
 
-function makeFile(overrides: Partial<UploadedMulterFile> = {}): UploadedMulterFile {
+function makeFile(
+  overrides: Partial<UploadedMulterFile> = {},
+): UploadedMulterFile {
   return {
     originalname: 'propietarios.csv',
     mimetype: 'text/csv',
@@ -118,7 +128,11 @@ describe('ImportsService', () => {
   };
   let service: ImportsService;
   /** La contabilización real se prueba contra Postgres (ledger/receipts-posting.spec.ts). */
-  let collections: { collect: jest.Mock; undo: jest.Mock; activeCollectionsFor: jest.Mock };
+  let collections: {
+    collect: jest.Mock;
+    undo: jest.Mock;
+    activeCollectionsFor: jest.Mock;
+  };
   let journal: { post: jest.Mock; reverse: jest.Mock };
   let openingBalances: { get: jest.Mock; saveDraft: jest.Mock };
   let receiptPosting: {
@@ -138,16 +152,26 @@ describe('ImportsService', () => {
         update: jest.fn().mockResolvedValue(makeBatch()),
       },
       estate: {
-        findFirst: jest.fn().mockResolvedValue({ id: ESTATE, administratorId: ADMIN }),
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: ESTATE, administratorId: ADMIN }),
       },
       property: {
         findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn(),
-        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'prop-new', ...data })),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'prop-new', ...data }),
+          ),
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       externalOwner: {
-        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'owner-new', ...data })),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'owner-new', ...data }),
+          ),
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
@@ -162,46 +186,79 @@ describe('ImportsService', () => {
       },
       chartAccount: {
         findFirst: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'account-new', ...data })),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'account-new', ...data }),
+          ),
         delete: jest.fn().mockResolvedValue({}),
       },
       bankAccount: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'bank-1', chartAccountId: 'acc-bank' }),
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'bank-1', chartAccountId: 'acc-bank' }),
         findMany: jest.fn().mockResolvedValue([]),
       },
       supplier: {
         findMany: jest.fn().mockResolvedValue([]),
       },
       journalEntry: {
-        findUnique: jest.fn().mockResolvedValue({ date: new Date('2026-08-01T00:00:00Z'), reversedBy: null }),
+        findUnique: jest.fn().mockResolvedValue({
+          date: new Date('2026-08-01T00:00:00Z'),
+          reversedBy: null,
+        }),
       },
       accountingPeriod: {
         findUnique: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'period-new', ...data })),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'period-new', ...data }),
+          ),
         delete: jest.fn().mockResolvedValue({}),
       },
       accountingReceipt: {
         findUnique: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'receipt-new', ...data })),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'receipt-new', ...data }),
+          ),
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       accountingSettings: {
-        findUnique: jest.fn().mockResolvedValue({ cutoverDate: new Date('2026-01-01T00:00:00Z') }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ cutoverDate: new Date('2026-01-01T00:00:00Z') }),
       },
       remesaHistoryItem: {
-        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'remesa-new', ...data })),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'remesa-new', ...data }),
+          ),
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       remesaLine: {
-        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'line-new', ...data })),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'line-new', ...data }),
+          ),
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       $transaction: jest.fn((cb: (tx: PrismaMock) => unknown) => cb(prisma)),
     };
     storage = {
       assertAllowed: jest.fn(),
-      put: jest.fn().mockResolvedValue('imports/estate-1/uuid-propietarios.csv'),
-      get: jest.fn().mockResolvedValue(Buffer.from('Nombre,Referencia\nMaría García,A-101\n', 'utf-8')),
+      put: jest
+        .fn()
+        .mockResolvedValue('imports/estate-1/uuid-propietarios.csv'),
+      get: jest
+        .fn()
+        .mockResolvedValue(
+          Buffer.from('Nombre,Referencia\nMaría García,A-101\n', 'utf-8'),
+        ),
     };
     collections = {
       collect: jest.fn().mockResolvedValue({ id: 'collection-new' }),
@@ -209,9 +266,11 @@ describe('ImportsService', () => {
       activeCollectionsFor: jest.fn().mockResolvedValue([]),
     };
     receiptPosting = {
-      issue: jest.fn().mockImplementation((_tx: unknown, input: Record<string, unknown>) =>
-        Promise.resolve({ id: 'receipt-new', ...input }),
-      ),
+      issue: jest
+        .fn()
+        .mockImplementation((_tx: unknown, input: Record<string, unknown>) =>
+          Promise.resolve({ id: 'receipt-new', ...input }),
+        ),
       collect: jest.fn().mockResolvedValue({}),
       markReturned: jest.fn().mockResolvedValue({}),
       undoCollection: jest.fn().mockResolvedValue({}),
@@ -219,7 +278,11 @@ describe('ImportsService', () => {
     };
     let entrySeq = 0;
     journal = {
-      post: jest.fn().mockImplementation(() => Promise.resolve({ id: `entry-${++entrySeq}` })),
+      post: jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve({ id: `entry-${++entrySeq}` }),
+        ),
       reverse: jest.fn().mockResolvedValue({ id: 'reversal' }),
     };
     openingBalances = {
@@ -254,8 +317,16 @@ describe('ImportsService', () => {
         user('B'),
       );
 
-      expect(storage.assertAllowed).toHaveBeenCalledWith('text/csv', 1024, expect.any(Number));
-      expect(storage.put).toHaveBeenCalledWith('imports/estate-1', 'propietarios.csv', expect.any(Buffer));
+      expect(storage.assertAllowed).toHaveBeenCalledWith(
+        'text/csv',
+        1024,
+        expect.any(Number),
+      );
+      expect(storage.put).toHaveBeenCalledWith(
+        'imports/estate-1',
+        'propietarios.csv',
+        expect.any(Buffer),
+      );
       const [{ data }] = prisma.importBatch.create.mock.calls[0];
       expect(data.status).toBe('uploading');
       expect(data.administratorId).toBe(ADMIN);
@@ -301,7 +372,9 @@ describe('ImportsService', () => {
 
     it('fichero rechazado por StorageService (tipo/tamaño): propaga el error sin crear el batch', async () => {
       storage.assertAllowed.mockImplementation(() => {
-        throw new BadRequestException('Tipo de fichero no permitido: application/x-msdownload');
+        throw new BadRequestException(
+          'Tipo de fichero no permitido: application/x-msdownload',
+        );
       });
       await expect(
         service.createBatch(
@@ -322,7 +395,9 @@ describe('ImportsService', () => {
       const result = await service.parse(ESTATE, 'batch-1', user('B'));
 
       expect(result.headers).toEqual(['Nombre', 'Referencia']);
-      expect(result.sampleRows).toEqual([{ Nombre: 'María García', Referencia: 'A-101' }]);
+      expect(result.sampleRows).toEqual([
+        { Nombre: 'María García', Referencia: 'A-101' },
+      ]);
       expect(result.totalRows).toBe(1);
       expect(prisma.importBatch.update).toHaveBeenCalledWith({
         where: { id: 'batch-1' },
@@ -331,8 +406,13 @@ describe('ImportsService', () => {
     });
 
     it('la muestra se acota a 10 filas aunque el fichero traiga más', async () => {
-      const rows = Array.from({ length: 15 }, (_, i) => `Persona ${i},A-${i}`).join('\n');
-      storage.get.mockResolvedValue(Buffer.from(`Nombre,Referencia\n${rows}\n`, 'utf-8'));
+      const rows = Array.from(
+        { length: 15 },
+        (_, i) => `Persona ${i},A-${i}`,
+      ).join('\n');
+      storage.get.mockResolvedValue(
+        Buffer.from(`Nombre,Referencia\n${rows}\n`, 'utf-8'),
+      );
       prisma.importBatch.findFirst.mockResolvedValue(makeBatch());
 
       const result = await service.parse(ESTATE, 'batch-1', user('B'));
@@ -343,17 +423,25 @@ describe('ImportsService', () => {
 
     it('batch inexistente: NotFoundException', async () => {
       prisma.importBatch.findFirst.mockResolvedValue(null);
-      await expect(service.parse(ESTATE, 'no-existe', user('B'))).rejects.toThrow(NotFoundException);
+      await expect(
+        service.parse(ESTATE, 'no-existe', user('B')),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('batch de otra finca (mismo id, distinta estateId en la búsqueda): NotFoundException, no 403 que confirme existencia', async () => {
       prisma.importBatch.findFirst.mockResolvedValue(null); // findFirst ya filtra por estateId
-      await expect(service.parse(ESTATE, 'batch-1', user('B'))).rejects.toThrow(NotFoundException);
+      await expect(service.parse(ESTATE, 'batch-1', user('B'))).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('batch sin rawFileKey: BadRequestException', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ rawFileKey: null }));
-      await expect(service.parse(ESTATE, 'batch-1', user('B'))).rejects.toThrow(BadRequestException);
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ rawFileKey: null }),
+      );
+      await expect(service.parse(ESTATE, 'batch-1', user('B'))).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -367,7 +455,10 @@ describe('ImportsService', () => {
       const { summary } = await service.validate(
         ESTATE,
         'batch-1',
-        { entityType: 'owner', mapping: { fullName: 'Nombre', propertyRef: 'Ref' } },
+        {
+          entityType: 'owner',
+          mapping: { fullName: 'Nombre', propertyRef: 'Ref' },
+        },
         user('B'),
       );
 
@@ -398,7 +489,12 @@ describe('ImportsService', () => {
     it('batch inexistente: NotFoundException', async () => {
       prisma.importBatch.findFirst.mockResolvedValue(null);
       await expect(
-        service.validate(ESTATE, 'no-existe', { entityType: 'owner', mapping: {} }, user('B')),
+        service.validate(
+          ESTATE,
+          'no-existe',
+          { entityType: 'owner', mapping: {} },
+          user('B'),
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -411,7 +507,10 @@ describe('ImportsService', () => {
     });
 
     it('con headers reales: sugiere el mapeo emparejado', () => {
-      const result = service.getPresets('GESFINCAS_NET', 'property', ['Coeficiente', 'Nº Finca']);
+      const result = service.getPresets('GESFINCAS_NET', 'property', [
+        'Coeficiente',
+        'Nº Finca',
+      ]);
       expect(result.suggestedMapping.participationQuota).toBe('Coeficiente');
       expect(result.suggestedMapping.ref).toBe('Nº Finca');
     });
@@ -426,20 +525,36 @@ describe('ImportsService', () => {
       });
 
     it('crea una Property por fila válida y su ImportedRecord, y pasa a "completed"', async () => {
-      storage.get.mockResolvedValue(Buffer.from('Ref,Coef\nA-101,2,5\n', 'utf-8'));
+      storage.get.mockResolvedValue(
+        Buffer.from('Ref,Coef\nA-101,2,5\n', 'utf-8'),
+      );
       prisma.importBatch.findFirst.mockResolvedValue(readyBatch());
 
       const summary = await service.commit(ESTATE, 'batch-1', user('B'));
 
       expect(prisma.property.create).toHaveBeenCalledTimes(1);
       const [{ data }] = prisma.property.create.mock.calls[0];
-      expect(data).toMatchObject({ estateId: ESTATE, administratorId: ADMIN, ref: 'A-101', type: 'Piso', status: 'Vacio' });
-      expect(prisma.importedRecord.create).toHaveBeenCalledWith({
-        data: { importBatchId: 'batch-1', entityType: 'Property', entityId: 'prop-new' },
+      expect(data).toMatchObject({
+        estateId: ESTATE,
+        administratorId: ADMIN,
+        ref: 'A-101',
+        type: 'Piso',
+        status: 'Vacio',
       });
-      expect((summary as { committed: { createdCount: number } }).committed.createdCount).toBe(1);
+      expect(prisma.importedRecord.create).toHaveBeenCalledWith({
+        data: {
+          importBatchId: 'batch-1',
+          entityType: 'Property',
+          entityId: 'prop-new',
+        },
+      });
+      expect(
+        (summary as { committed: { createdCount: number } }).committed
+          .createdCount,
+      ).toBe(1);
 
-      const [{ data: updateData }] = prisma.importBatch.update.mock.calls.at(-1)!;
+      const [{ data: updateData }] =
+        prisma.importBatch.update.mock.calls.at(-1)!;
       expect(updateData.status).toBe('completed');
       expect(updateData.completedAt).toBeInstanceOf(Date);
     });
@@ -447,7 +562,11 @@ describe('ImportsService', () => {
     it('sin referencia en el origen: genera "AUTO-N" determinista', async () => {
       storage.get.mockResolvedValue(Buffer.from('Coef\n10\n', 'utf-8'));
       prisma.importBatch.findFirst.mockResolvedValue(
-        makeBatch({ status: 'ready', mapping: { participationQuota: 'Coef' }, summary: { entityType: 'property' } }),
+        makeBatch({
+          status: 'ready',
+          mapping: { participationQuota: 'Coef' },
+          summary: { entityType: 'property' },
+        }),
       );
 
       await service.commit(ESTATE, 'batch-1', user('B'));
@@ -460,27 +579,45 @@ describe('ImportsService', () => {
       prisma.property.findMany.mockResolvedValue([{ ref: 'A-101' }]);
       storage.get.mockResolvedValue(Buffer.from('Ref\nA-101\n', 'utf-8'));
       prisma.importBatch.findFirst.mockResolvedValue(
-        makeBatch({ status: 'ready', mapping: { ref: 'Ref' }, summary: { entityType: 'property' } }),
+        makeBatch({
+          status: 'ready',
+          mapping: { ref: 'Ref' },
+          summary: { entityType: 'property' },
+        }),
       );
 
       const summary = (await service.commit(ESTATE, 'batch-1', user('B'))) as {
-        committed: { createdCount: number; skippedCount: number; skippedReasons: { reason: string }[] };
+        committed: {
+          createdCount: number;
+          skippedCount: number;
+          skippedReasons: { reason: string }[];
+        };
       };
 
       expect(prisma.property.create).not.toHaveBeenCalled();
       expect(summary.committed.skippedCount).toBe(1);
-      expect(summary.committed.skippedReasons[0].reason).toContain('Ya existe una propiedad');
+      expect(summary.committed.skippedReasons[0].reason).toContain(
+        'Ya existe una propiedad',
+      );
     });
 
     it('batch que no está en "ready": BadRequestException', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'uploading' }));
-      await expect(service.commit(ESTATE, 'batch-1', user('B'))).rejects.toThrow(BadRequestException);
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'uploading' }),
+      );
+      await expect(
+        service.commit(ESTATE, 'batch-1', user('B')),
+      ).rejects.toThrow(BadRequestException);
       expect(prisma.property.create).not.toHaveBeenCalled();
     });
 
     it('sin mapeo/summary validado: BadRequestException', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'ready', mapping: null, summary: null }));
-      await expect(service.commit(ESTATE, 'batch-1', user('B'))).rejects.toThrow(BadRequestException);
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'ready', mapping: null, summary: null }),
+      );
+      await expect(
+        service.commit(ESTATE, 'batch-1', user('B')),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('un fallo real durante el commit deja el batch en "failed" y propaga el error', async () => {
@@ -488,7 +625,9 @@ describe('ImportsService', () => {
       storage.get.mockResolvedValue(Buffer.from('Ref\nA-101\n', 'utf-8'));
       prisma.importBatch.findFirst.mockResolvedValue(readyBatch());
 
-      await expect(service.commit(ESTATE, 'batch-1', user('B'))).rejects.toThrow(NotFoundException);
+      await expect(
+        service.commit(ESTATE, 'batch-1', user('B')),
+      ).rejects.toThrow(NotFoundException);
       const [{ data }] = prisma.importBatch.update.mock.calls.at(-1)!;
       expect(data.status).toBe('failed');
     });
@@ -497,7 +636,9 @@ describe('ImportsService', () => {
   describe('commit — owner', () => {
     it('vincula por Ref a una Property existente y crea el ExternalOwner con createdByUserId', async () => {
       prisma.property.findFirst.mockResolvedValue({ id: 'prop-1' });
-      storage.get.mockResolvedValue(Buffer.from('Nombre,Ref\nMaría García,A-101\n', 'utf-8'));
+      storage.get.mockResolvedValue(
+        Buffer.from('Nombre,Ref\nMaría García,A-101\n', 'utf-8'),
+      );
       prisma.importBatch.findFirst.mockResolvedValue(
         makeBatch({
           status: 'ready',
@@ -509,15 +650,25 @@ describe('ImportsService', () => {
       await service.commit(ESTATE, 'batch-1', user('B'));
 
       const [{ data }] = prisma.externalOwner.create.mock.calls[0];
-      expect(data).toMatchObject({ propertyId: 'prop-1', fullName: 'María García', createdByUserId: 'u1' });
+      expect(data).toMatchObject({
+        propertyId: 'prop-1',
+        fullName: 'María García',
+        createdByUserId: 'u1',
+      });
       expect(prisma.importedRecord.create).toHaveBeenCalledWith({
-        data: { importBatchId: 'batch-1', entityType: 'ExternalOwner', entityId: 'owner-new' },
+        data: {
+          importBatchId: 'batch-1',
+          entityType: 'ExternalOwner',
+          entityId: 'owner-new',
+        },
       });
     });
 
     it('referencia de propiedad inexistente: se omite la fila, no crea ExternalOwner', async () => {
       prisma.property.findFirst.mockResolvedValue(null);
-      storage.get.mockResolvedValue(Buffer.from('Nombre,Ref\nMaría García,NO-EXISTE\n', 'utf-8'));
+      storage.get.mockResolvedValue(
+        Buffer.from('Nombre,Ref\nMaría García,NO-EXISTE\n', 'utf-8'),
+      );
       prisma.importBatch.findFirst.mockResolvedValue(
         makeBatch({
           status: 'ready',
@@ -527,11 +678,16 @@ describe('ImportsService', () => {
       );
 
       const summary = (await service.commit(ESTATE, 'batch-1', user('B'))) as {
-        committed: { createdCount: number; skippedReasons: { reason: string }[] };
+        committed: {
+          createdCount: number;
+          skippedReasons: { reason: string }[];
+        };
       };
 
       expect(prisma.externalOwner.create).not.toHaveBeenCalled();
-      expect(summary.committed.skippedReasons[0].reason).toContain('No existe ninguna propiedad');
+      expect(summary.committed.skippedReasons[0].reason).toContain(
+        'No existe ninguna propiedad',
+      );
     });
   });
 
@@ -539,7 +695,13 @@ describe('ImportsService', () => {
     const readyMovementBatch = () =>
       makeBatch({
         status: 'ready',
-        mapping: { date: 'Fecha', concept: 'Concepto', accountCode: 'Cuenta', type: 'Tipo', amount: 'Importe' },
+        mapping: {
+          date: 'Fecha',
+          concept: 'Concepto',
+          accountCode: 'Cuenta',
+          type: 'Tipo',
+          amount: 'Importe',
+        },
         summary: { entityType: 'movement' },
       });
 
@@ -547,9 +709,14 @@ describe('ImportsService', () => {
       date: Date;
       sourceType: string;
       importBatchId: string;
-      lines: { account: Record<string, string>; debit?: number; credit?: number }[];
+      lines: {
+        account: Record<string, string>;
+        debit?: number;
+        credit?: number;
+      }[];
     };
-    const drafts = (): Draft[] => (journal.post.mock.calls as [unknown, Draft][]).map(([, draft]) => draft);
+    const drafts = (): Draft[] =>
+      (journal.post.mock.calls as [unknown, Draft][]).map(([, draft]) => draft);
 
     it('cada fila es un asiento de importación contra el banco principal, en orden cronológico', async () => {
       // A propósito fuera de orden en el fichero — 02/08 antes que 01/08 — para probar que se reordena por fecha.
@@ -583,43 +750,71 @@ describe('ImportsService', () => {
         { account: { bankAccountId: 'bank-1' }, credit: 3000 },
       ]);
       expect(prisma.importedRecord.create).toHaveBeenCalledWith({
-        data: { importBatchId: 'batch-1', entityType: 'JournalEntry', entityId: 'entry-1' },
+        data: {
+          importBatchId: 'batch-1',
+          entityType: 'JournalEntry',
+          entityId: 'entry-1',
+        },
       });
       expect(summary.committed.createdCount).toBe(2);
     });
 
     it('reutiliza la cuenta contable si ya existe (no la vuelve a crear)', async () => {
-      prisma.chartAccount.findFirst.mockResolvedValue({ id: 'account-existing', code: '700' });
+      prisma.chartAccount.findFirst.mockResolvedValue({
+        id: 'account-existing',
+        code: '700',
+      });
       storage.get.mockResolvedValue(
-        Buffer.from('Fecha,Concepto,Cuenta,Tipo,Importe\n01/08/2026,Cuota,700,ingreso,100\n', 'utf-8'),
+        Buffer.from(
+          'Fecha,Concepto,Cuenta,Tipo,Importe\n01/08/2026,Cuota,700,ingreso,100\n',
+          'utf-8',
+        ),
       );
       prisma.importBatch.findFirst.mockResolvedValue(readyMovementBatch());
 
       await service.commit(ESTATE, 'batch-1', user('B'));
 
       expect(prisma.chartAccount.create).not.toHaveBeenCalled();
-      expect(drafts()[0].lines[1].account).toEqual({ accountId: 'account-existing' });
+      expect(drafts()[0].lines[1].account).toEqual({
+        accountId: 'account-existing',
+      });
     });
 
     it('salta con su motivo la fila contra una cuenta de propietarios (solo se mueve con recibos y cobros)', async () => {
-      prisma.chartAccount.findFirst.mockResolvedValue({ id: 'acc-430', code: '430', requiresProperty: true });
+      prisma.chartAccount.findFirst.mockResolvedValue({
+        id: 'acc-430',
+        code: '430',
+        requiresProperty: true,
+      });
       storage.get.mockResolvedValue(
-        Buffer.from('Fecha,Concepto,Cuenta,Tipo,Importe\n01/08/2026,Cuota,430,ingreso,100\n', 'utf-8'),
+        Buffer.from(
+          'Fecha,Concepto,Cuenta,Tipo,Importe\n01/08/2026,Cuota,430,ingreso,100\n',
+          'utf-8',
+        ),
       );
       prisma.importBatch.findFirst.mockResolvedValue(readyMovementBatch());
 
       const summary = (await service.commit(ESTATE, 'batch-1', user('B'))) as {
-        committed: { createdCount: number; skippedReasons: { reason: string }[] };
+        committed: {
+          createdCount: number;
+          skippedReasons: { reason: string }[];
+        };
       };
 
       expect(journal.post).not.toHaveBeenCalled();
       expect(summary.committed.createdCount).toBe(0);
-      expect(summary.committed.skippedReasons[0].reason).toContain('solo se mueve con sus documentos');
+      expect(summary.committed.skippedReasons[0].reason).toContain(
+        'solo se mueve con sus documentos',
+      );
     });
 
     it('una fila que la contabilidad rechaza (p. ej. antes del inicio contable) no bloquea las demás', async () => {
       journal.post
-        .mockRejectedValueOnce(new UnprocessableEntityException('La fecha es anterior al inicio de la contabilidad.'))
+        .mockRejectedValueOnce(
+          new UnprocessableEntityException(
+            'La fecha es anterior al inicio de la contabilidad.',
+          ),
+        )
         .mockResolvedValueOnce({ id: 'entry-ok' });
       storage.get.mockResolvedValue(
         Buffer.from(
@@ -630,12 +825,18 @@ describe('ImportsService', () => {
       prisma.importBatch.findFirst.mockResolvedValue(readyMovementBatch());
 
       const summary = (await service.commit(ESTATE, 'batch-1', user('B'))) as {
-        committed: { createdCount: number; skippedReasons: { rowNumber: number; reason: string }[] };
+        committed: {
+          createdCount: number;
+          skippedReasons: { rowNumber: number; reason: string }[];
+        };
       };
 
       expect(summary.committed.createdCount).toBe(1);
       expect(summary.committed.skippedReasons).toEqual([
-        { rowNumber: expect.any(Number), reason: 'La fecha es anterior al inicio de la contabilidad.' },
+        {
+          rowNumber: expect.any(Number),
+          reason: 'La fecha es anterior al inicio de la contabilidad.',
+        },
       ]);
     });
   });
@@ -654,8 +855,17 @@ describe('ImportsService', () => {
         makeBatch({
           status: 'ready',
           mapping: {
-            no: 'No', periodKey: 'Periodo', propertyRef: 'Ref', ownerName: 'Nombre', ownerTaxId: 'NIF',
-            iban: 'IBAN', concept: 'Concepto', amount: 'Importe', status: 'Estado', date: 'Fecha', method: 'Metodo',
+            no: 'No',
+            periodKey: 'Periodo',
+            propertyRef: 'Ref',
+            ownerName: 'Nombre',
+            ownerTaxId: 'NIF',
+            iban: 'IBAN',
+            concept: 'Concepto',
+            amount: 'Importe',
+            status: 'Estado',
+            date: 'Fecha',
+            method: 'Metodo',
           },
           summary: { entityType: 'receipt' },
         }),
@@ -678,7 +888,12 @@ describe('ImportsService', () => {
       // Pagada en el origen: se contabiliza también el cobro.
       expect(collections.collect).toHaveBeenCalledWith(
         prisma,
-        expect.objectContaining({ method: 'Domiciliacion', amount: 12000, receiptIds: ['receipt-new'], propertyId: 'prop-1' }),
+        expect.objectContaining({
+          method: 'Domiciliacion',
+          amount: 12000,
+          receiptIds: ['receipt-new'],
+          propertyId: 'prop-1',
+        }),
       );
     });
 
@@ -693,7 +908,16 @@ describe('ImportsService', () => {
       prisma.importBatch.findFirst.mockResolvedValue(
         makeBatch({
           status: 'ready',
-          mapping: { no: 'No', periodKey: 'Periodo', propertyRef: 'Ref', concept: 'Concepto', amount: 'Importe', status: 'Estado', date: 'Fecha', method: 'Metodo' },
+          mapping: {
+            no: 'No',
+            periodKey: 'Periodo',
+            propertyRef: 'Ref',
+            concept: 'Concepto',
+            amount: 'Importe',
+            status: 'Estado',
+            date: 'Fecha',
+            method: 'Metodo',
+          },
           summary: { entityType: 'receipt' },
         }),
       );
@@ -703,12 +927,16 @@ describe('ImportsService', () => {
       };
 
       expect(receiptPosting.issue).not.toHaveBeenCalled();
-      expect(summary.committed.skippedReasons[0].reason).toContain('saldos iniciales');
+      expect(summary.committed.skippedReasons[0].reason).toContain(
+        'saldos iniciales',
+      );
     });
 
     it('recibo duplicado (mismo periodo+número): se omite, no rompe el lote', async () => {
       prisma.property.findFirst.mockResolvedValue({ id: 'prop-1' });
-      prisma.accountingReceipt.findUnique.mockResolvedValue({ id: 'receipt-existing' });
+      prisma.accountingReceipt.findUnique.mockResolvedValue({
+        id: 'receipt-existing',
+      });
       storage.get.mockResolvedValue(
         Buffer.from(
           'No,Periodo,Ref,Concepto,Importe,Estado,Fecha,Metodo\n2026/08-001,2026-08,A-101,Cuota,120,Pagada,01/08/2026,Transferencia\n',
@@ -718,7 +946,16 @@ describe('ImportsService', () => {
       prisma.importBatch.findFirst.mockResolvedValue(
         makeBatch({
           status: 'ready',
-          mapping: { no: 'No', periodKey: 'Periodo', propertyRef: 'Ref', concept: 'Concepto', amount: 'Importe', status: 'Estado', date: 'Fecha', method: 'Metodo' },
+          mapping: {
+            no: 'No',
+            periodKey: 'Periodo',
+            propertyRef: 'Ref',
+            concept: 'Concepto',
+            amount: 'Importe',
+            status: 'Estado',
+            date: 'Fecha',
+            method: 'Metodo',
+          },
           summary: { entityType: 'receipt' },
         }),
       );
@@ -728,16 +965,25 @@ describe('ImportsService', () => {
       };
 
       expect(receiptPosting.issue).not.toHaveBeenCalled();
-      expect(summary.committed.skippedReasons[0].reason).toContain('Ya existe el recibo');
+      expect(summary.committed.skippedReasons[0].reason).toContain(
+        'Ya existe el recibo',
+      );
     });
   });
 
   describe('commit — remesa', () => {
     it('agrupa líneas por remesaRef, hereda snapshots del recibo vinculado, y no crea mandato', async () => {
-      prisma.accountingPeriod.findUnique.mockResolvedValue({ id: 'period-1', periodKey: '2026-08' });
+      prisma.accountingPeriod.findUnique.mockResolvedValue({
+        id: 'period-1',
+        periodKey: '2026-08',
+      });
       prisma.accountingReceipt.findUnique.mockResolvedValue({
-        id: 'receipt-1', propertyId: 'prop-1', ownerUserId: null,
-        ownerNameSnapshot: 'Juan Histórico', ownerTaxIdSnapshot: '11111111H', ownerTaxIdCountrySnapshot: 'ES',
+        id: 'receipt-1',
+        propertyId: 'prop-1',
+        ownerUserId: null,
+        ownerNameSnapshot: 'Juan Histórico',
+        ownerTaxIdSnapshot: '11111111H',
+        ownerTaxIdCountrySnapshot: 'ES',
         ibanSnapshot: 'ES7620770024003102575766',
       });
       storage.get.mockResolvedValue(
@@ -749,7 +995,13 @@ describe('ImportsService', () => {
       prisma.importBatch.findFirst.mockResolvedValue(
         makeBatch({
           status: 'ready',
-          mapping: { remesaRef: 'Remesa', periodKey: 'Periodo', receiptNo: 'Recibo', amount: 'Importe', status: 'Estado' },
+          mapping: {
+            remesaRef: 'Remesa',
+            periodKey: 'Periodo',
+            receiptNo: 'Recibo',
+            amount: 'Importe',
+            status: 'Estado',
+          },
           summary: { entityType: 'remesa' },
         }),
       );
@@ -774,36 +1026,62 @@ describe('ImportsService', () => {
     it('línea cuyo recibo no existe: se omite, no crea la cabecera si no queda ninguna línea resoluble', async () => {
       prisma.accountingPeriod.findUnique.mockResolvedValue(null);
       storage.get.mockResolvedValue(
-        Buffer.from('Remesa,Periodo,Recibo,Importe,Estado\nREM-X,2026-08,NO-EXISTE,120,Cobrado\n', 'utf-8'),
+        Buffer.from(
+          'Remesa,Periodo,Recibo,Importe,Estado\nREM-X,2026-08,NO-EXISTE,120,Cobrado\n',
+          'utf-8',
+        ),
       );
       prisma.importBatch.findFirst.mockResolvedValue(
         makeBatch({
           status: 'ready',
-          mapping: { remesaRef: 'Remesa', periodKey: 'Periodo', receiptNo: 'Recibo', amount: 'Importe', status: 'Estado' },
+          mapping: {
+            remesaRef: 'Remesa',
+            periodKey: 'Periodo',
+            receiptNo: 'Recibo',
+            amount: 'Importe',
+            status: 'Estado',
+          },
           summary: { entityType: 'remesa' },
         }),
       );
 
       const summary = (await service.commit(ESTATE, 'batch-1', user('B'))) as {
-        committed: { createdCount: number; skippedReasons: { reason: string }[] };
+        committed: {
+          createdCount: number;
+          skippedReasons: { reason: string }[];
+        };
       };
 
       expect(prisma.remesaHistoryItem.create).not.toHaveBeenCalled();
-      expect(summary.committed.skippedReasons[0].reason).toContain('No se encontró el recibo');
+      expect(summary.committed.skippedReasons[0].reason).toContain(
+        'No se encontró el recibo',
+      );
     });
 
     it('línea cuyo recibo no tiene IBAN: se omite (RemesaLine.iban es obligatorio)', async () => {
       prisma.accountingPeriod.findUnique.mockResolvedValue({ id: 'period-1' });
       prisma.accountingReceipt.findUnique.mockResolvedValue({
-        id: 'receipt-1', propertyId: 'prop-1', ownerUserId: null, ibanSnapshot: null,
+        id: 'receipt-1',
+        propertyId: 'prop-1',
+        ownerUserId: null,
+        ibanSnapshot: null,
       });
       storage.get.mockResolvedValue(
-        Buffer.from('Remesa,Periodo,Recibo,Importe,Estado\nREM-X,2026-08,2026/08-001,120,Cobrado\n', 'utf-8'),
+        Buffer.from(
+          'Remesa,Periodo,Recibo,Importe,Estado\nREM-X,2026-08,2026/08-001,120,Cobrado\n',
+          'utf-8',
+        ),
       );
       prisma.importBatch.findFirst.mockResolvedValue(
         makeBatch({
           status: 'ready',
-          mapping: { remesaRef: 'Remesa', periodKey: 'Periodo', receiptNo: 'Recibo', amount: 'Importe', status: 'Estado' },
+          mapping: {
+            remesaRef: 'Remesa',
+            periodKey: 'Periodo',
+            receiptNo: 'Recibo',
+            amount: 'Importe',
+            status: 'Estado',
+          },
           summary: { entityType: 'remesa' },
         }),
       );
@@ -813,7 +1091,9 @@ describe('ImportsService', () => {
       };
 
       expect(prisma.remesaLine.create).not.toHaveBeenCalled();
-      expect(summary.committed.skippedReasons[0].reason).toContain('no tiene IBAN registrado');
+      expect(summary.committed.skippedReasons[0].reason).toContain(
+        'no tiene IBAN registrado',
+      );
     });
   });
 
@@ -1031,8 +1311,18 @@ describe('ImportsService', () => {
   describe('rollback', () => {
     function trackedRecords() {
       return [
-        { id: 'r1', importBatchId: 'batch-1', entityType: 'Property', entityId: 'prop-1' },
-        { id: 'r2', importBatchId: 'batch-1', entityType: 'ExternalOwner', entityId: 'owner-1' },
+        {
+          id: 'r1',
+          importBatchId: 'batch-1',
+          entityType: 'Property',
+          entityId: 'prop-1',
+        },
+        {
+          id: 'r2',
+          importBatchId: 'batch-1',
+          entityType: 'ExternalOwner',
+          entityId: 'owner-1',
+        },
       ];
     }
 
@@ -1050,16 +1340,25 @@ describe('ImportsService', () => {
     });
 
     it('borra lo trackeado por ImportedRecord y pasa a "rolled_back"', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'completed' }));
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'completed' }),
+      );
       prisma.importedRecord.findMany.mockResolvedValue(trackedRecords());
       prisma.externalOwner.findMany.mockResolvedValue([]); // sin propietarios ajenos al batch
 
       const result = await service.rollback(ESTATE, 'batch-1', user('B'));
 
-      expect(prisma.externalOwner.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['owner-1'] } } });
-      expect(prisma.property.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['prop-1'] } } });
+      expect(prisma.externalOwner.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['owner-1'] } },
+      });
+      expect(prisma.property.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['prop-1'] } },
+      });
       expect(prisma.importedRecord.deleteMany).toHaveBeenCalledWith({
-        where: { importBatchId: 'batch-1', entityType: { notIn: ['ChartAccount', 'AccountingPeriod'] } },
+        where: {
+          importBatchId: 'batch-1',
+          entityType: { notIn: ['ChartAccount', 'AccountingPeriod'] },
+        },
       });
       const [{ data }] = prisma.importBatch.update.mock.calls.at(-1)!;
       expect(data.status).toBe('rolled_back');
@@ -1074,7 +1373,9 @@ describe('ImportsService', () => {
     });
 
     it('borra antes las invitaciones sin canjear de esos titulares (la FK es Restrict)', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'completed' }));
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'completed' }),
+      );
       prisma.importedRecord.findMany.mockResolvedValue(trackedRecords());
 
       await service.rollback(ESTATE, 'batch-1', user('B'));
@@ -1082,55 +1383,95 @@ describe('ImportsService', () => {
       expect(prisma.propertyMembershipInvite.deleteMany).toHaveBeenCalledWith({
         where: { externalOwnerId: { in: ['owner-1'] }, usedAt: null },
       });
-      const inviteOrder = prisma.propertyMembershipInvite.deleteMany.mock.invocationCallOrder[0];
-      const ownerOrder = prisma.externalOwner.deleteMany.mock.invocationCallOrder[0];
+      const inviteOrder =
+        prisma.propertyMembershipInvite.deleteMany.mock.invocationCallOrder[0];
+      const ownerOrder =
+        prisma.externalOwner.deleteMany.mock.invocationCallOrder[0];
       expect(inviteOrder).toBeLessThan(ownerOrder);
     });
 
     it('bloquea el deshacer si algún titular importado ya aceptó su invitación y tiene cuenta', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'completed' }));
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'completed' }),
+      );
       prisma.importedRecord.findMany.mockResolvedValue(trackedRecords());
       prisma.externalOwner.count.mockResolvedValue(1);
 
-      await expect(service.rollback(ESTATE, 'batch-1', user('B'))).rejects.toThrow('ya aceptó su invitación');
+      await expect(
+        service.rollback(ESTATE, 'batch-1', user('B')),
+      ).rejects.toThrow('ya aceptó su invitación');
       expect(prisma.externalOwner.deleteMany).not.toHaveBeenCalled();
       expect(prisma.property.deleteMany).not.toHaveBeenCalled();
     });
 
     it('batch no "completed": BadRequestException, sin tocar nada', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'ready' }));
-      await expect(service.rollback(ESTATE, 'batch-1', user('B'))).rejects.toThrow(BadRequestException);
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'ready' }),
+      );
+      await expect(
+        service.rollback(ESTATE, 'batch-1', user('B')),
+      ).rejects.toThrow(BadRequestException);
       expect(prisma.property.deleteMany).not.toHaveBeenCalled();
     });
 
     it('bloquea el deshacer si una propiedad importada tiene un propietario añadido después (no trackeado)', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'completed' }));
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'completed' }),
+      );
       prisma.importedRecord.findMany.mockResolvedValue(trackedRecords());
-      prisma.externalOwner.findMany.mockResolvedValue([{ id: 'owner-manual-2' }]); // añadido a mano después
+      prisma.externalOwner.findMany.mockResolvedValue([
+        { id: 'owner-manual-2' },
+      ]); // añadido a mano después
 
-      await expect(service.rollback(ESTATE, 'batch-1', user('B'))).rejects.toThrow(BadRequestException);
+      await expect(
+        service.rollback(ESTATE, 'batch-1', user('B')),
+      ).rejects.toThrow(BadRequestException);
       expect(prisma.property.deleteMany).not.toHaveBeenCalled();
       expect(prisma.externalOwner.deleteMany).not.toHaveBeenCalled();
     });
 
     it('si el borrado falla por datos dependientes (FK), lo traduce a un BadRequestException claro', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'completed' }));
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'completed' }),
+      );
       prisma.importedRecord.findMany.mockResolvedValue(trackedRecords());
       prisma.externalOwner.findMany.mockResolvedValue([]);
-      prisma.$transaction.mockRejectedValue(new Error('P2003: foreign key violation'));
+      prisma.$transaction.mockRejectedValue(
+        new Error('P2003: foreign key violation'),
+      );
 
-      await expect(service.rollback(ESTATE, 'batch-1', user('B'))).rejects.toThrow(BadRequestException);
+      await expect(
+        service.rollback(ESTATE, 'batch-1', user('B')),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('los asientos importados no se borran: se revierten en su fecha, saltando los ya revertidos', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'completed' }));
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'completed' }),
+      );
       prisma.importedRecord.findMany.mockResolvedValue([
-        { id: 'r1', importBatchId: 'batch-1', entityType: 'JournalEntry', entityId: 'entry-a' },
-        { id: 'r2', importBatchId: 'batch-1', entityType: 'JournalEntry', entityId: 'entry-b' },
+        {
+          id: 'r1',
+          importBatchId: 'batch-1',
+          entityType: 'JournalEntry',
+          entityId: 'entry-a',
+        },
+        {
+          id: 'r2',
+          importBatchId: 'batch-1',
+          entityType: 'JournalEntry',
+          entityId: 'entry-b',
+        },
       ]);
       prisma.journalEntry.findUnique
-        .mockResolvedValueOnce({ date: new Date('2026-08-01T00:00:00Z'), reversedBy: null })
-        .mockResolvedValueOnce({ date: new Date('2026-08-02T00:00:00Z'), reversedBy: { id: 'manual' } });
+        .mockResolvedValueOnce({
+          date: new Date('2026-08-01T00:00:00Z'),
+          reversedBy: null,
+        })
+        .mockResolvedValueOnce({
+          date: new Date('2026-08-02T00:00:00Z'),
+          reversedBy: { id: 'manual' },
+        });
 
       const result = await service.rollback(ESTATE, 'batch-1', user('B'));
 
@@ -1144,17 +1485,33 @@ describe('ImportsService', () => {
     });
 
     it('ChartAccount/AccountingPeriod: borrado best-effort FUERA de la transacción principal — si sigue en uso, se deja sin romper el resto', async () => {
-      prisma.importBatch.findFirst.mockResolvedValue(makeBatch({ status: 'completed' }));
+      prisma.importBatch.findFirst.mockResolvedValue(
+        makeBatch({ status: 'completed' }),
+      );
       prisma.importedRecord.findMany.mockResolvedValue([
-        { id: 'r1', importBatchId: 'batch-1', entityType: 'JournalEntry', entityId: 'entry-a' },
-        { id: 'r2', importBatchId: 'batch-1', entityType: 'ChartAccount', entityId: 'acc-1' },
+        {
+          id: 'r1',
+          importBatchId: 'batch-1',
+          entityType: 'JournalEntry',
+          entityId: 'entry-a',
+        },
+        {
+          id: 'r2',
+          importBatchId: 'batch-1',
+          entityType: 'ChartAccount',
+          entityId: 'acc-1',
+        },
       ]);
-      prisma.chartAccount.delete.mockRejectedValue(new Error('P2003: still referenced'));
+      prisma.chartAccount.delete.mockRejectedValue(
+        new Error('P2003: still referenced'),
+      );
 
       const result = await service.rollback(ESTATE, 'batch-1', user('B'));
 
       // La cuenta contable no pudo borrarse, pero el resto del rollback sí se completó.
-      expect(prisma.chartAccount.delete).toHaveBeenCalledWith({ where: { id: 'acc-1' } });
+      expect(prisma.chartAccount.delete).toHaveBeenCalledWith({
+        where: { id: 'acc-1' },
+      });
       expect(result.reversedEntries).toBe(1);
       const [{ data }] = prisma.importBatch.update.mock.calls.at(-1)!;
       expect(data.status).toBe('rolled_back');
@@ -1163,14 +1520,16 @@ describe('ImportsService', () => {
 
   describe('listBatches / getBatch', () => {
     it('listBatches respeta el scoping de finca', async () => {
-      await expect(service.listBatches('otra-finca', user('B', [ESTATE]))).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.listBatches('otra-finca', user('B', [ESTATE])),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('getBatch delega en el mismo chequeo de acceso que parse/validate', async () => {
       prisma.importBatch.findFirst.mockResolvedValue(makeBatch());
-      await expect(service.getBatch(ESTATE, 'batch-1', user('B'))).resolves.toEqual(makeBatch());
+      await expect(
+        service.getBatch(ESTATE, 'batch-1', user('B')),
+      ).resolves.toEqual(makeBatch());
     });
   });
 });

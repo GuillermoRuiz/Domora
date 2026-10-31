@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { createPrismaClient } from '../prisma/create-prisma-client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { EstateAccessService } from '../estate-access/estate-access.service';
@@ -165,10 +169,17 @@ describe('IssuesService.create · el aviso original', () => {
   it('una llamada de un propietario con cuenta: queda como reportante, igual que si la hubiera creado él', async () => {
     const issue = await service.create(
       estateId,
-      dto({ channel: 'call', reporterUserId: ownerId, reporterName: 'Vecino con cuenta', reporterContact: '600 333 444' }),
+      dto({
+        channel: 'call',
+        reporterUserId: ownerId,
+        reporterName: 'Vecino con cuenta',
+        reporterContact: '600 333 444',
+      }),
       manager,
     );
-    const report = await prisma.issueReport.findFirstOrThrow({ where: { issueId: issue.id } });
+    const report = await prisma.issueReport.findFirstOrThrow({
+      where: { issueId: issue.id },
+    });
     expect(report).toMatchObject({
       channel: 'call',
       reporterUserId: ownerId,
@@ -185,7 +196,11 @@ describe('IssuesService.create · el aviso original', () => {
       service.create(estateId, dto({ reporterUserId: admin.userId }), manager),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
-      service.create(estateId, dto({ reporterUserId: '00000000-0000-4000-8000-000000000000' }), manager),
+      service.create(
+        estateId,
+        dto({ reporterUserId: '00000000-0000-4000-8000-000000000000' }),
+        manager,
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -206,31 +221,81 @@ describe('IssuesService.create · el aviso original', () => {
 
 describe('IssuesService.deleteIssue · eliminar una incidencia', () => {
   it('la gestión la elimina: deja de verse y se retira lo que seguía vivo por ella', async () => {
-    const issue = await service.create(estateId, dto({ title: 'Para eliminar' }), manager);
+    const issue = await service.create(
+      estateId,
+      dto({ title: 'Para eliminar' }),
+      manager,
+    );
     await prisma.agendaTask.create({
-      data: { administratorId: admin.administratorId, estateId, title: 'Tarea de la incidencia', issueId: issue.id, startAt: new Date(), endAt: new Date(Date.now() + 3_600_000) },
+      data: {
+        administratorId: admin.administratorId,
+        estateId,
+        title: 'Tarea de la incidencia',
+        issueId: issue.id,
+        startAt: new Date(),
+        endAt: new Date(Date.now() + 3_600_000),
+      },
     });
     await prisma.issueWait.create({
-      data: { issueId: issue.id, party: 'provider', kind: 'provider_reply', startedAt: new Date() },
+      data: {
+        issueId: issue.id,
+        party: 'provider',
+        kind: 'provider_reply',
+        startedAt: new Date(),
+      },
     });
 
-    await expect(service.deleteIssue(issue.id, manager)).resolves.toEqual({ deleted: true });
+    await expect(service.deleteIssue(issue.id, manager)).resolves.toEqual({
+      deleted: true,
+    });
 
     // Borrado lógico: la fila sigue, pero ninguna lectura la ve.
-    expect((await prisma.issue.findUniqueOrThrow({ where: { id: issue.id } })).deletedAt).not.toBeNull();
-    await expect(service.assertIssueAccess(issue.id, manager)).rejects.toThrow('no encontrada');
+    expect(
+      (await prisma.issue.findUniqueOrThrow({ where: { id: issue.id } }))
+        .deletedAt,
+    ).not.toBeNull();
+    await expect(service.assertIssueAccess(issue.id, manager)).rejects.toThrow(
+      'no encontrada',
+    );
     // Las tareas no se borran (el historial las referencia): se archivan y se cierran.
-    expect(await prisma.agendaTask.count({ where: { issueId: issue.id, archivedAt: null } })).toBe(0);
-    expect(await prisma.agendaTask.count({ where: { issueId: issue.id, archivedAt: { not: null }, status: 'CANCELADA' } })).toBe(1);
-    expect(await prisma.issueWait.count({ where: { issueId: issue.id, endedAt: null } })).toBe(0);
+    expect(
+      await prisma.agendaTask.count({
+        where: { issueId: issue.id, archivedAt: null },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.agendaTask.count({
+        where: {
+          issueId: issue.id,
+          archivedAt: { not: null },
+          status: 'CANCELADA',
+        },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.issueWait.count({
+        where: { issueId: issue.id, endedAt: null },
+      }),
+    ).toBe(0);
     // Eliminarla dos veces: ya no existe.
-    await expect(service.deleteIssue(issue.id, manager)).rejects.toThrow('no encontrada');
+    await expect(service.deleteIssue(issue.id, manager)).rejects.toThrow(
+      'no encontrada',
+    );
   });
 
   it('un propietario no puede eliminar incidencias', async () => {
-    const issue = await service.create(estateId, dto({ title: 'No se elimina' }), manager);
-    await expect(service.deleteIssue(issue.id, owner)).rejects.toBeInstanceOf(ForbiddenException);
-    expect((await prisma.issue.findUniqueOrThrow({ where: { id: issue.id } })).deletedAt).toBeNull();
+    const issue = await service.create(
+      estateId,
+      dto({ title: 'No se elimina' }),
+      manager,
+    );
+    await expect(service.deleteIssue(issue.id, owner)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(
+      (await prisma.issue.findUniqueOrThrow({ where: { id: issue.id } }))
+        .deletedAt,
+    ).toBeNull();
   });
 });
 

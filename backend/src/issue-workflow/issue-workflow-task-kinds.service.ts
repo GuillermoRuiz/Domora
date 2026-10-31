@@ -225,13 +225,17 @@ export class IssueWorkflowTaskKinds implements OnModuleInit {
                 actor,
               });
               if (!started.created)
-                throw new ConflictException('Ya hay una espera abierta de ese tipo.');
+                throw new ConflictException(
+                  'Ya hay una espera abierta de ese tipo.',
+                );
               break;
             }
             case 'schedule_visit': {
               const scheduledAt = new Date(resolution.scheduledAt as string);
               if (scheduledAt.getTime() <= Date.now())
-                throw new BadRequestException('La visita tiene que ser en el futuro.');
+                throw new BadRequestException(
+                  'La visita tiene que ser en el futuro.',
+                );
               if (resolution.supplierId && resolution.useAssignedProfessional)
                 throw new BadRequestException(
                   'Indica el proveedor o el profesional asignado, no los dos.',
@@ -282,8 +286,7 @@ export class IssueWorkflowTaskKinds implements OnModuleInit {
             userId: user.id,
           });
         });
-        for (const inform of informs)
-          await this.workflow.afterCommit(inform);
+        for (const inform of informs) await this.workflow.afterCommit(inform);
         for (const t of opened)
           await this.workflow.notifyTaskOpened(t).catch(() => undefined);
         return {

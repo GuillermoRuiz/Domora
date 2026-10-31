@@ -10,7 +10,7 @@ import type { SupportSession } from './models';
  * Keep them identical to the backend copy.
  */
 export const SUPPORT_MESSAGES = {
-  noSession: 'Estás en modo consulta. Para modificar datos de un despacho inicia una sesión de soporte.',
+  noSession: 'Para ver o modificar datos de un despacho inicia una sesión de soporte.',
   invalidSession: 'La sesión de soporte no es válida, ha terminado o ha caducado. Inicia una nueva.',
   otherDespacho: 'La sesión de soporte activa es de otro despacho. Inicia una sesión de soporte para este despacho.',
 } as const;
@@ -38,6 +38,15 @@ export class SupportSessionService {
   private expiryTimer?: ReturnType<typeof setTimeout>;
   /** Ignores restore answers that arrive after the despacho changed or the session was dropped. */
   private restoreVersion = 0;
+  /** The restore in flight, so the route guard and the context effect share one request. */
+  private restoring: { despachoId: string; version: number; promise: Promise<void> } | null = null;
+
+  /**
+   * Bumped when an open session stops being usable (ended, expired or rejected by the API) while
+   * role A keeps looking at its despacho. Role B screens are only reachable inside a session, so
+   * the shell sends the user back to the despacho ficha.
+   */
+  readonly lost = signal(0);
 
   /** Message of the last support denial (403), until the user starts a session or dismisses it. */
   readonly denial = signal<string | null>(null);
@@ -65,9 +74,13 @@ export class SupportSessionService {
           this.api.post(`/support-sessions/${open.id}/end`, {}).catch(() => undefined);
         }
         previousUserId = user?.id ?? null;
-        this.drop();
         this.denial.set(null);
-        if (user?.role === 'A' && despachoId) void this.restore(despachoId);
+        // A session (or a restore in flight) the route guard already started for this despacho is kept.
+        const sameDespacho = user?.role === 'A' && !!despachoId &&
+          (open?.administratorId === despachoId || this.restoring?.despachoId === despachoId);
+        if (sameDespacho) return;
+        this.drop();
+        if (user?.role === 'A' && despachoId) void this.restoreFor(despachoId);
       });
     });
   }
@@ -92,6 +105,18 @@ export class SupportSessionService {
     if (!session) return;
     await this.api.post<SupportSession>(`/support-sessions/${session.id}/end`, {});
     this.drop();
+    this.lost.update((n) => n + 1);
+  }
+
+  /**
+   * Resolves once the session of the selected despacho is known: at once when it is already
+   * active or there is nothing to restore (not role A, no despacho), otherwise after the restore.
+   */
+  async ensureRestored(): Promise<void> {
+    const user = this.auth.currentUser();
+    const despachoId = this.despacho.selected()?.id;
+    if (!user || user.role !== 'A' || !despachoId || this.active()) return;
+    await this.restoreFor(despachoId);
   }
 
   /**
@@ -101,7 +126,10 @@ export class SupportSessionService {
   handleForbidden(message: unknown): boolean {
     if (typeof message !== 'string') return false;
     if (!(Object.values(SUPPORT_MESSAGES) as string[]).includes(message)) return false;
-    if (message === SUPPORT_MESSAGES.invalidSession) this.drop();
+    if (message === SUPPORT_MESSAGES.invalidSession && this.session()) {
+      this.drop();
+      this.lost.update((n) => n + 1);
+    }
     this.denial.set(message);
     return true;
   }
@@ -110,8 +138,18 @@ export class SupportSessionService {
     this.denial.set(null);
   }
 
-  private async restore(despachoId: string): Promise<void> {
+  private restoreFor(despachoId: string): Promise<void> {
+    const current = this.restoring;
+    if (current && current.despachoId === despachoId && current.version === this.restoreVersion) return current.promise;
     const version = ++this.restoreVersion;
+    const promise = this.restore(despachoId, version).finally(() => {
+      if (this.restoring?.promise === promise) this.restoring = null;
+    });
+    this.restoring = { despachoId, version, promise };
+    return promise;
+  }
+
+  private async restore(despachoId: string, version: number): Promise<void> {
     try {
       const sessions = await this.api.get<SupportSession[]>('/support-sessions/active');
       if (version !== this.restoreVersion) return;
@@ -127,7 +165,9 @@ export class SupportSessionService {
     clearTimeout(this.expiryTimer);
     const remaining = Date.parse(session.expiresAt) - Date.now();
     if (!(remaining > 0)) {
+      const wasOpen = this.session()?.id === session.id;
       this.session.set(null);
+      if (wasOpen) this.lost.update((n) => n + 1);
       return;
     }
     this.session.set(session);
@@ -141,6 +181,7 @@ export class SupportSessionService {
     clearTimeout(this.expiryTimer);
     this.expiryTimer = undefined;
     this.restoreVersion++;
+    this.restoring = null;
     this.session.set(null);
   }
 }

@@ -52,7 +52,12 @@ export class PushService {
   ): Promise<void> {
     await this.prisma.pushSubscription.upsert({
       where: { endpoint: sub.endpoint },
-      update: { userId, p256dh: sub.keys.p256dh, auth: sub.keys.auth, userAgent: sub.userAgent ?? null },
+      update: {
+        userId,
+        p256dh: sub.keys.p256dh,
+        auth: sub.keys.auth,
+        userAgent: sub.userAgent ?? null,
+      },
       create: {
         userId,
         endpoint: sub.endpoint,
@@ -84,7 +89,10 @@ export class PushService {
     }
   }
 
-  private async doSendToUser(userId: string, payload: PushPayload): Promise<void> {
+  private async doSendToUser(
+    userId: string,
+    payload: PushPayload,
+  ): Promise<void> {
     if (!this.enabled) {
       this.logger.warn(
         `VAPID_* no configurado — push NO enviado de verdad. Para: ${userId} · "${payload.title}"`,
@@ -101,7 +109,10 @@ export class PushService {
       subscriptions.map(async (sub) => {
         try {
           await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            {
+              endpoint: sub.endpoint,
+              keys: { p256dh: sub.p256dh, auth: sub.auth },
+            },
             body,
           );
         } catch (error) {

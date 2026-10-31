@@ -10,7 +10,16 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { IsBoolean, IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -20,13 +29,32 @@ import { IssueJourneyService } from './issue-journey.service';
 class AddMilestoneDto {
   @IsString() @MaxLength(120) label!: string;
   @IsOptional() @IsString() @MaxLength(40) afterKey?: string;
-  @IsOptional() @IsIn(['Abierta', 'EnReparacion', 'PendienteProveedor', 'PendienteInformacion', 'Resuelta', 'Cerrada']) linkedStatus?: string;
+  @IsOptional()
+  @IsIn([
+    'Abierta',
+    'EnReparacion',
+    'PendienteProveedor',
+    'PendienteInformacion',
+    'Resuelta',
+    'Cerrada',
+  ])
+  linkedStatus?: string;
 }
 class UpdateMilestoneDto {
   @IsOptional() @IsString() @MaxLength(120) label?: string;
   @IsOptional() @IsBoolean() done?: boolean;
   @IsOptional() @IsNumber() @Min(-1_000_000) @Max(1_000_000) position?: number;
-  @IsOptional() @IsIn(['Abierta', 'EnReparacion', 'PendienteProveedor', 'PendienteInformacion', 'Resuelta', 'Cerrada', null]) linkedStatus?: string | null;
+  @IsOptional()
+  @IsIn([
+    'Abierta',
+    'EnReparacion',
+    'PendienteProveedor',
+    'PendienteInformacion',
+    'Resuelta',
+    'Cerrada',
+    null,
+  ])
+  linkedStatus?: string | null;
 }
 
 /** Máximo de incidencias por petición de situaciones (una página de lista). */

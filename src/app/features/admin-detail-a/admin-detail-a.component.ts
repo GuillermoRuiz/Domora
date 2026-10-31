@@ -10,6 +10,9 @@ import type { AdminActivityType, EstateSetupStepKey, AdminPayMethod, AdminStatus
 import { AdminsService, type AdministratorDetail } from '../../core/admins.service';
 import { AdminInsightsService } from '../../core/admin-insights.service';
 import { DespachoContextService } from '../../core/despacho-context.service';
+import { SUPPORT_REQUIRED_PARAM, SUPPORT_RETURN_PARAM, supportReturnUrl } from '../../core/role.guard';
+import { SupportSessionService } from '../../core/support-session.service';
+import { SupportSessionDialogComponent } from '../../layout/support-session-dialog/support-session-dialog.component';
 import type { OfficeCompletenessDetail } from '../../core/office-setup.service';
 import { RiskTagComponent } from './risk-tag/risk-tag.component';
 import { AdminInviteDialogComponent } from './invite-dialog/admin-invite-dialog.component';
@@ -59,12 +62,13 @@ const TABS: { key: Tab; label: string }[] = [
  * client status, payment status and salud; tabs Resumen (contact, contract,
  * «qué falta configurar», salud breakdown, «Requieren atención»),
  * Suscripción (the existing commercial actions), Fincas, Facturación and
- * Actividad. «Ver sus comunidades» enters the despacho context (S1).
+ * Actividad. «Ver sus comunidades» enters the despacho context (S1), which
+ * needs a support session (S5): without one it asks for it first.
  */
 @Component({
   selector: 'app-admin-detail-a',
   standalone: true,
-  imports: [TopbarComponent, ProgressBarComponent, BadgeComponent, IconComponent, BtnComponent, AvatarComponent, RouterLink, RiskTagComponent, AdminInviteDialogComponent],
+  imports: [TopbarComponent, ProgressBarComponent, BadgeComponent, IconComponent, BtnComponent, AvatarComponent, RouterLink, RiskTagComponent, AdminInviteDialogComponent, SupportSessionDialogComponent],
   templateUrl: './admin-detail-a.component.html',
   styleUrl: './admin-detail-a.component.scss',
 })
@@ -74,6 +78,7 @@ export class AdminDetailAComponent implements OnInit {
   private adminsSvc = inject(AdminsService);
   private insights = inject(AdminInsightsService);
   private despachoContext = inject(DespachoContextService);
+  private support = inject(SupportSessionService);
 
   readonly tabs = TABS;
   readonly planFeatures = PLAN_FEATURES;
@@ -103,6 +108,8 @@ export class AdminDetailAComponent implements OnInit {
   tab = signal<Tab>('resumen');
   toastMessage = signal<string | null>(null);
   inviteOpen = signal(false);
+  /** Role B screen to open once the support session starts (the dialog is shown meanwhile). */
+  supportPendingPath = signal<string | null>(null);
 
   /** Despacho steps that count for completitud and are not done yet. */
   pendingOfficeSteps = computed(() =>
@@ -131,6 +138,14 @@ export class AdminDetailAComponent implements OnInit {
       this.plansCatalog.set(catalog);
       this.state.set(admin ? 'ready' : 'error');
       this.notesDraft.set(admin?.notes ?? '');
+      // Sent back by the route guard: a role B screen of this despacho needs a support session. Once there is one
+      // (already restored, or started in the dialog) the user goes on to the screen they asked for.
+      const query = this.route.snapshot.queryParamMap;
+      if (admin && query?.get(SUPPORT_REQUIRED_PARAM)) {
+        const returnUrl = supportReturnUrl(query.get(SUPPORT_RETURN_PARAM)) ?? undefined;
+        void this.router.navigate([], { relativeTo: this.route, queryParams: { [SUPPORT_REQUIRED_PARAM]: null, [SUPPORT_RETURN_PARAM]: null }, queryParamsHandling: 'merge', replaceUrl: true });
+        void this.viewCommunities(returnUrl);
+      }
     } catch (error) {
       console.error('Error cargando el administrador', error);
       this.state.set('error');
@@ -168,11 +183,22 @@ export class AdminDetailAComponent implements OnInit {
     setTimeout(() => this.toastMessage.set(null), 2400);
   }
 
-  /** Enters the despacho: role B screens reused by role A scope to it (S1). */
-  viewCommunities(path = '/b/estates'): void {
+  /**
+   * Enters the despacho: role B screens reused by role A scope to it (S1). They are only open inside a
+   * support session of this despacho (S5), so without one the support dialog opens first.
+   */
+  async viewCommunities(path = '/b/estates'): Promise<void> {
     const admin = this.admin();
     if (!admin) return;
     this.despachoContext.select({ id: admin.id, name: admin.name });
+    await this.support.ensureRestored();
+    if (this.support.active()) void this.router.navigateByUrl(path);
+    else this.supportPendingPath.set(path);
+  }
+
+  /** The support session started from the ficha: open the screen that asked for it. */
+  enterDespacho(path: string): void {
+    this.supportPendingPath.set(null);
     void this.router.navigateByUrl(path);
   }
 

@@ -1,13 +1,13 @@
-import { signal } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es';
 import { Router } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { API, makeUser, setupComponent, settle, type ComponentHarness } from '../../core/testing/component-harness';
 import type { CommunitySummary, PropertyOverview } from '../../core/owner-community.models';
-import { OwnerScopeService, type ScopeGroup, type ScopeProperty } from '../../core/owner-scope.service';
+import { OwnerScopeService, type ScopeProperty } from '../../core/owner-scope.service';
 import { StateService } from '../../core/state.service';
 import { CommunityCComponent } from './community-c.component';
+import { fakeOwnerScope } from '../../core/testing/fake-owner-scope';
 
 registerLocaleData(localeEs);
 
@@ -15,49 +15,23 @@ const P1: ScopeProperty = { id: 'p1', nickname: '3A', addressFull: 'Calle Colón
 const P2: ScopeProperty = { id: 'p2', nickname: '1A', addressFull: 'Calle Cuba 18', estateId: 'e2', estateName: 'Cuba 18', isLinked: true };
 const LONE: ScopeProperty = { id: 'p4', nickname: 'Mi piso', addressFull: 'Calle X 1', estateId: null, estateName: null, isLinked: false };
 
-/** Una versión del servicio de ámbito que el test controla (el real tiene sus propios tests). */
-function fakeScope(items: ScopeProperty[], opts: { loaded?: boolean; failed?: boolean; selectedId?: string | null } = {}) {
-  const selectedId = signal<string | null>(opts.selectedId !== undefined ? opts.selectedId : items[0]?.id ?? null);
-  const groups = (): ScopeGroup[] => {
-    const byEstate = new Map<string | null, ScopeGroup>();
-    for (const p of items) {
-      const g = byEstate.get(p.estateId) ?? { estateId: p.estateId, estateName: p.estateName ?? 'Sin comunidad vinculada', properties: [] };
-      g.properties.push(p);
-      byEstate.set(p.estateId, g);
-    }
-    return [...byEstate.values()];
-  };
-  const showAll = () => items.length > 1;
-  const isAll = () => showAll() && !items.some(p => p.id === selectedId());
-  return {
-    items: signal(items),
-    loaded: signal(opts.loaded ?? true),
-    failed: signal(opts.failed ?? false),
-    showAll,
-    isAll,
-    selected: () => (isAll() ? null : items.find(p => p.id === selectedId()) ?? null),
-    groups,
-    load: vi.fn(async () => undefined),
-    select: vi.fn((id: string | null) => selectedId.set(id)),
-  };
-}
 
 describe('CommunityCComponent', () => {
   let h: ComponentHarness<CommunityCComponent>;
 
-  function mount(scope: ReturnType<typeof fakeScope>) {
+  function mount(scope: ReturnType<typeof fakeOwnerScope>) {
     h = setupComponent(CommunityCComponent, { user: makeUser(), providers: [{ provide: OwnerScopeService, useValue: scope }] });
     h.fixture.detectChanges();
   }
 
   it('al abrir carga las propiedades del propietario', () => {
-    const scope = fakeScope([P1]);
+    const scope = fakeOwnerScope([P1]);
     mount(scope);
     expect(scope.load).toHaveBeenCalledTimes(1);
   });
 
   it('con propiedades muestra el título, el selector y el ámbito actual', () => {
-    mount(fakeScope([P1, P2], { selectedId: 'p2' }));
+    mount(fakeOwnerScope([P1, P2], { selectedId: 'p2' }));
     expect(h.el.querySelector('.community__title')?.textContent).toContain('Mi comunidad');
     expect(h.el.querySelector('app-topbar [slot=heading] app-community-scope-selector')).not.toBeNull();
     expect(h.el.querySelector('.community__header app-community-scope-selector')).toBeNull();
@@ -67,18 +41,18 @@ describe('CommunityCComponent', () => {
   });
 
   it('las incidencias tienen su propio módulo: «Mi comunidad» no las lista ni las pide', () => {
-    mount(fakeScope([P1]));
+    mount(fakeOwnerScope([P1]));
     expect(h.el.querySelector('app-community-issues')).toBeNull();
     h.http.expectNone((r) => r.url.includes('/issues'));
   });
 
   it('el ámbito de una propiedad sin finca lo dice', () => {
-    mount(fakeScope([LONE]));
+    mount(fakeOwnerScope([LONE]));
     expect(h.el.querySelector('[data-scope-chip]')?.textContent).toContain('Sin comunidad vinculada');
   });
 
   it('elegir otra propiedad en el selector cambia la propiedad que se visualiza', () => {
-    const scope = fakeScope([P1, P2]);
+    const scope = fakeOwnerScope([P1, P2]);
     mount(scope);
     (h.el.querySelector('.scope__btn') as HTMLButtonElement).click();
     h.fixture.detectChanges();
@@ -89,7 +63,7 @@ describe('CommunityCComponent', () => {
   });
 
   it('«Añadir propiedad» del selector abre el alta de propiedad', () => {
-    mount(fakeScope([P1]));
+    mount(fakeOwnerScope([P1]));
     const state = TestBed.inject(StateService);
     expect(state.showAddPropertyModal()).toBe(false);
     (h.el.querySelector('.scope__btn') as HTMLButtonElement).click();
@@ -99,7 +73,7 @@ describe('CommunityCComponent', () => {
   });
 
   it('sin ninguna propiedad ofrece añadirla o solicitar la vinculación desde aquí, y no enseña el selector', async () => {
-    mount(fakeScope([]));
+    mount(fakeOwnerScope([]));
     await settle();
     expect(h.el.querySelector('[data-empty]')?.textContent).toContain('Todavía no tienes ninguna propiedad vinculada');
     expect(h.el.querySelector('app-community-scope-selector')).toBeNull();
@@ -109,19 +83,19 @@ describe('CommunityCComponent', () => {
   });
 
   it('mientras carga no enseña el estado vacío', () => {
-    mount(fakeScope([], { loaded: false }));
+    mount(fakeOwnerScope([], { loaded: false }));
     expect(h.el.textContent).toContain('Cargando…');
     expect(h.el.querySelector('[data-empty]')).toBeNull();
   });
 
   it('si falla la carga lo dice y no enseña el estado vacío', () => {
-    mount(fakeScope([], { failed: true }));
+    mount(fakeOwnerScope([], { failed: true }));
     expect(h.el.querySelector('[role="alert"]')?.textContent).toContain('No se pudieron cargar tus propiedades');
     expect(h.el.querySelector('[data-empty]')).toBeNull();
   });
 
   it('recarga cuando se crea o se borra una propiedad (cambia la versión del estado)', async () => {
-    const scope = fakeScope([P1]);
+    const scope = fakeOwnerScope([P1]);
     mount(scope);
     const state = TestBed.inject(StateService);
     state.propertiesVersion.update(v => v + 1);
@@ -140,7 +114,7 @@ describe('CommunityCComponent: fichas de la propiedad elegida', () => {
   });
   const kpiText = (id: string) => h.el.querySelector(`[data-kpi="${id}"]`)?.textContent?.replace(/\s+/g, ' ').trim();
 
-  function mount(scope: ReturnType<typeof fakeScope>) {
+  function mount(scope: ReturnType<typeof fakeOwnerScope>) {
     h = setupComponent(CommunityCComponent, { user: makeUser(), providers: [{ provide: OwnerScopeService, useValue: scope }] });
     h.fixture.detectChanges();
   }
@@ -153,20 +127,20 @@ describe('CommunityCComponent: fichas de la propiedad elegida', () => {
   }
 
   it('pide las fichas de la propiedad elegida y las muestra', async () => {
-    mount(fakeScope([P1, P2], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }));
     await flush('p1', overview('p1'));
     expect(kpiText('receipt')).toContain('125,00');
     expect(kpiText('requests')).toMatch(/2/);
   });
 
   it('mientras llegan los datos las fichas enseñan guiones', () => {
-    mount(fakeScope([P1]));
+    mount(fakeOwnerScope([P1]));
     expect(kpiText('receipt')).toMatch(/—$/);
     h.http.expectOne(overviewUrl('p1'));
   });
 
   it('al cambiar de propiedad vuelve a pedir las fichas de la nueva', async () => {
-    const scope = fakeScope([P1, P2], { selectedId: 'p1' });
+    const scope = fakeOwnerScope([P1, P2], { selectedId: 'p1' });
     mount(scope);
     await flush('p1', overview('p1'));
     scope.select('p2');
@@ -177,7 +151,7 @@ describe('CommunityCComponent: fichas de la propiedad elegida', () => {
   });
 
   it('una respuesta tardía de la propiedad anterior no pisa a la actual', async () => {
-    const scope = fakeScope([P1, P2], { selectedId: 'p1' });
+    const scope = fakeOwnerScope([P1, P2], { selectedId: 'p1' });
     mount(scope);
     const first = h.http.expectOne(overviewUrl('p1'));
     scope.select('p2');
@@ -192,7 +166,7 @@ describe('CommunityCComponent: fichas de la propiedad elegida', () => {
   });
 
   it('si fallan las fichas lo dice y deja guiones; al cambiar de propiedad se reintenta', async () => {
-    const scope = fakeScope([P1, P2], { selectedId: 'p1' });
+    const scope = fakeOwnerScope([P1, P2], { selectedId: 'p1' });
     mount(scope);
     await flush('p1', { status: 500 });
     expect(h.el.querySelector('[role="alert"]')?.textContent).toContain('No se pudieron cargar los datos de tu propiedad');
@@ -203,19 +177,19 @@ describe('CommunityCComponent: fichas de la propiedad elegida', () => {
     expect(h.el.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('cada ficha lleva a su sección: «Solicitudes abiertas» a la página de incidencias, el recibo a la ficha de la propiedad elegida', async () => {
-    const scope = fakeScope([P1, P2], { selectedId: 'p2' });
+  it('cada ficha lleva a su módulo: «Solicitudes abiertas» a Incidencias, el recibo a Recibos y pagos en la propiedad elegida', async () => {
+    const scope = fakeOwnerScope([P1, P2], { selectedId: 'p2' });
     mount(scope);
     await flush('p2', overview('p2'));
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('[data-kpi="requests"]') as HTMLElement).click();
     (h.el.querySelector('[data-kpi="receipt"]') as HTMLElement).click();
     expect(navigate).toHaveBeenNthCalledWith(1, ['/c/incidencias'], { queryParams: { estateId: 'e2' } });
-    expect(navigate).toHaveBeenNthCalledWith(2, ['/c/properties', 'p2'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenNthCalledWith(2, ['/c/recibos'], { queryParams: { propertyId: 'p2' } });
   });
 
   it('sin propiedades no pide nada ni enseña fichas', async () => {
-    mount(fakeScope([]));
+    mount(fakeOwnerScope([]));
     await settle();
     expect(h.el.querySelector('app-community-kpis')).toBeNull();
     h.http.expectNone(r => r.url.includes('/my-overview'));
@@ -230,7 +204,7 @@ describe('CommunityCComponent: resumen de la comunidad', () => {
   });
   const overview = (id: string): PropertyOverview => ({ propertyId: id, estateId: 'e1', nextReceipt: null, requests: { open: 0, newLast30Days: 0 }, nextMeeting: null, documents: { newLast30Days: 0 } });
 
-  function mount(scope: ReturnType<typeof fakeScope>) {
+  function mount(scope: ReturnType<typeof fakeOwnerScope>) {
     h = setupComponent(CommunityCComponent, { user: makeUser(), providers: [{ provide: OwnerScopeService, useValue: scope }] });
     h.fixture.detectChanges();
   }
@@ -241,14 +215,14 @@ describe('CommunityCComponent: resumen de la comunidad', () => {
   }
 
   it('pide el resumen de la finca de la propiedad elegida y lo muestra', async () => {
-    mount(fakeScope([P1, P2], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }));
     await flush('/properties/p1/my-overview', overview('p1'));
     await flush('/estates/e1/community-summary', summary('e1', 'Colón 24'));
     expect(h.el.querySelector('.sum__name')?.textContent?.trim()).toBe('Colón 24');
   });
 
   it('al cambiar a una propiedad de otra finca pide el resumen de esa finca', async () => {
-    const scope = fakeScope([P1, P2], { selectedId: 'p1' });
+    const scope = fakeOwnerScope([P1, P2], { selectedId: 'p1' });
     mount(scope);
     await flush('/properties/p1/my-overview', overview('p1'));
     await flush('/estates/e1/community-summary', summary('e1', 'Colón 24'));
@@ -260,7 +234,7 @@ describe('CommunityCComponent: resumen de la comunidad', () => {
   });
 
   it('una propiedad sin finca no pide ningún resumen y ofrece solicitar la vinculación', async () => {
-    mount(fakeScope([LONE]));
+    mount(fakeOwnerScope([LONE]));
     h.http.expectOne(`${API}/properties/p4/my-overview`);
     h.http.expectNone(r => r.url.includes('community-summary'));
     expect(h.el.querySelector('[data-unlinked]')).not.toBeNull();
@@ -269,7 +243,7 @@ describe('CommunityCComponent: resumen de la comunidad', () => {
   });
 
   it('si falla el resumen lo dice sin romper las fichas', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flush('/properties/p1/my-overview', { ...overview('p1'), requests: { open: 2, newLast30Days: 0 } });
     h.http.expectOne(`${API}/estates/e1/community-summary`).flush({ message: 'x' }, { status: 500, statusText: 'Error' });
     await settle();
@@ -279,7 +253,7 @@ describe('CommunityCComponent: resumen de la comunidad', () => {
   });
 
   it('«Ver detalles» abre la ficha completa de la propiedad elegida', async () => {
-    mount(fakeScope([P1, P2], { selectedId: 'p2' }));
+    mount(fakeOwnerScope([P1, P2], { selectedId: 'p2' }));
     await flush('/properties/p2/my-overview', overview('p2'));
     await flush('/estates/e2/community-summary', summary('e2', 'Cuba 18'));
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
@@ -295,7 +269,7 @@ describe('CommunityCComponent: recibos y pagos', () => {
     concept: `Cuota ${id}`, kind: 'cuota_ordinaria', status: 'Pendiente', method: 'Transferencia', date: '2026-10-01', dueDate: '2026-10-05', ...over,
   });
 
-  function mount(scope: ReturnType<typeof fakeScope>) {
+  function mount(scope: ReturnType<typeof fakeOwnerScope>) {
     h = setupComponent(CommunityCComponent, { user: makeUser(), providers: [{ provide: OwnerScopeService, useValue: scope }] });
     h.fixture.detectChanges();
   }
@@ -307,7 +281,7 @@ describe('CommunityCComponent: recibos y pagos', () => {
   const rowIds = () => Array.from(h.el.querySelectorAll('[data-receipt]')).map(r => r.getAttribute('data-receipt'));
 
   it('pide los recibos del usuario y enseña solo los de la propiedad elegida, sin anulados, el más reciente primero', async () => {
-    mount(fakeScope([P1, P2], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }));
     const period = (key: string, label: string) => ({ period: { label, periodKey: key } });
     await flushReceipts([
       raw('a', period('2026-08', 'Agosto 2026')), raw('b', period('2026-10', 'Octubre 2026')), raw('c', period('2026-09', 'Septiembre 2026')),
@@ -317,7 +291,7 @@ describe('CommunityCComponent: recibos y pagos', () => {
   });
 
   it('ordena por el PERIODO del recibo, no por su fecha de cobro: un recibo pendiente de octubre va antes que uno de septiembre cobrado hoy', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushReceipts([
       raw('sep', { period: { label: 'Septiembre 2026', periodKey: '2026-09' }, status: 'Pagada', outstanding: '0.00', date: '2026-10-18' }),
       raw('oct', { period: { label: 'Octubre 2026', periodKey: '2026-10' }, status: 'Pendiente', date: '2026-10-01' }),
@@ -326,7 +300,7 @@ describe('CommunityCComponent: recibos y pagos', () => {
   });
 
   it('al cambiar de propiedad vuelve a pedir y filtra por la nueva', async () => {
-    const scope = fakeScope([P1, P2], { selectedId: 'p1' });
+    const scope = fakeOwnerScope([P1, P2], { selectedId: 'p1' });
     mount(scope);
     await flushReceipts([raw('mio'), raw('suyo', { propertyId: 'p2' })]);
     expect(rowIds()).toEqual(['mio']);
@@ -337,7 +311,7 @@ describe('CommunityCComponent: recibos y pagos', () => {
   });
 
   it('«Pagar» abre las instrucciones de transferencia con el IBAN de la comunidad, el importe y el concepto', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushReceipts([raw('r1', { outstanding: '40.00', status: 'Parcial', concept: 'Cuota de octubre' })]);
     expect(h.el.querySelector('app-transfer-instructions-modal')).toBeNull();
     (h.el.querySelector('[data-action="pay"]') as HTMLButtonElement).click();
@@ -350,7 +324,7 @@ describe('CommunityCComponent: recibos y pagos', () => {
   });
 
   it('«Pagar ahora» pide lo pendiente de toda la propiedad y el modal se cierra', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushReceipts([raw('a', { outstanding: '100.00' }), raw('b', { outstanding: '25.50' }), raw('c', { status: 'Pagada', outstanding: '0.00' })]);
     (h.el.querySelector('[data-action="pay-all"]') as HTMLButtonElement).click();
     h.fixture.detectChanges();
@@ -361,7 +335,7 @@ describe('CommunityCComponent: recibos y pagos', () => {
   });
 
   it('una propiedad sin IBAN de comunidad sigue abriendo el modal (que avisa de que no hay datos)', async () => {
-    mount(fakeScope([P2], { selectedId: 'p2' }));
+    mount(fakeOwnerScope([P2], { selectedId: 'p2' }));
     h.http.expectOne(`${API}/users/u1/receipts`).flush([raw('r1', { propertyId: 'p2' })]);
     await settle();
     h.fixture.detectChanges();
@@ -370,16 +344,16 @@ describe('CommunityCComponent: recibos y pagos', () => {
     expect(h.el.querySelector('app-transfer-instructions-modal')).not.toBeNull();
   });
 
-  it('«Ver todos» abre la pestaña de recibos de la propiedad elegida', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+  it('«Ver todos» abre Recibos y pagos en la propiedad elegida', async () => {
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushReceipts([raw('r1')]);
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('app-community-receipts .section-card__action') as HTMLButtonElement).click();
-    expect(navigate).toHaveBeenCalledWith(['/c/properties', 'p1'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenCalledWith(['/c/recibos'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('si falla la carga de recibos lo dice sin romper el resto', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     h.http.expectOne(`${API}/users/u1/receipts`).flush({ message: 'x' }, { status: 500, statusText: 'Error' });
     await settle();
     h.fixture.detectChanges();
@@ -392,7 +366,7 @@ describe('CommunityCComponent: actividad y eventos', () => {
   let h: ComponentHarness<CommunityCComponent>;
   const P1B: ScopeProperty = { id: 'p1b', nickname: 'P03', addressFull: 'Calle Colón 24 Plaza 3', estateId: 'e1', estateName: 'Colón 24', isLinked: true };
 
-  function mount(scope: ReturnType<typeof fakeScope>) {
+  function mount(scope: ReturnType<typeof fakeOwnerScope>) {
     h = setupComponent(CommunityCComponent, { user: makeUser(), providers: [{ provide: OwnerScopeService, useValue: scope }] });
     h.fixture.detectChanges();
   }
@@ -409,39 +383,39 @@ describe('CommunityCComponent: actividad y eventos', () => {
   const activityIds = () => Array.from(h.el.querySelectorAll('[data-activity]')).map(e => e.getAttribute('data-activity'));
 
   it('pide los próximos eventos de la propiedad elegida y los muestra', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     expect(h.http.match(r => r.url.endsWith('/properties/p1/my-events'))).toHaveLength(1);
     h.http.match(() => true);
     await settle();
   });
 
   it('muestra los eventos que llegan', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushAll({ events: [{ id: 'junta:1', kind: 'junta', title: 'Junta ordinaria', subtitle: 'Salón', date: '2026-10-30', time: '18:00' }] });
     expect(h.el.querySelector('[data-event="junta:1"]')).not.toBeNull();
   });
 
   it('de la actividad se queda con lo de las propiedades del usuario en esa finca (y lo que no trae propiedad), no con lo de otras fincas', async () => {
-    mount(fakeScope([P1, P1B, P2], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1, P1B, P2], { selectedId: 'p1' }));
     await flushAll({ activity: [activity('a', 'p1'), activity('b', 'p2'), activity('c', 'p1b'), activity('d', '', { type: 'documento' })] });
     expect(activityIds()).toEqual(['a', 'c', 'd']);
   });
 
   it('la actividad de una propiedad sin finca es solo la suya', async () => {
-    mount(fakeScope([LONE, P1], { selectedId: 'p4' }));
+    mount(fakeOwnerScope([LONE, P1], { selectedId: 'p4' }));
     await flushAll({ activity: [activity('mia', 'p4'), activity('otra', 'p1')] });
     expect(activityIds()).toEqual(['mia']);
   });
 
   it('pide más actividad de la que enseña, porque el feed mezcla todas las fincas', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     const req = h.http.expectOne(r => r.url.includes('/activity'));
     expect(req.request.params.get('limit')).toBe('40');
     h.http.match(() => true);
   });
 
   it('abrir una actividad de incidencia lleva a su detalle en la página de incidencias; la de recibo, a la pestaña de la propiedad', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushAll({ activity: [
       activity('receipt:r1', 'p1'),
       activity('issue:i1', 'p1', { type: 'incidencia' }),
@@ -453,11 +427,11 @@ describe('CommunityCComponent: actividad y eventos', () => {
     (h.el.querySelector('[data-activity="receipt:r1"]') as HTMLButtonElement).click();
     expect(navigate).toHaveBeenNthCalledWith(1, ['/c/incidencias'], { queryParams: { issue: 'i1' } });
     expect(navigate).toHaveBeenNthCalledWith(2, ['/c/incidencias'], { queryParams: {} });
-    expect(navigate).toHaveBeenNthCalledWith(3, ['/c/properties', 'p1'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenNthCalledWith(3, ['/c/recibos'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('abrir una actividad de documento lo abre en la página de Documentación', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushAll({ activity: [activity('document:d1', '', { type: 'documento' })] });
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('[data-activity="document:d1"]') as HTMLButtonElement).click();
@@ -465,7 +439,7 @@ describe('CommunityCComponent: actividad y eventos', () => {
   });
 
   it('«Ver todas» lleva a la actividad completa', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushAll({ activity: [activity('r', 'p1')] });
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('app-community-activity .section-card__action') as HTMLButtonElement).click();
@@ -473,7 +447,7 @@ describe('CommunityCComponent: actividad y eventos', () => {
   });
 
   it('un evento de junta lleva a la pestaña de juntas y uno de revisión no lleva a ninguna parte', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushAll({ events: [
       { id: 'junta:1', kind: 'junta', title: 'Junta', subtitle: null, date: '2026-10-30', time: null },
       { id: 'revision:x', kind: 'revision', title: 'RITE', subtitle: 'Caldera', date: '2026-10-31', time: null },
@@ -482,11 +456,11 @@ describe('CommunityCComponent: actividad y eventos', () => {
     (h.el.querySelector('[data-event="revision:x"]') as HTMLButtonElement).click();
     expect(navigate).not.toHaveBeenCalled();
     (h.el.querySelector('[data-event="junta:1"]') as HTMLButtonElement).click();
-    expect(navigate).toHaveBeenCalledWith(['/c/properties', 'p1'], { queryParams: { tab: 'juntas' } });
+    expect(navigate).toHaveBeenCalledWith(['/c/juntas'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('si fallan los eventos o la actividad lo dice en su tarjeta sin romper las demás', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     h.http.match(r => r.url.includes('/my-events')).forEach(r => r.flush({ message: 'x' }, { status: 500, statusText: 'Error' }));
     h.http.match(r => r.url.includes('/activity')).forEach(r => r.flush({ message: 'x' }, { status: 500, statusText: 'Error' }));
     h.http.match(() => true);
@@ -503,7 +477,7 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
   const rawDoc = (id: string, over: Record<string, unknown> = {}) => ({ id, title: `Doc ${id}`, type: 'Otro', date: '2026-10-01', size: '10 KB', targetPropertyId: null, isNew: false, ...over });
   const meeting = (id: string, over: Record<string, unknown> = {}) => ({ id, estateId: 'e1', title: 'Junta', status: 'firmada', scheduledAt1: '2026-08-01T17:00:00.000Z', scheduledAt2: '2026-08-01T17:30:00.000Z', actaS3Key: 'k', ...over });
 
-  function mount(scope: ReturnType<typeof fakeScope>) {
+  function mount(scope: ReturnType<typeof fakeOwnerScope>) {
     h = setupComponent(CommunityCComponent, { user: makeUser(), providers: [{ provide: OwnerScopeService, useValue: scope }] });
     h.fixture.detectChanges();
   }
@@ -533,20 +507,20 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
   }
 
   it('pide los documentos de la finca y enseña los generales y los dirigidos a ESTA propiedad, no los de otra', async () => {
-    mount(fakeScope([P1, { id: 'p1b', nickname: 'P03', addressFull: 'Calle Colón 24 Plaza 3', estateId: 'e1', estateName: 'Colón 24', isLinked: true }], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1, { id: 'p1b', nickname: 'P03', addressFull: 'Calle Colón 24 Plaza 3', estateId: 'e1', estateName: 'Colón 24', isLinked: true }], { selectedId: 'p1' }));
     await flushData({ documents: [rawDoc('gen'), rawDoc('mio', { targetPropertyId: 'p1' }), rawDoc('otro', { targetPropertyId: 'p1b' })] });
     expect(docIds()).toEqual(['gen', 'mio']);
   });
 
   it('una propiedad sin finca no pide documentos ni actas', async () => {
-    mount(fakeScope([LONE], { selectedId: 'p4' }));
+    mount(fakeOwnerScope([LONE], { selectedId: 'p4' }));
     h.http.expectNone(r => r.url.includes('/documents'));
     h.http.expectNone(r => r.url.includes('/meetings'));
     await flushData();
   });
 
   it('descargar un documento lo guarda con su nombre y la extensión de su tipo', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData({ documents: [rawDoc('d1', { title: 'Presupuesto 2027' })] });
     const names = captureDownloads();
     (h.el.querySelector('[data-document="d1"] [data-action="download"]') as HTMLButtonElement).click();
@@ -557,7 +531,7 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
   });
 
   it('si falla la descarga de un documento lo dice con su título', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData({ documents: [rawDoc('d1', { title: 'Estatutos' })] });
     (h.el.querySelector('[data-document="d1"] [data-action="download"]') as HTMLButtonElement).click();
     h.http.expectOne(r => r.url.endsWith('/documents/d1/file')).error(new ProgressEvent('error'), { status: 500, statusText: 'Error' });
@@ -567,13 +541,13 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
   });
 
   it('si fallan los documentos lo dice en su tarjeta', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData({ documentsFail: true });
     expect(h.el.querySelector('app-community-documents [role="alert"]')).not.toBeNull();
   });
 
   it('«Ver todos» de documentos abre la página de Documentación', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData({ documents: [rawDoc('d1')] });
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('app-community-documents .section-card__action') as HTMLButtonElement).click();
@@ -581,7 +555,7 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
   });
 
   it('pulsar un documento reciente lo abre en la página de Documentación', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData({ documents: [rawDoc('d1')] });
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('[data-document="d1"] [data-action="open"]') as HTMLButtonElement).click();
@@ -590,7 +564,7 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
   });
 
   it('la ficha «Documentos nuevos» abre Documentación con solo los nuevos', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData();
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('[data-kpi="documents"]') as HTMLButtonElement).click();
@@ -598,7 +572,7 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
   });
 
   it('los accesos rápidos llevan a la ficha de incidencias, mensajes y recibos', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData();
     const navigate = vi.spyOn(h.fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
     quick('issue').click(); // se queda en esta pantalla (la ficha de incidencias): no navega
@@ -606,11 +580,11 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
     quick('receipts').click();
     expect(navigate).toHaveBeenNthCalledWith(1, ['/c/incidencias'], { queryParams: { new: '1', estateId: 'e1' } });
     expect(navigate).toHaveBeenNthCalledWith(2, ['/c/messages']);
-    expect(navigate).toHaveBeenNthCalledWith(3, ['/c/properties', 'p1'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenNthCalledWith(3, ['/c/recibos'], { queryParams: { propertyId: 'p1' } });
   });
 
   it('«Descargar acta» baja el acta de la última junta celebrada que la tiene (no de una convocada, ni sin acta)', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData({ meetings: [
       meeting('vieja', { scheduledAt1: '2026-01-01T17:00:00.000Z' }),
       meeting('reciente', { scheduledAt1: '2026-08-01T17:00:00.000Z' }),
@@ -627,14 +601,14 @@ describe('CommunityCComponent: documentos y accesos rápidos', () => {
   });
 
   it('sin ninguna acta firmada el acceso queda desactivado', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData({ meetings: [meeting('m1', { actaS3Key: null }), meeting('m2', { status: 'convocada' })] });
     expect(quick('acta').disabled).toBe(true);
     expect(quick('acta').textContent).toContain('Sin acta disponible');
   });
 
   it('si falla la descarga del acta lo dice', async () => {
-    mount(fakeScope([P1], { selectedId: 'p1' }));
+    mount(fakeOwnerScope([P1], { selectedId: 'p1' }));
     await flushData({ meetings: [meeting('m1')] });
     quick('acta').click();
     h.http.expectOne(r => r.url.endsWith('/meetings/m1/acta.docx')).error(new ProgressEvent('error'), { status: 404, statusText: 'Not Found' });
@@ -660,7 +634,7 @@ describe('CommunityCComponent: todas mis propiedades', () => {
   const doc = (id: string, date: string, targetPropertyId: string | null = null) => ({ id, title: `Doc ${id}`, type: 'Otro', date, size: '1 KB', targetPropertyId, isNew: false });
 
   function mount(items: ScopeProperty[] = [P1, P1B, P2]) {
-    const scope = fakeScope(items, { selectedId: null });
+    const scope = fakeOwnerScope(items, { selectedId: null });
     h = setupComponent(CommunityCComponent, { user: makeUser(), providers: [{ provide: OwnerScopeService, useValue: scope }] });
     h.fixture.detectChanges();
     return scope;
@@ -729,12 +703,14 @@ describe('CommunityCComponent: todas mis propiedades', () => {
     expect(scope.select).toHaveBeenCalledWith('p2');
   });
 
-  it('una ficha que necesita una propiedad abre el selector para elegirla', async () => {
+  it('la próxima junta abre Juntas en «Todas», sin pedir propiedad', async () => {
     mount();
     await flushAll();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('[data-kpi="meeting"]') as HTMLButtonElement).click();
     h.fixture.detectChanges();
-    expect(h.el.querySelector('.scope__panel')).not.toBeNull();
+    expect(navigate).toHaveBeenCalledWith(['/c/juntas'], { queryParams: {} });
+    expect(h.el.querySelector('.scope__panel')).toBeNull();
   });
 
   it('«Solicitudes abiertas» y «Nueva incidencia» van a la página de incidencias sin pedir propiedad', async () => {
@@ -764,12 +740,12 @@ describe('CommunityCComponent: todas mis propiedades', () => {
     expect(h.el.querySelector('.scope__panel')).toBeNull();
   });
 
-  it('el próximo recibo lleva a los recibos de la propiedad a la que pertenece', async () => {
+  it('el próximo recibo abre Recibos y pagos en «Todas»', async () => {
     mount();
     await flushAll();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (h.el.querySelector('[data-kpi="receipt"]') as HTMLButtonElement).click();
-    expect(navigate).toHaveBeenCalledWith(['/c/properties', 'p2'], { queryParams: { tab: 'receipts' } });
+    expect(navigate).toHaveBeenCalledWith(['/c/recibos'], { queryParams: {} });
   });
 
   it('elegir después una propiedad vuelve a sus fichas', async () => {

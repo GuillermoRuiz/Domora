@@ -76,13 +76,24 @@ function ctx(
   } as unknown as ExecutionContext;
 }
 
-function build(opts: { target?: { administratorId: string; estateId: string | null } | null; session?: unknown } = {}) {
+function build(
+  opts: {
+    target?: { administratorId: string; estateId: string | null } | null;
+    session?: unknown;
+  } = {},
+) {
   const resolver = {
-    resolve: jest.fn().mockResolvedValue(
-      opts.target === undefined ? { administratorId: ADMIN, estateId: ESTATE } : opts.target,
-    ),
+    resolve: jest
+      .fn()
+      .mockResolvedValue(
+        opts.target === undefined
+          ? { administratorId: ADMIN, estateId: ESTATE }
+          : opts.target,
+      ),
   };
-  const sessions = { findValid: jest.fn().mockResolvedValue(opts.session ?? null) };
+  const sessions = {
+    findValid: jest.fn().mockResolvedValue(opts.session ?? null),
+  };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
   const guard = new SupportAccessGuard(
     new Reflector(),
@@ -94,69 +105,173 @@ function build(opts: { target?: { administratorId: string; estateId: string | nu
 }
 
 const t = new TenantController();
-const validSession = { id: SESSION, staffUserId: STAFF, administratorId: ADMIN };
+const validSession = {
+  id: SESSION,
+  staffUserId: STAFF,
+  administratorId: ADMIN,
+};
 
 describe('SupportAccessGuard', () => {
-  it.each(['B', 'C'] as AppRole[])('lets role %s through untouched and unaudited', async (role) => {
-    const { guard, resolver, audit } = build();
-    await expect(guard.canActivate(ctx(user(role), 'POST', TenantController, t.create))).resolves.toBe(true);
-    expect(resolver.resolve).not.toHaveBeenCalled();
-    expect(audit.record).not.toHaveBeenCalled();
-  });
+  it.each(['B', 'C'] as AppRole[])(
+    'lets role %s through untouched and unaudited',
+    async (role) => {
+      const { guard, resolver, audit } = build();
+      await expect(
+        guard.canActivate(ctx(user(role), 'POST', TenantController, t.create)),
+      ).resolves.toBe(true);
+      expect(resolver.resolve).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    },
+  );
 
   it('lets anonymous requests through (public routes)', async () => {
     const { guard, audit } = build();
-    await expect(guard.canActivate(ctx(undefined, 'POST', TenantController, t.create))).resolves.toBe(true);
+    await expect(
+      guard.canActivate(ctx(undefined, 'POST', TenantController, t.create)),
+    ).resolves.toBe(true);
     expect(audit.record).not.toHaveBeenCalled();
   });
 
   it('leaves role A platform and self routes alone', async () => {
     const { guard, audit } = build();
     await expect(
-      guard.canActivate(ctx(user('A'), 'POST', PlatformController, new PlatformController().create)),
+      guard.canActivate(
+        ctx(
+          user('A'),
+          'POST',
+          PlatformController,
+          new PlatformController().create,
+        ),
+      ),
     ).resolves.toBe(true);
     await expect(
-      guard.canActivate(ctx(user('A'), 'POST', MetricsController, new MetricsController().recompute)),
+      guard.canActivate(
+        ctx(
+          user('A'),
+          'POST',
+          MetricsController,
+          new MetricsController().recompute,
+        ),
+      ),
     ).resolves.toBe(true);
     expect(audit.record).not.toHaveBeenCalled();
   });
 
-  it('audits a role A read with the route template and despacho', async () => {
+  const withSession = { [SUPPORT_SESSION_HEADER]: SESSION };
+
+  it('denies a role A read without a support session and audits the denial', async () => {
     const { guard, audit, sessions } = build();
-    await expect(guard.canActivate(ctx(user('A'), 'GET', TenantController, t.list))).resolves.toBe(true);
+    const error = await guard
+      .canActivate(ctx(user('A'), 'GET', TenantController, t.list))
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ForbiddenException);
+    expect((error as ForbiddenException).message).toBe(
+      SUPPORT_MESSAGES.noSession,
+    );
     expect(sessions.findValid).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'denied',
+        method: 'GET',
+        supportSessionId: null,
+      }),
+    );
+  });
+
+  it('lets a role A read inside a session of the target despacho through and audits it', async () => {
+    const { guard, audit, sessions } = build({ session: validSession });
+    await expect(
+      guard.canActivate(
+        ctx(user('A'), 'GET', TenantController, t.list, withSession),
+      ),
+    ).resolves.toBe(true);
+    expect(sessions.findValid).toHaveBeenCalledWith(SESSION, STAFF);
     expect(audit.record).toHaveBeenCalledWith({
       staffUserId: STAFF,
       administratorId: ADMIN,
       estateId: ESTATE,
-      supportSessionId: null,
+      supportSessionId: SESSION,
       action: 'read',
       method: 'GET',
       route: 'estates/:estateId/cost-centres',
     });
   });
 
+  it('denies a read of another despacho, by path or by ?administratorId=', async () => {
+    const byPath = build({
+      session: validSession,
+      target: { administratorId: OTHER_ADMIN, estateId: ESTATE },
+    });
+    await expect(
+      byPath.guard.canActivate(
+        ctx(user('A'), 'GET', TenantController, t.list, withSession),
+      ),
+    ).rejects.toThrow(SUPPORT_MESSAGES.otherDespacho);
+    const byQuery = build({ session: validSession, target: null });
+    await expect(
+      byQuery.guard.canActivate(
+        ctx(
+          user('A'),
+          'GET',
+          TenantController,
+          t.list,
+          withSession,
+          {},
+          { administratorId: OTHER_ADMIN },
+        ),
+      ),
+    ).rejects.toThrow(SUPPORT_MESSAGES.otherDespacho);
+  });
+
   it('takes the despacho of a read from ?administratorId= when params do not resolve it', async () => {
-    const { guard, audit } = build({ target: null });
+    const { guard, audit } = build({ session: validSession, target: null });
     await guard.canActivate(
-      ctx(user('A'), 'GET', TenantController, t.list, {}, {}, { administratorId: OTHER_ADMIN }),
+      ctx(
+        user('A'),
+        'GET',
+        TenantController,
+        t.list,
+        withSession,
+        {},
+        { administratorId: ADMIN },
+      ),
     );
     expect(audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ administratorId: OTHER_ADMIN, estateId: null }),
+      expect.objectContaining({
+        administratorId: ADMIN,
+        estateId: null,
+        action: 'read',
+      }),
     );
     audit.record.mockClear();
     await guard.canActivate(
-      ctx(user('A'), 'GET', TenantController, t.list, {}, {}, { administratorId: 'nope' }),
+      ctx(
+        user('A'),
+        'GET',
+        TenantController,
+        t.list,
+        withSession,
+        {},
+        { administratorId: 'nope' },
+      ),
     );
-    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ administratorId: null }));
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        administratorId: null,
+        supportSessionId: SESSION,
+        action: 'read',
+      }),
+    );
   });
 
   it('fails closed with 503 when a read cannot be audited', async () => {
-    const { guard, audit } = build();
+    const { guard, audit } = build({ session: validSession });
     audit.record.mockRejectedValue(new Error('db down'));
-    await expect(guard.canActivate(ctx(user('A'), 'GET', TenantController, t.list))).rejects.toThrow(
-      ServiceUnavailableException,
-    );
+    await expect(
+      guard.canActivate(
+        ctx(user('A'), 'GET', TenantController, t.list, withSession),
+      ),
+    ).rejects.toThrow(ServiceUnavailableException);
   });
 
   async function expectDenied(
@@ -165,17 +280,28 @@ describe('SupportAccessGuard', () => {
     message: string,
     sessionId: string | null = null,
   ) {
-    const error = await built.guard.canActivate(context).catch((e: unknown) => e);
+    const error = await built.guard
+      .canActivate(context)
+      .catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ForbiddenException);
     expect((error as ForbiddenException).message).toBe(message);
     expect(built.audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'denied', method: 'POST', route: 'estates/:estateId/cost-centres', supportSessionId: sessionId }),
+      expect.objectContaining({
+        action: 'denied',
+        method: 'POST',
+        route: 'estates/:estateId/cost-centres',
+        supportSessionId: sessionId,
+      }),
     );
   }
 
   it('denies a role A write without a support session', async () => {
     const built = build();
-    await expectDenied(built, ctx(user('A'), 'POST', TenantController, t.create), SUPPORT_MESSAGES.noSession);
+    await expectDenied(
+      built,
+      ctx(user('A'), 'POST', TenantController, t.create),
+      SUPPORT_MESSAGES.noSession,
+    );
     expect(built.sessions.findValid).not.toHaveBeenCalled();
   });
 
@@ -183,7 +309,9 @@ describe('SupportAccessGuard', () => {
     const built = build();
     await expectDenied(
       built,
-      ctx(user('A'), 'POST', TenantController, t.create, { [SUPPORT_SESSION_HEADER]: 'abc' }),
+      ctx(user('A'), 'POST', TenantController, t.create, {
+        [SUPPORT_SESSION_HEADER]: 'abc',
+      }),
       SUPPORT_MESSAGES.invalidSession,
     );
     expect(built.sessions.findValid).not.toHaveBeenCalled();
@@ -193,17 +321,23 @@ describe('SupportAccessGuard', () => {
     const built = build({ session: null });
     await expectDenied(
       built,
-      ctx(user('A'), 'POST', TenantController, t.create, { [SUPPORT_SESSION_HEADER]: SESSION }),
+      ctx(user('A'), 'POST', TenantController, t.create, {
+        [SUPPORT_SESSION_HEADER]: SESSION,
+      }),
       SUPPORT_MESSAGES.invalidSession,
     );
     expect(built.sessions.findValid).toHaveBeenCalledWith(SESSION, STAFF);
   });
 
   it('denies a valid session of another despacho', async () => {
-    const built = build({ session: { ...validSession, administratorId: OTHER_ADMIN } });
+    const built = build({
+      session: { ...validSession, administratorId: OTHER_ADMIN },
+    });
     await expectDenied(
       built,
-      ctx(user('A'), 'POST', TenantController, t.create, { [SUPPORT_SESSION_HEADER]: SESSION }),
+      ctx(user('A'), 'POST', TenantController, t.create, {
+        [SUPPORT_SESSION_HEADER]: SESSION,
+      }),
       SUPPORT_MESSAGES.otherDespacho,
       SESSION,
     );
@@ -213,7 +347,9 @@ describe('SupportAccessGuard', () => {
     const built = build({ target: null, session: validSession });
     await expectDenied(
       built,
-      ctx(user('A'), 'POST', TenantController, t.create, { [SUPPORT_SESSION_HEADER]: SESSION }),
+      ctx(user('A'), 'POST', TenantController, t.create, {
+        [SUPPORT_SESSION_HEADER]: SESSION,
+      }),
       SUPPORT_MESSAGES.unresolved,
       SESSION,
     );
@@ -222,15 +358,21 @@ describe('SupportAccessGuard', () => {
   it('still answers 403 when the denial cannot be audited', async () => {
     const built = build();
     built.audit.record.mockRejectedValue(new Error('db down'));
-    await expect(built.guard.canActivate(ctx(user('A'), 'POST', TenantController, t.create))).rejects.toThrow(
-      ForbiddenException,
-    );
+    await expect(
+      built.guard.canActivate(
+        ctx(user('A'), 'POST', TenantController, t.create),
+      ),
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('lets a write with a valid session of the target despacho through and audits it', async () => {
     const built = build({ session: validSession });
     await expect(
-      built.guard.canActivate(ctx(user('A'), 'POST', TenantController, t.create, { [SUPPORT_SESSION_HEADER]: SESSION })),
+      built.guard.canActivate(
+        ctx(user('A'), 'POST', TenantController, t.create, {
+          [SUPPORT_SESSION_HEADER]: SESSION,
+        }),
+      ),
     ).resolves.toBe(true);
     expect(built.audit.record).toHaveBeenCalledWith({
       staffUserId: STAFF,
@@ -247,30 +389,55 @@ describe('SupportAccessGuard', () => {
     const built = build({ session: validSession });
     built.audit.record.mockRejectedValue(new Error('db down'));
     await expect(
-      built.guard.canActivate(ctx(user('A'), 'POST', TenantController, t.create, { [SUPPORT_SESSION_HEADER]: SESSION })),
+      built.guard.canActivate(
+        ctx(user('A'), 'POST', TenantController, t.create, {
+          [SUPPORT_SESSION_HEADER]: SESSION,
+        }),
+      ),
     ).rejects.toThrow(ServiceUnavailableException);
   });
 
   it('treats a route without @Roles as a tenant route for role A', async () => {
     const built = build();
     const error = await built.guard
-      .canActivate(ctx(user('A'), 'POST', OpenController, new OpenController().write))
+      .canActivate(
+        ctx(user('A'), 'POST', OpenController, new OpenController().write),
+      )
       .catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ForbiddenException);
   });
 
-  it('audits an allowlisted read-only POST as a read, without a session', async () => {
-    const built = build();
+  it('an allowlisted read-only POST needs a session and is audited as a read', async () => {
+    const denied = build();
     await expect(
-      built.guard.canActivate(ctx(user('A'), 'POST', PreviewController, new PreviewController().preview)),
+      denied.guard.canActivate(
+        ctx(
+          user('A'),
+          'POST',
+          PreviewController,
+          new PreviewController().preview,
+        ),
+      ),
+    ).rejects.toThrow(SUPPORT_MESSAGES.noSession);
+
+    const built = build({ session: validSession });
+    await expect(
+      built.guard.canActivate(
+        ctx(
+          user('A'),
+          'POST',
+          PreviewController,
+          new PreviewController().preview,
+          withSession,
+        ),
+      ),
     ).resolves.toBe(true);
-    expect(built.sessions.findValid).not.toHaveBeenCalled();
     expect(built.audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'read',
         method: 'POST',
         route: 'estates/:estateId/properties/coefficients/preview-by-area',
-        supportSessionId: null,
+        supportSessionId: SESSION,
       }),
     );
   });

@@ -35,7 +35,7 @@ describe('CatastroFacadeService', () => {
     expect(await service.resolveFacadeUrl('1907401VK4810H')).toBe(
       PHOTO.replace('http:', 'https:') + '&x=1',
     );
-    const url = new URL(String(fetcher.mock.calls[0][0]));
+    const url = new URL(String(fetcher.mock.calls[0][0] as string | URL));
     expect(url.searchParams.get('StoredQuerie_id')).toBe('GetBuildingByParcel');
     expect(url.searchParams.get('REFCAT')).toBe('1907401VK4810H');
     expect(fetcher.mock.calls[0][1]).toEqual(

@@ -47,7 +47,10 @@ export class EstateReturnFilesController {
   /** Sube un pain.002 o camt.054: se guarda con sus partidas emparejadas, sin contabilizar nada. */
   @Post()
   @UseInterceptors(
-    FileInterceptor('file', { defParamCharset: 'utf8', limits: { fileSize: RETURN_FILE_MAX_BYTES } }),
+    FileInterceptor('file', {
+      defParamCharset: 'utf8',
+      limits: { fileSize: RETURN_FILE_MAX_BYTES },
+    }),
   )
   upload(
     @Param('estateId') estateId: string,

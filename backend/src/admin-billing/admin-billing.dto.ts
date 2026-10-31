@@ -12,14 +12,18 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
+const trim = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
 /** The IBAN is stored without spaces and upper-cased; its check digits are validated. */
 const normalizeIban = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : value;
 
 /** The despacho's acceptance of the SEPA direct debit order shown to it. */
 export class SepaMandateAcceptanceDto {
-  @Equals(true, { message: 'Para domiciliar los cobros tienes que aceptar la orden de domiciliación SEPA.' })
+  @Equals(true, {
+    message:
+      'Para domiciliar los cobros tienes que aceptar la orden de domiciliación SEPA.',
+  })
   accepted!: boolean;
 
   /** The reference printed on the order the user read (`GET /admin-billing/me`). */
@@ -62,12 +66,17 @@ export class UpdateOwnBillingDto {
   @MaxLength(200)
   email!: string;
 
-  @IsIn(Object.values(AdminPayMethod), { message: 'Elige un método de pago válido.' })
+  @IsIn(Object.values(AdminPayMethod), {
+    message: 'Elige un método de pago válido.',
+  })
   paymentMethod!: AdminPayMethod;
 
   @IsOptional()
   @Transform(normalizeIban)
-  @IsIBAN({}, { message: 'El IBAN no es válido (revisa los dígitos de control).' })
+  @IsIBAN(
+    {},
+    { message: 'El IBAN no es válido (revisa los dígitos de control).' },
+  )
   iban?: string;
 
   @IsOptional()

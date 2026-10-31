@@ -35,11 +35,26 @@ import {
   type ColumnPreset,
   type ImportEntityType,
 } from './presets/gesfincas-net.presets';
-import { validatePropertyRow, type PropertyImportRow } from './validators/property-import.validator';
-import { validateOwnerRow, type OwnerImportRow } from './validators/owner-import.validator';
-import { validateMovementRow, type MovementImportRow } from './validators/movement-import.validator';
-import { validateReceiptRow, type ReceiptImportRow } from './validators/receipt-import.validator';
-import { validateRemesaRow, type RemesaLineImportRow } from './validators/remesa-import.validator';
+import {
+  validatePropertyRow,
+  type PropertyImportRow,
+} from './validators/property-import.validator';
+import {
+  validateOwnerRow,
+  type OwnerImportRow,
+} from './validators/owner-import.validator';
+import {
+  validateMovementRow,
+  type MovementImportRow,
+} from './validators/movement-import.validator';
+import {
+  validateReceiptRow,
+  type ReceiptImportRow,
+} from './validators/receipt-import.validator';
+import {
+  validateRemesaRow,
+  type RemesaLineImportRow,
+} from './validators/remesa-import.validator';
 import {
   validateOpeningBalanceRow,
   type OpeningBalanceImportRow,
@@ -55,8 +70,18 @@ const COMMIT_CHUNK_SIZE = 500;
 
 /** Mismo catálogo que `accounting.service.ts` (no exportado desde ahí) — se duplica acá, es un array literal estable de 12 posiciones. */
 const MONTH_LABELS = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ];
 
 interface CommitResult {
@@ -93,7 +118,10 @@ export const IMPORTS_MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB
 
 const VALIDATORS: Record<
   ImportEntityType,
-  (mappedRow: Record<string, string>, rowNumber: number) => ValidatedRow<unknown>
+  (
+    mappedRow: Record<string, string>,
+    rowNumber: number,
+  ) => ValidatedRow<unknown>
 > = {
   property: validatePropertyRow,
   owner: validateOwnerRow,
@@ -115,15 +143,17 @@ function mapRow(
   return out;
 }
 
-
 /** Tipo de recibo a partir del texto del programa de origen ("Cuota", "Derrama"…). */
-export function receiptKindFromText(text: string | null | undefined): ReceiptKind {
+export function receiptKindFromText(
+  text: string | null | undefined,
+): ReceiptKind {
   const t = (text ?? '').toLowerCase();
   if (t.includes('derrama')) return 'derrama';
   if (t.includes('reserva')) return 'fondo_reserva';
   if (t.includes('inter')) return 'intereses_demora';
   if (t.includes('devoluc') || t.includes('gasto')) return 'gastos_devolucion';
-  if (t === '' || t.includes('cuota') || t.includes('ordinari')) return 'cuota_ordinaria';
+  if (t === '' || t.includes('cuota') || t.includes('ordinari'))
+    return 'cuota_ordinaria';
   return 'otros';
 }
 
@@ -154,7 +184,10 @@ export class ImportsService {
     return batch;
   }
 
-  async listBatches(estateId: string, user: AuthenticatedUser): Promise<ImportBatch[]> {
+  async listBatches(
+    estateId: string,
+    user: AuthenticatedUser,
+  ): Promise<ImportBatch[]> {
     this.estateAccess.assertAccess(estateId, user);
     return this.prisma.importBatch.findMany({
       where: { estateId },
@@ -162,7 +195,11 @@ export class ImportsService {
     });
   }
 
-  async getBatch(estateId: string, id: string, user: AuthenticatedUser): Promise<ImportBatch> {
+  async getBatch(
+    estateId: string,
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<ImportBatch> {
     return this.assertBatchAccess(estateId, id, user);
   }
 
@@ -187,12 +224,20 @@ export class ImportsService {
   ): Promise<ImportBatch> {
     this.estateAccess.assertAccess(estateId, user);
     if (!file) {
-      throw new BadRequestException('No se recibió ningún fichero (campo "file").');
+      throw new BadRequestException(
+        'No se recibió ningún fichero (campo "file").',
+      );
     }
     if (!user.administratorId) {
-      throw new ForbiddenException('El usuario no pertenece a ninguna gestora.');
+      throw new ForbiddenException(
+        'El usuario no pertenece a ninguna gestora.',
+      );
     }
-    this.storage.assertAllowed(file.mimetype, file.size, IMPORTS_MAX_FILE_BYTES);
+    this.storage.assertAllowed(
+      file.mimetype,
+      file.size,
+      IMPORTS_MAX_FILE_BYTES,
+    );
 
     const rawFileKey = await this.storage.put(
       `imports/${estateId}`,
@@ -218,10 +263,16 @@ export class ImportsService {
     estateId: string,
     id: string,
     user: AuthenticatedUser,
-  ): Promise<{ headers: string[]; sampleRows: Record<string, string>[]; totalRows: number }> {
+  ): Promise<{
+    headers: string[];
+    sampleRows: Record<string, string>[];
+    totalRows: number;
+  }> {
     const batch = await this.assertBatchAccess(estateId, id, user);
     if (!batch.rawFileKey) {
-      throw new BadRequestException('Esta importación no tiene fichero asociado.');
+      throw new BadRequestException(
+        'Esta importación no tiene fichero asociado.',
+      );
     }
     const buffer = await this.storage.get(batch.rawFileKey);
     const { headers, rows } = await parseSpreadsheet(buffer, batch.rawFileKey);
@@ -241,7 +292,9 @@ export class ImportsService {
     mapping: Record<string, string>,
   ): Promise<ValidatedRow<unknown>[]> {
     if (!batch.rawFileKey) {
-      throw new BadRequestException('Esta importación no tiene fichero asociado.');
+      throw new BadRequestException(
+        'Esta importación no tiene fichero asociado.',
+      );
     }
     const buffer = await this.storage.get(batch.rawFileKey);
     const { rows } = await parseSpreadsheet(buffer, batch.rawFileKey);
@@ -257,7 +310,11 @@ export class ImportsService {
     user: AuthenticatedUser,
   ): Promise<{ summary: Record<string, unknown> }> {
     const batch = await this.assertBatchAccess(estateId, id, user);
-    const validated = await this.parseAndValidate(batch, dto.entityType, dto.mapping);
+    const validated = await this.parseAndValidate(
+      batch,
+      dto.entityType,
+      dto.mapping,
+    );
 
     const errorRows = validated.filter((r) => !r.ok);
     const warningRows = validated.filter((r) => r.ok && r.warnings.length > 0);
@@ -269,7 +326,9 @@ export class ImportsService {
       errorCount: errorRows.length,
       warningCount: warningRows.length,
       // Acotado: un fichero con miles de errores no debe inflar el resumen sin límite.
-      errors: errorRows.slice(0, 200).map((r) => ({ rowNumber: r.rowNumber, errors: r.errors })),
+      errors: errorRows
+        .slice(0, 200)
+        .map((r) => ({ rowNumber: r.rowNumber, errors: r.errors })),
       warnings: warningRows
         .slice(0, 200)
         .map((r) => ({ rowNumber: r.rowNumber, warnings: r.warnings })),
@@ -308,10 +367,14 @@ export class ImportsService {
       );
     }
     const mapping = batch.mapping as Record<string, string> | null;
-    const priorSummary = batch.summary as { entityType?: ImportEntityType } | null;
+    const priorSummary = batch.summary as {
+      entityType?: ImportEntityType;
+    } | null;
     const entityType = priorSummary?.entityType;
     if (!mapping || !entityType) {
-      throw new BadRequestException('Esta importación no tiene un mapeo validado.');
+      throw new BadRequestException(
+        'Esta importación no tiene un mapeo validado.',
+      );
     }
 
     const validated = await this.parseAndValidate(batch, entityType, mapping);
@@ -321,19 +384,42 @@ export class ImportsService {
     try {
       switch (entityType) {
         case 'property':
-          committed = await this.commitProperties(estateId, id, okRows as ValidatedRow<PropertyImportRow>[]);
+          committed = await this.commitProperties(
+            estateId,
+            id,
+            okRows as ValidatedRow<PropertyImportRow>[],
+          );
           break;
         case 'owner':
-          committed = await this.commitOwners(estateId, id, okRows as ValidatedRow<OwnerImportRow>[], user);
+          committed = await this.commitOwners(
+            estateId,
+            id,
+            okRows as ValidatedRow<OwnerImportRow>[],
+            user,
+          );
           break;
         case 'movement':
-          committed = await this.commitMovements(estateId, id, okRows as ValidatedRow<MovementImportRow>[], user);
+          committed = await this.commitMovements(
+            estateId,
+            id,
+            okRows as ValidatedRow<MovementImportRow>[],
+            user,
+          );
           break;
         case 'receipt':
-          committed = await this.commitReceipts(estateId, id, okRows as ValidatedRow<ReceiptImportRow>[]);
+          committed = await this.commitReceipts(
+            estateId,
+            id,
+            okRows as ValidatedRow<ReceiptImportRow>[],
+          );
           break;
         case 'remesa':
-          committed = await this.commitRemesas(estateId, id, okRows as ValidatedRow<RemesaLineImportRow>[], user);
+          committed = await this.commitRemesas(
+            estateId,
+            id,
+            okRows as ValidatedRow<RemesaLineImportRow>[],
+            user,
+          );
           break;
         case 'opening-balance':
           committed = await this.commitOpeningBalance(
@@ -351,7 +437,10 @@ export class ImportsService {
           break;
       }
     } catch (error) {
-      await this.prisma.importBatch.update({ where: { id }, data: { status: 'failed' } });
+      await this.prisma.importBatch.update({
+        where: { id },
+        data: { status: 'failed' },
+      });
       throw error;
     }
 
@@ -373,7 +462,9 @@ export class ImportsService {
     batchId: string,
     rows: ValidatedRow<PropertyImportRow>[],
   ): Promise<CommitResult> {
-    const estate = await this.prisma.estate.findFirst({ where: { id: estateId } });
+    const estate = await this.prisma.estate.findFirst({
+      where: { id: estateId },
+    });
     if (!estate) {
       throw new NotFoundException(`Finca ${estateId} no encontrada.`);
     }
@@ -381,7 +472,9 @@ export class ImportsService {
       where: { estateId },
       select: { ref: true },
     });
-    const usedRefs = new Set(existing.map((p) => p.ref).filter((r): r is string => !!r));
+    const usedRefs = new Set(
+      existing.map((p) => p.ref).filter((r): r is string => !!r),
+    );
 
     let createdCount = 0;
     const skippedReasons: { rowNumber: number; reason: string }[] = [];
@@ -418,14 +511,22 @@ export class ImportsService {
             },
           });
           await tx.importedRecord.create({
-            data: { importBatchId: batchId, entityType: 'Property', entityId: created.id },
+            data: {
+              importBatchId: batchId,
+              entityType: 'Property',
+              entityId: created.id,
+            },
           });
           createdCount++;
         }
       });
     }
 
-    return { createdCount, skippedCount: skippedReasons.length, skippedReasons };
+    return {
+      createdCount,
+      skippedCount: skippedReasons.length,
+      skippedReasons,
+    };
   }
 
   /** `YYYY-MM-DD` — mismo formato que exige `SaveOpeningDraftDto` (`@IsISO8601`). */
@@ -660,14 +761,22 @@ export class ImportsService {
             },
           });
           await tx.importedRecord.create({
-            data: { importBatchId: batchId, entityType: 'ExternalOwner', entityId: created.id },
+            data: {
+              importBatchId: batchId,
+              entityType: 'ExternalOwner',
+              entityId: created.id,
+            },
           });
           createdCount++;
         }
       });
     }
 
-    return { createdCount, skippedCount: skippedReasons.length, skippedReasons };
+    return {
+      createdCount,
+      skippedCount: skippedReasons.length,
+      skippedReasons,
+    };
   }
 
   /**
@@ -684,11 +793,15 @@ export class ImportsService {
     rows: ValidatedRow<MovementImportRow>[],
     user: AuthenticatedUser,
   ): Promise<CommitResult> {
-    const estate = await this.prisma.estate.findFirst({ where: { id: estateId } });
+    const estate = await this.prisma.estate.findFirst({
+      where: { id: estateId },
+    });
     if (!estate) {
       throw new NotFoundException(`Finca ${estateId} no encontrada.`);
     }
-    const sorted = [...rows].sort((a, b) => a.data!.date.getTime() - b.data!.date.getTime());
+    const sorted = [...rows].sort(
+      (a, b) => a.data!.date.getTime() - b.data!.date.getTime(),
+    );
     let createdCount = 0;
     const skippedReasons: { rowNumber: number; reason: string }[] = [];
 
@@ -696,7 +809,9 @@ export class ImportsService {
       const data = row.data!;
       try {
         await runPosting(this.prisma, async (tx) => {
-          let account = await tx.chartAccount.findFirst({ where: { estateId, code: data.accountCode } });
+          let account = await tx.chartAccount.findFirst({
+            where: { estateId, code: data.accountCode },
+          });
           if (!account) {
             account = await tx.chartAccount.create({
               data: {
@@ -709,10 +824,18 @@ export class ImportsService {
               },
             });
             await tx.importedRecord.create({
-              data: { importBatchId: batchId, entityType: 'ChartAccount', entityId: account.id },
+              data: {
+                importBatchId: batchId,
+                entityType: 'ChartAccount',
+                entityId: account.id,
+              },
             });
           }
-          if (account.requiresProperty || account.requiresSupplier || account.systemRole === 'suspense') {
+          if (
+            account.requiresProperty ||
+            account.requiresSupplier ||
+            account.systemRole === 'suspense'
+          ) {
             throw new BadRequestException(
               `La cuenta ${account.code} solo se mueve con sus documentos (recibos, cobros, facturas o pagos).`,
             );
@@ -722,7 +845,9 @@ export class ImportsService {
             select: { id: true, chartAccountId: true },
           });
           if (bank?.chartAccountId === account.id) {
-            throw new BadRequestException('La cuenta de la fila es el propio banco de los movimientos.');
+            throw new BadRequestException(
+              'La cuenta de la fila es el propio banco de los movimientos.',
+            );
           }
           const cents = Math.round(Math.abs(data.amount) * 100);
           if (cents === 0) throw new BadRequestException('El importe es cero.');
@@ -736,21 +861,48 @@ export class ImportsService {
             importBatchId: batchId,
             createdByUserId: user.id,
             lines: moneyIn
-              ? [{ account: bank ? { bankAccountId: bank.id } : { role: 'bank' }, debit: cents }, { account: { accountId: account.id }, credit: cents }]
-              : [{ account: { accountId: account.id }, debit: cents }, { account: bank ? { bankAccountId: bank.id } : { role: 'bank' }, credit: cents }],
+              ? [
+                  {
+                    account: bank
+                      ? { bankAccountId: bank.id }
+                      : { role: 'bank' },
+                    debit: cents,
+                  },
+                  { account: { accountId: account.id }, credit: cents },
+                ]
+              : [
+                  { account: { accountId: account.id }, debit: cents },
+                  {
+                    account: bank
+                      ? { bankAccountId: bank.id }
+                      : { role: 'bank' },
+                    credit: cents,
+                  },
+                ],
           });
           await tx.importedRecord.create({
-            data: { importBatchId: batchId, entityType: 'JournalEntry', entityId: entry.id },
+            data: {
+              importBatchId: batchId,
+              entityType: 'JournalEntry',
+              entityId: entry.id,
+            },
           });
         });
         createdCount++;
       } catch (error) {
         if (!(error instanceof HttpException)) throw error;
-        skippedReasons.push({ rowNumber: row.rowNumber, reason: error.message });
+        skippedReasons.push({
+          rowNumber: row.rowNumber,
+          reason: error.message,
+        });
       }
     }
 
-    return { createdCount, skippedCount: skippedReasons.length, skippedReasons };
+    return {
+      createdCount,
+      skippedCount: skippedReasons.length,
+      skippedReasons,
+    };
   }
 
   private async findOrCreatePeriod(
@@ -774,7 +926,11 @@ export class ImportsService {
         },
       });
       await tx.importedRecord.create({
-        data: { importBatchId: batchId, entityType: 'AccountingPeriod', entityId: period.id },
+        data: {
+          importBatchId: batchId,
+          entityType: 'AccountingPeriod',
+          entityId: period.id,
+        },
       });
     }
     return period;
@@ -837,7 +993,12 @@ export class ImportsService {
               continue;
             }
 
-            const period = await this.findOrCreatePeriod(tx, estateId, data.periodKey, batchId);
+            const period = await this.findOrCreatePeriod(
+              tx,
+              estateId,
+              data.periodKey,
+              batchId,
+            );
 
             const existingReceipt = await tx.accountingReceipt.findUnique({
               where: { periodId_no: { periodId: period.id, no: data.no } },
@@ -874,10 +1035,16 @@ export class ImportsService {
             if (data.status === 'Pagada') {
               // Fecha de cobro desconocida en el origen: la de emisión, o la
               // del asiento de emisión si es posterior.
-              const accrual = receiptAccrualDate(data.periodKey, settings.cutoverDate);
-              const paidOn = data.date && data.date > accrual ? data.date : accrual;
+              const accrual = receiptAccrualDate(
+                data.periodKey,
+                settings.cutoverDate,
+              );
+              const paidOn =
+                data.date && data.date > accrual ? data.date : accrual;
               const method =
-                data.method === 'Pendiente' || data.method === 'Devolucion' ? 'Transferencia' : data.method;
+                data.method === 'Pendiente' || data.method === 'Devolucion'
+                  ? 'Transferencia'
+                  : data.method;
               await this.collections.collect(tx, {
                 estateId,
                 propertyId: property.id,
@@ -894,7 +1061,11 @@ export class ImportsService {
             }
 
             await tx.importedRecord.create({
-              data: { importBatchId: batchId, entityType: 'AccountingReceipt', entityId: created.id },
+              data: {
+                importBatchId: batchId,
+                entityType: 'AccountingReceipt',
+                entityId: created.id,
+              },
             });
             createdCount++;
           }
@@ -903,7 +1074,11 @@ export class ImportsService {
       );
     }
 
-    return { createdCount, skippedCount: skippedReasons.length, skippedReasons };
+    return {
+      createdCount,
+      skippedCount: skippedReasons.length,
+      skippedReasons,
+    };
   }
 
   /**
@@ -941,11 +1116,15 @@ export class ImportsService {
       for (const row of groupRows) {
         const data = row.data!;
         const period = await this.prisma.accountingPeriod.findUnique({
-          where: { estateId_periodKey: { estateId, periodKey: data.periodKey } },
+          where: {
+            estateId_periodKey: { estateId, periodKey: data.periodKey },
+          },
         });
         const receipt = period
           ? await this.prisma.accountingReceipt.findUnique({
-              where: { periodId_no: { periodId: period.id, no: data.receiptNo } },
+              where: {
+                periodId_no: { periodId: period.id, no: data.receiptNo },
+              },
             })
           : null;
         if (!receipt) {
@@ -968,8 +1147,12 @@ export class ImportsService {
       if (resolved.length === 0) continue; // remesa entera sin líneas resolubles — no se crea cabecera
 
       const first = resolved[0].row.data!;
-      const hasReturns = resolved.some((l) => l.row.data!.status === 'Devuelto');
-      const allCollected = resolved.every((l) => l.row.data!.status === 'Cobrado');
+      const hasReturns = resolved.some(
+        (l) => l.row.data!.status === 'Devuelto',
+      );
+      const allCollected = resolved.every(
+        (l) => l.row.data!.status === 'Cobrado',
+      );
       const status: RemesaStatus = hasReturns
         ? 'ConDevoluciones'
         : allCollected
@@ -1001,7 +1184,11 @@ export class ImportsService {
           },
         });
         await tx.importedRecord.create({
-          data: { importBatchId: batchId, entityType: 'RemesaHistoryItem', entityId: remesa.id },
+          data: {
+            importBatchId: batchId,
+            entityType: 'RemesaHistoryItem',
+            entityId: remesa.id,
+          },
         });
 
         for (const { row, receipt } of resolved) {
@@ -1026,14 +1213,22 @@ export class ImportsService {
             },
           });
           await tx.importedRecord.create({
-            data: { importBatchId: batchId, entityType: 'RemesaLine', entityId: line.id },
+            data: {
+              importBatchId: batchId,
+              entityType: 'RemesaLine',
+              entityId: line.id,
+            },
           });
           createdCount++;
         }
       });
     }
 
-    return { createdCount, skippedCount: skippedReasons.length, skippedReasons };
+    return {
+      createdCount,
+      skippedCount: skippedReasons.length,
+      skippedReasons,
+    };
   }
 
   /**
@@ -1057,7 +1252,11 @@ export class ImportsService {
    * abortada para cualquier sentencia posterior, así que un `catch` local
    * ahí no alcanza). Si siguen en uso, se dejan — no bloquean el resto.
    */
-  async rollback(estateId: string, id: string, user: AuthenticatedUser): Promise<RollbackResult> {
+  async rollback(
+    estateId: string,
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<RollbackResult> {
     const batch = await this.assertBatchAccess(estateId, id, user);
     if (batch.status !== 'completed') {
       throw new BadRequestException(
@@ -1076,7 +1275,9 @@ export class ImportsService {
       );
     }
 
-    const records = await this.prisma.importedRecord.findMany({ where: { importBatchId: id } });
+    const records = await this.prisma.importedRecord.findMany({
+      where: { importBatchId: id },
+    });
     const idsOf = (entityType: string) =>
       records.filter((r) => r.entityType === entityType).map((r) => r.entityId);
 
@@ -1117,10 +1318,14 @@ export class ImportsService {
     try {
       await runPosting(this.prisma, async (tx) => {
         if (remesaLineIds.length > 0) {
-          await tx.remesaLine.deleteMany({ where: { id: { in: remesaLineIds } } });
+          await tx.remesaLine.deleteMany({
+            where: { id: { in: remesaLineIds } },
+          });
         }
         if (remesaHeaderIds.length > 0) {
-          await tx.remesaHistoryItem.deleteMany({ where: { id: { in: remesaHeaderIds } } });
+          await tx.remesaHistoryItem.deleteMany({
+            where: { id: { in: remesaHeaderIds } },
+          });
         }
         // Los recibos no se borran (son documentos con asiento): se deshace su
         // cobro si lo tenían y se anulan con contraasiento.
@@ -1130,8 +1335,14 @@ export class ImportsService {
             select: { status: true, no: true },
           });
           if (receipt.status === 'Anulado') continue;
-          for (const collection of await this.collections.activeCollectionsFor(tx, receiptId)) {
-            await this.collections.undo(tx, collection.id, { reason: 'Importación deshecha', userId: user.id });
+          for (const collection of await this.collections.activeCollectionsFor(
+            tx,
+            receiptId,
+          )) {
+            await this.collections.undo(tx, collection.id, {
+              reason: 'Importación deshecha',
+              userId: user.id,
+            });
           }
           await this.receiptPosting.cancel(tx, receiptId, {
             reason: 'Importación deshecha',
@@ -1155,8 +1366,12 @@ export class ImportsService {
         if (ownerIds.length > 0) {
           // Invitaciones aún sin canjear de esos titulares (las canjeadas ya
           // se bloquearon arriba): sin el titular, el enlace no tiene sentido.
-          await tx.propertyMembershipInvite.deleteMany({ where: { externalOwnerId: { in: ownerIds }, usedAt: null } });
-          await tx.externalOwner.deleteMany({ where: { id: { in: ownerIds } } });
+          await tx.propertyMembershipInvite.deleteMany({
+            where: { externalOwnerId: { in: ownerIds }, usedAt: null },
+          });
+          await tx.externalOwner.deleteMany({
+            where: { id: { in: ownerIds } },
+          });
         }
         if (propertyIds.length > 0) {
           await tx.property.deleteMany({ where: { id: { in: propertyIds } } });
@@ -1167,7 +1382,10 @@ export class ImportsService {
             entityType: { notIn: ['ChartAccount', 'AccountingPeriod'] },
           },
         });
-        await tx.importBatch.update({ where: { id }, data: { status: 'rolled_back' } });
+        await tx.importBatch.update({
+          where: { id },
+          data: { status: 'rolled_back' },
+        });
       });
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -1181,9 +1399,15 @@ export class ImportsService {
     // intacto por si se puede reintentar más adelante.
     for (const chartAccountId of chartAccountIds) {
       try {
-        await this.prisma.chartAccount.delete({ where: { id: chartAccountId } });
+        await this.prisma.chartAccount.delete({
+          where: { id: chartAccountId },
+        });
         await this.prisma.importedRecord.deleteMany({
-          where: { importBatchId: id, entityType: 'ChartAccount', entityId: chartAccountId },
+          where: {
+            importBatchId: id,
+            entityType: 'ChartAccount',
+            entityId: chartAccountId,
+          },
         });
       } catch {
         // Cuenta contable todavía en uso (otro movimiento, presupuesto...) — se deja.
@@ -1193,7 +1417,11 @@ export class ImportsService {
       try {
         await this.prisma.accountingPeriod.delete({ where: { id: periodId } });
         await this.prisma.importedRecord.deleteMany({
-          where: { importBatchId: id, entityType: 'AccountingPeriod', entityId: periodId },
+          where: {
+            importBatchId: id,
+            entityType: 'AccountingPeriod',
+            entityId: periodId,
+          },
         });
       } catch {
         // Periodo todavía en uso (otro recibo, remesa...) — se deja.

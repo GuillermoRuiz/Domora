@@ -11,7 +11,11 @@ import { UsageService } from './usage.service';
  * external service) and it lets the demo's role A panel show real usage.
  */
 @Module({
-  providers: [UsageRecorder, UsageService, { provide: APP_INTERCEPTOR, useClass: UsageInterceptor }],
+  providers: [
+    UsageRecorder,
+    UsageService,
+    { provide: APP_INTERCEPTOR, useClass: UsageInterceptor },
+  ],
   exports: [UsageService],
 })
 export class UsageModule {}

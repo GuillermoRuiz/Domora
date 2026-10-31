@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { API, makeUser, setupComponent, settle, type ComponentHarness } from '../../core/testing/component-harness';
 import { DespachoContextService } from '../../core/despacho-context.service';
 import type { Administrator, OfficeHealth, PlansCatalog } from '../../core/models';
@@ -86,6 +87,13 @@ async function mount(load: Load = {}): Promise<ComponentHarness<AdminDetailAComp
   return h;
 }
 
+function openSession() {
+  return {
+    id: 's1', administratorId: 'ad1', staffUserId: 'a1', reason: 'Soporte', ticketRef: null,
+    startedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), endedAt: null,
+  };
+}
+
 function openTab(h: ComponentHarness<AdminDetailAComponent>, label: string): void {
   (Array.from(h.el.querySelectorAll('[role="tab"]')).find((b) => b.textContent?.trim() === label) as HTMLElement).click();
   h.fixture.detectChanges();
@@ -129,14 +137,79 @@ describe('AdminDetailAComponent (ficha 360°)', () => {
       expect(tag.getAttribute('aria-label')).toBe('En riesgo: Pagos pendientes');
     });
 
-    it('«Ver sus comunidades» selects the despacho and opens its community list', async () => {
+    it('«Ver sus comunidades» selects the despacho and, inside its support session, opens its community list', async () => {
       const h = await mount();
       const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
 
       button(h.el, 'Ver sus comunidades', '.detail-header').click();
+      h.fixture.detectChanges();
+      h.http.expectOne(`${API}/support-sessions/active`).flush([openSession()]);
+      await settle();
 
       expect(TestBed.inject(DespachoContextService).selected()).toEqual({ id: 'ad1', name: 'Fincas García' });
       expect(navigate).toHaveBeenCalledWith('/b/estates');
+    });
+
+    it('«Ver sus comunidades» without a support session asks for one first and enters once it starts', async () => {
+      const h = await mount();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+      button(h.el, 'Ver sus comunidades', '.detail-header').click();
+      h.fixture.detectChanges();
+      h.http.expectOne(`${API}/support-sessions/active`).flush([]);
+      await settle();
+      h.fixture.detectChanges();
+
+      expect(navigate).not.toHaveBeenCalled();
+      const dialog = h.el.querySelector('app-support-session-dialog') as HTMLElement;
+      expect(dialog).not.toBeNull();
+
+      const reason = dialog.querySelector('textarea, input') as HTMLTextAreaElement;
+      reason.value = 'Revisar la configuración de la comunidad';
+      reason.dispatchEvent(new Event('input'));
+      (dialog.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+      h.http.expectOne(`${API}/support-sessions`).flush(openSession());
+      await settle();
+      h.fixture.detectChanges();
+
+      expect(navigate).toHaveBeenCalledWith('/b/estates');
+      expect(h.el.querySelector('app-support-session-dialog')).toBeNull();
+    });
+
+    it('sent back by the route guard (`?support=required`) it asks for the support session', async () => {
+      const h = await mount({ query: { support: 'required' } });
+      h.http.expectOne(`${API}/support-sessions/active`).flush([]);
+      await settle();
+      h.fixture.detectChanges();
+
+      expect(TestBed.inject(DespachoContextService).selected()).toEqual({ id: 'ad1', name: 'Fincas García' });
+      expect(h.el.querySelector('app-support-session-dialog')).not.toBeNull();
+    });
+
+    it('sent back with ?returnUrl=, once the session exists it opens the screen that was asked for', async () => {
+      const navigateByUrl = vi.spyOn(Router.prototype, 'navigateByUrl').mockResolvedValue(true);
+      try {
+        await mount({ query: { support: 'required', returnUrl: '/b/estates/e1?tab=juntas' } });
+        // A slow restore that finally finds the session: straight to the screen, no dialog.
+        const req = TestBed.inject(HttpTestingController).expectOne(`${API}/support-sessions/active`);
+        req.flush([openSession()]);
+        await settle();
+        expect(navigateByUrl).toHaveBeenCalledWith('/b/estates/e1?tab=juntas');
+      } finally {
+        navigateByUrl.mockRestore();
+      }
+    });
+
+    it('a ?returnUrl= outside the role B screens is ignored', async () => {
+      const navigateByUrl = vi.spyOn(Router.prototype, 'navigateByUrl').mockResolvedValue(true);
+      try {
+        await mount({ query: { support: 'required', returnUrl: 'https://evil.example' } });
+        TestBed.inject(HttpTestingController).expectOne(`${API}/support-sessions/active`).flush([openSession()]);
+        await settle();
+        expect(navigateByUrl).toHaveBeenCalledWith('/b/estates');
+      } finally {
+        navigateByUrl.mockRestore();
+      }
     });
 
     it('an unknown despacho shows a not-found message with a way back', async () => {
@@ -414,6 +487,9 @@ describe('AdminDetailAComponent (ficha 360°)', () => {
 
       expect(h.el.querySelector('[role="tabpanel"]')?.textContent).toContain('Comunidad Sol');
       button(h.el, 'Abrir', '[role="tabpanel"]').click();
+      h.fixture.detectChanges();
+      h.http.expectOne(`${API}/support-sessions/active`).flush([openSession()]);
+      await settle();
 
       expect(TestBed.inject(DespachoContextService).selected()).toEqual({ id: 'ad1', name: 'Fincas García' });
       expect(navigate).toHaveBeenCalledWith('/b/estates/e1');

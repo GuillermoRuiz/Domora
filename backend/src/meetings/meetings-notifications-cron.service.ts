@@ -14,7 +14,9 @@ function startOfDay(d: Date): Date {
 }
 
 function daysBetween(from: Date, to: Date): number {
-  return Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
+  return Math.round(
+    (startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000,
+  );
 }
 
 /**
@@ -42,14 +44,21 @@ export class MeetingsNotificationsCronService {
     try {
       await this.remindPendingActas();
     } catch (error) {
-      this.logger.error('Error enviando recordatorios de acta pendiente de firma', error);
+      this.logger.error(
+        'Error enviando recordatorios de acta pendiente de firma',
+        error,
+      );
     }
   }
 
   private async remindPendingActas(): Promise<void> {
     const today = startOfDay(new Date());
     const candidates = await this.prisma.meeting.findMany({
-      where: { status: 'celebrada', actaSignedAt: null, celebratedAt: { not: null } },
+      where: {
+        status: 'celebrada',
+        actaSignedAt: null,
+        celebratedAt: { not: null },
+      },
       select: {
         id: true,
         title: true,
@@ -60,18 +69,25 @@ export class MeetingsNotificationsCronService {
     });
 
     const dueSoon = candidates.filter((meeting) => {
-      const deadline = new Date(meeting.celebratedAt!.getTime() + ACTA_DEADLINE_DAYS * 86_400_000);
+      const deadline = new Date(
+        meeting.celebratedAt!.getTime() + ACTA_DEADLINE_DAYS * 86_400_000,
+      );
       const daysRemaining = daysBetween(today, deadline);
       if (daysRemaining > ACTA_REMINDER_WINDOW_DAYS) return false;
       // Ya se avisó hoy — evita reenviar si el cron corre más de una vez o hay varias réplicas.
-      if (meeting.actaReminderSentAt && startOfDay(meeting.actaReminderSentAt).getTime() === today.getTime()) {
+      if (
+        meeting.actaReminderSentAt &&
+        startOfDay(meeting.actaReminderSentAt).getTime() === today.getTime()
+      ) {
         return false;
       }
       return true;
     });
 
     for (const meeting of dueSoon) {
-      const deadline = new Date(meeting.celebratedAt!.getTime() + ACTA_DEADLINE_DAYS * 86_400_000);
+      const deadline = new Date(
+        meeting.celebratedAt!.getTime() + ACTA_DEADLINE_DAYS * 86_400_000,
+      );
       const daysRemaining = daysBetween(today, deadline);
 
       // Avisa a la gestora (rol B), no a un presidente/secretario
@@ -79,17 +95,31 @@ export class MeetingsNotificationsCronService {
       // firmar (ver ActaDocxService/SignActaDto), no hay a quién avisar
       // hasta entonces salvo al equipo responsable de conseguir la firma.
       const managers = await this.prisma.user.findMany({
-        where: { administratorId: meeting.estate.administratorId, role: 'B', deletedAt: null },
+        where: {
+          administratorId: meeting.estate.administratorId,
+          role: 'B',
+          deletedAt: null,
+        },
         select: { email: true },
       });
       for (const manager of managers) {
         try {
-          await this.mail.sendActaReadyToSign(manager.email, meeting.title, daysRemaining);
+          await this.mail.sendActaReadyToSign(
+            manager.email,
+            meeting.title,
+            daysRemaining,
+          );
         } catch (error) {
-          this.logger.error(`No se pudo enviar el recordatorio de acta a ${manager.email} (junta ${meeting.id})`, error);
+          this.logger.error(
+            `No se pudo enviar el recordatorio de acta a ${manager.email} (junta ${meeting.id})`,
+            error,
+          );
         }
       }
-      await this.prisma.meeting.update({ where: { id: meeting.id }, data: { actaReminderSentAt: new Date() } });
+      await this.prisma.meeting.update({
+        where: { id: meeting.id },
+        data: { actaReminderSentAt: new Date() },
+      });
     }
   }
 }

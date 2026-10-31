@@ -8,7 +8,11 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { MembershipRoleType, OwnerPropertyType, ViaType } from '../../prisma/client';
+import {
+  MembershipRoleType,
+  OwnerPropertyType,
+  ViaType,
+} from '../../prisma/client';
 
 const PROPERTY_TYPES: OwnerPropertyType[] = [
   'Piso',

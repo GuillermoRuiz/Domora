@@ -42,7 +42,10 @@ export class AdminsController {
 
   @Patch('me')
   @Roles('B')
-  updateOwn(@Body() dto: UpdateOwnAdministratorDto, @CurrentUser() user: AuthenticatedUser) {
+  updateOwn(
+    @Body() dto: UpdateOwnAdministratorDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.adminsService.updateOwn(dto, user);
   }
 

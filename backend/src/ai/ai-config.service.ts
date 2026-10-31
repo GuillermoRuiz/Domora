@@ -26,9 +26,7 @@ export class AiConfigService {
     // Una IA mal configurada no tumba la aplicación: los módulos que la usan muestran su estado no disponible.
     const { available, reason } = this.availability;
     if (this.requested && !available)
-      this.logger.warn(
-        `IA solicitada pero NO disponible (${reason}).`,
-      );
+      this.logger.warn(`IA solicitada pero NO disponible (${reason}).`);
   }
   private get nonProduction() {
     return ['development', 'test'].includes(
@@ -188,10 +186,16 @@ function optionalHours(raw: string | undefined): number | null {
   return Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-function positiveSeconds(raw: string | undefined, fallbackSeconds: number): number {
+function positiveSeconds(
+  raw: string | undefined,
+  fallbackSeconds: number,
+): number {
   const value = Number(raw ?? '');
   const seconds =
-    raw !== undefined && raw.trim() !== '' && Number.isFinite(value) && value > 0
+    raw !== undefined &&
+    raw.trim() !== '' &&
+    Number.isFinite(value) &&
+    value > 0
       ? value
       : fallbackSeconds;
   return seconds * 1000;

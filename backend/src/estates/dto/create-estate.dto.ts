@@ -19,7 +19,14 @@ const CIF_PATTERN = /^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/i;
 const PARCEL_REFERENCE = /^[0-9A-Z]{14}$/;
 
 /** Uso principal de la finca (lista cerrada: se filtra y se muestra tal cual). */
-export const ESTATE_MAIN_USES = ['Residencial', 'Mixto', 'Comercial', 'Oficinas', 'Garajes y trasteros', 'Otro'] as const;
+export const ESTATE_MAIN_USES = [
+  'Residencial',
+  'Mixto',
+  'Comercial',
+  'Oficinas',
+  'Garajes y trasteros',
+  'Otro',
+] as const;
 
 const ESTATE_TYPES: EstateType[] = [
   'Edificio',
@@ -151,7 +158,8 @@ export class UpdateEstateDto {
    */
   @IsOptional()
   @Matches(CIF_PATTERN, {
-    message: 'cif debe tener formato de CIF español: letra + 7 dígitos + control (ej. H12345678)',
+    message:
+      'cif debe tener formato de CIF español: letra + 7 dígitos + control (ej. H12345678)',
   })
   cif?: string | null;
 

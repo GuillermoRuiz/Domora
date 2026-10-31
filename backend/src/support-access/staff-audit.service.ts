@@ -43,7 +43,9 @@ export class StaffAuditService {
 
   async list(query: StaffAuditQuery) {
     const where: Prisma.StaffAuditLogWhereInput = {
-      ...(query.administratorId ? { administratorId: query.administratorId } : {}),
+      ...(query.administratorId
+        ? { administratorId: query.administratorId }
+        : {}),
       ...(query.staffUserId ? { staffUserId: query.staffUserId } : {}),
       ...(query.from || query.to
         ? {

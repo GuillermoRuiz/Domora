@@ -10,7 +10,10 @@
 <div class="page-content">
 
   <div class="page-header">
-    <span></span>
+    <a class="inbox-link" data-link="notifications" [routerLink]="notificationsRoute">
+      <app-icon name="bell" [size]="14"></app-icon>
+      Ver avisos de la gestora
+    </a>
     @if (unread() > 0) {
       <app-btn variant="outline" size="sm" (clicked)="markAllRead()">Marcar todas como leídas</app-btn>
     }

@@ -20,6 +20,8 @@ export class SupportSessionDialogComponent {
   readonly despacho = inject(DespachoContextService).selected;
 
   readonly closed = output<void>();
+  /** Emitted, before `closed`, once the session is open. */
+  readonly started = output<void>();
 
   readonly reasonMax = SUPPORT_REASON_MAX;
   readonly ticketMax = SUPPORT_TICKET_MAX;
@@ -48,6 +50,7 @@ export class SupportSessionDialogComponent {
     this.saving.set(true);
     try {
       await this.support.start({ reason, ticketRef: this.ticketRef() });
+      this.started.emit();
       this.closed.emit();
     } catch (error) {
       this.error.set(messageFrom(error));

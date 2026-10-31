@@ -3,7 +3,11 @@ import type { ReceiptStatus } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Recibos que deben algo: su `outstanding` es lo que queda por cobrar (mismo criterio que la morosidad). */
-const OPEN_RECEIPT_STATUSES: ReceiptStatus[] = ['Pendiente', 'Parcial', 'Devuelto'];
+const OPEN_RECEIPT_STATUSES: ReceiptStatus[] = [
+  'Pendiente',
+  'Parcial',
+  'Devuelto',
+];
 
 /**
  * Art. 15.2 LPH: no tiene derecho de voto quien, al iniciarse la junta, no está al corriente de las
@@ -18,7 +22,11 @@ export class VoteDebtService {
    * Deuda vencida (importe positivo) de las propiedades de la finca que deben algo: recibos abiertos
    * cuyo vencimiento ya pasó (o sin vencimiento indicado). Las propiedades al corriente no aparecen.
    */
-  async overdueByProperty(estateId: string, propertyIds?: string[], at: Date = new Date()): Promise<Map<string, number>> {
+  async overdueByProperty(
+    estateId: string,
+    propertyIds?: string[],
+    at: Date = new Date(),
+  ): Promise<Map<string, number>> {
     const rows = await this.prisma.accountingReceipt.groupBy({
       by: ['propertyId'],
       where: {

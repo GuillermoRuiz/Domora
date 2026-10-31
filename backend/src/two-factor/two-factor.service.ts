@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { generateSecret, generate, verify, generateURI } from 'otplib';
+import { generateSecret, verify, generateURI } from 'otplib';
 import * as QRCode from 'qrcode';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -33,29 +33,55 @@ export class TwoFactorService {
   constructor(private readonly prisma: PrismaService) {}
 
   async status(userId: string): Promise<{ enabled: boolean }> {
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { totpEnabled: true } });
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { totpEnabled: true },
+    });
     return { enabled: user.totpEnabled };
   }
 
-  async generateEnrollment(userId: string): Promise<{ secret: string; qrDataUrl: string }> {
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
+  async generateEnrollment(
+    userId: string,
+  ): Promise<{ secret: string; qrDataUrl: string }> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { email: true },
+    });
     const secret = generateSecret();
-    const otpauthUri = generateURI({ issuer: 'Domora', label: user.email, secret });
+    const otpauthUri = generateURI({
+      issuer: 'Domora',
+      label: user.email,
+      secret,
+    });
     const qrDataUrl = await QRCode.toDataURL(otpauthUri);
     return { secret, qrDataUrl };
   }
 
-  async verifyAndEnable(userId: string, secret: string, code: string): Promise<{ backupCodes: string[] }> {
+  async verifyAndEnable(
+    userId: string,
+    secret: string,
+    code: string,
+  ): Promise<{ backupCodes: string[] }> {
     const result = await verify({ secret, token: code });
     if (!result.valid) {
-      throw new BadRequestException('Código incorrecto — comprueba la hora del teléfono y vuelve a intentarlo.');
+      throw new BadRequestException(
+        'Código incorrecto — comprueba la hora del teléfono y vuelve a intentarlo.',
+      );
     }
 
-    const backupCodes = Array.from({ length: BACKUP_CODE_COUNT }, generateBackupCode);
-    const hashed = await Promise.all(backupCodes.map((c) => bcrypt.hash(c, BACKUP_CODE_HASH_ROUNDS)));
+    const backupCodes = Array.from(
+      { length: BACKUP_CODE_COUNT },
+      generateBackupCode,
+    );
+    const hashed = await Promise.all(
+      backupCodes.map((c) => bcrypt.hash(c, BACKUP_CODE_HASH_ROUNDS)),
+    );
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: userId }, data: { totpSecret: secret, totpEnabled: true } });
+      await tx.user.update({
+        where: { id: userId },
+        data: { totpSecret: secret, totpEnabled: true },
+      });
       await tx.twoFactorBackupCode.deleteMany({ where: { userId } });
       await tx.twoFactorBackupCode.createMany({
         data: hashed.map((codeHash) => ({ userId, codeHash })),
@@ -67,21 +93,38 @@ export class TwoFactorService {
 
   async disable(userId: string): Promise<void> {
     await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: userId }, data: { totpSecret: null, totpEnabled: false } }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { totpSecret: null, totpEnabled: false },
+      }),
       this.prisma.twoFactorBackupCode.deleteMany({ where: { userId } }),
     ]);
   }
 
-  async regenerateBackupCodes(userId: string): Promise<{ backupCodes: string[] }> {
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { totpEnabled: true } });
+  async regenerateBackupCodes(
+    userId: string,
+  ): Promise<{ backupCodes: string[] }> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { totpEnabled: true },
+    });
     if (!user.totpEnabled) {
-      throw new BadRequestException('Activa el 2FA antes de generar códigos de respaldo.');
+      throw new BadRequestException(
+        'Activa el 2FA antes de generar códigos de respaldo.',
+      );
     }
-    const backupCodes = Array.from({ length: BACKUP_CODE_COUNT }, generateBackupCode);
-    const hashed = await Promise.all(backupCodes.map((c) => bcrypt.hash(c, BACKUP_CODE_HASH_ROUNDS)));
+    const backupCodes = Array.from(
+      { length: BACKUP_CODE_COUNT },
+      generateBackupCode,
+    );
+    const hashed = await Promise.all(
+      backupCodes.map((c) => bcrypt.hash(c, BACKUP_CODE_HASH_ROUNDS)),
+    );
     await this.prisma.$transaction([
       this.prisma.twoFactorBackupCode.deleteMany({ where: { userId } }),
-      this.prisma.twoFactorBackupCode.createMany({ data: hashed.map((codeHash) => ({ userId, codeHash })) }),
+      this.prisma.twoFactorBackupCode.createMany({
+        data: hashed.map((codeHash) => ({ userId, codeHash })),
+      }),
     ]);
     return { backupCodes };
   }

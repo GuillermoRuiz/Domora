@@ -75,12 +75,18 @@ export class SuppliersController {
 
   /** Datos del panel de Proveedores: KPIs, una fila por proveedor y últimas intervenciones. */
   @Get('overview')
-  getOverview(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  getOverview(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.overview.getOverview(estateId, user);
   }
 
   @Get()
-  list(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  list(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.suppliersService.listSuppliers(estateId, user);
   }
 
@@ -100,7 +106,12 @@ export class SuppliersController {
     @Body() dto: UpdateSupplierDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.updateSupplier(estateId, supplierId, dto, user);
+    return this.suppliersService.updateSupplier(
+      estateId,
+      supplierId,
+      dto,
+      user,
+    );
   }
 
   @Get(':supplierId/performance')
@@ -109,7 +120,11 @@ export class SuppliersController {
     @Param('supplierId') supplierId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.getSupplierPerformance(estateId, supplierId, user);
+    return this.suppliersService.getSupplierPerformance(
+      estateId,
+      supplierId,
+      user,
+    );
   }
 
   // ── Visits ───────────────────────────────────────────────────────────────
@@ -197,7 +212,13 @@ export class SuppliersController {
     @Body() dto: UpdateSupplierInvoiceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.invoices.updateDueDate(estateId, supplierId, invoiceId, dto, user);
+    return this.invoices.updateDueDate(
+      estateId,
+      supplierId,
+      invoiceId,
+      dto,
+      user,
+    );
   }
 
   /** Anula una factura sin pagos: contraasiento de su registro. */
@@ -223,7 +244,12 @@ export class SuppliersController {
   }
 
   @Post(':supplierId/invoices/:invoiceId/file')
-  @UseInterceptors(FileInterceptor('file', { defParamCharset: 'utf8', limits: { fileSize: StorageService.MAX_SIZE_BYTES } }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      defParamCharset: 'utf8',
+      limits: { fileSize: StorageService.MAX_SIZE_BYTES },
+    }),
+  )
   uploadInvoiceFile(
     @Param('estateId') estateId: string,
     @Param('supplierId') supplierId: string,
@@ -231,7 +257,13 @@ export class SuppliersController {
     @UploadedFile() file: UploadedMulterFile,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.uploadInvoiceFile(estateId, supplierId, invoiceId, file, user);
+    return this.suppliersService.uploadInvoiceFile(
+      estateId,
+      supplierId,
+      invoiceId,
+      file,
+      user,
+    );
   }
 
   @Get(':supplierId/invoices/:invoiceId/file')
@@ -242,13 +274,17 @@ export class SuppliersController {
     @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    const { content, fileName, mimeType } = await this.suppliersService.getInvoiceFileContent(
-      estateId,
-      supplierId,
-      invoiceId,
-      user,
+    const { content, fileName, mimeType } =
+      await this.suppliersService.getInvoiceFileContent(
+        estateId,
+        supplierId,
+        invoiceId,
+        user,
+      );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(fileName)}"`,
     );
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
     res.setHeader('Content-Type', mimeType);
     res.send(content);
   }
@@ -261,7 +297,11 @@ export class SuppliersController {
     @Param('supplierId') supplierId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.listSupplierContracts(estateId, supplierId, user);
+    return this.suppliersService.listSupplierContracts(
+      estateId,
+      supplierId,
+      user,
+    );
   }
 
   @Post(':supplierId/contracts')
@@ -271,7 +311,12 @@ export class SuppliersController {
     @Body() dto: CreateSupplierContractDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.createSupplierContract(estateId, supplierId, dto, user);
+    return this.suppliersService.createSupplierContract(
+      estateId,
+      supplierId,
+      dto,
+      user,
+    );
   }
 
   @Patch(':supplierId/contracts/:contractId')
@@ -282,7 +327,13 @@ export class SuppliersController {
     @Body() dto: UpdateSupplierContractDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.updateSupplierContract(estateId, supplierId, contractId, dto, user);
+    return this.suppliersService.updateSupplierContract(
+      estateId,
+      supplierId,
+      contractId,
+      dto,
+      user,
+    );
   }
 
   @Post(':supplierId/contracts/:contractId/cancel')
@@ -293,7 +344,13 @@ export class SuppliersController {
     @Body() dto: CancelSupplierContractDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.cancelSupplierContract(estateId, supplierId, contractId, dto, user);
+    return this.suppliersService.cancelSupplierContract(
+      estateId,
+      supplierId,
+      contractId,
+      dto,
+      user,
+    );
   }
 
   /** Renueva el contrato (nuevo vencimiento) y deja constancia en el histórico de renovaciones. */
@@ -305,7 +362,13 @@ export class SuppliersController {
     @Body() dto: RenewSupplierContractDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.renewSupplierContract(estateId, supplierId, contractId, dto, user);
+    return this.suppliersService.renewSupplierContract(
+      estateId,
+      supplierId,
+      contractId,
+      dto,
+      user,
+    );
   }
 
   // ── Documentos ───────────────────────────────────────────────────────────
@@ -316,11 +379,20 @@ export class SuppliersController {
     @Param('supplierId') supplierId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.listSupplierDocuments(estateId, supplierId, user);
+    return this.suppliersService.listSupplierDocuments(
+      estateId,
+      supplierId,
+      user,
+    );
   }
 
   @Post(':supplierId/documents')
-  @UseInterceptors(FileInterceptor('file', { defParamCharset: 'utf8', limits: { fileSize: StorageService.MAX_SIZE_BYTES } }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      defParamCharset: 'utf8',
+      limits: { fileSize: StorageService.MAX_SIZE_BYTES },
+    }),
+  )
   uploadDocument(
     @Param('estateId') estateId: string,
     @Param('supplierId') supplierId: string,
@@ -334,7 +406,12 @@ export class SuppliersController {
     return this.suppliersService.uploadSupplierDocument(
       estateId,
       supplierId,
-      { title, documentType, expiresAt: expiresAt || undefined, contractId: contractId || undefined },
+      {
+        title,
+        documentType,
+        expiresAt: expiresAt || undefined,
+        contractId: contractId || undefined,
+      },
       file,
       user,
     );
@@ -348,13 +425,17 @@ export class SuppliersController {
     @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    const { content, fileName, mimeType } = await this.suppliersService.getSupplierDocumentFileContent(
-      estateId,
-      supplierId,
-      docId,
-      user,
+    const { content, fileName, mimeType } =
+      await this.suppliersService.getSupplierDocumentFileContent(
+        estateId,
+        supplierId,
+        docId,
+        user,
+      );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(fileName)}"`,
     );
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
     res.setHeader('Content-Type', mimeType);
     res.send(content);
   }
@@ -366,7 +447,12 @@ export class SuppliersController {
     @Param('docId') docId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.suppliersService.deleteSupplierDocument(estateId, supplierId, docId, user);
+    return this.suppliersService.deleteSupplierDocument(
+      estateId,
+      supplierId,
+      docId,
+      user,
+    );
   }
 }
 
@@ -382,7 +468,10 @@ export class EstateSupplierPaymentsController {
 
   /** Contratos con proveedores de toda la finca, con estado y días hasta el vencimiento. */
   @Get('contracts')
-  listContracts(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  listContracts(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.suppliers.listEstateContracts(estateId, user);
   }
 
@@ -403,7 +492,11 @@ export class EstateSupplierPaymentsController {
     @Query('all') all: string | undefined,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.invoices.listForEstate(estateId, { onlyOpen: all !== 'true' }, user);
+    return this.invoices.listForEstate(
+      estateId,
+      { onlyOpen: all !== 'true' },
+      user,
+    );
   }
 
   @Get('supplier-payments')
