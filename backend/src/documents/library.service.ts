@@ -126,8 +126,14 @@ export class LibraryService {
         const titles = entries.map((e) => e.title);
         await this.notifications.notify({
           // One document opens it in «Documentación»; several land on the page.
-          userIds, category: 'document', estateId, link: ownerDocumentsLink(entries.length === 1 ? entries[0].id : null),
-          title: titles.length === 1 ? `Nuevo documento: ${titles[0]}` : `${titles.length} documentos nuevos de tu comunidad`,
+          userIds,
+          category: 'document',
+          estateId,
+          link: ownerDocumentsLink(entries.length === 1 ? entries[0].id : null),
+          title:
+            titles.length === 1
+              ? `Nuevo documento: ${titles[0]}`
+              : `${titles.length} documentos nuevos de tu comunidad`,
           body: titles.length === 1 ? null : titles.slice(0, 5).join(' · '),
         });
       }

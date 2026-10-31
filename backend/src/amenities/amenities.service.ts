@@ -14,7 +14,10 @@ import type { CreateAmenityDto } from './dto/create-amenity.dto';
 import type { UpdateAmenityDto } from './dto/update-amenity.dto';
 import { dbErrorText } from '../prisma/prisma-errors';
 import type { CreateAmenityBlackoutDto } from './dto/create-amenity-blackout.dto';
-import { ownerEstateSectionLink, ownerPropertyLink } from '../common/owner-links';
+import {
+  ownerEstateSectionLink,
+  ownerPropertyLink,
+} from '../common/owner-links';
 
 function slotHour(slot: string): number {
   return Number(slot.split(':')[0]);

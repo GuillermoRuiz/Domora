@@ -721,8 +721,13 @@ export class MeetingsService {
     await this.notifications.notify({
       userIds: [...managerIds, ...residentIds],
       category: 'meeting',
-      title: cancelled ? `Junta cancelada: ${meeting.title}` : `Junta celebrada: ${meeting.title}`,
-      link: { B: `/b/estates/${meeting.estateId}?tab=juntas`, C: ownerMeetingsLink(meeting.estateId, meeting.id) },
+      title: cancelled
+        ? `Junta cancelada: ${meeting.title}`
+        : `Junta celebrada: ${meeting.title}`,
+      link: {
+        B: `/b/estates/${meeting.estateId}?tab=juntas`,
+        C: ownerMeetingsLink(meeting.estateId, meeting.id),
+      },
       estateId: meeting.estateId,
     });
   }

@@ -65,7 +65,8 @@ function officeFilter(
 ): string | undefined {
   if (user.role !== 'A') return undefined;
   if (raw === undefined) return supportDespacho;
-  if (!isUUID(raw)) throw new BadRequestException('El despacho indicado no es válido.');
+  if (!isUUID(raw))
+    throw new BadRequestException('El despacho indicado no es válido.');
   return raw;
 }
 
@@ -85,7 +86,10 @@ export class EstatesController {
     @SupportDespacho() supportDespacho: string | undefined,
     @Query('administratorId') administratorId?: string,
   ) {
-    return this.estatesService.list(user, officeFilter(user, administratorId, supportDespacho));
+    return this.estatesService.list(
+      user,
+      officeFilter(user, administratorId, supportDespacho),
+    );
   }
 
   @Get('overview')
@@ -95,7 +99,14 @@ export class EstatesController {
     @CurrentUser() user: AuthenticatedUser,
     @SupportDespacho() supportDespacho: string | undefined,
   ) {
-    const scoped: EstateOverviewOfficeQueryDto = { ...query, administratorId: officeFilter(user, query.administratorId, supportDespacho) };
+    const scoped: EstateOverviewOfficeQueryDto = {
+      ...query,
+      administratorId: officeFilter(
+        user,
+        query.administratorId,
+        supportDespacho,
+      ),
+    };
     return this.overviewService.overview(scoped, user);
   }
 
@@ -107,7 +118,11 @@ export class EstatesController {
     @SupportDespacho() supportDespacho: string | undefined,
   ) {
     // Role A searches only the despacho of its support session.
-    return this.overviewService.search(query.q, user, officeFilter(user, undefined, supportDespacho));
+    return this.overviewService.search(
+      query.q,
+      user,
+      officeFilter(user, undefined, supportDespacho),
+    );
   }
 
   @Get('overview/export.xlsx')
@@ -117,7 +132,14 @@ export class EstatesController {
     @CurrentUser() user: AuthenticatedUser,
     @SupportDespacho() supportDespacho: string | undefined,
   ) {
-    const scoped: EstateOverviewOfficeFilterDto = { ...query, administratorId: officeFilter(user, query.administratorId, supportDespacho) };
+    const scoped: EstateOverviewOfficeFilterDto = {
+      ...query,
+      administratorId: officeFilter(
+        user,
+        query.administratorId,
+        supportDespacho,
+      ),
+    };
     const file = await this.overviewExcel.generate(scoped, user);
     return new StreamableFile(file.content, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -144,8 +166,13 @@ export class EstatesController {
     @CurrentUser() user: AuthenticatedUser,
     @SupportDespacho() supportDespacho: string | undefined,
     @Query('administratorId') administratorId?: string,
-  ): Promise<Awaited<ReturnType<EstateSetupService['summaryForAdministrator']>>> {
-    const office = user.role === 'A' ? officeFilter(user, administratorId, supportDespacho) : user.administratorId;
+  ): Promise<
+    Awaited<ReturnType<EstateSetupService['summaryForAdministrator']>>
+  > {
+    const office =
+      user.role === 'A'
+        ? officeFilter(user, administratorId, supportDespacho)
+        : user.administratorId;
     if (!office) return Promise.resolve([]);
     return this.estateSetup.summaryForAdministrator(office);
   }
@@ -188,7 +215,10 @@ export class EstatesController {
   @Get(':estateId/community-summary')
   @Roles('A', 'B', 'C')
   @UseGuards(EstateScopeGuard)
-  communitySummary(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  communitySummary(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.community.getSummary(estateId, user);
   }
 
@@ -203,7 +233,11 @@ export class EstatesController {
     // El tipo sale de lo que guardó el servidor tras mirar el contenido; `nosniff` evita que el navegador lo reinterprete.
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'private, max-age=86400');
-    return new StreamableFile(photo.content, { type: photo.contentType, disposition: 'inline', length: photo.content.length });
+    return new StreamableFile(photo.content, {
+      type: photo.contentType,
+      disposition: 'inline',
+      length: photo.content.length,
+    });
   }
 
   @Post()

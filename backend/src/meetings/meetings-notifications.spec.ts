@@ -71,7 +71,10 @@ describe('MeetingsService.updateStatus — avisa al cerrar la junta', () => {
       userIds: ['b1', 'b2', 'own-1'],
       category: 'meeting',
       title: 'Junta celebrada: Junta Ordinaria 2026',
-      link: { B: '/b/estates/e1?tab=juntas', C: '/c/juntas?estateId=e1&meeting=m1' },
+      link: {
+        B: '/b/estates/e1?tab=juntas',
+        C: '/c/juntas?estateId=e1&meeting=m1',
+      },
       estateId: 'e1',
     });
   });

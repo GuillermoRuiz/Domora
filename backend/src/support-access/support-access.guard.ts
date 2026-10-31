@@ -95,7 +95,12 @@ export class SupportAccessGuard implements CanActivate {
       return this.deny(base, target, session.id, SUPPORT_MESSAGES.unresolved);
     }
     if (administratorId && administratorId !== session.administratorId) {
-      return this.deny(base, target, session.id, SUPPORT_MESSAGES.otherDespacho);
+      return this.deny(
+        base,
+        target,
+        session.id,
+        SUPPORT_MESSAGES.otherDespacho,
+      );
     }
     await this.recordOrFail({
       ...base,

@@ -245,7 +245,10 @@ export class AdhesionRequestsService {
         ? `Ya formas parte de la comunidad${where}.`
         : `La gestora ha rechazado tu solicitud${where}.`,
       // An approved adhesion opens the property (when the request names one); otherwise «Mi comunidad».
-      link: approved && request.propertyId ? ownerPropertyLink(request.propertyId) : OWNER_HOME_LINK,
+      link:
+        approved && request.propertyId
+          ? ownerPropertyLink(request.propertyId)
+          : OWNER_HOME_LINK,
       estateId: request.estateId,
       propertyId: request.propertyId,
     });

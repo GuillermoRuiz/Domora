@@ -36,25 +36,33 @@ describe('EstatesController setup-summary despacho filter', () => {
 
   it('role A gets the summary of ?administratorId=', async () => {
     const { ctrl, summaryForAdministrator } = controller();
-    await expect(ctrl.setupSummary(user({ role: 'A' }), undefined, OFFICE)).resolves.toEqual([{ estateId: 'e1' }]);
+    await expect(
+      ctrl.setupSummary(user({ role: 'A' }), undefined, OFFICE),
+    ).resolves.toEqual([{ estateId: 'e1' }]);
     expect(summaryForAdministrator).toHaveBeenCalledWith(OFFICE);
   });
 
   it('role A without a despacho nor a support session gets an empty list', async () => {
     const { ctrl, summaryForAdministrator } = controller();
-    await expect(ctrl.setupSummary(user({ role: 'A' }), undefined, undefined)).resolves.toEqual([]);
+    await expect(
+      ctrl.setupSummary(user({ role: 'A' }), undefined, undefined),
+    ).resolves.toEqual([]);
     expect(summaryForAdministrator).not.toHaveBeenCalled();
   });
 
   it('role A without ?administratorId= gets the despacho of its support session', async () => {
     const { ctrl, summaryForAdministrator } = controller();
-    await expect(ctrl.setupSummary(user({ role: 'A' }), OFFICE, undefined)).resolves.toEqual([{ estateId: 'e1' }]);
+    await expect(
+      ctrl.setupSummary(user({ role: 'A' }), OFFICE, undefined),
+    ).resolves.toEqual([{ estateId: 'e1' }]);
     expect(summaryForAdministrator).toHaveBeenCalledWith(OFFICE);
   });
 
   it('role A with a despacho that is not a UUID is a 400', () => {
     const { ctrl, summaryForAdministrator } = controller();
-    expect(() => ctrl.setupSummary(user({ role: 'A' }), undefined, 'nope')).toThrow(BadRequestException);
+    expect(() =>
+      ctrl.setupSummary(user({ role: 'A' }), undefined, 'nope'),
+    ).toThrow(BadRequestException);
     expect(summaryForAdministrator).not.toHaveBeenCalled();
   });
 
@@ -69,7 +77,9 @@ describe('EstatesController setup-summary despacho filter', () => {
 
   it('role B without a despacho still gets an empty list', async () => {
     const { ctrl, summaryForAdministrator } = controller();
-    await expect(ctrl.setupSummary(user({ role: 'B' }), undefined, OTHER)).resolves.toEqual([]);
+    await expect(
+      ctrl.setupSummary(user({ role: 'B' }), undefined, OTHER),
+    ).resolves.toEqual([]);
     expect(summaryForAdministrator).not.toHaveBeenCalled();
   });
 });
