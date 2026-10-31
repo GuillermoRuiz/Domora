@@ -1,6 +1,16 @@
-import { Controller, DefaultValuePipe, Get, ParseIntPipe, Query } from '@nestjs/common';
+import {
+  Controller,
+  DefaultValuePipe,
+  Get,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { PlatformMetricsService, type BusinessEvent, type MrrOverview } from './platform-metrics.service';
+import {
+  PlatformMetricsService,
+  type BusinessEvent,
+  type MrrOverview,
+} from './platform-metrics.service';
 
 // Domora business metrics for the platform superadmin panel.
 @Controller('platform-metrics')
@@ -15,7 +25,9 @@ export class PlatformMetricsController {
 
   @Get('activity')
   @Roles('A')
-  activity(@Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number): Promise<BusinessEvent[]> {
+  activity(
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ): Promise<BusinessEvent[]> {
     return this.metrics.recentActivity(limit);
   }
 }

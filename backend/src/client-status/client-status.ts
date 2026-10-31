@@ -1,4 +1,8 @@
-import { AdminStatus, SubscriptionStatus, type AdminInvoiceStatus } from '../prisma/client';
+import {
+  AdminStatus,
+  SubscriptionStatus,
+  type AdminInvoiceStatus,
+} from '../prisma/client';
 
 /**
  * Client status vs payment status of a despacho (odd/tasks/role-a-panel.md
@@ -7,7 +11,8 @@ import { AdminStatus, SubscriptionStatus, type AdminInvoiceStatus } from '../pri
  * Stripe subscription status and the Domora invoices — and never persisted:
  * «no confundir el estado del cliente con su situación de pago».
  */
-export type ClientStatus = 'En prueba' | 'En onboarding' | 'Activo' | 'Suspendido' | 'Cancelado';
+export type ClientStatus =
+  'En prueba' | 'En onboarding' | 'Activo' | 'Suspendido' | 'Cancelado';
 export type PaymentStatus = 'Al día' | 'Pendiente' | 'Vencido' | 'Fallido';
 
 export interface ClientStatusInput {
@@ -19,7 +24,10 @@ export interface ClientStatusInput {
   onboardingComplete: boolean;
 }
 
-const SUSPENDED: ReadonlySet<AdminStatus> = new Set([AdminStatus.Vencida, AdminStatus.Bloqueada]);
+const SUSPENDED: ReadonlySet<AdminStatus> = new Set([
+  AdminStatus.Vencida,
+  AdminStatus.Bloqueada,
+]);
 
 /**
  * Precedence, first match wins:
@@ -35,7 +43,8 @@ const SUSPENDED: ReadonlySet<AdminStatus> = new Set([AdminStatus.Vencida, AdminS
  *    required setup step (S10) is pending.
  */
 export function clientStatus(input: ClientStatusInput): ClientStatus {
-  if (input.deletedAt || input.stripeStatus === SubscriptionStatus.canceled) return 'Cancelado';
+  if (input.deletedAt || input.stripeStatus === SubscriptionStatus.canceled)
+    return 'Cancelado';
   if (SUSPENDED.has(input.status)) return 'Suspendido';
   if (input.stripeStatus === SubscriptionStatus.trialing) return 'En prueba';
   return input.onboardingComplete ? 'Activo' : 'En onboarding';
@@ -56,7 +65,10 @@ export interface PaymentStatusInput {
 }
 
 /** Stripe statuses of a failed charge: still retrying (`past_due`) or out of retries without cancelling (`unpaid`). */
-const FAILED_STRIPE: ReadonlySet<SubscriptionStatus> = new Set([SubscriptionStatus.past_due, SubscriptionStatus.unpaid]);
+const FAILED_STRIPE: ReadonlySet<SubscriptionStatus> = new Set([
+  SubscriptionStatus.past_due,
+  SubscriptionStatus.unpaid,
+]);
 
 /**
  * Precedence Vencido > Fallido > Pendiente > Al día: the most serious debt
@@ -70,9 +82,15 @@ const FAILED_STRIPE: ReadonlySet<SubscriptionStatus> = new Set([SubscriptionStat
  */
 export function paymentStatus(input: PaymentStatusInput): PaymentStatus {
   const retrying = input.stripeStatus === SubscriptionStatus.past_due;
-  const overdue = input.invoices.some((i) => i.status === 'Vencida' && !(i.stripe && retrying));
+  const overdue = input.invoices.some(
+    (i) => i.status === 'Vencida' && !(i.stripe && retrying),
+  );
   if (input.status === AdminStatus.Vencida || overdue) return 'Vencido';
-  if ((input.stripeStatus && FAILED_STRIPE.has(input.stripeStatus)) || input.status === AdminStatus.Periodo_de_gracia) return 'Fallido';
+  if (
+    (input.stripeStatus && FAILED_STRIPE.has(input.stripeStatus)) ||
+    input.status === AdminStatus.Periodo_de_gracia
+  )
+    return 'Fallido';
   if (input.invoices.some((i) => i.status === 'Pendiente')) return 'Pendiente';
   return 'Al día';
 }
@@ -88,9 +106,19 @@ export interface PendingInvoicesSummary {
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
-export function pendingInvoicesSummary(invoices: InvoiceForStatus[]): PendingInvoicesSummary {
-  const unpaid = invoices.filter((i) => i.status === 'Pendiente' || i.status === 'Vencida');
+export function pendingInvoicesSummary(
+  invoices: InvoiceForStatus[],
+): PendingInvoicesSummary {
+  const unpaid = invoices.filter(
+    (i) => i.status === 'Pendiente' || i.status === 'Vencida',
+  );
   const overdue = unpaid.filter((i) => i.status === 'Vencida');
-  const sum = (list: InvoiceForStatus[]) => round2(list.reduce((acc, i) => acc + i.total, 0));
-  return { count: unpaid.length, amount: sum(unpaid), overdueCount: overdue.length, overdueAmount: sum(overdue) };
+  const sum = (list: InvoiceForStatus[]) =>
+    round2(list.reduce((acc, i) => acc + i.total, 0));
+  return {
+    count: unpaid.length,
+    amount: sum(unpaid),
+    overdueCount: overdue.length,
+    overdueAmount: sum(overdue),
+  };
 }

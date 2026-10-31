@@ -12,7 +12,10 @@ const live = {
 
 describe('AiConfigService', () => {
   it('distingue IA desactivada, sin configurar y disponible', () => {
-    expect(cfg({}).availability).toEqual({ available: false, reason: 'AI_DISABLED' });
+    expect(cfg({}).availability).toEqual({
+      available: false,
+      reason: 'AI_DISABLED',
+    });
     expect(cfg({ AI_ENABLED: 'true' }).availability).toEqual({
       available: false,
       reason: 'AI_NOT_CONFIGURED',

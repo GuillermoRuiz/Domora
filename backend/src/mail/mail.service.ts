@@ -150,7 +150,11 @@ export class MailService {
   }
 
   /** El acta ya está firmada por presidente y secretario (art. 19 LPH) — se distribuye a todos los propietarios, presentes o no. */
-  async sendActaNotice(to: string, meetingTitle: string, downloadUrl: string): Promise<void> {
+  async sendActaNotice(
+    to: string,
+    meetingTitle: string,
+    downloadUrl: string,
+  ): Promise<void> {
     const subject = `Acta disponible: ${meetingTitle}`;
     const text = `El acta de la junta "${meetingTitle}" ya está firmada y disponible para su descarga:\n\n${downloadUrl}`;
     const html = `
@@ -161,7 +165,11 @@ export class MailService {
   }
 
   /** Evento síncrono, disparado desde VoteSessionsService.open() — no pasa por el cron. */
-  async sendVoteSessionOpened(to: string, meetingTitle: string, questionTitle: string): Promise<void> {
+  async sendVoteSessionOpened(
+    to: string,
+    meetingTitle: string,
+    questionTitle: string,
+  ): Promise<void> {
     const subject = `Votación abierta: ${meetingTitle}`;
     const text = `Se abrió una votación en la junta "${meetingTitle}": "${questionTitle}".`;
     const html = `<p>Se abrió una votación en la junta <strong>${meetingTitle}</strong>: "${questionTitle}".</p>`;
@@ -169,7 +177,11 @@ export class MailService {
   }
 
   /** Recordatorio diario (MeetingsNotificationsCronService) mientras el acta siga sin firmar dentro del plazo del art. 19 LPH (10 días naturales). */
-  async sendActaReadyToSign(to: string, meetingTitle: string, daysRemaining: number): Promise<void> {
+  async sendActaReadyToSign(
+    to: string,
+    meetingTitle: string,
+    daysRemaining: number,
+  ): Promise<void> {
     const subject = `Acta pendiente de firma: ${meetingTitle}`;
     const whenLine =
       daysRemaining <= 0
@@ -233,5 +245,4 @@ export class MailService {
     const html = `<p>Tu invitación pendiente como <strong>${roleLabel}</strong> a <strong>${propertyAddress}</strong> ${whenLine}.</p><p>Pídele a quien te invitó que te reenvíe el enlace si todavía no te uniste.</p>`;
     await this.send(to, subject, text, html);
   }
-
 }

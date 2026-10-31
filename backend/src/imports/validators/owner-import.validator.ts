@@ -21,7 +21,9 @@ export function validateOwnerRow(
 
   const propertyRef = mappedRow['propertyRef']?.trim();
   if (!propertyRef) {
-    errors.push('Falta la referencia de la unidad a la que vincular este propietario.');
+    errors.push(
+      'Falta la referencia de la unidad a la que vincular este propietario.',
+    );
   }
 
   const email = mappedRow['email']?.trim();

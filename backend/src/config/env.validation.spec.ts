@@ -203,10 +203,16 @@ describe('validateEnv', () => {
 
     it('si se configura, debe ser válido', () => {
       expect(() =>
-        validateEnv({ ...validProd, DOMORA_SEPA_CREDITOR_ID: 'ES12ZZZB12345674' }),
+        validateEnv({
+          ...validProd,
+          DOMORA_SEPA_CREDITOR_ID: 'ES12ZZZB12345674',
+        }),
       ).toThrow(/DOMORA_SEPA_CREDITOR_ID/);
       expect(() =>
-        validateEnv({ ...validProd, DOMORA_SEPA_CREDITOR_ID: 'ES11ZZZB12345674' }),
+        validateEnv({
+          ...validProd,
+          DOMORA_SEPA_CREDITOR_ID: 'ES11ZZZB12345674',
+        }),
       ).not.toThrow();
     });
   });
@@ -255,9 +261,15 @@ describe('validateEnv', () => {
 
     it('DOMORA_SEPA_CREDITOR_ID con dígitos de control erróneos impide arrancar, y uno válido se normaliza', () => {
       expect(() =>
-        validateEnv({ NODE_ENV: 'development', DOMORA_SEPA_CREDITOR_ID: 'ES12ZZZB12345674' }),
+        validateEnv({
+          NODE_ENV: 'development',
+          DOMORA_SEPA_CREDITOR_ID: 'ES12ZZZB12345674',
+        }),
       ).toThrow(/DOMORA_SEPA_CREDITOR_ID/);
-      const config = validateEnv({ NODE_ENV: 'development', DOMORA_SEPA_CREDITOR_ID: ' es11 zzz b12345674 ' });
+      const config = validateEnv({
+        NODE_ENV: 'development',
+        DOMORA_SEPA_CREDITOR_ID: ' es11 zzz b12345674 ',
+      });
       expect(config['DOMORA_SEPA_CREDITOR_ID']).toBe('ES11ZZZB12345674');
     });
 

@@ -99,7 +99,10 @@ export function deriveAdminStatusFromStripe(
  * `Administrator.status` no haya cambiado.
  */
 export function resolvesPastDueGrace(stripeStatus: string): boolean {
-  return RESTRICT_STRIPE_STATUSES.has(stripeStatus) || RECOVER_STRIPE_STATUSES.has(stripeStatus);
+  return (
+    RESTRICT_STRIPE_STATUSES.has(stripeStatus) ||
+    RECOVER_STRIPE_STATUSES.has(stripeStatus)
+  );
 }
 
 /**
@@ -113,8 +116,14 @@ const DETACHABLE_STATUSES = new Set(['canceled', 'incomplete_expired']);
 
 export function isDetachableStripeSubscription<
   T extends { stripeSubscriptionId: string | null; status: string | null },
->(sub: T | null | undefined): sub is T & { stripeSubscriptionId: string; status: string } {
-  return !!sub?.stripeSubscriptionId && !!sub.status && DETACHABLE_STATUSES.has(sub.status);
+>(
+  sub: T | null | undefined,
+): sub is T & { stripeSubscriptionId: string; status: string } {
+  return (
+    !!sub?.stripeSubscriptionId &&
+    !!sub.status &&
+    DETACHABLE_STATUSES.has(sub.status)
+  );
 }
 
 /**

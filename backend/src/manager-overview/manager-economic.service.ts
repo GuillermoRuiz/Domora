@@ -4,7 +4,11 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { EstateAccessService } from '../estate-access/estate-access.service';
 import { LedgerQueryService } from '../ledger/ledger-query.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { currentFiscalYears, resolveScope, type EstateYear } from './manager-scope';
+import {
+  currentFiscalYears,
+  resolveScope,
+  type EstateYear,
+} from './manager-scope';
 
 /** Euros con dos decimales. */
 export interface EconomicSummary {
@@ -24,7 +28,8 @@ export interface EconomicSummary {
   expenses: number;
 }
 
-const startOfUtcDay = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+const startOfUtcDay = (d: Date) =>
+  new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 const round2 = (d: Prisma.Decimal) => Number(d.toDecimalPlaces(2));
 
 /**
@@ -43,24 +48,44 @@ export class ManagerEconomicService {
     private readonly ledgerQuery: LedgerQueryService,
   ) {}
 
-  async summary(user: AuthenticatedUser, estateId?: string, now: Date = new Date()): Promise<EconomicSummary> {
+  async summary(
+    user: AuthenticatedUser,
+    estateId?: string,
+    now: Date = new Date(),
+  ): Promise<EconomicSummary> {
     const ids = resolveScope(this.access, user, estateId);
     const zero = new Prisma.Decimal(0);
     if (!ids.length) {
-      return { estateId: estateId ?? null, fiscalYear: null, billed: 0, collected: 0, pending: 0, treasury: 0, reserve: 0, expenses: 0 };
+      return {
+        estateId: estateId ?? null,
+        fiscalYear: null,
+        billed: 0,
+        collected: 0,
+        pending: 0,
+        treasury: 0,
+        reserve: 0,
+        expenses: 0,
+      };
     }
     const today = startOfUtcDay(now);
     const years = await currentFiscalYears(this.prisma, ids, today);
 
     const [treasury, balances, billing, expenses] = await Promise.all([
       this.ledgerQuery.treasuryBalancesForEstates(ids),
-      this.ledgerQuery.reportAccountBalances(ids, { excludeEntryTypes: LedgerQueryService.BALANCE_EXCLUDED }),
+      this.ledgerQuery.reportAccountBalances(ids, {
+        excludeEntryTypes: LedgerQueryService.BALANCE_EXCLUDED,
+      }),
       this.billing(years),
       this.expenses(years),
     ]);
 
-    const reserve = balances.filter((r) => r.systemRole === 'reserve_fund').reduce((s, r) => s.plus(r.balance.negated()), zero);
-    const treasuryTotal = [...treasury.values()].reduce((s, v) => s.plus(v), zero);
+    const reserve = balances
+      .filter((r) => r.systemRole === 'reserve_fund')
+      .reduce((s, r) => s.plus(r.balance.negated()), zero);
+    const treasuryTotal = [...treasury.values()].reduce(
+      (s, v) => s.plus(v),
+      zero,
+    );
     const pending = billing.pending;
     return {
       estateId: estateId ?? null,
@@ -75,7 +100,9 @@ export class ManagerEconomicService {
   }
 
   /** Facturado y pendiente de los recibos emitidos dentro del ejercicio de cada finca. */
-  private async billing(years: EstateYear[]): Promise<{ billed: Prisma.Decimal; pending: Prisma.Decimal }> {
+  private async billing(
+    years: EstateYear[],
+  ): Promise<{ billed: Prisma.Decimal; pending: Prisma.Decimal }> {
     const groups = new Map<string, { start: Date; end: Date; ids: string[] }>();
     for (const y of years) {
       const key = `${y.start.toISOString()}|${y.end.toISOString()}`;
@@ -88,7 +115,11 @@ export class ManagerEconomicService {
     const sums = await Promise.all(
       [...groups.values()].map((g) =>
         this.prisma.accountingReceipt.aggregate({
-          where: { estateId: { in: g.ids }, accrualDate: { gte: g.start, lte: g.end }, status: { not: 'Anulado' } },
+          where: {
+            estateId: { in: g.ids },
+            accrualDate: { gte: g.start, lte: g.end },
+            status: { not: 'Anulado' },
+          },
           _sum: { amount: true, outstanding: true },
         }),
       ),
@@ -103,10 +134,14 @@ export class ManagerEconomicService {
   /** Gasto devengado del ejercicio de cada finca (mismo criterio que la ficha de la finca). */
   private async expenses(years: EstateYear[]): Promise<Prisma.Decimal> {
     const byYear = new Map<number, string[]>();
-    for (const y of years) byYear.set(y.year, [...(byYear.get(y.year) ?? []), y.estateId]);
+    for (const y of years)
+      byYear.set(y.year, [...(byYear.get(y.year) ?? []), y.estateId]);
     const parts = await Promise.all(
       [...byYear.entries()].map(([fiscalYear, ids]) =>
-        this.ledgerQuery.reportAccountBalances(ids, { fiscalYear, excludeEntryTypes: LedgerQueryService.RESULT_EXCLUDED }),
+        this.ledgerQuery.reportAccountBalances(ids, {
+          fiscalYear,
+          excludeEntryTypes: LedgerQueryService.RESULT_EXCLUDED,
+        }),
       ),
     );
     return parts

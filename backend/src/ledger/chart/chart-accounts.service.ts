@@ -10,10 +10,7 @@ import type { AuthenticatedUser } from '../../auth/auth.types';
 import { EstateAccessService } from '../../estate-access/estate-access.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { toLedgerHttpException } from '../journal/journal-db-errors';
-import {
-  COMMUNITY_CHART_TEMPLATE,
-  natureForCode,
-} from './chart-template';
+import { COMMUNITY_CHART_TEMPLATE, natureForCode } from './chart-template';
 import { ensureChartTemplate } from './ledger-bootstrap';
 import type {
   CreateChartAccountDto,

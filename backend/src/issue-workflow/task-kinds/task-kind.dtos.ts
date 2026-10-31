@@ -148,7 +148,8 @@ export class ReviewIssueResolution {
   dueAt?: string;
   /** `schedule_follow_up`: responsable de su equipo y prioridad (mismas reglas que una tarea manual). */
   @IsOptional() @IsUUID() assigneeUserId?: string;
-  @IsOptional() @IsIn(['URGENTE', 'ALTA', 'MEDIA', 'BAJA']) priority?: 'URGENTE' | 'ALTA' | 'MEDIA' | 'BAJA';
+  @IsOptional() @IsIn(['URGENTE', 'ALTA', 'MEDIA', 'BAJA']) priority?:
+    'URGENTE' | 'ALTA' | 'MEDIA' | 'BAJA';
   /** `start_wait`: a quién se espera. */
   @ValidateIf((o: ReviewIssueResolution) => o.decision === 'start_wait')
   @IsIn(['provider', 'insurer', 'owner', 'other'])
@@ -156,7 +157,8 @@ export class ReviewIssueResolution {
   /** Con `supplierId` es opcional (el nombre sale del directorio): es el fallback cuando no se elige una entidad real. */
   @ValidateIf(
     (o: ReviewIssueResolution) =>
-      (o.decision === 'start_wait' && !o.supplierId) || o.partyLabel !== undefined,
+      (o.decision === 'start_wait' && !o.supplierId) ||
+      o.partyLabel !== undefined,
   )
   @IsString()
   @MinLength(1)
@@ -174,7 +176,9 @@ export class ReviewIssueResolution {
   /** Fallback de la visita: solo el nombre de quien visita (obligatorio si no se elige proveedor ni profesional asignado). */
   @ValidateIf(
     (o: ReviewIssueResolution) =>
-      (o.decision === 'schedule_visit' && !o.supplierId && !o.useAssignedProfessional) ||
+      (o.decision === 'schedule_visit' &&
+        !o.supplierId &&
+        !o.useAssignedProfessional) ||
       o.visitorLabel !== undefined,
   )
   @IsString()
@@ -188,7 +192,9 @@ export class ReviewIssueResolution {
 }
 export class ReviewIssueResultRef {
   @IsIn(REVIEW_ISSUE_DECISIONS) decision!: ReviewIssueDecision;
-  @IsOptional() @IsIn(RESOLUTION_ROUTES) route?: (typeof RESOLUTION_ROUTES)[number];
+  @IsOptional()
+  @IsIn(RESOLUTION_ROUTES)
+  route?: (typeof RESOLUTION_ROUTES)[number];
   @IsOptional() @IsUUID() followUpTaskId?: string;
 }
 

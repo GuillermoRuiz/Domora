@@ -1,8 +1,5 @@
 import { Module } from '@nestjs/common';
-import {
-  EstateIssuesController,
-  IssuesController,
-} from './issues.controller';
+import { EstateIssuesController, IssuesController } from './issues.controller';
 import { IssuesService } from './issues.service';
 import { IssueInteractionsService } from './issue-interactions.service';
 import { OwnerIssuesController } from './owner-issues.controller';

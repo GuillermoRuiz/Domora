@@ -8,8 +8,19 @@ import {
   type ActaTextBlock,
   type ActaVoteBlock,
 } from './acta-document.model';
-import { actaDayKey, capitalize, formatActaDate, formatActaPercent, formatActaTime } from './acta-format';
-import type { ActaMajorityType, ActaSnapshotAgendaItem, ActaSnapshotVote, ActaSourceSnapshot } from './acta-snapshot.types';
+import {
+  actaDayKey,
+  capitalize,
+  formatActaDate,
+  formatActaPercent,
+  formatActaTime,
+} from './acta-format';
+import type {
+  ActaMajorityType,
+  ActaSnapshotAgendaItem,
+  ActaSnapshotVote,
+  ActaSourceSnapshot,
+} from './acta-snapshot.types';
 
 const MAJORITY_LABEL: Record<ActaMajorityType, string> = {
   unanimidad: 'Unanimidad',
@@ -22,7 +33,8 @@ export const ACTA_PHRASES = {
   approved: 'La propuesta resulta aprobada.',
   rejected: 'La propuesta resulta rechazada.',
   agreement: 'Se aprueba la propuesta sometida a votación.',
-  treatedWithoutContent: 'El punto quedó tratado sin contenido adicional registrado.',
+  treatedWithoutContent:
+    'El punto quedó tratado sin contenido adicional registrado.',
   notTreated: 'Este punto no consta como tratado en la reunión.',
   noVoteRecorded: 'No consta votación registrada sobre este punto.',
 } as const;
@@ -52,58 +64,111 @@ function cleanLines(text: string | null | undefined): string {
     .join('\n');
 }
 
-function block(text: string, origin: ActaTextBlock['origin'], source: ActaSource): ActaTextBlock {
+function block(
+  text: string,
+  origin: ActaTextBlock['origin'],
+  source: ActaSource,
+): ActaTextBlock {
   return { text, origin, source };
 }
 
-const BASIS_TEXT = { censo: 'sobre el total de propiedades de la comunidad', presentes: 'sobre las propiedades presentes' } as const;
+const BASIS_TEXT = {
+  censo: 'sobre el total de propiedades de la comunidad',
+  presentes: 'sobre las propiedades presentes',
+} as const;
 
-function voteBlock(vote: ActaSnapshotVote, item: ActaSnapshotAgendaItem): ActaVoteBlock {
-  const outcome = vote.passed === true ? 'approved' : vote.passed === false ? 'rejected' : null;
-  const outcomeText = outcome === 'approved' ? ACTA_PHRASES.approved : outcome === 'rejected' ? ACTA_PHRASES.rejected : null;
+function voteBlock(
+  vote: ActaSnapshotVote,
+  item: ActaSnapshotAgendaItem,
+): ActaVoteBlock {
+  const outcome =
+    vote.passed === true
+      ? 'approved'
+      : vote.passed === false
+        ? 'rejected'
+        : null;
+  const outcomeText =
+    outcome === 'approved'
+      ? ACTA_PHRASES.approved
+      : outcome === 'rejected'
+        ? ACTA_PHRASES.rejected
+        : null;
   const question = vote.question.title.trim();
-  const owners = vote.ownersFavorablePct == null ? null : formatActaPercent(vote.ownersFavorablePct);
-  const quota = vote.quotaFavorablePct == null ? null : formatActaPercent(vote.quotaFavorablePct);
-  const basis = vote.denominatorBasis ? ` (${BASIS_TEXT[vote.denominatorBasis]})` : '';
-  const majority = { type: vote.majorityType, label: MAJORITY_LABEL[vote.majorityType] };
+  const owners =
+    vote.ownersFavorablePct == null
+      ? null
+      : formatActaPercent(vote.ownersFavorablePct);
+  const quota =
+    vote.quotaFavorablePct == null
+      ? null
+      : formatActaPercent(vote.quotaFavorablePct);
+  const basis = vote.denominatorBasis
+    ? ` (${BASIS_TEXT[vote.denominatorBasis]})`
+    : '';
+  const majority = {
+    type: vote.majorityType,
+    label: MAJORITY_LABEL[vote.majorityType],
+  };
   return {
     voteSessionId: vote.voteSessionId,
     question,
     // Las opciones son las configuradas, con su texto literal: ningún índice significa «en contra» por sí solo.
-    options: vote.options.map((option) => ({ label: option.label, count: option.count })),
+    options: vote.options.map((option) => ({
+      label: option.label,
+      count: option.count,
+    })),
     totalResponses: vote.totalResponses,
     majority,
     favorable: { owners, quota, basis: vote.denominatorBasis },
     outcome,
     outcomeText,
     lines: {
-      question: question ? `Propuesta sometida a votación: «${question}»` : null,
+      question: question
+        ? `Propuesta sometida a votación: «${question}»`
+        : null,
       options: vote.options.map((option) => `${option.label}: ${option.count}`),
       majority: `Mayoría aplicada: ${majority.label}.`,
-      favorable: owners && quota ? `A favor: ${owners} de las propiedades y ${quota} del coeficiente${basis}.` : null,
+      favorable:
+        owners && quota
+          ? `A favor: ${owners} de las propiedades y ${quota} del coeficiente${basis}.`
+          : null,
       outcome: outcomeText,
     },
     source: {
       agendaItemId: item.id,
       voteSessionIds: [vote.voteSessionId],
-      fields: ['voteSession.question', 'voteSession.optionTally', 'voteSession.majorityType', 'voteSession.resultSummary'],
+      fields: [
+        'voteSession.question',
+        'voteSession.optionTally',
+        'voteSession.majorityType',
+        'voteSession.resultSummary',
+      ],
     },
   };
 }
 
-function itemOf(item: ActaSnapshotAgendaItem, snapshot: ActaSourceSnapshot, texts: ActaTexts): ActaItem {
+function itemOf(
+  item: ActaSnapshotAgendaItem,
+  snapshot: ActaSourceSnapshot,
+  texts: ActaTexts,
+): ActaItem {
   const votes = snapshot.votes
     .filter((vote) => vote.agendaItemId === item.id)
     .sort((a, b) => a.questionIndex - b.questionIndex);
   const hasComments = !!cleanLines(item.comments);
   const voted = votes.length > 0;
   const treated = voted || hasComments || !!item.treatedAt;
-  const state: ActaItem['state'] = voted ? 'voted' : treated ? 'treated' : 'not-treated';
+  const state: ActaItem['state'] = voted
+    ? 'voted'
+    : treated
+      ? 'treated'
+      : 'not-treated';
 
   let stateText: string | null = null;
   if (!voted) {
     if (!treated) stateText = ACTA_PHRASES.notTreated;
-    else if (hasComments) stateText = item.hasVote ? ACTA_PHRASES.noVoteRecorded : null;
+    else if (hasComments)
+      stateText = item.hasVote ? ACTA_PHRASES.noVoteRecorded : null;
     else stateText = ACTA_PHRASES.treatedWithoutContent;
   }
 
@@ -111,7 +176,13 @@ function itemOf(item: ActaSnapshotAgendaItem, snapshot: ActaSourceSnapshot, text
   const itemSource: ActaSource = {
     agendaItemId: item.id,
     voteSessionIds: votes.map((vote) => vote.voteSessionId),
-    fields: ['agenda.title', 'agenda.description', 'agenda.comments', 'agenda.treatedAt', ...(voted ? ['voteSession.resultSummary'] : [])],
+    fields: [
+      'agenda.title',
+      'agenda.description',
+      'agenda.comments',
+      'agenda.treatedAt',
+      ...(voted ? ['voteSession.resultSummary'] : []),
+    ],
   };
   const agreements: ActaAgreement[] = votes
     .filter((vote) => vote.passed === true)
@@ -120,7 +191,11 @@ function itemOf(item: ActaSnapshotAgendaItem, snapshot: ActaSourceSnapshot, text
       itemId: item.id,
       text: ACTA_PHRASES.agreement,
       line: `ACUERDO: ${ACTA_PHRASES.agreement}`,
-      source: { agendaItemId: item.id, voteSessionIds: [vote.voteSessionId], fields: ['voteSession.passed', 'voteSession.resultSummary'] },
+      source: {
+        agendaItemId: item.id,
+        voteSessionIds: [vote.voteSessionId],
+        fields: ['voteSession.passed', 'voteSession.resultSummary'],
+      },
     }));
 
   return {
@@ -142,13 +217,20 @@ function itemOf(item: ActaSnapshotAgendaItem, snapshot: ActaSourceSnapshot, text
   };
 }
 
-function constitutionParagraph(snapshot: ActaSourceSnapshot, missing: string[]): { paragraph: string; dateLabel: string | null; startTime: string | null } {
+function constitutionParagraph(
+  snapshot: ActaSourceSnapshot,
+  missing: string[],
+): { paragraph: string; dateLabel: string | null; startTime: string | null } {
   const { meeting, community } = snapshot;
   const startTime = formatActaTime(meeting.actualStartAt);
   if (!meeting.actualStartAt) missing.push('actualStartAt');
   // Sin hora real de inicio se usa solo el día de la convocatoria, sin hora.
-  const dateLabel = formatActaDate(meeting.actualStartAt ?? meeting.scheduledAt1);
-  const when = startTime ? `siendo las ${startTime} horas del día ${dateLabel}` : `el día ${dateLabel}`;
+  const dateLabel = formatActaDate(
+    meeting.actualStartAt ?? meeting.scheduledAt1,
+  );
+  const when = startTime
+    ? `siendo las ${startTime} horas del día ${dateLabel}`
+    : `el día ${dateLabel}`;
   const place = community.locality ? `En ${community.locality}, ` : '';
   const where = meeting.location ? ` en ${meeting.location},` : '';
   const kind = meeting.type === 'ordinaria' ? 'Ordinaria' : 'Extraordinaria';
@@ -160,14 +242,19 @@ function constitutionParagraph(snapshot: ActaSourceSnapshot, missing: string[]):
   return { paragraph: capitalize(sentence), dateLabel, startTime };
 }
 
-function closingParagraph(snapshot: ActaSourceSnapshot, missing: string[]): string | null {
+function closingParagraph(
+  snapshot: ActaSourceSnapshot,
+  missing: string[],
+): string | null {
   const { meeting } = snapshot;
   const endTime = formatActaTime(meeting.actualEndAt);
   if (!endTime) {
     missing.push('actualEndAt');
     return null;
   }
-  const sameDay = actaDayKey(meeting.actualEndAt) === actaDayKey(meeting.actualStartAt ?? meeting.scheduledAt1);
+  const sameDay =
+    actaDayKey(meeting.actualEndAt) ===
+    actaDayKey(meeting.actualStartAt ?? meeting.scheduledAt1);
   const day = sameDay ? '' : ` del día ${formatActaDate(meeting.actualEndAt)}`;
   return `Y no habiendo más asuntos que tratar, se levanta la sesión a las ${endTime} horas${day}.`;
 }
@@ -176,7 +263,10 @@ function closingParagraph(snapshot: ActaSourceSnapshot, missing: string[]): stri
  * ÚNICA fuente del contenido del acta. Función pura: mismo snapshot y mismos textos, mismo
  * documento. No consulta la base de datos, ni la hora actual, ni a una IA.
  */
-export function buildActaDocument(snapshot: ActaSourceSnapshot, texts: ActaTexts): ActaDocumentModel {
+export function buildActaDocument(
+  snapshot: ActaSourceSnapshot,
+  texts: ActaTexts,
+): ActaDocumentModel {
   const missing: string[] = [];
   const { meeting, community } = snapshot;
   const isOrdinary = meeting.type === 'ordinaria';
@@ -188,12 +278,19 @@ export function buildActaDocument(snapshot: ActaSourceSnapshot, texts: ActaTexts
     ref: row.ref,
     attendee: row.attendeeName?.trim() || '—',
     attendeeDni: row.attendeeDni?.trim() || '—',
-    quota: row.participationQuota == null ? '—' : formatActaPercent(row.participationQuota),
+    quota:
+      row.participationQuota == null
+        ? '—'
+        : formatActaPercent(row.participationQuota),
     status: row.status === 'representada' ? 'Representada' : 'Presente',
   }));
-  const representedCount = snapshot.attendance.filter((row) => row.status === 'representada').length;
+  const representedCount = snapshot.attendance.filter(
+    (row) => row.status === 'representada',
+  ).length;
   if (snapshot.census.missingQuotaCount > 0) {
-    missing.push(`participationQuota (${snapshot.census.missingQuotaCount} propiedad(es) sin coeficiente)`);
+    missing.push(
+      `participationQuota (${snapshot.census.missingQuotaCount} propiedad(es) sin coeficiente)`,
+    );
   }
   const { owners, quota } = snapshot.quorum;
 
@@ -206,13 +303,21 @@ export function buildActaDocument(snapshot: ActaSourceSnapshot, texts: ActaTexts
       title: `ACTA DE LA JUNTA GENERAL ${isOrdinary ? 'ORDINARIA' : 'EXTRAORDINARIA'}`,
       subtitle: 'DE LA COMUNIDAD DE PROPIETARIOS',
       communityName: community.name,
-      address: [community.address, community.locality].filter(Boolean).join(', ') || null,
+      address:
+        [community.address, community.locality].filter(Boolean).join(', ') ||
+        null,
       meetingType: meeting.type,
-      source: { fields: ['meeting.type', 'community.name', 'community.address'] },
+      source: {
+        fields: ['meeting.type', 'community.name', 'community.address'],
+      },
     },
     constitution: {
       paragraph: constitution.paragraph,
-      introduction: block(texts.introduction?.trim() ?? '', texts.introduction?.trim() ? 'edited' : 'notes', { fields: ['editor.introduction'] }),
+      introduction: block(
+        texts.introduction?.trim() ?? '',
+        texts.introduction?.trim() ? 'edited' : 'notes',
+        { fields: ['editor.introduction'] },
+      ),
       facts: {
         dateLabel: constitution.dateLabel,
         startTime: constitution.startTime,
@@ -221,14 +326,27 @@ export function buildActaDocument(snapshot: ActaSourceSnapshot, texts: ActaTexts
         locality: community.locality,
       },
       source: {
-        fields: ['meeting.actualStartAt', 'meeting.scheduledAt1', 'meeting.effectiveConvocation', 'meeting.location', 'community.locality', 'community.name'],
+        fields: [
+          'meeting.actualStartAt',
+          'meeting.scheduledAt1',
+          'meeting.effectiveConvocation',
+          'meeting.location',
+          'community.locality',
+          'community.name',
+        ],
       },
     },
     labels: {
       agenda: 'ORDEN DEL DÍA',
       attendance: 'ASISTENCIA',
       development: 'DESARROLLO',
-      attendanceColumns: ['PROPIEDAD', 'ASISTENTE', 'DNI', 'COEFICIENTE', 'ASISTENCIA'],
+      attendanceColumns: [
+        'PROPIEDAD',
+        'ASISTENTE',
+        'DNI',
+        'COEFICIENTE',
+        'ASISTENCIA',
+      ],
     },
     agenda: snapshot.agenda.map((item) => ({
       order: item.order,
@@ -250,19 +368,33 @@ export function buildActaDocument(snapshot: ActaSourceSnapshot, texts: ActaTexts
           `${formatActaPercent(quota.percent)} del coeficiente de participación.`,
       },
       rows,
-      source: { fields: ['attendance.ref', 'attendance.attendeeName', 'attendance.attendeeDni', 'attendance.participationQuota', 'attendance.status', 'quorum'] },
+      source: {
+        fields: [
+          'attendance.ref',
+          'attendance.attendeeName',
+          'attendance.attendeeDni',
+          'attendance.participationQuota',
+          'attendance.status',
+          'quorum',
+        ],
+      },
     },
     items,
     agreements: items.flatMap((item) => item.agreements),
     observations: {
-      ...block(generalText, texts.observations?.origin ?? 'notes', { fields: ['text.generalComments'] }),
+      ...block(generalText, texts.observations?.origin ?? 'notes', {
+        fields: ['text.generalComments'],
+      }),
       title: 'OBSERVACIONES',
     },
     nextSteps: {
       ...block(nextStepsText, 'notes', { fields: ['text.nextSteps'] }),
       title: 'ACTUACIONES DERIVADAS DE LOS ACUERDOS',
     },
-    closing: { paragraph: closingParagraph(snapshot, missing), source: { fields: ['meeting.actualEndAt'] } },
+    closing: {
+      paragraph: closingParagraph(snapshot, missing),
+      source: { fields: ['meeting.actualEndAt'] },
+    },
     signatures: {
       blocks: [
         { role: 'presidente', lines: ['Vº Bº', 'EL/LA PRESIDENTE/A'] },

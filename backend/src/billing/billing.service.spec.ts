@@ -8,7 +8,10 @@ import type { StripeService } from './stripe.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { AppRole, AuthenticatedUser } from '../auth/auth.types';
 
-function user(role: AppRole, administratorId: string | null = 'admin-1'): AuthenticatedUser {
+function user(
+  role: AppRole,
+  administratorId: string | null = 'admin-1',
+): AuthenticatedUser {
   return { id: 'user-1', role, estateIds: [], administratorId };
 }
 
@@ -46,15 +49,21 @@ describe('BillingService', () => {
         findUnique: jest.fn().mockResolvedValue(null),
       },
       $transaction: jest.fn((arg: unknown) =>
-        Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(prisma),
+        Array.isArray(arg)
+          ? Promise.all(arg)
+          : (arg as (tx: unknown) => unknown)(prisma),
       ),
     };
     stripe = {
       priceIdFor: jest.fn().mockReturnValue('price_base'),
       planForPriceId: jest.fn(),
       createCustomer: jest.fn().mockResolvedValue('cus_new'),
-      createSubscriptionCheckoutSession: jest.fn().mockResolvedValue('https://checkout/x'),
-      createSetupCheckoutSession: jest.fn().mockResolvedValue('https://checkout/setup'),
+      createSubscriptionCheckoutSession: jest
+        .fn()
+        .mockResolvedValue('https://checkout/x'),
+      createSetupCheckoutSession: jest
+        .fn()
+        .mockResolvedValue('https://checkout/setup'),
       createPortalSession: jest.fn().mockResolvedValue('https://portal/x'),
       changePlan: jest.fn(),
       cancelAtPeriodEnd: jest.fn(),
@@ -63,13 +72,17 @@ describe('BillingService', () => {
       constructWebhookEvent: jest.fn(),
     };
     admins = {
-      createFiscalInvoiceFromStripe: jest.fn().mockResolvedValue({ id: 'inv-1' }),
+      createFiscalInvoiceFromStripe: jest
+        .fn()
+        .mockResolvedValue({ id: 'inv-1' }),
     };
     notifications = {
       administratorTeamUserIds: jest.fn().mockResolvedValue(['b1']),
       notify: jest.fn().mockResolvedValue(undefined),
     };
-    config = { get: jest.fn().mockReturnValue('http://localhost:4200') } as unknown as ConfigService;
+    config = {
+      get: jest.fn().mockReturnValue('http://localhost:4200'),
+    } as unknown as ConfigService;
 
     service = new BillingService(
       prisma as PrismaService,
@@ -90,7 +103,10 @@ describe('BillingService', () => {
       prisma.administrator.findFirst.mockResolvedValue({
         id: 'admin-1',
         billing: null,
-        subscription: { administratorId: 'admin-1', stripeCustomerId: 'cus_admin1_real' },
+        subscription: {
+          administratorId: 'admin-1',
+          stripeCustomerId: 'cus_admin1_real',
+        },
       });
 
       await service.openPortal(user('B', 'admin-1'));
@@ -104,13 +120,21 @@ describe('BillingService', () => {
     });
 
     it('rechaza si el usuario no tiene gestora asociada', async () => {
-      await expect(service.openPortal(user('B', null))).rejects.toThrow(ForbiddenException);
+      await expect(service.openPortal(user('B', null))).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(stripe.createPortalSession).not.toHaveBeenCalled();
     });
 
     it('rechaza si la gestora todavía no tiene ninguna suscripción de Stripe', async () => {
-      prisma.administrator.findFirst.mockResolvedValue({ id: 'admin-1', billing: null, subscription: null });
-      await expect(service.openPortal(user('B', 'admin-1'))).rejects.toThrow(ConflictException);
+      prisma.administrator.findFirst.mockResolvedValue({
+        id: 'admin-1',
+        billing: null,
+        subscription: null,
+      });
+      await expect(service.openPortal(user('B', 'admin-1'))).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -124,11 +148,19 @@ describe('BillingService', () => {
         id: 'admin-1',
         plan: 'BASE',
         usersMax: 10,
-        billing: { businessName: 'Gestora Demo', cif: 'B1', address: '', email: '', contactEmail: null },
+        billing: {
+          businessName: 'Gestora Demo',
+          cif: 'B1',
+          address: '',
+          email: '',
+          contactEmail: null,
+        },
         subscription: null,
       });
 
-      await expect(service.createCheckoutSession(user('B', 'admin-1'))).rejects.toThrow(ConflictException);
+      await expect(
+        service.createCheckoutSession(user('B', 'admin-1')),
+      ).rejects.toThrow(ConflictException);
       expect(stripe.createCustomer).not.toHaveBeenCalled();
     });
 
@@ -253,16 +285,32 @@ describe('BillingService', () => {
         id: 'sub_1',
         status: 'active',
         cancel_at_period_end: false,
-        items: { data: [{ price: { id: 'price_base', unit_amount: 4900 }, quantity: 25, current_period_end: 1735689600 }] },
+        items: {
+          data: [
+            {
+              price: { id: 'price_base', unit_amount: 4900 },
+              quantity: 25,
+              current_period_end: 1735689600,
+            },
+          ],
+        },
       });
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
       expect(prisma.administrator.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'admin-1' }, data: expect.objectContaining({ status: 'Activa' }) }),
+        expect.objectContaining({
+          where: { id: 'admin-1' },
+          data: expect.objectContaining({ status: 'Activa' }),
+        }),
       );
       expect(prisma.adminActivityItem.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ administratorId: 'admin-1', title: expect.stringContaining('reactivada automáticamente') }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            administratorId: 'admin-1',
+            title: expect.stringContaining('reactivada automáticamente'),
+          }),
+        }),
       );
     });
 
@@ -270,23 +318,46 @@ describe('BillingService', () => {
       stripe.constructWebhookEvent.mockReturnValue({
         type: 'checkout.session.completed',
         data: {
-          object: { id: 'cs_2', mode: 'subscription', metadata: {}, subscription: null, customer: null },
+          object: {
+            id: 'cs_2',
+            mode: 'subscription',
+            metadata: {},
+            subscription: null,
+            customer: null,
+          },
         },
       });
 
-      await expect(service.handleWebhookEvent(Buffer.from('{}'), 'sig')).resolves.toBeUndefined();
+      await expect(
+        service.handleWebhookEvent(Buffer.from('{}'), 'sig'),
+      ).resolves.toBeUndefined();
       expect(prisma.administratorSubscription.upsert).not.toHaveBeenCalled();
     });
 
     it('a late retry for a subscription role A detached («Pasar a facturación manual») does not link it again', async () => {
-      prisma.adminActivityItem.findUnique.mockResolvedValue({ id: 'tombstone' });
+      prisma.adminActivityItem.findUnique.mockResolvedValue({
+        id: 'tombstone',
+      });
       stripe.constructWebhookEvent.mockReturnValue({
         type: 'checkout.session.completed',
-        data: { object: { id: 'cs_old', mode: 'subscription', metadata: { administrator_id: 'admin-1' }, subscription: 'sub_old', customer: 'cus_1' } },
+        data: {
+          object: {
+            id: 'cs_old',
+            mode: 'subscription',
+            metadata: { administrator_id: 'admin-1' },
+            subscription: 'sub_old',
+            customer: 'cus_1',
+          },
+        },
       });
 
-      await expect(service.handleWebhookEvent(Buffer.from('{}'), 'sig')).resolves.toBeUndefined();
-      expect(prisma.adminActivityItem.findUnique).toHaveBeenCalledWith({ where: { externalRef: 'stripe-detached:sub_old' }, select: { id: true } });
+      await expect(
+        service.handleWebhookEvent(Buffer.from('{}'), 'sig'),
+      ).resolves.toBeUndefined();
+      expect(prisma.adminActivityItem.findUnique).toHaveBeenCalledWith({
+        where: { externalRef: 'stripe-detached:sub_old' },
+        select: { id: true },
+      });
       expect(stripe.retrieveSubscription).not.toHaveBeenCalled();
       expect(prisma.administratorSubscription.upsert).not.toHaveBeenCalled();
       expect(prisma.administrator.update).not.toHaveBeenCalled();
@@ -304,7 +375,15 @@ describe('BillingService', () => {
             status: 'active',
             cancel_at_period_end: false,
             metadata: {},
-            items: { data: [{ price: { id: 'price_base', unit_amount: 4900 }, quantity: 25, current_period_end: 1735689600 }] },
+            items: {
+              data: [
+                {
+                  price: { id: 'price_base', unit_amount: 4900 },
+                  quantity: 25,
+                  current_period_end: 1735689600,
+                },
+              ],
+            },
             ...overrides,
           },
         },
@@ -312,10 +391,27 @@ describe('BillingService', () => {
     }
 
     it('una suscripción anual guarda su MRR mensual (importe ÷ 12) y el intervalo anual', async () => {
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1', stripePriceId: 'price_base' });
-      stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({
-        items: { data: [{ price: { id: 'price_base', unit_amount: 58800, recurring: { interval: 'year', interval_count: 1 } }, quantity: 1, current_period_end: 1735689600 }] },
-      }));
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+        stripePriceId: 'price_base',
+      });
+      stripe.constructWebhookEvent.mockReturnValue(
+        subscriptionEvent({
+          items: {
+            data: [
+              {
+                price: {
+                  id: 'price_base',
+                  unit_amount: 58800,
+                  recurring: { interval: 'year', interval_count: 1 },
+                },
+                quantity: 1,
+                current_period_end: 1735689600,
+              },
+            ],
+          },
+        }),
+      );
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
@@ -325,10 +421,27 @@ describe('BillingService', () => {
     });
 
     it('una suscripción mensual mantiene unit_amount × quantity como MRR y el intervalo mensual', async () => {
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1', stripePriceId: 'price_base' });
-      stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({
-        items: { data: [{ price: { id: 'price_base', unit_amount: 4900, recurring: { interval: 'month', interval_count: 1 } }, quantity: 25, current_period_end: 1735689600 }] },
-      }));
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+        stripePriceId: 'price_base',
+      });
+      stripe.constructWebhookEvent.mockReturnValue(
+        subscriptionEvent({
+          items: {
+            data: [
+              {
+                price: {
+                  id: 'price_base',
+                  unit_amount: 4900,
+                  recurring: { interval: 'month', interval_count: 1 },
+                },
+                quantity: 25,
+                current_period_end: 1735689600,
+              },
+            ],
+          },
+        }),
+      );
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
@@ -349,18 +462,33 @@ describe('BillingService', () => {
       // Only while this subscription is still the linked one (see the race test below).
       expect(prisma.administratorSubscription.updateMany).toHaveBeenCalledWith({
         where: { administratorId: 'admin-1', stripeSubscriptionId: 'sub_1' },
-        data: { stripePriceId: 'price_base', status: 'active', currentPeriodEnd: new Date(1735689600 * 1000), cancelAtPeriodEnd: false },
+        data: {
+          stripePriceId: 'price_base',
+          status: 'active',
+          currentPeriodEnd: new Date(1735689600 * 1000),
+          cancelAtPeriodEnd: false,
+        },
       });
       expect(prisma.administratorSubscription.upsert).not.toHaveBeenCalled();
     });
 
     it('if the subscription was detached between the read and the write («Pasar a facturación manual»), changes nothing', async () => {
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1', stripePriceId: 'price_base', cancelAtPeriodEnd: false });
-      prisma.administratorSubscription.updateMany.mockResolvedValueOnce({ count: 0 });
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+        stripePriceId: 'price_base',
+        cancelAtPeriodEnd: false,
+      });
+      prisma.administratorSubscription.updateMany.mockResolvedValueOnce({
+        count: 0,
+      });
       prisma.administrator.findUnique.mockResolvedValue({ status: 'Activa' });
-      stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ status: 'canceled', cancel_at_period_end: true }));
+      stripe.constructWebhookEvent.mockReturnValue(
+        subscriptionEvent({ status: 'canceled', cancel_at_period_end: true }),
+      );
 
-      await expect(service.handleWebhookEvent(Buffer.from('{}'), 'sig')).resolves.toBeUndefined();
+      await expect(
+        service.handleWebhookEvent(Buffer.from('{}'), 'sig'),
+      ).resolves.toBeUndefined();
       expect(prisma.administratorSubscription.upsert).not.toHaveBeenCalled();
       expect(prisma.administrator.update).not.toHaveBeenCalled();
       expect(prisma.adminActivityItem.create).not.toHaveBeenCalled();
@@ -389,28 +517,46 @@ describe('BillingService', () => {
     });
 
     it('registra una «Solicitud de baja» cuando la suscripción pasa a cancelarse al final del periodo, una sola vez por periodo', async () => {
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1', stripePriceId: 'price_base', cancelAtPeriodEnd: false });
-      stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ cancel_at_period_end: true }));
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+        stripePriceId: 'price_base',
+        cancelAtPeriodEnd: false,
+      });
+      stripe.constructWebhookEvent.mockReturnValue(
+        subscriptionEvent({ cancel_at_period_end: true }),
+      );
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
       expect(prisma.adminActivityItem.createMany).toHaveBeenCalledWith({
-        data: [{
-          administratorId: 'admin-1',
-          type: 'cancellation_requested',
-          title: 'Solicitud de baja: la suscripción termina el 01/01/2025',
-          externalRef: 'stripe-cancel:sub_1:1735689600',
-        }],
+        data: [
+          {
+            administratorId: 'admin-1',
+            type: 'cancellation_requested',
+            title: 'Solicitud de baja: la suscripción termina el 01/01/2025',
+            externalRef: 'stripe-cancel:sub_1:1735689600',
+          },
+        ],
         skipDuplicates: true,
       });
     });
 
     it('no registra baja si la suscripción ya estaba marcada para cancelarse o no se cancela', async () => {
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1', stripePriceId: 'price_base', cancelAtPeriodEnd: true });
-      stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ cancel_at_period_end: true }));
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+        stripePriceId: 'price_base',
+        cancelAtPeriodEnd: true,
+      });
+      stripe.constructWebhookEvent.mockReturnValue(
+        subscriptionEvent({ cancel_at_period_end: true }),
+      );
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1', stripePriceId: 'price_base', cancelAtPeriodEnd: false });
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+        stripePriceId: 'price_base',
+        cancelAtPeriodEnd: false,
+      });
       stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent());
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
@@ -419,32 +565,55 @@ describe('BillingService', () => {
 
     it('a late event for a subscription role A detached («Pasar a facturación manual») does not link it again nor restrict the despacho', async () => {
       prisma.administratorSubscription.findUnique.mockResolvedValue(null);
-      prisma.adminActivityItem.findUnique.mockResolvedValue({ id: 'tombstone' });
-      stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ id: 'sub_old', status: 'canceled', metadata: { administrator_id: 'admin-1' } }));
+      prisma.adminActivityItem.findUnique.mockResolvedValue({
+        id: 'tombstone',
+      });
+      stripe.constructWebhookEvent.mockReturnValue(
+        subscriptionEvent({
+          id: 'sub_old',
+          status: 'canceled',
+          metadata: { administrator_id: 'admin-1' },
+        }),
+      );
 
-      await expect(service.handleWebhookEvent(Buffer.from('{}'), 'sig')).resolves.toBeUndefined();
-      expect(prisma.adminActivityItem.findUnique).toHaveBeenCalledWith({ where: { externalRef: 'stripe-detached:sub_old' }, select: { id: true } });
+      await expect(
+        service.handleWebhookEvent(Buffer.from('{}'), 'sig'),
+      ).resolves.toBeUndefined();
+      expect(prisma.adminActivityItem.findUnique).toHaveBeenCalledWith({
+        where: { externalRef: 'stripe-detached:sub_old' },
+        select: { id: true },
+      });
       expect(prisma.administratorSubscription.upsert).not.toHaveBeenCalled();
       expect(prisma.administrator.update).not.toHaveBeenCalled();
       expect(prisma.adminActivityItem.createMany).not.toHaveBeenCalled();
     });
 
     it('a known subscription never pays for the tombstone lookup', async () => {
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1', stripeSubscriptionId: 'sub_1', cancelAtPeriodEnd: false });
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+        stripeSubscriptionId: 'sub_1',
+        cancelAtPeriodEnd: false,
+      });
       stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent());
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
       expect(prisma.adminActivityItem.findUnique).not.toHaveBeenCalled();
       expect(prisma.administratorSubscription.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { administratorId: 'admin-1', stripeSubscriptionId: 'sub_1' } }),
+        expect.objectContaining({
+          where: { administratorId: 'admin-1', stripeSubscriptionId: 'sub_1' },
+        }),
       );
     });
 
     it('descarta el evento sin lanzar si no hay fila ni metadata resoluble', async () => {
       prisma.administratorSubscription.findUnique.mockResolvedValue(null);
-      stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ metadata: {} }));
+      stripe.constructWebhookEvent.mockReturnValue(
+        subscriptionEvent({ metadata: {} }),
+      );
 
-      await expect(service.handleWebhookEvent(Buffer.from('{}'), 'sig')).resolves.toBeUndefined();
+      await expect(
+        service.handleWebhookEvent(Buffer.from('{}'), 'sig'),
+      ).resolves.toBeUndefined();
       expect(prisma.administratorSubscription.upsert).not.toHaveBeenCalled();
     });
 
@@ -471,18 +640,27 @@ describe('BillingService', () => {
           stripePriceId: 'price_base',
           pastDueSince: null,
         });
-        stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ status: 'past_due' }));
+        stripe.constructWebhookEvent.mockReturnValue(
+          subscriptionEvent({ status: 'past_due' }),
+        );
 
         await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
         expect(prisma.administratorSubscription.update).toHaveBeenCalledWith(
-          expect.objectContaining({ where: { administratorId: 'admin-1' }, data: { pastDueSince: expect.any(Date) } }),
+          expect.objectContaining({
+            where: { administratorId: 'admin-1' },
+            data: { pastDueSince: expect.any(Date) },
+          }),
         );
         expect(prisma.administrator.update).not.toHaveBeenCalledWith(
-          expect.objectContaining({ data: expect.objectContaining({ status: expect.anything() }) }),
+          expect.objectContaining({
+            data: expect.objectContaining({ status: expect.anything() }),
+          }),
         );
         expect(prisma.adminActivityItem.create).not.toHaveBeenCalled();
-        expect(notifications.administratorTeamUserIds).toHaveBeenCalledWith('admin-1');
+        expect(notifications.administratorTeamUserIds).toHaveBeenCalledWith(
+          'admin-1',
+        );
         expect(notifications.notify).toHaveBeenCalledWith(
           expect.objectContaining({
             userIds: ['b1'],
@@ -499,77 +677,127 @@ describe('BillingService', () => {
           stripePriceId: 'price_base',
           pastDueSince: new Date('2026-09-20'),
         });
-        stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ status: 'past_due' }));
+        stripe.constructWebhookEvent.mockReturnValue(
+          subscriptionEvent({ status: 'past_due' }),
+        );
 
         await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
-        expect(prisma.administratorSubscription.update).not.toHaveBeenCalledWith(
+        expect(
+          prisma.administratorSubscription.update,
+        ).not.toHaveBeenCalledWith(
           expect.objectContaining({ data: { pastDueSince: expect.any(Date) } }),
         );
         expect(notifications.notify).not.toHaveBeenCalled();
       });
 
       it('la recuperación (Stripe → active) devuelve a la gestora de Vencida a Activa, limpia la gracia y avisa', async () => {
-        prisma.administrator.findUnique.mockResolvedValue({ status: 'Vencida' });
-        stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ status: 'active' }));
+        prisma.administrator.findUnique.mockResolvedValue({
+          status: 'Vencida',
+        });
+        stripe.constructWebhookEvent.mockReturnValue(
+          subscriptionEvent({ status: 'active' }),
+        );
 
         await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
         expect(prisma.administrator.update).toHaveBeenCalledWith(
-          expect.objectContaining({ data: expect.objectContaining({ status: 'Activa' }) }),
+          expect.objectContaining({
+            data: expect.objectContaining({ status: 'Activa' }),
+          }),
         );
         expect(prisma.adminActivityItem.create).toHaveBeenCalledWith(
-          expect.objectContaining({ data: expect.objectContaining({ title: expect.stringContaining('reactivada automáticamente') }) }),
+          expect.objectContaining({
+            data: expect.objectContaining({
+              title: expect.stringContaining('reactivada automáticamente'),
+            }),
+          }),
         );
-        expect(prisma.administratorSubscription.updateMany).toHaveBeenCalledWith(
-          expect.objectContaining({ where: expect.objectContaining({ administratorId: 'admin-1' }), data: { pastDueSince: null } }),
+        expect(
+          prisma.administratorSubscription.updateMany,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({ administratorId: 'admin-1' }),
+            data: { pastDueSince: null },
+          }),
         );
         expect(notifications.notify).toHaveBeenCalledWith(
-          expect.objectContaining({ category: 'billing', dedupeKey: 'billing:admin-1:recovered' }),
+          expect.objectContaining({
+            category: 'billing',
+            dedupeKey: 'billing:admin-1:recovered',
+          }),
         );
       });
 
       it('ya en Vencida, un nuevo past_due no reescribe el status ni deja actividad de más (pero sí actualiza plan/cupo si cambiaron)', async () => {
-        prisma.administrator.findUnique.mockResolvedValue({ status: 'Vencida' });
-        stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ status: 'past_due' }));
+        prisma.administrator.findUnique.mockResolvedValue({
+          status: 'Vencida',
+        });
+        stripe.constructWebhookEvent.mockReturnValue(
+          subscriptionEvent({ status: 'past_due' }),
+        );
 
         await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
         expect(prisma.administrator.update).toHaveBeenCalledWith(
-          expect.objectContaining({ data: expect.not.objectContaining({ status: expect.anything() }) }),
+          expect.objectContaining({
+            data: expect.not.objectContaining({ status: expect.anything() }),
+          }),
         );
         expect(prisma.adminActivityItem.create).not.toHaveBeenCalled();
       });
 
       it('Bloqueada NUNCA se toca automáticamente, ni siquiera si Stripe confirma "active" — solo un humano la desbloquea', async () => {
-        prisma.administrator.findUnique.mockResolvedValue({ status: 'Bloqueada' });
-        stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ status: 'active' }));
+        prisma.administrator.findUnique.mockResolvedValue({
+          status: 'Bloqueada',
+        });
+        stripe.constructWebhookEvent.mockReturnValue(
+          subscriptionEvent({ status: 'active' }),
+        );
 
         await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
         expect(prisma.administrator.update).toHaveBeenCalledWith(
-          expect.objectContaining({ data: expect.not.objectContaining({ status: expect.anything() }) }),
+          expect.objectContaining({
+            data: expect.not.objectContaining({ status: expect.anything() }),
+          }),
         );
         expect(prisma.adminActivityItem.create).not.toHaveBeenCalled();
       });
 
       it('Periodo_de_gracia tampoco se toca automáticamente', async () => {
-        prisma.administrator.findUnique.mockResolvedValue({ status: 'Periodo_de_gracia' });
-        stripe.constructWebhookEvent.mockReturnValue(subscriptionEvent({ status: 'past_due' }));
+        prisma.administrator.findUnique.mockResolvedValue({
+          status: 'Periodo_de_gracia',
+        });
+        stripe.constructWebhookEvent.mockReturnValue(
+          subscriptionEvent({ status: 'past_due' }),
+        );
 
         await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
         expect(prisma.administrator.update).toHaveBeenCalledWith(
-          expect.objectContaining({ data: expect.not.objectContaining({ status: expect.anything() }) }),
+          expect.objectContaining({
+            data: expect.not.objectContaining({ status: expect.anything() }),
+          }),
         );
       });
 
       it('sin plan/cupo/importe que cambiar y sin transición de status, no llama a administrator.update en vano', async () => {
-        prisma.administrator.findUnique.mockResolvedValue({ status: 'Vencida' });
+        prisma.administrator.findUnique.mockResolvedValue({
+          status: 'Vencida',
+        });
         stripe.constructWebhookEvent.mockReturnValue(
           subscriptionEvent({
             status: 'past_due',
-            items: { data: [{ price: { id: 'price_base', unit_amount: null }, quantity: undefined, current_period_end: 1735689600 }] },
+            items: {
+              data: [
+                {
+                  price: { id: 'price_base', unit_amount: null },
+                  quantity: undefined,
+                  current_period_end: 1735689600,
+                },
+              ],
+            },
           }),
         );
 
@@ -589,7 +817,9 @@ describe('BillingService', () => {
     }
 
     it('marca la fila de AdministratorSubscription como canceled', async () => {
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1' });
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+      });
       stripe.constructWebhookEvent.mockReturnValue(deletedEvent());
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
@@ -601,26 +831,43 @@ describe('BillingService', () => {
     });
 
     it('una gestora Activa cuya suscripción se cancela definitivamente pasa a Vencida (cierra el mismo lazo que el impago)', async () => {
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1' });
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+      });
       prisma.administrator.findUnique.mockResolvedValue({ status: 'Activa' });
       stripe.constructWebhookEvent.mockReturnValue(deletedEvent());
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
       expect(prisma.administrator.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'admin-1' }, data: { status: 'Vencida' } }),
+        expect.objectContaining({
+          where: { id: 'admin-1' },
+          data: { status: 'Vencida' },
+        }),
       );
       expect(prisma.adminActivityItem.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ administratorId: 'admin-1', title: expect.stringContaining('Vencida') }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            administratorId: 'admin-1',
+            title: expect.stringContaining('Vencida'),
+          }),
+        }),
       );
       expect(notifications.notify).toHaveBeenCalledWith(
-        expect.objectContaining({ category: 'billing', dedupeKey: 'billing:admin-1:restricted' }),
+        expect.objectContaining({
+          category: 'billing',
+          dedupeKey: 'billing:admin-1:restricted',
+        }),
       );
     });
 
     it('una gestora Bloqueada sigue sin tocarse aunque Stripe borre la suscripción', async () => {
-      prisma.administratorSubscription.findUnique.mockResolvedValue({ administratorId: 'admin-1' });
-      prisma.administrator.findUnique.mockResolvedValue({ status: 'Bloqueada' });
+      prisma.administratorSubscription.findUnique.mockResolvedValue({
+        administratorId: 'admin-1',
+      });
+      prisma.administrator.findUnique.mockResolvedValue({
+        status: 'Bloqueada',
+      });
       stripe.constructWebhookEvent.mockReturnValue(deletedEvent());
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
@@ -632,7 +879,9 @@ describe('BillingService', () => {
       prisma.administratorSubscription.findUnique.mockResolvedValue(null);
       stripe.constructWebhookEvent.mockReturnValue(deletedEvent());
 
-      await expect(service.handleWebhookEvent(Buffer.from('{}'), 'sig')).resolves.toBeUndefined();
+      await expect(
+        service.handleWebhookEvent(Buffer.from('{}'), 'sig'),
+      ).resolves.toBeUndefined();
       expect(prisma.administrator.update).not.toHaveBeenCalled();
       expect(prisma.administrator.findUnique).not.toHaveBeenCalled();
     });
@@ -647,8 +896,12 @@ describe('BillingService', () => {
           id,
           subtotal: 4900,
           customer: 'cus_1',
-          parent: { subscription_details: { metadata: { administrator_id: 'admin-1' } } },
-          lines: { data: [{ pricing: { price_details: { price: 'price_base' } } }] },
+          parent: {
+            subscription_details: { metadata: { administrator_id: 'admin-1' } },
+          },
+          lines: {
+            data: [{ pricing: { price_details: { price: 'price_base' } } }],
+          },
           status_transitions: { finalized_at: FINALIZED_AT_UNIX },
         },
       },
@@ -663,7 +916,12 @@ describe('BillingService', () => {
 
       expect(admins.createFiscalInvoiceFromStripe).toHaveBeenCalledTimes(1);
       expect(admins.createFiscalInvoiceFromStripe).toHaveBeenCalledWith(
-        prisma, 'admin-1', 4900, 'in_1', 'BASE', new Date(FINALIZED_AT_UNIX * 1000),
+        prisma,
+        'admin-1',
+        4900,
+        'in_1',
+        'BASE',
+        new Date(FINALIZED_AT_UNIX * 1000),
       );
     });
 
@@ -676,7 +934,12 @@ describe('BillingService', () => {
 
       expect(stripe.planForPriceId).toHaveBeenCalledWith('price_base');
       expect(admins.createFiscalInvoiceFromStripe).toHaveBeenCalledWith(
-        prisma, 'admin-1', 4900, 'in_3', 'PREMIUM', new Date(FINALIZED_AT_UNIX * 1000),
+        prisma,
+        'admin-1',
+        4900,
+        'in_3',
+        'PREMIUM',
+        new Date(FINALIZED_AT_UNIX * 1000),
       );
     });
 
@@ -688,7 +951,12 @@ describe('BillingService', () => {
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
       expect(admins.createFiscalInvoiceFromStripe).toHaveBeenCalledWith(
-        prisma, 'admin-1', 4900, 'in_4', 'Domora', new Date(FINALIZED_AT_UNIX * 1000),
+        prisma,
+        'admin-1',
+        4900,
+        'in_4',
+        'Domora',
+        new Date(FINALIZED_AT_UNIX * 1000),
       );
     });
 
@@ -702,12 +970,20 @@ describe('BillingService', () => {
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
       expect(admins.createFiscalInvoiceFromStripe).toHaveBeenCalledWith(
-        prisma, 'admin-1', 4900, 'in_5', 'BASE', expect.any(Date),
+        prisma,
+        'admin-1',
+        4900,
+        'in_5',
+        'BASE',
+        expect.any(Date),
       );
     });
 
     it('NO vuelve a generarla si el stripeInvoiceId ya se procesó (reenvío del mismo evento por Stripe)', async () => {
-      prisma.adminInvoice.findUnique.mockResolvedValue({ id: 'inv-existing', stripeInvoiceId: 'in_1' });
+      prisma.adminInvoice.findUnique.mockResolvedValue({
+        id: 'inv-existing',
+        stripeInvoiceId: 'in_1',
+      });
       stripe.constructWebhookEvent.mockReturnValue(invoiceEvent('in_1'));
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
@@ -719,17 +995,24 @@ describe('BillingService', () => {
       prisma.adminInvoice.findUnique.mockResolvedValue(null);
       stripe.constructWebhookEvent.mockReturnValue(invoiceEvent('in_1'));
       admins.createFiscalInvoiceFromStripe.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('duplicate', { code: 'P2002', clientVersion: 'x' }),
+        new Prisma.PrismaClientKnownRequestError('duplicate', {
+          code: 'P2002',
+          clientVersion: 'x',
+        }),
       );
 
-      await expect(service.handleWebhookEvent(Buffer.from('{}'), 'sig')).resolves.toBeUndefined();
+      await expect(
+        service.handleWebhookEvent(Buffer.from('{}'), 'sig'),
+      ).resolves.toBeUndefined();
     });
 
     it('no genera nada si no se puede resolver la gestora del evento', async () => {
       prisma.adminInvoice.findUnique.mockResolvedValue(null);
       stripe.constructWebhookEvent.mockReturnValue({
         type: 'invoice.finalized',
-        data: { object: { id: 'in_2', subtotal: 4900, customer: null, parent: null } },
+        data: {
+          object: { id: 'in_2', subtotal: 4900, customer: null, parent: null },
+        },
       });
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
@@ -754,7 +1037,9 @@ describe('BillingService', () => {
     });
 
     it('registra «Pago recibido» del cliente una sola vez aunque Stripe reintente el evento', async () => {
-      prisma.administratorSubscription.findFirst.mockResolvedValue({ administratorId: 'admin-1' });
+      prisma.administratorSubscription.findFirst.mockResolvedValue({
+        administratorId: 'admin-1',
+      });
       stripe.constructWebhookEvent.mockReturnValue({
         type: 'invoice.payment_succeeded',
         data: { object: { id: 'in_1', customer: 'cus_1', amount_paid: 14399 } },
@@ -762,9 +1047,19 @@ describe('BillingService', () => {
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
-      expect(prisma.administratorSubscription.findFirst).toHaveBeenCalledWith({ where: { stripeCustomerId: 'cus_1' }, select: { administratorId: true } });
+      expect(prisma.administratorSubscription.findFirst).toHaveBeenCalledWith({
+        where: { stripeCustomerId: 'cus_1' },
+        select: { administratorId: true },
+      });
       expect(prisma.adminActivityItem.createMany).toHaveBeenCalledWith({
-        data: [{ administratorId: 'admin-1', type: 'payment_received', title: 'Pago recibido: 143,99 €', externalRef: 'stripe-invoice-paid:in_1' }],
+        data: [
+          {
+            administratorId: 'admin-1',
+            type: 'payment_received',
+            title: 'Pago recibido: 143,99 €',
+            externalRef: 'stripe-invoice-paid:in_1',
+          },
+        ],
         skipDuplicates: true,
       });
     });
@@ -821,7 +1116,9 @@ describe('BillingService', () => {
 
       await service.handleWebhookEvent(Buffer.from('{}'), 'sig');
 
-      expect(prisma.administratorSubscription.updateMany).not.toHaveBeenCalled();
+      expect(
+        prisma.administratorSubscription.updateMany,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -832,7 +1129,9 @@ describe('BillingService', () => {
         data: { object: {} },
       });
 
-      await expect(service.handleWebhookEvent(Buffer.from('{}'), 'sig')).resolves.toBeUndefined();
+      await expect(
+        service.handleWebhookEvent(Buffer.from('{}'), 'sig'),
+      ).resolves.toBeUndefined();
       expect(prisma.administratorSubscription.upsert).not.toHaveBeenCalled();
       expect(prisma.adminInvoice.updateMany).not.toHaveBeenCalled();
     });

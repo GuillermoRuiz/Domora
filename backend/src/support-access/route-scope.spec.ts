@@ -1,5 +1,10 @@
 import { Controller, Get, Post } from '@nestjs/common';
-import { classifyRoute, isReadOnlyRequest, isSafeMethod, routeTemplate } from './route-scope';
+import {
+  classifyRoute,
+  isReadOnlyRequest,
+  isSafeMethod,
+  routeTemplate,
+} from './route-scope';
 
 @Controller('estates/:estateId/receipts')
 class ReceiptsController {
@@ -15,9 +20,15 @@ class RootController {
 describe('route scope', () => {
   it('builds the route template from Nest metadata, never from the URL', () => {
     const c = new ReceiptsController();
-    expect(routeTemplate(ReceiptsController, c.list)).toBe('estates/:estateId/receipts');
-    expect(routeTemplate(ReceiptsController, c.cancel)).toBe('estates/:estateId/receipts/:id/cancel');
-    expect(routeTemplate(RootController, new RootController().multi)).toBe('first/:id');
+    expect(routeTemplate(ReceiptsController, c.list)).toBe(
+      'estates/:estateId/receipts',
+    );
+    expect(routeTemplate(ReceiptsController, c.cancel)).toBe(
+      'estates/:estateId/receipts/:id/cancel',
+    );
+    expect(routeTemplate(RootController, new RootController().multi)).toBe(
+      'first/:id',
+    );
   });
 
   it.each([
@@ -43,8 +54,17 @@ describe('route scope', () => {
   });
 
   it('treats only GET, HEAD and OPTIONS as safe', () => {
-    expect(['GET', 'head', 'OPTIONS'].map(isSafeMethod)).toEqual([true, true, true]);
-    expect(['POST', 'PUT', 'PATCH', 'DELETE'].map(isSafeMethod)).toEqual([false, false, false, false]);
+    expect(['GET', 'head', 'OPTIONS'].map(isSafeMethod)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+    expect(['POST', 'PUT', 'PATCH', 'DELETE'].map(isSafeMethod)).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 
   it.each([
@@ -70,6 +90,8 @@ describe('route scope', () => {
 
   it('keeps GET, HEAD and OPTIONS reads on any route', () => {
     expect(isReadOnlyRequest('GET', 'estates/:estateId/receipts')).toBe(true);
-    expect(isReadOnlyRequest('DELETE', 'estates/:estateId/receipts')).toBe(false);
+    expect(isReadOnlyRequest('DELETE', 'estates/:estateId/receipts')).toBe(
+      false,
+    );
   });
 });

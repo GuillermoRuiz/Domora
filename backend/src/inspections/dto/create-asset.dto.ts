@@ -1,5 +1,12 @@
 import { AssetOperationalStatus } from '../../prisma/client';
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateAssetDto {
   @IsString()

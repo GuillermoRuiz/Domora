@@ -25,7 +25,13 @@ export class ReportScopeService {
     const { administratorId } = await this.currentTenant(actor);
     return this.prisma.estate.findMany({
       where: { administratorId, deletedAt: null },
-      select: { id: true, name: true, address: true, streetNumber: true, location: true },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        streetNumber: true,
+        location: true,
+      },
       orderBy: { name: 'asc' },
     });
   }

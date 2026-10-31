@@ -1,5 +1,14 @@
-import type { MandateSeq, RemesaLineStatus, SepaScheme } from '../../prisma/client';
-import { matchEnumAlias, parseSpanishDate, parseSpanishDecimal, type ValidatedRow } from './parsing.util';
+import type {
+  MandateSeq,
+  RemesaLineStatus,
+  SepaScheme,
+} from '../../prisma/client';
+import {
+  matchEnumAlias,
+  parseSpanishDate,
+  parseSpanishDecimal,
+  type ValidatedRow,
+} from './parsing.util';
 
 /**
  * Cada fila es una LÍNEA de remesa que se vincula a un recibo ya importado
@@ -56,12 +65,14 @@ export function validateRemesaRow(
   const data: Partial<RemesaLineImportRow> = {};
 
   const remesaRef = mappedRow['remesaRef']?.trim();
-  if (!remesaRef) errors.push('Falta la referencia de la remesa (agrupa las líneas).');
+  if (!remesaRef)
+    errors.push('Falta la referencia de la remesa (agrupa las líneas).');
   else data.remesaRef = remesaRef;
 
   const periodKey = mappedRow['periodKey']?.trim();
   if (!periodKey) errors.push('Falta el periodo del recibo (formato AAAA-MM).');
-  else if (!PERIOD_KEY_RE.test(periodKey)) errors.push(`Periodo con formato inválido: "${periodKey}".`);
+  else if (!PERIOD_KEY_RE.test(periodKey))
+    errors.push(`Periodo con formato inválido: "${periodKey}".`);
   else data.periodKey = periodKey;
 
   const receiptNo = mappedRow['receiptNo']?.trim();
@@ -87,7 +98,9 @@ export function validateRemesaRow(
     else data.mandateSeq = seq;
   } else {
     data.mandateSeq = DEFAULT_SEQ;
-    warnings.push(`Sin secuencia SEPA en el origen — se asume "${DEFAULT_SEQ}".`);
+    warnings.push(
+      `Sin secuencia SEPA en el origen — se asume "${DEFAULT_SEQ}".`,
+    );
   }
 
   const schemeRaw = mappedRow['scheme']?.trim();
@@ -105,14 +118,16 @@ export function validateRemesaRow(
   const presentedAtRaw = mappedRow['presentedAt']?.trim();
   if (presentedAtRaw) {
     const presentedAt = parseSpanishDate(presentedAtRaw);
-    if (!presentedAt) errors.push(`Fecha de presentación inválida: "${presentedAtRaw}".`);
+    if (!presentedAt)
+      errors.push(`Fecha de presentación inválida: "${presentedAtRaw}".`);
     else data.presentedAt = presentedAt;
   }
 
   const chargeDateRaw = mappedRow['chargeDate']?.trim();
   if (chargeDateRaw) {
     const chargeDate = parseSpanishDate(chargeDateRaw);
-    if (!chargeDate) errors.push(`Fecha de cargo inválida: "${chargeDateRaw}".`);
+    if (!chargeDate)
+      errors.push(`Fecha de cargo inválida: "${chargeDateRaw}".`);
     else data.chargeDate = chargeDate;
   }
 

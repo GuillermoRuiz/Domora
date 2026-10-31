@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { bootstrapEstateLedger } from '../ledger/chart/ledger-bootstrap';
 import { JournalService } from '../ledger/journal/journal.service';
 import { ReceiptPostingService } from '../ledger/posting/receipt-posting.service';
@@ -42,7 +47,10 @@ let invitee: AuthenticatedUser;
 let service: PropertyMembershipInvitesService;
 let sendMembershipInvite: jest.Mock;
 
-async function createRawInvite(expiresAt: Date, extra: { revokedAt?: Date; usedAt?: Date } = {}) {
+async function createRawInvite(
+  expiresAt: Date,
+  extra: { revokedAt?: Date; usedAt?: Date } = {},
+) {
   return prisma.propertyMembershipInvite.create({
     data: {
       propertyId,
@@ -62,32 +70,74 @@ function tokenFromUrl(url: string): string {
 
 beforeAll(async () => {
   const admin = await prisma.administrator.create({
-    data: { name: 'Gestora de prueba (invites int)', cif: CIF, plan: 'BASE', tier: 'basic', usersMax: 5, status: 'Activa' },
+    data: {
+      name: 'Gestora de prueba (invites int)',
+      cif: CIF,
+      plan: 'BASE',
+      tier: 'basic',
+      usersMax: 5,
+      status: 'Activa',
+    },
   });
   administratorId = admin.id;
 
   const estate = await prisma.estate.create({
-    data: { administratorId, name: 'Finca de prueba — invites int', type: 'Edificio', address: 'Calle Falsa 14', location: 'Madrid' },
+    data: {
+      administratorId,
+      name: 'Finca de prueba — invites int',
+      type: 'Edificio',
+      address: 'Calle Falsa 14',
+      location: 'Madrid',
+    },
   });
   estateId = estate.id;
   // Contabilidad lista para poder emitir recibos (ver el test de recibos).
   await prisma.$transaction((tx) =>
-    bootstrapEstateLedger(tx, estateId, { cutoverDate: new Date(Date.UTC(2099, 0, 1)) }),
+    bootstrapEstateLedger(tx, estateId, {
+      cutoverDate: new Date(Date.UTC(2099, 0, 1)),
+    }),
   );
 
   const property = await prisma.property.create({
-    data: { estateId, type: 'Piso', status: 'Ocupado', viaType: 'Calle', viaName: 'Falsa', streetNumber: '14', floor: '1', door: 'A', quotaMonthly: '50.00' },
+    data: {
+      estateId,
+      type: 'Piso',
+      status: 'Ocupado',
+      viaType: 'Calle',
+      viaName: 'Falsa',
+      streetNumber: '14',
+      floor: '1',
+      door: 'A',
+      quotaMonthly: '50.00',
+    },
   });
   propertyId = property.id;
 
   const managerRow = await prisma.user.create({
-    data: { email: `manager-invites-int-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Gestora', role: 'B', administratorId },
+    data: {
+      email: `manager-invites-int-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Gestora',
+      role: 'B',
+      administratorId,
+    },
   });
   managerId = managerRow.id;
-  manager = { id: managerId, role: 'B', estateIds: [estateId], administratorId };
+  manager = {
+    id: managerId,
+    role: 'B',
+    estateIds: [estateId],
+    administratorId,
+  };
 
   const inviteeRow = await prisma.user.create({
-    data: { email: `invitee-invites-int-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Nuevo Inquilino', role: 'C', administratorId },
+    data: {
+      email: `invitee-invites-int-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Nuevo Inquilino',
+      role: 'C',
+      administratorId,
+    },
   });
   inviteeId = inviteeRow.id;
   invitee = { id: inviteeId, role: 'C', estateIds: [], administratorId };
@@ -96,11 +146,20 @@ beforeAll(async () => {
 beforeEach(() => {
   sendMembershipInvite = jest.fn().mockResolvedValue(undefined);
   const memberships = {
-    assertCanManageMembers: jest.fn().mockResolvedValue({ id: propertyId, estateId }),
+    assertCanManageMembers: jest
+      .fn()
+      .mockResolvedValue({ id: propertyId, estateId }),
   } as unknown as PropertyMembershipsService;
   const mail = { sendMembershipInvite } as unknown as MailService;
-  const config = { get: jest.fn().mockReturnValue('https://app.domora.test') } as unknown as ConfigService;
-  service = new PropertyMembershipInvitesService(prisma as unknown as PrismaService, memberships, mail, config);
+  const config = {
+    get: jest.fn().mockReturnValue('https://app.domora.test'),
+  } as unknown as ConfigService;
+  service = new PropertyMembershipInvitesService(
+    prisma as unknown as PrismaService,
+    memberships,
+    mail,
+    config,
+  );
 });
 
 afterEach(async () => {
@@ -108,7 +167,10 @@ afterEach(async () => {
   await prisma.propertyMembership.deleteMany({ where: { propertyId } });
   await prisma.propertyMembershipInvite.deleteMany({ where: { propertyId } });
   await prisma.externalOwner.deleteMany({ where: { propertyId } });
-  await prisma.user.update({ where: { id: inviteeId }, data: { taxId: null, taxIdCountry: null } });
+  await prisma.user.update({
+    where: { id: inviteeId },
+    data: { taxId: null, taxIdCountry: null },
+  });
 });
 
 afterAll(async () => {
@@ -121,10 +183,16 @@ afterAll(async () => {
 describe('PropertyMembershipInvitesService (Postgres real)', () => {
   describe('estado derivado en listPendingInvites', () => {
     it('distingue pending / expiring_soon / expired / revoked en los límites reales', async () => {
-      const pending = await createRawInvite(new Date(Date.now() + 49 * HOUR_MS));
-      const expiringSoon = await createRawInvite(new Date(Date.now() + 47 * HOUR_MS));
+      const pending = await createRawInvite(
+        new Date(Date.now() + 49 * HOUR_MS),
+      );
+      const expiringSoon = await createRawInvite(
+        new Date(Date.now() + 47 * HOUR_MS),
+      );
       const expired = await createRawInvite(new Date(Date.now() - 60_000));
-      const revoked = await createRawInvite(new Date(Date.now() + 5 * DAY_MS), { revokedAt: new Date() });
+      const revoked = await createRawInvite(new Date(Date.now() + 5 * DAY_MS), {
+        revokedAt: new Date(),
+      });
 
       const result = await service.listPendingInvites(propertyId, manager);
       const statusById = new Map(result.map((r) => [r.id, r.status]));
@@ -136,7 +204,9 @@ describe('PropertyMembershipInvitesService (Postgres real)', () => {
     });
 
     it('una invitación canjeada desaparece del listado (pasa a ser un PropertyMembership)', async () => {
-      const used = await createRawInvite(new Date(Date.now() + 5 * DAY_MS), { usedAt: new Date() });
+      const used = await createRawInvite(new Date(Date.now() + 5 * DAY_MS), {
+        usedAt: new Date(),
+      });
       const result = await service.listPendingInvites(propertyId, manager);
       expect(result.map((r) => r.id)).not.toContain(used.id);
     });
@@ -144,53 +214,103 @@ describe('PropertyMembershipInvitesService (Postgres real)', () => {
 
   describe('ciclo de vida completo', () => {
     it('crear → canjear vincula al invitado y la invitación deja de listarse', async () => {
-      const { inviteUrl } = await service.createInvite(propertyId, 'Inquilino', 'nuevo@test.local', manager);
+      const { inviteUrl } = await service.createInvite(
+        propertyId,
+        'Inquilino',
+        'nuevo@test.local',
+        manager,
+      );
 
       await service.redeemInvite(tokenFromUrl(inviteUrl), invitee);
 
-      const membership = await prisma.propertyMembership.findFirstOrThrow({ where: { propertyId, userId: inviteeId } });
+      const membership = await prisma.propertyMembership.findFirstOrThrow({
+        where: { propertyId, userId: inviteeId },
+      });
       expect(membership.status).toBe('linked');
-      expect(await service.listPendingInvites(propertyId, manager)).toHaveLength(0);
+      expect(
+        await service.listPendingInvites(propertyId, manager),
+      ).toHaveLength(0);
     });
 
     it('reenviar invalida el enlace anterior y el nuevo funciona (misma fila, token rotado)', async () => {
-      const first = await service.createInvite(propertyId, 'Inquilino', 'nuevo@test.local', manager);
+      const first = await service.createInvite(
+        propertyId,
+        'Inquilino',
+        'nuevo@test.local',
+        manager,
+      );
       const [row] = await service.listPendingInvites(propertyId, manager);
 
       const resent = await service.resendInvite(propertyId, row.id, manager);
 
-      await expect(service.getInviteInfo(tokenFromUrl(first.inviteUrl))).rejects.toThrow(UnauthorizedException);
-      await expect(service.getInviteInfo(tokenFromUrl(resent.inviteUrl))).resolves.toMatchObject({ roleType: 'Inquilino' });
-      const rows = await prisma.propertyMembershipInvite.findMany({ where: { propertyId } });
+      await expect(
+        service.getInviteInfo(tokenFromUrl(first.inviteUrl)),
+      ).rejects.toThrow(UnauthorizedException);
+      await expect(
+        service.getInviteInfo(tokenFromUrl(resent.inviteUrl)),
+      ).resolves.toMatchObject({ roleType: 'Inquilino' });
+      const rows = await prisma.propertyMembershipInvite.findMany({
+        where: { propertyId },
+      });
       expect(rows).toHaveLength(1);
     });
 
     it('reenviar una invitación caducada la reactiva con 7 días nuevos', async () => {
       const expired = await createRawInvite(new Date(Date.now() - DAY_MS));
 
-      const { inviteUrl } = await service.resendInvite(propertyId, expired.id, manager);
+      const { inviteUrl } = await service.resendInvite(
+        propertyId,
+        expired.id,
+        manager,
+      );
 
-      const updated = await prisma.propertyMembershipInvite.findUniqueOrThrow({ where: { id: expired.id } });
-      expect(updated.expiresAt.getTime()).toBeGreaterThan(Date.now() + 6 * DAY_MS);
-      await expect(service.getInviteInfo(tokenFromUrl(inviteUrl))).resolves.toBeDefined();
+      const updated = await prisma.propertyMembershipInvite.findUniqueOrThrow({
+        where: { id: expired.id },
+      });
+      expect(updated.expiresAt.getTime()).toBeGreaterThan(
+        Date.now() + 6 * DAY_MS,
+      );
+      await expect(
+        service.getInviteInfo(tokenFromUrl(inviteUrl)),
+      ).resolves.toBeDefined();
     });
 
     it('revocar bloquea el canje aunque el enlace no haya caducado', async () => {
-      const { inviteUrl } = await service.createInvite(propertyId, 'Inquilino', 'nuevo@test.local', manager);
+      const { inviteUrl } = await service.createInvite(
+        propertyId,
+        'Inquilino',
+        'nuevo@test.local',
+        manager,
+      );
       const [row] = await service.listPendingInvites(propertyId, manager);
 
       await service.revokeInvite(propertyId, row.id, manager);
 
-      await expect(service.redeemInvite(tokenFromUrl(inviteUrl), invitee)).rejects.toThrow(UnauthorizedException);
-      expect(await prisma.propertyMembership.count({ where: { propertyId, userId: inviteeId } })).toBe(0);
+      await expect(
+        service.redeemInvite(tokenFromUrl(inviteUrl), invitee),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(
+        await prisma.propertyMembership.count({
+          where: { propertyId, userId: inviteeId },
+        }),
+      ).toBe(0);
     });
 
     it('no se puede revocar una invitación ya canjeada', async () => {
-      const { inviteUrl } = await service.createInvite(propertyId, 'Inquilino', 'nuevo@test.local', manager);
-      const invite = await prisma.propertyMembershipInvite.findFirstOrThrow({ where: { propertyId } });
+      const { inviteUrl } = await service.createInvite(
+        propertyId,
+        'Inquilino',
+        'nuevo@test.local',
+        manager,
+      );
+      const invite = await prisma.propertyMembershipInvite.findFirstOrThrow({
+        where: { propertyId },
+      });
       await service.redeemInvite(tokenFromUrl(inviteUrl), invitee);
 
-      await expect(service.revokeInvite(propertyId, invite.id, manager)).rejects.toThrow(ConflictException);
+      await expect(
+        service.revokeInvite(propertyId, invite.id, manager),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });
@@ -206,19 +326,32 @@ describe('invitación de propietario importado (Postgres real)', () => {
   let strangerId: string;
 
   beforeAll(async () => {
-    inviteeEmail = (await prisma.user.findUniqueOrThrow({ where: { id: inviteeId } })).email;
+    inviteeEmail = (
+      await prisma.user.findUniqueOrThrow({ where: { id: inviteeId } })
+    ).email;
     const stranger = await prisma.user.create({
-      data: { email: `stranger-invites-int-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Otra Persona', role: 'C', administratorId },
+      data: {
+        email: `stranger-invites-int-${Date.now()}@test.local`,
+        passwordHash: 'x',
+        fullName: 'Otra Persona',
+        role: 'C',
+        administratorId,
+      },
     });
     strangerId = stranger.id;
   });
 
-  async function importedOwner(overrides: { email?: string | null; taxId?: string | null } = {}) {
+  async function importedOwner(
+    overrides: { email?: string | null; taxId?: string | null } = {},
+  ) {
     return prisma.externalOwner.create({
       data: {
         propertyId,
         fullName: 'Titular Importado',
-        email: overrides.email === undefined ? inviteeEmail.toUpperCase() : overrides.email,
+        email:
+          overrides.email === undefined
+            ? inviteeEmail.toUpperCase()
+            : overrides.email,
         taxId: overrides.taxId === undefined ? '12345678Z' : overrides.taxId,
         taxIdCountry: 'ES',
         roleType: 'Propietario',
@@ -227,12 +360,19 @@ describe('invitación de propietario importado (Postgres real)', () => {
     });
   }
 
-  const stranger = (): AuthenticatedUser => ({ id: strangerId, role: 'C', estateIds: [], administratorId });
+  const stranger = (): AuthenticatedUser => ({
+    id: strangerId,
+    role: 'C',
+    estateIds: [],
+    administratorId,
+  });
 
   describe('emisión', () => {
     it('solo la gestora: un vecino, aunque gestione la propiedad, no puede invitar a un propietario', async () => {
       const owner = await importedOwner();
-      await expect(service.createOwnerInvite(propertyId, owner.id, invitee)).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.createOwnerInvite(propertyId, owner.id, invitee),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('va al email del titular importado y queda como invitación de Propietario ligada a él', async () => {
@@ -240,116 +380,237 @@ describe('invitación de propietario importado (Postgres real)', () => {
 
       await service.createOwnerInvite(propertyId, owner.id, manager);
 
-      const invite = await prisma.propertyMembershipInvite.findFirstOrThrow({ where: { externalOwnerId: owner.id } });
+      const invite = await prisma.propertyMembershipInvite.findFirstOrThrow({
+        where: { externalOwnerId: owner.id },
+      });
       expect(invite.roleType).toBe('Propietario');
       expect(invite.inviteeEmail).toBe(owner.email);
-      expect(sendMembershipInvite).toHaveBeenCalledWith(owner.email, 'Propietario', expect.any(String), expect.anything(), expect.any(String));
+      expect(sendMembershipInvite).toHaveBeenCalledWith(
+        owner.email,
+        'Propietario',
+        expect.any(String),
+        expect.anything(),
+        expect.any(String),
+      );
     });
 
     it('un titular sin email no se puede invitar', async () => {
       const owner = await importedOwner({ email: null });
-      await expect(service.createOwnerInvite(propertyId, owner.id, manager)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.createOwnerInvite(propertyId, owner.id, manager),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('no admite una segunda invitación mientras la primera siga pendiente', async () => {
       const owner = await importedOwner();
       await service.createOwnerInvite(propertyId, owner.id, manager);
-      await expect(service.createOwnerInvite(propertyId, owner.id, manager)).rejects.toThrow(ConflictException);
+      await expect(
+        service.createOwnerInvite(propertyId, owner.id, manager),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('la BD rechaza una invitación de Propietario sin titular, y una de inquilino ligada a un titular', async () => {
       const owner = await importedOwner();
-      const base = { propertyId, inviteeEmail: 'x@test.local', createdByUserId: managerId, expiresAt: new Date(Date.now() + DAY_MS) };
+      const base = {
+        propertyId,
+        inviteeEmail: 'x@test.local',
+        createdByUserId: managerId,
+        expiresAt: new Date(Date.now() + DAY_MS),
+      };
 
-      await expect(prisma.propertyMembershipInvite.create({
-        data: { ...base, roleType: 'Propietario', tokenHash: `chk-1-${Date.now()}` },
-      })).rejects.toThrow(/owner_requires_external_owner/);
-      await expect(prisma.propertyMembershipInvite.create({
-        data: { ...base, roleType: 'Inquilino', externalOwnerId: owner.id, tokenHash: `chk-2-${Date.now()}` },
-      })).rejects.toThrow(/owner_requires_external_owner/);
+      await expect(
+        prisma.propertyMembershipInvite.create({
+          data: {
+            ...base,
+            roleType: 'Propietario',
+            tokenHash: `chk-1-${Date.now()}`,
+          },
+        }),
+      ).rejects.toThrow(/owner_requires_external_owner/);
+      await expect(
+        prisma.propertyMembershipInvite.create({
+          data: {
+            ...base,
+            roleType: 'Inquilino',
+            externalOwnerId: owner.id,
+            tokenHash: `chk-2-${Date.now()}`,
+          },
+        }),
+      ).rejects.toThrow(/owner_requires_external_owner/);
     });
   });
 
   describe('canje', () => {
     it('con otra cuenta se rechaza y no toca nada (el enlace no es un token al portador)', async () => {
       const owner = await importedOwner();
-      const { inviteUrl } = await service.createOwnerInvite(propertyId, owner.id, manager);
+      const { inviteUrl } = await service.createOwnerInvite(
+        propertyId,
+        owner.id,
+        manager,
+      );
 
-      await expect(service.redeemInvite(tokenFromUrl(inviteUrl), stranger())).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.redeemInvite(tokenFromUrl(inviteUrl), stranger()),
+      ).rejects.toThrow(ForbiddenException);
 
-      expect((await prisma.externalOwner.findUniqueOrThrow({ where: { id: owner.id } })).promotedToUserId).toBeNull();
-      expect(await prisma.propertyMembership.count({ where: { propertyId } })).toBe(0);
-      expect((await prisma.propertyMembershipInvite.findFirstOrThrow({ where: { externalOwnerId: owner.id } })).usedAt).toBeNull();
+      expect(
+        (
+          await prisma.externalOwner.findUniqueOrThrow({
+            where: { id: owner.id },
+          })
+        ).promotedToUserId,
+      ).toBeNull();
+      expect(
+        await prisma.propertyMembership.count({ where: { propertyId } }),
+      ).toBe(0);
+      expect(
+        (
+          await prisma.propertyMembershipInvite.findFirstOrThrow({
+            where: { externalOwnerId: owner.id },
+          })
+        ).usedAt,
+      ).toBeNull();
     });
 
     it('con la cuenta de ese email (sin distinguir mayúsculas): Propietario titular principal, titular promovido y NIF copiado', async () => {
       const owner = await importedOwner();
-      const { inviteUrl } = await service.createOwnerInvite(propertyId, owner.id, manager);
+      const { inviteUrl } = await service.createOwnerInvite(
+        propertyId,
+        owner.id,
+        manager,
+      );
 
       await service.redeemInvite(tokenFromUrl(inviteUrl), invitee);
 
-      const membership = await prisma.propertyMembership.findFirstOrThrow({ where: { propertyId, userId: inviteeId } });
-      expect(membership).toMatchObject({ roleType: 'Propietario', status: 'linked', isPrimaryContact: true });
-      const promoted = await prisma.externalOwner.findUniqueOrThrow({ where: { id: owner.id } });
+      const membership = await prisma.propertyMembership.findFirstOrThrow({
+        where: { propertyId, userId: inviteeId },
+      });
+      expect(membership).toMatchObject({
+        roleType: 'Propietario',
+        status: 'linked',
+        isPrimaryContact: true,
+      });
+      const promoted = await prisma.externalOwner.findUniqueOrThrow({
+        where: { id: owner.id },
+      });
       expect(promoted.promotedToUserId).toBe(inviteeId);
       expect(promoted.promotedAt).not.toBeNull();
-      const user = await prisma.user.findUniqueOrThrow({ where: { id: inviteeId } });
+      const user = await prisma.user.findUniqueOrThrow({
+        where: { id: inviteeId },
+      });
       expect(user).toMatchObject({ taxId: '12345678Z', taxIdCountry: 'ES' });
     });
 
     it('nunca pisa un NIF ya informado en la cuenta: lo deja y lo anota para la gestora', async () => {
-      await prisma.user.update({ where: { id: inviteeId }, data: { taxId: '87654321X' } });
+      await prisma.user.update({
+        where: { id: inviteeId },
+        data: { taxId: '87654321X' },
+      });
       const owner = await importedOwner();
-      const { inviteUrl } = await service.createOwnerInvite(propertyId, owner.id, manager);
+      const { inviteUrl } = await service.createOwnerInvite(
+        propertyId,
+        owner.id,
+        manager,
+      );
 
       await service.redeemInvite(tokenFromUrl(inviteUrl), invitee);
 
-      expect((await prisma.user.findUniqueOrThrow({ where: { id: inviteeId } })).taxId).toBe('87654321X');
-      const log = await prisma.activityLogEntry.findFirstOrThrow({ where: { propertyId } });
+      expect(
+        (await prisma.user.findUniqueOrThrow({ where: { id: inviteeId } }))
+          .taxId,
+      ).toBe('87654321X');
+      const log = await prisma.activityLogEntry.findFirstOrThrow({
+        where: { propertyId },
+      });
       expect(log.summary).toContain('no coincide con el importado (12345678Z)');
     });
 
     it('si la propiedad ya tiene titular principal, no se lo quita', async () => {
       await prisma.propertyMembership.create({
-        data: { propertyId, userId: strangerId, roleType: 'Propietario', status: 'linked', isPrimaryContact: true, linkedAt: new Date() },
+        data: {
+          propertyId,
+          userId: strangerId,
+          roleType: 'Propietario',
+          status: 'linked',
+          isPrimaryContact: true,
+          linkedAt: new Date(),
+        },
       });
       const owner = await importedOwner();
-      const { inviteUrl } = await service.createOwnerInvite(propertyId, owner.id, manager);
+      const { inviteUrl } = await service.createOwnerInvite(
+        propertyId,
+        owner.id,
+        manager,
+      );
 
       await service.redeemInvite(tokenFromUrl(inviteUrl), invitee);
 
-      const mine = await prisma.propertyMembership.findFirstOrThrow({ where: { propertyId, userId: inviteeId } });
+      const mine = await prisma.propertyMembership.findFirstOrThrow({
+        where: { propertyId, userId: inviteeId },
+      });
       expect(mine.isPrimaryContact).toBe(false);
     });
 
     it('si el titular ya se vinculó a otra cuenta entretanto, 409 y nada queda a medias', async () => {
       const owner = await importedOwner();
-      const { inviteUrl } = await service.createOwnerInvite(propertyId, owner.id, manager);
-      await prisma.externalOwner.update({ where: { id: owner.id }, data: { promotedToUserId: strangerId, promotedAt: new Date() } });
+      const { inviteUrl } = await service.createOwnerInvite(
+        propertyId,
+        owner.id,
+        manager,
+      );
+      await prisma.externalOwner.update({
+        where: { id: owner.id },
+        data: { promotedToUserId: strangerId, promotedAt: new Date() },
+      });
 
-      await expect(service.redeemInvite(tokenFromUrl(inviteUrl), invitee)).rejects.toThrow(ConflictException);
+      await expect(
+        service.redeemInvite(tokenFromUrl(inviteUrl), invitee),
+      ).rejects.toThrow(ConflictException);
 
-      expect(await prisma.propertyMembership.count({ where: { propertyId, userId: inviteeId } })).toBe(0);
-      expect((await prisma.propertyMembershipInvite.findFirstOrThrow({ where: { externalOwnerId: owner.id } })).usedAt).toBeNull();
+      expect(
+        await prisma.propertyMembership.count({
+          where: { propertyId, userId: inviteeId },
+        }),
+      ).toBe(0);
+      expect(
+        (
+          await prisma.propertyMembershipInvite.findFirstOrThrow({
+            where: { externalOwnerId: owner.id },
+          })
+        ).usedAt,
+      ).toBeNull();
     });
 
     it('los recibos siguientes salen a nombre del usuario promovido y conservan el NIF', async () => {
       const owner = await importedOwner();
-      const { inviteUrl } = await service.createOwnerInvite(propertyId, owner.id, manager);
+      const { inviteUrl } = await service.createOwnerInvite(
+        propertyId,
+        owner.id,
+        manager,
+      );
       await service.redeemInvite(tokenFromUrl(inviteUrl), invitee);
       const accounting = new AccountingService(
         prisma as unknown as PrismaService,
         new EstateAccessService(),
         undefined as never,
         new ReceiptPostingService(new JournalService()),
-        new CollectionPostingService(new JournalService(), new ReceiptPostingService(new JournalService())),
+        new CollectionPostingService(
+          new JournalService(),
+          new ReceiptPostingService(new JournalService()),
+        ),
         { notify: async () => {} } as unknown as NotificationsService,
       );
       const periodKey = '2099-08';
       // Los recibos emitidos no se borran: se purgan con la finca al final.
-      await accounting.generateReceipts(estateId, { periodKey }, { id: managerId, role: 'A', estateIds: [], administratorId: null });
+      await accounting.generateReceipts(
+        estateId,
+        { periodKey },
+        { id: managerId, role: 'A', estateIds: [], administratorId: null },
+      );
 
-      const receipt = await prisma.accountingReceipt.findFirstOrThrow({ where: { propertyId, period: { periodKey } } });
+      const receipt = await prisma.accountingReceipt.findFirstOrThrow({
+        where: { propertyId, period: { periodKey } },
+      });
       expect(receipt.ownerUserId).toBe(inviteeId);
       expect(receipt.ownerTaxIdSnapshot).toBe('12345678Z');
     });
@@ -358,11 +619,20 @@ describe('invitación de propietario importado (Postgres real)', () => {
   it('borrar a mano un titular se lleva su invitación pendiente (la FK Restrict no deja huérfanos)', async () => {
     const owner = await importedOwner();
     await service.createOwnerInvite(propertyId, owner.id, manager);
-    const externalOwners = new ExternalOwnersService(prisma as unknown as PrismaService, new EstateAccessService());
+    const externalOwners = new ExternalOwnersService(
+      prisma as unknown as PrismaService,
+      new EstateAccessService(),
+    );
 
     await externalOwners.remove(owner.id, manager);
 
-    expect(await prisma.externalOwner.count({ where: { id: owner.id } })).toBe(0);
-    expect(await prisma.propertyMembershipInvite.count({ where: { externalOwnerId: owner.id } })).toBe(0);
+    expect(await prisma.externalOwner.count({ where: { id: owner.id } })).toBe(
+      0,
+    );
+    expect(
+      await prisma.propertyMembershipInvite.count({
+        where: { externalOwnerId: owner.id },
+      }),
+    ).toBe(0);
   });
 });

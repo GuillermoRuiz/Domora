@@ -31,7 +31,11 @@ describe('issueEventData: cada evento dice QUÉ actuó', () => {
 
   it('la IA, el sistema y un tercero no llevan autor y aparecen como «Sistema» en el papel del historial', () => {
     for (const actorKind of ['ai', 'system', 'external'] as const) {
-      const data = issueEventData({ kind: 'task_opened', actorKind, text: 'x' });
+      const data = issueEventData({
+        kind: 'task_opened',
+        actorKind,
+        text: 'x',
+      });
       expect(data).toMatchObject({
         actorKind,
         authorUserId: null,

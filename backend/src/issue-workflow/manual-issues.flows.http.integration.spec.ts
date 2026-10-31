@@ -100,7 +100,11 @@ describe('vía de gestión', () => {
         partyLabel: 'Propietaria',
         nextStep: 'wait',
         effects: [
-          { type: 'start_wait', kind: 'owner_reply', partyLabel: 'Propietaria' },
+          {
+            type: 'start_wait',
+            kind: 'owner_reply',
+            partyLabel: 'Propietaria',
+          },
         ],
       }),
     );
@@ -171,7 +175,11 @@ describe('esperas (IssueWait)', () => {
       nextStep: 'task',
       effects: [
         ...end.effects,
-        { type: 'open_follow_up', note: 'Revisar el presupuesto', milestone: 'created' },
+        {
+          type: 'open_follow_up',
+          note: 'Revisar el presupuesto',
+          milestone: 'created',
+        },
       ],
     };
     expect((await h.interact(A, id, withStep)).status).toBe(201);
@@ -203,9 +211,9 @@ describe('esperas (IssueWait)', () => {
       where: { issueId: id, kind: 'chase_provider' },
     });
     expect(tasks.length).toBeGreaterThan(0);
-    expect(await h.prisma.aiJob.count({ where: { estateId: A.estateId } })).toBe(
-      0,
-    );
+    expect(
+      await h.prisma.aiJob.count({ where: { estateId: A.estateId } }),
+    ).toBe(0);
   });
 });
 
@@ -300,7 +308,11 @@ describe('siniestros y cierre', () => {
                 insurerSupplierId: insurer,
                 reference: 'S-100',
               },
-              { type: 'start_wait', kind: 'insurer_reply', supplierId: insurer },
+              {
+                type: 'start_wait',
+                kind: 'insurer_reply',
+                supplierId: insurer,
+              },
             ],
           }),
         )

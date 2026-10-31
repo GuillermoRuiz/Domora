@@ -17,8 +17,13 @@ const timeFormat = new Intl.DateTimeFormat('es-ES', {
   hourCycle: 'h23',
   timeZone: ACTA_TIME_ZONE,
 });
-const dayKeyFormat = new Intl.DateTimeFormat('en-CA', { timeZone: ACTA_TIME_ZONE });
-const percentFormat = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const dayKeyFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone: ACTA_TIME_ZONE,
+});
+const percentFormat = new Intl.NumberFormat('es-ES', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 function parse(iso: string | Date | null | undefined): Date | null {
   if (iso == null) return null;
@@ -27,25 +32,33 @@ function parse(iso: string | Date | null | undefined): Date | null {
 }
 
 /** «14 de octubre de 2026». */
-export function formatActaDate(iso: string | Date | null | undefined): string | null {
+export function formatActaDate(
+  iso: string | Date | null | undefined,
+): string | null {
   const date = parse(iso);
   return date ? dateFormat.format(date) : null;
 }
 
 /** «19:05». */
-export function formatActaTime(iso: string | Date | null | undefined): string | null {
+export function formatActaTime(
+  iso: string | Date | null | undefined,
+): string | null {
   const date = parse(iso);
   return date ? timeFormat.format(date) : null;
 }
 
 /** Día civil de la reunión (YYYY-MM-DD) para saber si dos instantes caen el mismo día. */
-export function actaDayKey(iso: string | Date | null | undefined): string | null {
+export function actaDayKey(
+  iso: string | Date | null | undefined,
+): string | null {
   const date = parse(iso);
   return date ? dayKeyFormat.format(date) : null;
 }
 
 /** «2,50 %» (dos decimales, coma decimal). */
-export function formatActaPercent(value: number | string | null | undefined): string {
+export function formatActaPercent(
+  value: number | string | null | undefined,
+): string {
   if (value == null || value === '') return '—';
   const number = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(number) ? `${percentFormat.format(number)} %` : '—';

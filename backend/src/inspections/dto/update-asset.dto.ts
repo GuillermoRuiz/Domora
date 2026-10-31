@@ -1,5 +1,12 @@
 import { AssetOperationalStatus } from '../../prisma/client';
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { OptionalButNotNull } from '../../common/optional-not-null.decorator';
 
 const OPERATIONAL_STATUSES = Object.values(AssetOperationalStatus);

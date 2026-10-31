@@ -38,7 +38,6 @@ import type {
 } from './agenda-task.types';
 import {
   AgendaTaskLinksService,
-
   type StoredLinkRef,
 } from './agenda-task-links.service';
 import {
@@ -175,10 +174,7 @@ interface Filters {
 function timedOverdue(before: Date): Prisma.AgendaTaskWhereInput {
   return {
     allDay: false,
-    OR: [
-      { dueAt: { lt: before } },
-      { dueAt: null, endAt: { lt: before } },
-    ],
+    OR: [{ dueAt: { lt: before } }, { dueAt: null, endAt: { lt: before } }],
   };
 }
 
@@ -422,8 +418,9 @@ export class AgendaTasksService {
       ? (row.occurrences ?? [])
           .filter(
             (o) =>
-              !live.some((l) => l.start.getTime() === o.occurrenceStart.getTime()) &&
-              !isOccurrenceStart(spec, o.occurrenceStart),
+              !live.some(
+                (l) => l.start.getTime() === o.occurrenceStart.getTime(),
+              ) && !isOccurrenceStart(spec, o.occurrenceStart),
           )
           .map((o): Occurrence => ({
             start: o.occurrenceStart,
@@ -1128,7 +1125,10 @@ export class AgendaTasksService {
       for (const o of frozen ?? []) {
         await tx.agendaTaskOccurrence.update({
           where: {
-            taskId_occurrenceStart: { taskId: id, occurrenceStart: o.occurrenceStart },
+            taskId_occurrenceStart: {
+              taskId: id,
+              occurrenceStart: o.occurrenceStart,
+            },
           },
           data: { occurrenceEnd: o.occurrenceEnd },
         });
@@ -1210,7 +1210,9 @@ export class AgendaTasksService {
     const spec = seriesSpecOf(series);
     const index = occurrenceIndexOf(spec, start);
     return index === null
-      ? new Date(start.getTime() + (series.endAt.getTime() - series.startAt.getTime()))
+      ? new Date(
+          start.getTime() + (series.endAt.getTime() - series.startAt.getTime()),
+        )
       : occurrenceAt(spec, index).end;
   }
 
@@ -1326,7 +1328,12 @@ export class AgendaTasksService {
 
   /** Una tarea de una incidencia que se completa, cancela o reabre deja su rastro en el historial de la incidencia. */
   private async traceIssueTask(
-    task: { id: string; title: string; issueId: string | null; kind: string | null },
+    task: {
+      id: string;
+      title: string;
+      issueId: string | null;
+      kind: string | null;
+    },
     status: string,
     user: AuthenticatedUser,
   ): Promise<void> {

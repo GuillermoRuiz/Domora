@@ -52,7 +52,14 @@ export class UpdateSupplierContractDto {
 
   @IsOptional()
   @IsIn(['MONTHLY', 'QUARTERLY', 'SEMIANNUAL', 'ANNUAL', 'ONE_OFF', 'OTHER'])
-  costFrequency?: 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUAL' | 'ANNUAL' | 'ONE_OFF' | 'OTHER' | null;
+  costFrequency?:
+    | 'MONTHLY'
+    | 'QUARTERLY'
+    | 'SEMIANNUAL'
+    | 'ANNUAL'
+    | 'ONE_OFF'
+    | 'OTHER'
+    | null;
 
   @OptionalButNotNull()
   @IsISO4217CurrencyCode()

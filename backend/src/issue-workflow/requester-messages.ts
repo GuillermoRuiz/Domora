@@ -13,7 +13,10 @@ export const REQUESTER_TEMPLATES = [
   'issue_resolved',
 ] as const;
 export const CUSTOM_REQUESTER_TEMPLATE = 'custom';
-export const MANUAL_REQUESTER_TEMPLATES = [...REQUESTER_TEMPLATES, CUSTOM_REQUESTER_TEMPLATE] as const;
+export const MANUAL_REQUESTER_TEMPLATES = [
+  ...REQUESTER_TEMPLATES,
+  CUSTOM_REQUESTER_TEMPLATE,
+] as const;
 export type RequesterTemplate = (typeof MANUAL_REQUESTER_TEMPLATES)[number];
 /** Longitud máxima del mensaje escrito por la gestión. */
 export const CUSTOM_REQUESTER_TEXT_MAX = 500;

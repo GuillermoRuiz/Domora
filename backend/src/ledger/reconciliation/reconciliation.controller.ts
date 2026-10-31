@@ -86,7 +86,10 @@ export class BankReconciliationController {
   /** Sube el extracto del banco (Norma 43 o CSV). */
   @Post('statements')
   @UseInterceptors(
-    FileInterceptor('file', { defParamCharset: 'utf8', limits: { fileSize: 5 * 1024 * 1024 } }),
+    FileInterceptor('file', {
+      defParamCharset: 'utf8',
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
   )
   importStatement(
     @Param('estateId') estateId: string,

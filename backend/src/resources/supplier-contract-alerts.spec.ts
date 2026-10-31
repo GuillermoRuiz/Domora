@@ -54,7 +54,11 @@ async function makeSupplier(fixture: Fixture, name = 'Ascensores S.L.') {
   return s;
 }
 
-async function makeContract(fixture: Fixture, supplierId: string, endDate: Date | null) {
+async function makeContract(
+  fixture: Fixture,
+  supplierId: string,
+  endDate: Date | null,
+) {
   const c = await prisma.supplierContract.create({
     data: {
       supplierId,
@@ -69,7 +73,11 @@ async function makeContract(fixture: Fixture, supplierId: string, endDate: Date 
   return c;
 }
 
-async function makeDocument(fixture: Fixture, supplierId: string, expiresAt: Date | null) {
+async function makeDocument(
+  fixture: Fixture,
+  supplierId: string,
+  expiresAt: Date | null,
+) {
   const d = await prisma.supplierDocument.create({
     data: {
       supplierId,
@@ -87,38 +95,73 @@ async function makeDocument(fixture: Fixture, supplierId: string, expiresAt: Dat
 
 async function cleanup(fixture: Fixture): Promise<void> {
   if (fixture.documentIds.length) {
-    await prisma.supplierDocument.deleteMany({ where: { id: { in: fixture.documentIds } } });
+    await prisma.supplierDocument.deleteMany({
+      where: { id: { in: fixture.documentIds } },
+    });
   }
   if (fixture.contractIds.length) {
-    await prisma.supplierContract.deleteMany({ where: { id: { in: fixture.contractIds } } });
+    await prisma.supplierContract.deleteMany({
+      where: { id: { in: fixture.contractIds } },
+    });
   }
   if (fixture.supplierIds.length) {
-    await prisma.supplier.deleteMany({ where: { id: { in: fixture.supplierIds } } });
+    await prisma.supplier.deleteMany({
+      where: { id: { in: fixture.supplierIds } },
+    });
   }
 }
 
 beforeAll(async () => {
   const admin = await prisma.administrator.create({
-    data: { name: 'Gestora de prueba (alertas proveedor)', cif: CIF, plan: 'BASE', tier: 'basic', usersMax: 5, status: 'Activa' },
+    data: {
+      name: 'Gestora de prueba (alertas proveedor)',
+      cif: CIF,
+      plan: 'BASE',
+      tier: 'basic',
+      usersMax: 5,
+      status: 'Activa',
+    },
   });
   administratorId = admin.id;
 
   const estate = await prisma.estate.create({
-    data: { administratorId, name: 'Finca de prueba — alertas proveedor', type: 'Edificio', address: 'Calle Falsa 777', location: 'Madrid' },
+    data: {
+      administratorId,
+      name: 'Finca de prueba — alertas proveedor',
+      type: 'Edificio',
+      address: 'Calle Falsa 777',
+      location: 'Madrid',
+    },
   });
   estateId = estate.id;
 
   const b = await prisma.user.create({
-    data: { email: `admin-alertas-prov-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Gestor de prueba', role: 'B', administratorId },
+    data: {
+      email: `admin-alertas-prov-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Gestor de prueba',
+      role: 'B',
+      administratorId,
+    },
   });
   bUserId = b.id;
   bUser = { id: bUserId, role: 'B', estateIds: [estateId], administratorId };
 
   const c = await prisma.user.create({
-    data: { email: `vecino-alertas-prov-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Vecino de prueba', role: 'C' },
+    data: {
+      email: `vecino-alertas-prov-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Vecino de prueba',
+      role: 'C',
+    },
   });
   cUserId = c.id;
-  cUser = { id: cUserId, role: 'C', estateIds: [estateId], administratorId: null };
+  cUser = {
+    id: cUserId,
+    role: 'C',
+    estateIds: [estateId],
+    administratorId: null,
+  };
 });
 
 afterAll(async () => {
@@ -133,10 +176,18 @@ describe('ResourcesService.listAlerts — vencimiento de proveedores (rol B)', (
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx, 'Extintores Rápidos');
-      await makeContract(fx, supplier.id, new Date(Date.now() + 10 * 24 * 60 * 60 * 1000));
+      await makeContract(
+        fx,
+        supplier.id,
+        new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      );
 
       const alerts = await service.listAlerts(bUser);
-      const alert = alerts.find((a) => a.sourceType === 'supplier_contract' && a.title.includes('Extintores Rápidos'));
+      const alert = alerts.find(
+        (a) =>
+          a.sourceType === 'supplier_contract' &&
+          a.title.includes('Extintores Rápidos'),
+      );
 
       expect(alert).toBeDefined();
       expect(alert!.type).toBe('proveedor');
@@ -150,7 +201,11 @@ describe('ResourcesService.listAlerts — vencimiento de proveedores (rol B)', (
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx, 'Jardinería Urgente');
-      await makeContract(fx, supplier.id, new Date(Date.now() + 3 * 24 * 60 * 60 * 1000));
+      await makeContract(
+        fx,
+        supplier.id,
+        new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      );
 
       const alerts = await service.listAlerts(bUser);
       const alert = alerts.find((a) => a.title.includes('Jardinería Urgente'));
@@ -165,10 +220,16 @@ describe('ResourcesService.listAlerts — vencimiento de proveedores (rol B)', (
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx, 'Sin prisa S.A.');
-      await makeContract(fx, supplier.id, new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
+      await makeContract(
+        fx,
+        supplier.id,
+        new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+      );
 
       const alerts = await service.listAlerts(bUser);
-      expect(alerts.find((a) => a.title.includes('Sin prisa S.A.'))).toBeUndefined();
+      expect(
+        alerts.find((a) => a.title.includes('Sin prisa S.A.')),
+      ).toBeUndefined();
     } finally {
       await cleanup(fx);
     }
@@ -178,7 +239,11 @@ describe('ResourcesService.listAlerts — vencimiento de proveedores (rol B)', (
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx, 'Ya Vencido S.L.');
-      await makeContract(fx, supplier.id, new Date(Date.now() - 5 * 24 * 60 * 60 * 1000));
+      await makeContract(
+        fx,
+        supplier.id,
+        new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      );
 
       const alerts = await service.listAlerts(bUser);
       const alert = alerts.find((a) => a.title.includes('Ya Vencido S.L.'));
@@ -193,11 +258,20 @@ describe('ResourcesService.listAlerts — vencimiento de proveedores (rol B)', (
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx, 'Cancelado Ltd');
-      const contract = await makeContract(fx, supplier.id, new Date(Date.now() - 5 * 24 * 60 * 60 * 1000));
-      await prisma.supplierContract.update({ where: { id: contract.id }, data: { cancelledAt: new Date() } });
+      const contract = await makeContract(
+        fx,
+        supplier.id,
+        new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      );
+      await prisma.supplierContract.update({
+        where: { id: contract.id },
+        data: { cancelledAt: new Date() },
+      });
 
       const alerts = await service.listAlerts(bUser);
-      expect(alerts.find((a) => a.title.includes('Cancelado Ltd'))).toBeUndefined();
+      expect(
+        alerts.find((a) => a.title.includes('Cancelado Ltd')),
+      ).toBeUndefined();
     } finally {
       await cleanup(fx);
     }
@@ -207,10 +281,18 @@ describe('ResourcesService.listAlerts — vencimiento de proveedores (rol B)', (
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx, 'Con Seguro Próximo');
-      await makeDocument(fx, supplier.id, new Date(Date.now() + 15 * 24 * 60 * 60 * 1000));
+      await makeDocument(
+        fx,
+        supplier.id,
+        new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      );
 
       const alerts = await service.listAlerts(bUser);
-      const alert = alerts.find((a) => a.sourceType === 'supplier_contract' && a.title.includes('Con Seguro Próximo'));
+      const alert = alerts.find(
+        (a) =>
+          a.sourceType === 'supplier_contract' &&
+          a.title.includes('Con Seguro Próximo'),
+      );
       expect(alert).toBeDefined();
       expect(alert!.description).toBe('Seguro RC');
     } finally {
@@ -222,10 +304,16 @@ describe('ResourcesService.listAlerts — vencimiento de proveedores (rol B)', (
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx, 'Nunca Visible SL');
-      await makeContract(fx, supplier.id, new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+      await makeContract(
+        fx,
+        supplier.id,
+        new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      );
 
       const alerts = await service.listAlerts(cUser);
-      expect(alerts.find((a) => a.sourceType === 'supplier_contract')).toBeUndefined();
+      expect(
+        alerts.find((a) => a.sourceType === 'supplier_contract'),
+      ).toBeUndefined();
     } finally {
       await cleanup(fx);
     }

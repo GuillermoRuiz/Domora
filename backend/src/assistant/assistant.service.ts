@@ -169,7 +169,9 @@ export class AssistantService {
     this.storage.assertDocumentKey(document.s3Key, document.estateId);
     const content = await this.storage.get(document.s3Key);
     if (content.length > StorageService.MAX_SIZE_BYTES) {
-      throw new BadRequestException('El fichero supera el tamaño máximo de 10 MB.');
+      throw new BadRequestException(
+        'El fichero supera el tamaño máximo de 10 MB.',
+      );
     }
     if (!content.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
       throw new BadRequestException('El RAG solo acepta ficheros PDF.');

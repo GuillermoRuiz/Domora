@@ -157,7 +157,10 @@ export class CommunicationAttachmentsController {
 
   @Post()
   @UseInterceptors(
-    FileInterceptor('file', { defParamCharset: 'utf8', limits: { fileSize: StorageService.MAX_SIZE_BYTES } }),
+    FileInterceptor('file', {
+      defParamCharset: 'utf8',
+      limits: { fileSize: StorageService.MAX_SIZE_BYTES },
+    }),
   )
   async upload(
     @Param('id') id: string,
@@ -166,9 +169,16 @@ export class CommunicationAttachmentsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     if (!file) {
-      throw new NotFoundException('No se recibió ningún fichero (campo "file").');
+      throw new NotFoundException(
+        'No se recibió ningún fichero (campo "file").',
+      );
     }
-    return this.resourcesService.uploadCommunicationAttachment(id, file, dto.title, user);
+    return this.resourcesService.uploadCommunicationAttachment(
+      id,
+      file,
+      dto.title,
+      user,
+    );
   }
 
   @Get(':attachmentId/file')
@@ -178,12 +188,16 @@ export class CommunicationAttachmentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    const { title, content } = await this.resourcesService.downloadCommunicationAttachment(
-      id,
-      attachmentId,
-      user,
+    const { title, content } =
+      await this.resourcesService.downloadCommunicationAttachment(
+        id,
+        attachmentId,
+        user,
+      );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(title)}"`,
     );
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(title)}"`);
     res.send(content);
   }
 }
@@ -237,10 +251,7 @@ export class AlertsController {
   constructor(private readonly resourcesService: ResourcesService) {}
 
   @Get()
-  list(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('limit') limit?: string,
-  ) {
+  list(@CurrentUser() user: AuthenticatedUser, @Query('limit') limit?: string) {
     const parsed = limit ? Number(limit) : undefined;
     const safeLimit =
       parsed && Number.isInteger(parsed) && parsed > 0

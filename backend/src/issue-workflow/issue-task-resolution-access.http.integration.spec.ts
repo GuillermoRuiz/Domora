@@ -161,7 +161,11 @@ describe('POST /issues/:id/tasks/:taskId/resolution', () => {
     const { issueId, taskId } = await createIssue(T1);
     const res = await resolveVia(issueId, taskId, T1.token);
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ id: taskId, status: 'COMPLETADA', outcome: 'done' });
+    expect(res.body).toMatchObject({
+      id: taskId,
+      status: 'COMPLETADA',
+      outcome: 'done',
+    });
   });
 
   it('A (soporte, sin agenda) también, con sesión de soporte del despacho, y pasa por la misma lógica: se rechaza si deja la incidencia sin siguiente paso', async () => {
@@ -177,16 +181,32 @@ describe('POST /issues/:id/tasks/:taskId/resolution', () => {
     const session = await request(app.getHttpServer())
       .post(`${API}/support-sessions`)
       .set(auth(supportToken))
-      .send({ administratorId: T1.administratorId, reason: 'Ayuda con una incidencia', ticketRef: 'SOP-2' })
+      .send({
+        administratorId: T1.administratorId,
+        reason: 'Ayuda con una incidencia',
+        ticketRef: 'SOP-2',
+      })
       .expect(201);
     // ...pero con ella, la decisión de la incidencia sí.
     const withSession = { [SUPPORT_SESSION_HEADER]: session.body.id as string };
-    const rejected = await resolveVia(issueId, taskId, supportToken, {
-      result: { decision: 'done' },
-    }, withSession);
+    const rejected = await resolveVia(
+      issueId,
+      taskId,
+      supportToken,
+      {
+        result: { decision: 'done' },
+      },
+      withSession,
+    );
     expect(rejected.status).toBe(409);
     expect(rejected.body.code).toBe('ISSUE_NO_NEXT_STEP');
-    const ok = await resolveVia(issueId, taskId, supportToken, followUp(), withSession);
+    const ok = await resolveVia(
+      issueId,
+      taskId,
+      supportToken,
+      followUp(),
+      withSession,
+    );
     expect(ok.status).toBe(201);
     expect(ok.body.status).toBe('COMPLETADA');
     const audit = await prisma.issueTimelineEntry.findMany({
@@ -200,7 +220,8 @@ describe('POST /issues/:id/tasks/:taskId/resolution', () => {
     const res = await resolveVia(issueId, taskId, ownerToken);
     expect(res.status).toBe(403);
     expect(
-      (await prisma.agendaTask.findUniqueOrThrow({ where: { id: taskId } })).status,
+      (await prisma.agendaTask.findUniqueOrThrow({ where: { id: taskId } }))
+        .status,
     ).toBe('PENDIENTE');
   });
 
@@ -209,7 +230,8 @@ describe('POST /issues/:id/tasks/:taskId/resolution', () => {
     const cross = await resolveVia(issueId, taskId, T2.token);
     expect(cross.status).toBe(403);
     expect(
-      (await prisma.agendaTask.findUniqueOrThrow({ where: { id: taskId } })).status,
+      (await prisma.agendaTask.findUniqueOrThrow({ where: { id: taskId } }))
+        .status,
     ).toBe('PENDIENTE');
   });
 
@@ -240,7 +262,8 @@ describe('PATCH /agenda/tasks/:id/status en una revisión de incidencia', () => 
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('REVIEW_NEEDS_NEXT_STEP');
     expect(
-      (await prisma.agendaTask.findUniqueOrThrow({ where: { id: taskId } })).status,
+      (await prisma.agendaTask.findUniqueOrThrow({ where: { id: taskId } }))
+        .status,
     ).toBe('PENDIENTE');
   });
 
@@ -266,6 +289,10 @@ describe('PATCH /agenda/tasks/:id/status en una revisión de incidencia', () => 
       .set(auth(T1.token))
       .send({ result: { decision: 'next_step_exists' } });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ id: taskId, status: 'COMPLETADA', outcome: 'done' });
+    expect(res.body).toMatchObject({
+      id: taskId,
+      status: 'COMPLETADA',
+      outcome: 'done',
+    });
   });
 });

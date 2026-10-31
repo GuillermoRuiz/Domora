@@ -711,21 +711,34 @@ describe('comunidades: ser de la misma gestora NO basta cuando el acceso a la co
     ]);
     const issue = created.links.find((l) => l.type === 'issue');
     expect(issue?.label).toMatch(/^INC-.* · Avería ascensor$/);
-    expect(issue?.route).toBe(
-      `/b/incidencias/${A.issueId}`,
-    );
+    expect(issue?.route).toBe(`/b/incidencias/${A.issueId}`);
   });
 
   it('el vínculo con la incidencia de la que nace una tarea no se puede quitar, aunque se pidan otros vínculos', async () => {
-    const created = await tasks.create(dto({ links: [{ type: 'issue', id: A.issueId }] }), A.user);
+    const created = await tasks.create(
+      dto({ links: [{ type: 'issue', id: A.issueId }] }),
+      A.user,
+    );
     // Como las tareas que abre Domora: nacen de una incidencia (`issueId`).
-    await prisma.agendaTask.update({ where: { id: created.id }, data: { issueId: A.issueId } });
+    await prisma.agendaTask.update({
+      where: { id: created.id },
+      data: { issueId: A.issueId },
+    });
 
     const emptied = await tasks.update(created.id, { links: [] }, A.user);
-    expect(emptied.links.map((l) => `${l.type}:${l.id}`)).toEqual([`issue:${A.issueId}`]);
+    expect(emptied.links.map((l) => `${l.type}:${l.id}`)).toEqual([
+      `issue:${A.issueId}`,
+    ]);
 
-    const swapped = await tasks.update(created.id, { links: [{ type: 'supplier', id: A.supplierId }] }, A.user);
-    expect(swapped.links.map((l) => l.type).sort()).toEqual(['issue', 'supplier']);
+    const swapped = await tasks.update(
+      created.id,
+      { links: [{ type: 'supplier', id: A.supplierId }] },
+      A.user,
+    );
+    expect(swapped.links.map((l) => l.type).sort()).toEqual([
+      'issue',
+      'supplier',
+    ]);
   });
 });
 
@@ -1390,7 +1403,10 @@ describe('recurrencia', () => {
         madrid('2026-03-23T09:00:00.000Z', '2026-03-23T10:00:00.000Z'),
         A.user,
       );
-      for (const iso of ['2026-03-23T09:00:00.000Z', '2026-03-30T08:00:00.000Z'])
+      for (const iso of [
+        '2026-03-23T09:00:00.000Z',
+        '2026-03-30T08:00:00.000Z',
+      ])
         await tasks.updateStatus(
           created.id,
           { status: 'COMPLETADA', occurrenceStart: iso },
@@ -1454,7 +1470,9 @@ describe('recurrencia', () => {
         A.user,
         range('2026-10-13T00:00:00.000Z', '2026-10-14T00:00:00.000Z'),
       );
-      expect(slots(items)).toEqual([['2026-10-13T09:00:00.000Z', 'COMPLETADA']]);
+      expect(slots(items)).toEqual([
+        ['2026-10-13T09:00:00.000Z', 'COMPLETADA'],
+      ]);
     });
 
     it('una resolución anterior a la columna (sin fin guardado) se congela con la duración previa al editar', async () => {
@@ -2348,7 +2366,11 @@ describe('base de datos: restricciones y cascadas reales', () => {
         } as never,
       });
     await mk('Incidencia futura', { source: 'issue', sourceRef: randomUUID() });
-    await mk('Incidencia futura hecha', { source: 'issue', sourceRef: randomUUID(), status: 'COMPLETADA' });
+    await mk('Incidencia futura hecha', {
+      source: 'issue',
+      sourceRef: randomUUID(),
+      status: 'COMPLETADA',
+    });
     await mk('Manual futura', {});
 
     const titles = (await listItems(A.user, WEEK)).map((t) => t.title);
@@ -2707,36 +2729,60 @@ describe('KPI y listas coinciden con los datos reales', () => {
 
 // ═══════════════════════════════════════════════════════════════════════════
 describe('vínculos huérfanos: nunca se omiten en silencio', () => {
-  const linked = async (links: { type: 'issue' | 'meeting' | 'supplier' | 'document'; id: string }[]) =>
-    tasks.create(dto({ title: 'con vínculos', links }), A.user);
+  const linked = async (
+    links: {
+      type: 'issue' | 'meeting' | 'supplier' | 'document';
+      id: string;
+    }[],
+  ) => tasks.create(dto({ title: 'con vínculos', links }), A.user);
 
   it('guarda el título al vincular y lo muestra con la entidad viva', async () => {
     const created = await linked([{ type: 'supplier', id: A.supplierId }]);
-    const stored = await prisma.agendaTaskLink.findFirstOrThrow({ where: { taskId: created.id } });
+    const stored = await prisma.agendaTaskLink.findFirstOrThrow({
+      where: { taskId: created.id },
+    });
     expect(stored.label).toBeTruthy();
     const detail = await tasks.getById(created.id, A.user);
     expect(detail.links).toHaveLength(1);
-    expect(detail.links[0]).toMatchObject({ type: 'supplier', id: A.supplierId, label: stored.label });
+    expect(detail.links[0]).toMatchObject({
+      type: 'supplier',
+      id: A.supplierId,
+      label: stored.label,
+    });
     expect(detail.links[0].deleted).toBe(false);
   });
 
   it('entidad eliminada: el vínculo sigue en la tarea, marcado, con el título que tenía; el endpoint no se rompe', async () => {
     const created = await linked([{ type: 'supplier', id: A.supplierId }]);
-    const { label } = await prisma.agendaTaskLink.findFirstOrThrow({ where: { taskId: created.id } });
-    await prisma.supplier.delete({ where: { id: A.supplierId } }).catch(async () => {
-      // Con dependencias, la baja física no procede en este fixture: se simula la desaparición de la entidad.
-      await prisma.$executeRaw`UPDATE agenda_task_links SET entity_id = ${randomUUID()}::uuid WHERE task_id = ${created.id}::uuid`;
+    const { label } = await prisma.agendaTaskLink.findFirstOrThrow({
+      where: { taskId: created.id },
     });
+    await prisma.supplier
+      .delete({ where: { id: A.supplierId } })
+      .catch(async () => {
+        // Con dependencias, la baja física no procede en este fixture: se simula la desaparición de la entidad.
+        await prisma.$executeRaw`UPDATE agenda_task_links SET entity_id = ${randomUUID()}::uuid WHERE task_id = ${created.id}::uuid`;
+      });
     const detail = await tasks.getById(created.id, A.user);
     expect(detail.links).toHaveLength(1);
-    expect(detail.links[0]).toMatchObject({ type: 'supplier', deleted: true, label, route: '' });
-    A.supplierId = (await createSupplier(prisma, A.estateId, A.administratorId));
+    expect(detail.links[0]).toMatchObject({
+      type: 'supplier',
+      deleted: true,
+      label,
+      route: '',
+    });
+    A.supplierId = await createSupplier(prisma, A.estateId, A.administratorId);
   });
 
   it('incidencia en la papelera: se muestra como eliminada con su referencia y título (no desaparece)', async () => {
     const created = await linked([{ type: 'issue', id: A.issueId }]);
-    const issue = await prisma.issue.findUniqueOrThrow({ where: { id: A.issueId } });
-    await prisma.issue.update({ where: { id: A.issueId }, data: { deletedAt: new Date() } });
+    const issue = await prisma.issue.findUniqueOrThrow({
+      where: { id: A.issueId },
+    });
+    await prisma.issue.update({
+      where: { id: A.issueId },
+      data: { deletedAt: new Date() },
+    });
     const detail = await tasks.getById(created.id, A.user);
     expect(detail.links).toHaveLength(1);
     expect(detail.links[0]).toMatchObject({
@@ -2744,20 +2790,28 @@ describe('vínculos huérfanos: nunca se omiten en silencio', () => {
       deleted: true,
       label: `${issue.ref} · ${issue.title}`,
     });
-    await prisma.issue.update({ where: { id: A.issueId }, data: { deletedAt: null } });
+    await prisma.issue.update({
+      where: { id: A.issueId },
+      data: { deletedAt: null },
+    });
   });
 
   it('vínculo anterior a la columna (sin título) cuya entidad falta: «Entidad eliminada»', async () => {
     const created = await linked([{ type: 'meeting', id: A.meetingId }]);
     await prisma.$executeRaw`UPDATE agenda_task_links SET label = NULL, entity_id = ${randomUUID()}::uuid WHERE task_id = ${created.id}::uuid`;
     const detail = await tasks.getById(created.id, A.user);
-    expect(detail.links[0]).toMatchObject({ deleted: true, label: 'Entidad eliminada' });
+    expect(detail.links[0]).toMatchObject({
+      deleted: true,
+      label: 'Entidad eliminada',
+    });
   });
 
   it('una entidad de OTRA gestora no se revela: ni su título ni que existe', async () => {
     const created = await linked([{ type: 'issue', id: A.issueId }]);
     // La tarea de A se «lee» con un usuario de B: ni siquiera la ve (404), y su vínculo no se filtra.
-    await expect(tasks.getById(created.id, B.user)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(tasks.getById(created.id, B.user)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
     // Y un vínculo cuya incidencia cae fuera de las fincas del lector tampoco se muestra.
     const detail = await tasks.getById(created.id, A.restricted);
     expect(detail.links.map((l) => l.id)).toEqual([A.issueId]); // restringido a la 1.ª comunidad: la incidencia es de ella

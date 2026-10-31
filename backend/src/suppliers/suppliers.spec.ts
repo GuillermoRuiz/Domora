@@ -20,7 +20,11 @@ const estateAccess = new EstateAccessService();
 // StorageService real (disco local bajo backend/storage) — mismo criterio
 // que el resto de specs de ficheros del proyecto, sin mockear I/O.
 const storage = new StorageService({ get: () => undefined } as any);
-const service = new SuppliersService(prisma as unknown as PrismaService, estateAccess, storage);
+const service = new SuppliersService(
+  prisma as unknown as PrismaService,
+  estateAccess,
+  storage,
+);
 
 const ROLE_B = (id: string, estateIds: string[]): AuthenticatedUser => ({
   id,
@@ -58,7 +62,10 @@ function emptyFixture(): Fixture {
   };
 }
 
-async function makeSupplier(fixture: Fixture, overrides: Partial<{ name: string; category: string }> = {}) {
+async function makeSupplier(
+  fixture: Fixture,
+  overrides: Partial<{ name: string; category: string }> = {},
+) {
   const s = await prisma.supplier.create({
     data: {
       estateId,
@@ -93,25 +100,37 @@ async function makeContract(
 
 async function cleanup(fixture: Fixture): Promise<void> {
   if (fixture.assignmentIds.length) {
-    await prisma.issueProviderAssignment.deleteMany({ where: { id: { in: fixture.assignmentIds } } });
+    await prisma.issueProviderAssignment.deleteMany({
+      where: { id: { in: fixture.assignmentIds } },
+    });
   }
   if (fixture.issueIds.length) {
     await prisma.issue.deleteMany({ where: { id: { in: fixture.issueIds } } });
   }
   if (fixture.propertyIds.length) {
-    await prisma.property.deleteMany({ where: { id: { in: fixture.propertyIds } } });
+    await prisma.property.deleteMany({
+      where: { id: { in: fixture.propertyIds } },
+    });
   }
   if (fixture.documentIds.length) {
-    await prisma.supplierDocument.deleteMany({ where: { id: { in: fixture.documentIds } } });
+    await prisma.supplierDocument.deleteMany({
+      where: { id: { in: fixture.documentIds } },
+    });
   }
   if (fixture.contractIds.length) {
-    await prisma.supplierContract.deleteMany({ where: { id: { in: fixture.contractIds } } });
+    await prisma.supplierContract.deleteMany({
+      where: { id: { in: fixture.contractIds } },
+    });
   }
   if (fixture.invoiceIds.length) {
-    await prisma.supplierInvoice.deleteMany({ where: { id: { in: fixture.invoiceIds } } });
+    await prisma.supplierInvoice.deleteMany({
+      where: { id: { in: fixture.invoiceIds } },
+    });
   }
   if (fixture.supplierIds.length) {
-    await prisma.supplier.deleteMany({ where: { id: { in: fixture.supplierIds } } });
+    await prisma.supplier.deleteMany({
+      where: { id: { in: fixture.supplierIds } },
+    });
   }
 }
 
@@ -163,7 +182,11 @@ describe('SuppliersService — Supplier CRUD', () => {
   it('crea un proveedor con status "Activo" por defecto', async () => {
     const fx = emptyFixture();
     try {
-      const created = await service.createSupplier(estateId, { name: 'Limpiezas ABC', category: 'Limpieza' } as any, user);
+      const created = await service.createSupplier(
+        estateId,
+        { name: 'Limpiezas ABC', category: 'Limpieza' } as any,
+        user,
+      );
       fx.supplierIds.push(created.id);
       expect(created.status).toBe('Activo');
       expect(created.excludedFrom347).toBe(false);
@@ -175,10 +198,19 @@ describe('SuppliersService — Supplier CRUD', () => {
   it('suministros y seguros quedan fuera del 347 por defecto (art. 33.5 RGAT), y se puede cambiar', async () => {
     const fx = emptyFixture();
     try {
-      const luz = await service.createSupplier(estateId, { name: 'Eléctrica', category: 'Suministros' } as any, user);
+      const luz = await service.createSupplier(
+        estateId,
+        { name: 'Eléctrica', category: 'Suministros' } as any,
+        user,
+      );
       fx.supplierIds.push(luz.id);
       expect(luz.excludedFrom347).toBe(true);
-      const updated = await service.updateSupplier(estateId, luz.id, { excludedFrom347: false } as any, user);
+      const updated = await service.updateSupplier(
+        estateId,
+        luz.id,
+        { excludedFrom347: false } as any,
+        user,
+      );
       expect(updated.excludedFrom347).toBe(false);
     } finally {
       await cleanup(fx);
@@ -189,7 +221,12 @@ describe('SuppliersService — Supplier CRUD', () => {
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx, { name: 'Nombre con Erratta' });
-      const updated = await service.updateSupplier(estateId, supplier.id, { name: 'Nombre Correcto' } as any, user);
+      const updated = await service.updateSupplier(
+        estateId,
+        supplier.id,
+        { name: 'Nombre Correcto' } as any,
+        user,
+      );
       expect(updated.name).toBe('Nombre Correcto');
       expect(updated.category).toBe(supplier.category);
     } finally {
@@ -201,9 +238,16 @@ describe('SuppliersService — Supplier CRUD', () => {
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx);
-      const updated = await service.updateSupplier(estateId, supplier.id, { status: 'Baja' } as any, user);
+      const updated = await service.updateSupplier(
+        estateId,
+        supplier.id,
+        { status: 'Baja' } as any,
+        user,
+      );
       expect(updated.status).toBe('Baja');
-      const stillThere = await prisma.supplier.findUnique({ where: { id: supplier.id } });
+      const stillThere = await prisma.supplier.findUnique({
+        where: { id: supplier.id },
+      });
       expect(stillThere).not.toBeNull();
     } finally {
       await cleanup(fx);
@@ -215,7 +259,9 @@ describe('SuppliersService — Supplier CRUD', () => {
     try {
       const soon = await makeSupplier(fx, { name: 'Con contrato por vencer' });
       const ok = await makeSupplier(fx, { name: 'Sin nada por vencer' });
-      await makeContract(fx, soon.id, { endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000) });
+      await makeContract(fx, soon.id, {
+        endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      });
 
       const rows = await service.listSuppliers(estateId, user);
       expect(rows.find((r) => r.id === soon.id)!.hasExpiringSoon).toBe(true);
@@ -227,7 +273,9 @@ describe('SuppliersService — Supplier CRUD', () => {
 
   it('deniega el acceso a una finca fuera del scope del usuario', async () => {
     const outsider = ROLE_B(bUserId, ['00000000-0000-0000-0000-000000000000']);
-    await expect(service.listSuppliers(estateId, outsider)).rejects.toThrow(ForbiddenException);
+    await expect(service.listSuppliers(estateId, outsider)).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 });
 
@@ -236,24 +284,35 @@ describe('SuppliersService — Supplier CRUD', () => {
 
 describe('SuppliersService — estado derivado del contrato', () => {
   it('sin endDate: siempre "Activo"', () => {
-    expect(service.deriveContractStatus({ endDate: null, cancelledAt: null })).toBe('Activo');
+    expect(
+      service.deriveContractStatus({ endDate: null, cancelledAt: null }),
+    ).toBe('Activo');
   });
 
   it('endDate lejana: "Activo"', () => {
     expect(
-      service.deriveContractStatus({ endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), cancelledAt: null }),
+      service.deriveContractStatus({
+        endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        cancelledAt: null,
+      }),
     ).toBe('Activo');
   });
 
   it('endDate dentro de 30 días: "PorVencer"', () => {
     expect(
-      service.deriveContractStatus({ endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), cancelledAt: null }),
+      service.deriveContractStatus({
+        endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+        cancelledAt: null,
+      }),
     ).toBe('PorVencer');
   });
 
   it('endDate en el pasado: "Vencido"', () => {
     expect(
-      service.deriveContractStatus({ endDate: new Date(Date.now() - 24 * 60 * 60 * 1000), cancelledAt: null }),
+      service.deriveContractStatus({
+        endDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        cancelledAt: null,
+      }),
     ).toBe('Vencido');
   });
 
@@ -273,11 +332,17 @@ describe('SuppliersService — estado derivado del contrato', () => {
       const contract = await service.createSupplierContract(
         estateId,
         supplier.id,
-        { serviceType: 'Extintores', startDate: '2026-01-01', renewalType: 'manual' } as any,
+        {
+          serviceType: 'Extintores',
+          startDate: '2026-01-01',
+          renewalType: 'manual',
+        } as any,
         user,
       );
       fx.contractIds.push(contract.id);
-      const raw = await prisma.supplierContract.findUnique({ where: { id: contract.id } });
+      const raw = await prisma.supplierContract.findUnique({
+        where: { id: contract.id },
+      });
       expect(raw).not.toHaveProperty('status');
       expect(contract).toHaveProperty('status');
     } finally {
@@ -294,12 +359,21 @@ describe('SuppliersService — SupplierContract CRUD', () => {
       const created = await service.createSupplierContract(
         estateId,
         supplier.id,
-        { serviceType: 'Ascensores', startDate: '2026-01-01', endDate: '2026-12-31', renewalType: 'tacita' } as any,
+        {
+          serviceType: 'Ascensores',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          renewalType: 'tacita',
+        } as any,
         user,
       );
       fx.contractIds.push(created.id);
 
-      const list = await service.listSupplierContracts(estateId, supplier.id, user);
+      const list = await service.listSupplierContracts(
+        estateId,
+        supplier.id,
+        user,
+      );
       expect(list).toHaveLength(1);
       expect(list[0].id).toBe(created.id);
       expect(list[0].status).toBeDefined();
@@ -312,11 +386,18 @@ describe('SuppliersService — SupplierContract CRUD', () => {
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx);
-      const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+      const day = (offset: number) =>
+        new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
       const create = async (endDate: string | null, serviceType: string) => {
         const c = await service.createSupplierContract(
-          estateId, supplier.id,
-          { serviceType, startDate: '2020-01-01', ...(endDate ? { endDate } : {}), renewalType: 'manual' } as any,
+          estateId,
+          supplier.id,
+          {
+            serviceType,
+            startDate: '2020-01-01',
+            ...(endDate ? { endDate } : {}),
+            renewalType: 'manual',
+          } as any,
           user,
         );
         fx.contractIds.push(c.id);
@@ -327,13 +408,28 @@ describe('SuppliersService — SupplierContract CRUD', () => {
       const expired = await create(day(-5), 'Caducado');
       const open = await create(null, 'Indefinido');
       const cancelled = await create(day(20), 'Cancelado');
-      await service.cancelSupplierContract(estateId, supplier.id, cancelled.id, { reason: 'x' } as any, user);
+      await service.cancelSupplierContract(
+        estateId,
+        supplier.id,
+        cancelled.id,
+        { reason: 'x' } as any,
+        user,
+      );
 
       const out = await service.listEstateContracts(estateId, user);
       const mine = out.filter((c) => fx.contractIds.includes(c.id));
-      expect(mine.map((c) => c.serviceType)).toEqual(['Caducado', 'Próximo', 'Lejano', 'Indefinido', 'Cancelado']);
+      expect(mine.map((c) => c.serviceType)).toEqual([
+        'Caducado',
+        'Próximo',
+        'Lejano',
+        'Indefinido',
+        'Cancelado',
+      ]);
       const by = (id: string) => mine.find((c) => c.id === id)!;
-      expect(by(expired.id)).toMatchObject({ status: 'Vencido', supplier: { id: supplier.id, name: supplier.name } });
+      expect(by(expired.id)).toMatchObject({
+        status: 'Vencido',
+        supplier: { id: supplier.id, name: supplier.name },
+      });
       expect(by(expired.id).daysLeft).toBe(-5);
       expect(by(soon.id)).toMatchObject({ status: 'PorVencer', daysLeft: 10 });
       expect(by(far.id)).toMatchObject({ status: 'Activo', daysLeft: 200 });
@@ -345,7 +441,9 @@ describe('SuppliersService — SupplierContract CRUD', () => {
   });
 
   it('listEstateContracts protege el acceso a la finca', async () => {
-    await expect(service.listEstateContracts(estateId, ROLE_B('other-user', []))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.listEstateContracts(estateId, ROLE_B('other-user', [])),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('updateSupplierContract actualiza fechas y recalcula el estado', async () => {
@@ -355,7 +453,12 @@ describe('SuppliersService — SupplierContract CRUD', () => {
       const contract = await service.createSupplierContract(
         estateId,
         supplier.id,
-        { serviceType: 'Extintores', startDate: '2026-01-01', endDate: '2027-01-01', renewalType: 'manual' } as any,
+        {
+          serviceType: 'Extintores',
+          startDate: '2026-01-01',
+          endDate: '2027-01-01',
+          renewalType: 'manual',
+        } as any,
         user,
       );
       fx.contractIds.push(contract.id);
@@ -365,7 +468,9 @@ describe('SuppliersService — SupplierContract CRUD', () => {
         estateId,
         supplier.id,
         contract.id,
-        { endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString() } as any,
+        {
+          endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        } as any,
         user,
       );
       expect(updated.status).toBe('PorVencer');
@@ -381,17 +486,40 @@ describe('SuppliersService — SupplierContract CRUD', () => {
       const contract = await service.createSupplierContract(
         estateId,
         supplier.id,
-        { serviceType: 'Multirriesgo comunidad', startDate: '2026-01-01', renewalType: 'tacita', contractNumber: '0987654321' } as any,
+        {
+          serviceType: 'Multirriesgo comunidad',
+          startDate: '2026-01-01',
+          renewalType: 'tacita',
+          contractNumber: '0987654321',
+        } as any,
         user,
       );
       fx.contractIds.push(contract.id);
       expect(contract.contractNumber).toBe('0987654321');
 
-      const otherField = await service.updateSupplierContract(estateId, supplier.id, contract.id, { notes: 'Cubre daños por agua' } as any, user);
+      const otherField = await service.updateSupplierContract(
+        estateId,
+        supplier.id,
+        contract.id,
+        { notes: 'Cubre daños por agua' } as any,
+        user,
+      );
       expect(otherField.contractNumber).toBe('0987654321');
-      const changed = await service.updateSupplierContract(estateId, supplier.id, contract.id, { contractNumber: 'POL-2' } as any, user);
+      const changed = await service.updateSupplierContract(
+        estateId,
+        supplier.id,
+        contract.id,
+        { contractNumber: 'POL-2' } as any,
+        user,
+      );
       expect(changed.contractNumber).toBe('POL-2');
-      const cleared = await service.updateSupplierContract(estateId, supplier.id, contract.id, { contractNumber: null } as any, user);
+      const cleared = await service.updateSupplierContract(
+        estateId,
+        supplier.id,
+        contract.id,
+        { contractNumber: null } as any,
+        user,
+      );
       expect(cleared.contractNumber).toBeNull();
     } finally {
       await cleanup(fx);
@@ -405,7 +533,11 @@ describe('SuppliersService — SupplierContract CRUD', () => {
       const contract = await service.createSupplierContract(
         estateId,
         supplier.id,
-        { serviceType: 'Jardinería', startDate: '2026-01-01', renewalType: 'manual' } as any,
+        {
+          serviceType: 'Jardinería',
+          startDate: '2026-01-01',
+          renewalType: 'manual',
+        } as any,
         user,
       );
       fx.contractIds.push(contract.id);
@@ -432,7 +564,13 @@ describe('SuppliersService — SupplierContract CRUD', () => {
       const contract = await makeContract(fx, supplierA.id);
 
       await expect(
-        service.updateSupplierContract(estateId, supplierB.id, contract.id, { notes: 'x' } as any, user),
+        service.updateSupplierContract(
+          estateId,
+          supplierB.id,
+          contract.id,
+          { notes: 'x' } as any,
+          user,
+        ),
       ).rejects.toThrow(NotFoundException);
     } finally {
       await cleanup(fx);
@@ -445,22 +583,40 @@ describe('SuppliersService — SupplierDocument', () => {
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx);
-      const file = { originalname: 'seguro-rc.pdf', mimetype: 'application/pdf', size: 100, buffer: Buffer.from('contenido') };
+      const file = {
+        originalname: 'seguro-rc.pdf',
+        mimetype: 'application/pdf',
+        size: 100,
+        buffer: Buffer.from('contenido'),
+      };
 
       const doc = await service.uploadSupplierDocument(
         estateId,
         supplier.id,
-        { title: 'Seguro RC 2026', documentType: 'Seguro', expiresAt: '2026-12-31' },
+        {
+          title: 'Seguro RC 2026',
+          documentType: 'Seguro',
+          expiresAt: '2026-12-31',
+        },
         file,
         user,
       );
       fx.documentIds.push(doc.id);
 
-      const list = await service.listSupplierDocuments(estateId, supplier.id, user);
+      const list = await service.listSupplierDocuments(
+        estateId,
+        supplier.id,
+        user,
+      );
       expect(list).toHaveLength(1);
       expect(list[0].expiresAt?.toISOString().slice(0, 10)).toBe('2026-12-31');
 
-      const downloaded = await service.getSupplierDocumentFileContent(estateId, supplier.id, doc.id, user);
+      const downloaded = await service.getSupplierDocumentFileContent(
+        estateId,
+        supplier.id,
+        doc.id,
+        user,
+      );
       expect(downloaded.content.toString()).toBe('contenido');
       expect(downloaded.fileName).toBe('seguro-rc.pdf');
     } finally {
@@ -475,7 +631,12 @@ describe('SuppliersService — SupplierDocument', () => {
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx);
-      const file = { originalname: 'contrato.pdf', mimetype: 'application/pdf', size: 50, buffer: Buffer.from('x') };
+      const file = {
+        originalname: 'contrato.pdf',
+        mimetype: 'application/pdf',
+        size: 50,
+        buffer: Buffer.from('x'),
+      };
       const doc = await service.uploadSupplierDocument(
         estateId,
         supplier.id,
@@ -486,10 +647,17 @@ describe('SuppliersService — SupplierDocument', () => {
 
       await service.deleteSupplierDocument(estateId, supplier.id, doc.id, user);
 
-      const raw = await prisma.supplierDocument.findUnique({ where: { id: doc.id } });
+      const raw = await prisma.supplierDocument.findUnique({
+        where: { id: doc.id },
+      });
       expect(raw).toBeNull();
       await expect(
-        service.getSupplierDocumentFileContent(estateId, supplier.id, doc.id, user),
+        service.getSupplierDocumentFileContent(
+          estateId,
+          supplier.id,
+          doc.id,
+          user,
+        ),
       ).rejects.toThrow(NotFoundException);
     } finally {
       await cleanup(fx);
@@ -500,7 +668,15 @@ describe('SuppliersService — SupplierDocument', () => {
 describe('SuppliersService — getSupplierPerformance', () => {
   async function makeProperty(fixture: Fixture) {
     const p = await prisma.property.create({
-      data: { estateId, type: 'Piso', status: 'Ocupado', staircase: '1', floor: '1', door: 'A', quotaMonthly: '50.00' },
+      data: {
+        estateId,
+        type: 'Piso',
+        status: 'Ocupado',
+        staircase: '1',
+        floor: '1',
+        door: 'A',
+        quotaMonthly: '50.00',
+      },
     });
     fixture.propertyIds.push(p.id);
     return p;
@@ -548,7 +724,11 @@ describe('SuppliersService — getSupplierPerformance', () => {
       await makeIssueWithAssignment(fx, property.id, supplier.id, 'Resuelta');
       await makeIssueWithAssignment(fx, property.id, supplier.id, 'Cerrada');
 
-      const perf = await service.getSupplierPerformance(estateId, supplier.id, user);
+      const perf = await service.getSupplierPerformance(
+        estateId,
+        supplier.id,
+        user,
+      );
       expect(perf.totalIssuesAssigned).toBe(3);
       expect(perf.resolvedIssues).toBe(2);
       expect(perf.openIssues).toBe(1);
@@ -561,8 +741,16 @@ describe('SuppliersService — getSupplierPerformance', () => {
     const fx = emptyFixture();
     try {
       const supplier = await makeSupplier(fx);
-      const perf = await service.getSupplierPerformance(estateId, supplier.id, user);
-      expect(perf).toEqual({ totalIssuesAssigned: 0, resolvedIssues: 0, openIssues: 0 });
+      const perf = await service.getSupplierPerformance(
+        estateId,
+        supplier.id,
+        user,
+      );
+      expect(perf).toEqual({
+        totalIssuesAssigned: 0,
+        resolvedIssues: 0,
+        openIssues: 0,
+      });
     } finally {
       await cleanup(fx);
     }

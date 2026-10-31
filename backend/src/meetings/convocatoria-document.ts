@@ -36,8 +36,10 @@ export interface ConvocatoriaDocument {
 }
 
 export type ConvocatoriaMeetingType = 'ordinaria' | 'extraordinaria';
-export type ConvocatoriaConvokedBy = 'presidente' | 'cuotas25' | 'propietarios25' | 'mandatoJudicial';
-export type ConvocatoriaSignerRole = 'administrador' | 'presidente' | 'secretario';
+export type ConvocatoriaConvokedBy =
+  'presidente' | 'cuotas25' | 'propietarios25' | 'mandatoJudicial';
+export type ConvocatoriaSignerRole =
+  'administrador' | 'presidente' | 'secretario';
 
 export interface ConvocatoriaInput {
   communityName: string;
@@ -58,9 +60,21 @@ export interface ConvocatoriaInput {
 
 const TIME_ZONE = 'Europe/Madrid';
 
-const DATE_FORMAT = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric', timeZone: TIME_ZONE });
-const TIME_FORMAT = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TIME_ZONE });
-const DAY_KEY_FORMAT = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE });
+const DATE_FORMAT = new Intl.DateTimeFormat('es-ES', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: TIME_ZONE,
+});
+const TIME_FORMAT = new Intl.DateTimeFormat('es-ES', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: TIME_ZONE,
+});
+const DAY_KEY_FORMAT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TIME_ZONE,
+});
 
 /** `14 de septiembre de 2026`, en hora de Madrid. */
 export function formatConvocatoriaDate(date: Date): string {
@@ -98,16 +112,27 @@ export const DEFAULT_CLOSING =
 function agendaLines(agenda: unknown): ConvocatoriaAgendaLine[] {
   if (!Array.isArray(agenda)) return [];
   const titles = agenda
-    .map((item) => (typeof (item as { title?: unknown })?.title === 'string' ? (item as { title: string }).title.trim() : ''))
+    .map((item) =>
+      typeof (item as { title?: unknown })?.title === 'string'
+        ? (item as { title: string }).title.trim()
+        : '',
+    )
     .filter((title) => title.length > 0);
-  return titles.map((text, index) => ({ number: String(index + 1).padStart(2, '0'), text }));
+  return titles.map((text, index) => ({
+    number: String(index + 1).padStart(2, '0'),
+    text,
+  }));
 }
 
 /** Redacta la convocatoria con el texto habitual, a partir de los datos de la junta. */
-export function buildDefaultConvocatoria(input: ConvocatoriaInput): ConvocatoriaDocument {
+export function buildDefaultConvocatoria(
+  input: ConvocatoriaInput,
+): ConvocatoriaDocument {
   const typeLabel = input.type === 'ordinaria' ? 'Ordinaria' : 'Extraordinaria';
   const day1 = formatConvocatoriaDate(input.scheduledAt1);
-  const sameDay = DAY_KEY_FORMAT.format(input.scheduledAt1) === DAY_KEY_FORMAT.format(input.scheduledAt2);
+  const sameDay =
+    DAY_KEY_FORMAT.format(input.scheduledAt1) ===
+    DAY_KEY_FORMAT.format(input.scheduledAt2);
   const second = `${formatConvocatoriaTime(input.scheduledAt2)} horas en segunda${sameDay ? '' : ` del día ${formatConvocatoriaDate(input.scheduledAt2)}`}`;
   const place = input.location?.trim();
   const intro =
@@ -120,14 +145,20 @@ export function buildDefaultConvocatoria(input: ConvocatoriaInput): Convocatoria
   const signerName = input.signerName?.trim();
 
   return {
-    header: { community: input.communityName, title: `Convocatoria Junta General ${typeLabel}` },
+    header: {
+      community: input.communityName,
+      title: `Convocatoria Junta General ${typeLabel}`,
+    },
     notice: DEFAULT_NOTICE,
     issuedLine: town ? `en ${town} a ${issued}` : `a ${issued}`,
     greeting: 'Sr./a. Propietario/a:',
     intro,
     agenda: agendaLines(input.agenda),
     closing: DEFAULT_CLOSING,
-    signature: [SIGNER_LABEL[input.signerRole], ...(signerName ? [signerName] : [])],
+    signature: [
+      SIGNER_LABEL[input.signerRole],
+      ...(signerName ? [signerName] : []),
+    ],
     authorization: {
       enabled: true,
       text:
@@ -140,17 +171,27 @@ export function buildDefaultConvocatoria(input: ConvocatoriaInput): Convocatoria
 }
 
 /** El JSON guardado tiene la forma que `render` necesita (un valor a medias no debe tumbar la descarga). */
-export function isConvocatoriaDocument(value: unknown): value is ConvocatoriaDocument {
+export function isConvocatoriaDocument(
+  value: unknown,
+): value is ConvocatoriaDocument {
   if (!value || typeof value !== 'object') return false;
   const doc = value as Record<string, unknown>;
   const header = doc['header'] as Record<string, unknown> | null | undefined;
-  const authorization = doc['authorization'] as Record<string, unknown> | null | undefined;
+  const authorization = doc['authorization'] as
+    Record<string, unknown> | null | undefined;
   return (
     typeof header?.['community'] === 'string' &&
     typeof header?.['title'] === 'string' &&
-    ['notice', 'issuedLine', 'greeting', 'intro', 'closing'].every((key) => typeof doc[key] === 'string') &&
+    ['notice', 'issuedLine', 'greeting', 'intro', 'closing'].every(
+      (key) => typeof doc[key] === 'string',
+    ) &&
     Array.isArray(doc['agenda']) &&
-    (doc['agenda'] as unknown[]).every((line) => typeof (line as Record<string, unknown> | null)?.['number'] === 'string' && typeof (line as Record<string, unknown>)['text'] === 'string') &&
+    (doc['agenda'] as unknown[]).every(
+      (line) =>
+        typeof (line as Record<string, unknown> | null)?.['number'] ===
+          'string' &&
+        typeof (line as Record<string, unknown>)['text'] === 'string',
+    ) &&
     Array.isArray(doc['signature']) &&
     (doc['signature'] as unknown[]).every((line) => typeof line === 'string') &&
     typeof authorization?.['enabled'] === 'boolean' &&

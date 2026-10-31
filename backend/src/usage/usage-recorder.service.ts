@@ -1,4 +1,11 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+  Optional,
+} from '@nestjs/common';
 import type { UserRole } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -53,7 +60,9 @@ export class UsageRecorder implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() @Inject(USAGE_RECORDER_OPTIONS) options: UsageRecorderOptions = {},
+    @Optional()
+    @Inject(USAGE_RECORDER_OPTIONS)
+    options: UsageRecorderOptions = {},
   ) {
     this.maxEntries = options.maxEntries ?? 10_000;
     this.flushIntervalMs = options.flushIntervalMs ?? 60_000;
@@ -78,11 +87,20 @@ export class UsageRecorder implements OnModuleInit, OnModuleDestroy {
       if (this.buffer.size >= this.maxEntries) {
         if (!this.overflowWarned) {
           this.overflowWarned = true;
-          this.logger.warn(`Usage buffer full (${this.maxEntries} user-days); dropping new ones until the next flush`);
+          this.logger.warn(
+            `Usage buffer full (${this.maxEntries} user-days); dropping new ones until the next flush`,
+          );
         }
         return;
       }
-      entry = { day, userId: hit.userId, role: hit.role, administratorId: hit.administratorId, modules: new Set(), requests: 0 };
+      entry = {
+        day,
+        userId: hit.userId,
+        role: hit.role,
+        administratorId: hit.administratorId,
+        modules: new Set(),
+        requests: 0,
+      };
       this.buffer.set(key, entry);
     }
     entry.modules.add(hit.module);
@@ -103,7 +121,10 @@ export class UsageRecorder implements OnModuleInit, OnModuleDestroy {
         if ((await this.upsert(entry)) > 0) written += 1;
       } catch (error) {
         failed += 1;
-        this.logger.error(`Could not save usage for ${entry.day}`, error as Error);
+        this.logger.error(
+          `Could not save usage for ${entry.day}`,
+          error as Error,
+        );
       }
     }
     return { written, failed };

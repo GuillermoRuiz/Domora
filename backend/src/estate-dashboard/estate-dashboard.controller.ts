@@ -1,4 +1,11 @@
-import { Controller, Get, Param, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -53,7 +60,12 @@ export class EstateDashboardController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('subjects') subjects?: string,
   ) {
-    const types = subjects ? subjects.split(',').map((subject) => subject.trim()).filter(Boolean) : undefined;
+    const types = subjects
+      ? subjects
+          .split(',')
+          .map((subject) => subject.trim())
+          .filter(Boolean)
+      : undefined;
     return this.dashboard.activity(estateId, user, limit, types);
   }
 
@@ -67,7 +79,10 @@ export class EstateDashboardController {
   }
 
   @Get('property-statuses')
-  propertyStatuses(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  propertyStatuses(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.dashboard.propertyStatuses(estateId, user);
   }
 }

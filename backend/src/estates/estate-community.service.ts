@@ -7,7 +7,8 @@ import { issuesOfEstate } from '../issues/issue-estate';
 import { ownerKey } from './estate-overview.service';
 
 /** Cómo están las zonas comunes a ojos del propietario: solo una etiqueta, nunca la lista de instalaciones. */
-export type CommonAreasState = 'sin_datos' | 'buen_estado' | 'en_mantenimiento' | 'requiere_atencion';
+export type CommonAreasState =
+  'sin_datos' | 'buen_estado' | 'en_mantenimiento' | 'requiere_atencion';
 
 export interface CommunitySummary {
   id: string;
@@ -43,7 +44,10 @@ export class EstateCommunityService {
     private readonly estateAccess: EstateAccessService,
   ) {}
 
-  async getSummary(estateId: string, user: AuthenticatedUser): Promise<CommunitySummary> {
+  async getSummary(
+    estateId: string,
+    user: AuthenticatedUser,
+  ): Promise<CommunitySummary> {
     this.estateAccess.assertAccess(estateId, user);
     const estate = await this.prisma.estate.findFirst({
       where: { id: estateId, deletedAt: null },
@@ -65,32 +69,46 @@ export class EstateCommunityService {
 
     // Mismo criterio que el panel de gestión: las propiedades borradas no cuentan.
     const inEstate = { estateId, deletedAt: null };
-    const [memberships, external, activeIssues, assetStates] = await Promise.all([
-      this.prisma.propertyMembership.findMany({
-        where: {
-          roleType: 'Propietario',
-          status: 'linked',
-          revokedAt: null,
-          user: { deletedAt: null },
-          property: inEstate,
-        },
-        select: { userId: true, user: { select: { taxIdCountry: true, taxId: true } } },
-      }),
-      this.prisma.externalOwner.findMany({
-        where: { promotedToUserId: null, property: inEstate },
-        select: { id: true, taxIdCountry: true, taxId: true },
-      }),
-      this.prisma.issue.count({
-        where: { deletedAt: null, status: { in: ACTIVE_ISSUE_STATUSES }, ...issuesOfEstate(estateId) },
-      }),
-      this.prisma.asset.groupBy({ by: ['operationalStatus'], where: { estateId }, _count: { _all: true } }),
-    ]);
+    const [memberships, external, activeIssues, assetStates] =
+      await Promise.all([
+        this.prisma.propertyMembership.findMany({
+          where: {
+            roleType: 'Propietario',
+            status: 'linked',
+            revokedAt: null,
+            user: { deletedAt: null },
+            property: inEstate,
+          },
+          select: {
+            userId: true,
+            user: { select: { taxIdCountry: true, taxId: true } },
+          },
+        }),
+        this.prisma.externalOwner.findMany({
+          where: { promotedToUserId: null, property: inEstate },
+          select: { id: true, taxIdCountry: true, taxId: true },
+        }),
+        this.prisma.issue.count({
+          where: {
+            deletedAt: null,
+            status: { in: ACTIVE_ISSUE_STATUSES },
+            ...issuesOfEstate(estateId),
+          },
+        }),
+        this.prisma.asset.groupBy({
+          by: ['operationalStatus'],
+          where: { estateId },
+          _count: { _all: true },
+        }),
+      ]);
 
     const owners = new Set<string>();
-    for (const m of memberships) owners.add(ownerKey(m.user, `user:${m.userId}`));
+    for (const m of memberships)
+      owners.add(ownerKey(m.user, `user:${m.userId}`));
     for (const o of external) owners.add(ownerKey(o, `external:${o.id}`));
 
-    const has = (status: string) => assetStates.some((a) => a.operationalStatus === status);
+    const has = (status: string) =>
+      assetStates.some((a) => a.operationalStatus === status);
     const commonAreas: CommonAreasState =
       assetStates.length === 0
         ? 'sin_datos'

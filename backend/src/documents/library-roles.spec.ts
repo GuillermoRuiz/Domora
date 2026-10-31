@@ -18,9 +18,18 @@ import { DocumentFilesController } from '../files/files.controller';
 type Handler = (...args: never[]) => unknown;
 const guard = new RolesGuard(new Reflector());
 
-function allows(cls: { prototype: object }, method: string, role: AppRole): boolean {
+function allows(
+  cls: { prototype: object },
+  method: string,
+  role: AppRole,
+): boolean {
   const handler = (cls.prototype as Record<string, Handler>)[method];
-  const user: AuthenticatedUser = { id: 'u1', role, estateIds: ['e1'], administratorId: role === 'C' ? null : 'adm' };
+  const user: AuthenticatedUser = {
+    id: 'u1',
+    role,
+    estateIds: ['e1'],
+    administratorId: role === 'C' ? null : 'adm',
+  };
   const context = {
     switchToHttp: () => ({ getRequest: () => ({ user }) }),
     getHandler: () => handler,
@@ -31,45 +40,102 @@ function allows(cls: { prototype: object }, method: string, role: AppRole): bool
 
 const routeOf = (cls: { prototype: object }, method: string) => {
   const handler = (cls.prototype as Record<string, Handler>)[method];
-  const path = [Reflect.getMetadata(PATH_METADATA, cls) as string, Reflect.getMetadata(PATH_METADATA, handler) as string]
-    .map((part) => part.replace(/^\/+|\/+$/g, '')).filter(Boolean).join('/');
+  const path = [
+    Reflect.getMetadata(PATH_METADATA, cls) as string,
+    Reflect.getMetadata(PATH_METADATA, handler) as string,
+  ]
+    .map((part) => part.replace(/^\/+|\/+$/g, ''))
+    .filter(Boolean)
+    .join('/');
   return `${RequestMethod[Reflect.getMetadata(METHOD_METADATA, handler) as number]} ${path}`;
 };
 
 describe('Mutating document routes answer 403 to an owner (G6)', () => {
   const MUTATING: [{ prototype: object }, string, string][] = [
     [LibraryController, 'upload', 'POST estates/:estateId/documents/upload'],
-    [LibraryController, 'createFolder', 'POST estates/:estateId/library/folders'],
-    [LibraryController, 'updateFolder', 'PATCH estates/:estateId/library/folders/:folderId'],
-    [LibraryController, 'deleteFolder', 'DELETE estates/:estateId/library/folders/:folderId'],
-    [LibraryController, 'updateDocument', 'PATCH estates/:estateId/library/documents/:documentId'],
-    [LibraryController, 'trash', 'DELETE estates/:estateId/library/documents/:documentId'],
-    [LibraryController, 'restore', 'POST estates/:estateId/library/documents/:documentId/restore'],
+    [
+      LibraryController,
+      'createFolder',
+      'POST estates/:estateId/library/folders',
+    ],
+    [
+      LibraryController,
+      'updateFolder',
+      'PATCH estates/:estateId/library/folders/:folderId',
+    ],
+    [
+      LibraryController,
+      'deleteFolder',
+      'DELETE estates/:estateId/library/folders/:folderId',
+    ],
+    [
+      LibraryController,
+      'updateDocument',
+      'PATCH estates/:estateId/library/documents/:documentId',
+    ],
+    [
+      LibraryController,
+      'trash',
+      'DELETE estates/:estateId/library/documents/:documentId',
+    ],
+    [
+      LibraryController,
+      'restore',
+      'POST estates/:estateId/library/documents/:documentId/restore',
+    ],
     [LibraryController, 'review', 'POST estates/:estateId/library/review'],
     [EstateDocumentsController, 'create', 'POST estates/:estateId/documents'],
   ];
 
-  it.each(MUTATING)('%p.%s (%s) rejects role C and admits the manager', (cls, method, route) => {
-    expect(routeOf(cls, method)).toBe(route);
-    expect(allows(cls, method, 'C')).toBe(false);
-    expect(allows(cls, method, 'B')).toBe(true);
-    expect(allows(cls, method, 'A')).toBe(true);
-  });
+  it.each(MUTATING)(
+    '%p.%s (%s) rejects role C and admits the manager',
+    (cls, method, route) => {
+      expect(routeOf(cls, method)).toBe(route);
+      expect(allows(cls, method, 'C')).toBe(false);
+      expect(allows(cls, method, 'B')).toBe(true);
+      expect(allows(cls, method, 'A')).toBe(true);
+    },
+  );
 
   it('every mutating route of the library controller is in the list above', () => {
-    const handlers = Object.getOwnPropertyNames(LibraryController.prototype).filter((name) => {
-      const handler = (LibraryController.prototype as unknown as Record<string, Handler>)[name];
-      return typeof handler === 'function' && Reflect.getMetadata(METHOD_METADATA, handler) !== undefined
-        && Reflect.getMetadata(METHOD_METADATA, handler) !== RequestMethod.GET;
+    const handlers = Object.getOwnPropertyNames(
+      LibraryController.prototype,
+    ).filter((name) => {
+      const handler = (
+        LibraryController.prototype as unknown as Record<string, Handler>
+      )[name];
+      return (
+        typeof handler === 'function' &&
+        Reflect.getMetadata(METHOD_METADATA, handler) !== undefined &&
+        Reflect.getMetadata(METHOD_METADATA, handler) !== RequestMethod.GET
+      );
     });
-    expect(handlers.sort()).toEqual(MUTATING.filter(([cls]) => cls === LibraryController).map(([, m]) => m).sort());
+    expect(handlers.sort()).toEqual(
+      MUTATING.filter(([cls]) => cls === LibraryController)
+        .map(([, m]) => m)
+        .sort(),
+    );
   });
 
   it('the document file controller has no mutating route', () => {
     const verbs = Object.getOwnPropertyNames(DocumentFilesController.prototype)
-      .map((name) => (DocumentFilesController.prototype as unknown as Record<string, Handler>)[name])
-      .filter((handler) => typeof handler === 'function' && Reflect.getMetadata(METHOD_METADATA, handler) !== undefined)
-      .map((handler) => Reflect.getMetadata(METHOD_METADATA, handler) as number);
+      .map(
+        (name) =>
+          (
+            DocumentFilesController.prototype as unknown as Record<
+              string,
+              Handler
+            >
+          )[name],
+      )
+      .filter(
+        (handler) =>
+          typeof handler === 'function' &&
+          Reflect.getMetadata(METHOD_METADATA, handler) !== undefined,
+      )
+      .map(
+        (handler) => Reflect.getMetadata(METHOD_METADATA, handler) as number,
+      );
     expect(verbs).toEqual([RequestMethod.GET]);
   });
 
@@ -85,6 +151,8 @@ describe('Mutating document routes answer 403 to an owner (G6)', () => {
       expect(allows(OwnerDocumentsController, method, 'A')).toBe(false);
     }
     expect(routeOf(OwnerDocumentsController, 'list')).toBe('GET me/documents');
-    expect(routeOf(OwnerDocumentsController, 'markRead')).toBe('POST me/documents/read');
+    expect(routeOf(OwnerDocumentsController, 'markRead')).toBe(
+      'POST me/documents/read',
+    );
   });
 });

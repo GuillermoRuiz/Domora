@@ -16,7 +16,13 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import { IsOptional, IsString, IsUUID, MaxLength, isUUID } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  isUUID,
+} from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from './storage.service';
 import { EstateAccessService } from '../estate-access/estate-access.service';
@@ -38,12 +44,24 @@ type FilePurpose = (typeof FILE_PURPOSES)[number];
  * RFC 6266 / RFC 5987 Content-Disposition: an ASCII fallback for old clients plus the exact
  * UTF-8 name. A title without extension takes the one of the stored file («Póliza» → «Póliza.pdf»).
  */
-export function contentDisposition(title: string, s3Key: string | null): string {
+export function contentDisposition(
+  title: string,
+  s3Key: string | null,
+): string {
   const clean = title.replace(/[\r\n\t]+/g, ' ').trim() || 'documento';
   const keyExtension = /\.([A-Za-z0-9]{1,8})$/.exec(s3Key ?? '')?.[1];
-  const name = /\.[A-Za-z0-9]{1,8}$/.test(clean) || !keyExtension ? clean : `${clean}.${keyExtension.toLowerCase()}`;
-  const ascii = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]|["\\]/g, '_');
-  const encoded = encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  const name =
+    /\.[A-Za-z0-9]{1,8}$/.test(clean) || !keyExtension
+      ? clean
+      : `${clean}.${keyExtension.toLowerCase()}`;
+  const ascii = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7e]|["\\]/g, '_');
+  const encoded = encodeURIComponent(name).replace(
+    /['()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
 
@@ -79,18 +97,27 @@ export class DocumentFilesController {
     @Res() res: Response,
     @Query('purpose') purpose?: string,
   ) {
-    if (!isUUID(id)) throw new BadRequestException('Identificador de documento no válido.');
-    if (purpose !== undefined && !(FILE_PURPOSES as readonly string[]).includes(purpose)) {
-      throw new BadRequestException('Uso del fichero no válido (view o download).');
+    if (!isUUID(id))
+      throw new BadRequestException('Identificador de documento no válido.');
+    if (
+      purpose !== undefined &&
+      !(FILE_PURPOSES as readonly string[]).includes(purpose)
+    ) {
+      throw new BadRequestException(
+        'Uso del fichero no válido (view o download).',
+      );
     }
-    const action: FilePurpose = (purpose as FilePurpose | undefined) ?? 'download';
+    const action: FilePurpose =
+      (purpose as FilePurpose | undefined) ?? 'download';
     const notFound = () => new NotFoundException('Documento no encontrado.');
     const document = await this.prisma.document.findFirst({ where: { id } });
     if (!document || !document.s3Key || !document.estateId) throw notFound();
     // The list of authorized ids follows the library visibility rule (and excludes the trash).
     let authorized: string[];
     try {
-      authorized = (await this.currentAuthorization.resolve(user, document.estateId)).authorized_document_ids;
+      authorized = (
+        await this.currentAuthorization.resolve(user, document.estateId)
+      ).authorized_document_ids;
     } catch (error) {
       // No access to that community: same answer as a document that does not exist.
       if (error instanceof ForbiddenException) throw notFound();
@@ -100,7 +127,8 @@ export class DocumentFilesController {
     if (document.source === 'generated') {
       // Generated documents point at the file of their origin (e.g. the signed acta), never anywhere else.
       const prefix = LibraryService.generatedKeyPrefix(document.sourceRef);
-      if (!prefix || !document.s3Key.startsWith(prefix)) throw new ForbiddenException('Fichero no permitido.');
+      if (!prefix || !document.s3Key.startsWith(prefix))
+        throw new ForbiddenException('Fichero no permitido.');
     } else {
       this.storage.assertDocumentKey(document.s3Key, document.estateId);
     }
@@ -110,17 +138,33 @@ export class DocumentFilesController {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         // Only an authorized user gets here; the storage detail stays in the server log.
-        this.logger.warn(`Document ${document.id}: file ${document.s3Key} is missing from storage.`);
-        throw new NotFoundException('El fichero de este documento no está disponible.');
+        this.logger.warn(
+          `Document ${document.id}: file ${document.s3Key} is missing from storage.`,
+        );
+        throw new NotFoundException(
+          'El fichero de este documento no está disponible.',
+        );
       }
       throw error;
     }
-    await this.audit.logAccess(user, 'document', action, document.id, document.title);
-    res.setHeader('Content-Disposition', contentDisposition(document.title, document.s3Key));
+    await this.audit.logAccess(
+      user,
+      'document',
+      action,
+      document.id,
+      document.title,
+    );
+    res.setHeader(
+      'Content-Disposition',
+      contentDisposition(document.title, document.s3Key),
+    );
     // Documents carry personal data: no browser, proxy or service worker keeps a copy (G11).
     res.setHeader('Cache-Control', 'private, no-store');
     // Real type when known, so the browser can preview PDFs and images; nosniff keeps it from guessing.
-    res.setHeader('Content-Type', documentMime(document) ?? 'application/octet-stream');
+    res.setHeader(
+      'Content-Type',
+      documentMime(document) ?? 'application/octet-stream',
+    );
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(content);
   }
@@ -185,8 +229,13 @@ export class IssuePhotosController {
       );
     }
     // Photos and documents (PDF) can be attached to an issue.
-    if (!file.mimetype.startsWith('image/') && file.mimetype !== 'application/pdf') {
-      throw new BadRequestException('Los adjuntos de una incidencia deben ser imágenes o PDF.');
+    if (
+      !file.mimetype.startsWith('image/') &&
+      file.mimetype !== 'application/pdf'
+    ) {
+      throw new BadRequestException(
+        'Los adjuntos de una incidencia deben ser imágenes o PDF.',
+      );
     }
     this.storage.assertAllowed(file.mimetype, file.size);
     const s3Key = await this.storage.put(
@@ -195,7 +244,14 @@ export class IssuePhotosController {
       file.buffer,
     );
     return this.prisma.issuePhoto.create({
-      data: { issueId, s3Key, url: null, fileName: file.originalname, mimeType: file.mimetype, size: file.size },
+      data: {
+        issueId,
+        s3Key,
+        url: null,
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+      },
     });
   }
 

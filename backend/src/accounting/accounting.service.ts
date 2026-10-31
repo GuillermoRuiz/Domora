@@ -80,7 +80,10 @@ export class AccountingService {
       this.prisma.property.count({ where: { estateId, deletedAt: null } }),
       this.ledgerQuery.estateFigures(estateId, currentYear),
       this.prisma.accountingReceipt.aggregate({
-        where: { estateId, status: { in: ['Pendiente', 'Parcial', 'Devuelto'] } },
+        where: {
+          estateId,
+          status: { in: ['Pendiente', 'Parcial', 'Devuelto'] },
+        },
         _sum: { outstanding: true },
       }),
       this.prisma.budgetItem.aggregate({
@@ -264,7 +267,12 @@ export class AccountingService {
             : (property.externalOwners[0] ?? null);
           const ownerUser = membership?.user ?? null;
 
-          const seq = await this.receiptPosting.nextNumber(tx, estateId, period.id, dto.periodKey);
+          const seq = await this.receiptPosting.nextNumber(
+            tx,
+            estateId,
+            period.id,
+            dto.periodKey,
+          );
           const unitLabel =
             property.ref ??
             [property.staircase, property.floor, property.door]
@@ -296,7 +304,10 @@ export class AccountingService {
           });
           created += 1;
           if (ownerUser) {
-            notifyOwners.push({ ownerUserId: ownerUser.id, propertyId: property.id });
+            notifyOwners.push({
+              ownerUserId: ownerUser.id,
+              propertyId: property.id,
+            });
           }
         }
 
@@ -392,7 +403,12 @@ export class AccountingService {
         create: { estateId, periodKey: dto.periodKey, label, monthAbbrev },
       });
 
-      const seq = await this.receiptPosting.nextNumber(tx, estateId, period.id, `${dto.periodKey}M`);
+      const seq = await this.receiptPosting.nextNumber(
+        tx,
+        estateId,
+        period.id,
+        `${dto.periodKey}M`,
+      );
       const no = `${dto.periodKey.replace('-', '/')}-M${String(seq).padStart(3, '0')}`;
 
       const receipt = await this.receiptPosting.issue(tx, {
@@ -448,7 +464,14 @@ export class AccountingService {
   ) {
     const receipt = await this.prisma.accountingReceipt.findFirst({
       where: { id },
-      select: { id: true, no: true, status: true, estateId: true, propertyId: true, outstanding: true },
+      select: {
+        id: true,
+        no: true,
+        status: true,
+        estateId: true,
+        propertyId: true,
+        outstanding: true,
+      },
     });
     if (!receipt) {
       throw new NotFoundException(`Recibo ${id} no encontrado.`);
@@ -466,7 +489,9 @@ export class AccountingService {
       if (to !== from) {
         if (to === 'Pagada') {
           const method =
-            dto.method && dto.method !== 'Pendiente' && dto.method !== 'Devolucion'
+            dto.method &&
+            dto.method !== 'Pendiente' &&
+            dto.method !== 'Devolucion'
               ? dto.method
               : 'Transferencia';
           await this.collections.collect(tx, {
@@ -496,10 +521,15 @@ export class AccountingService {
               userId: user.id,
             });
           }
-        } else if (to === 'Pendiente' && (from === 'Pagada' || from === 'Parcial')) {
+        } else if (
+          to === 'Pendiente' &&
+          (from === 'Pagada' || from === 'Parcial')
+        ) {
           const [last] = await this.collections.activeCollectionsFor(tx, id);
           if (!last) {
-            throw new BadRequestException(`No se encuentra el cobro del recibo ${receipt.no}.`);
+            throw new BadRequestException(
+              `No se encuentra el cobro del recibo ${receipt.no}.`,
+            );
           }
           await this.assertSingleReceiptCollection(tx, last, id, receipt.no);
           await this.collections.undo(tx, last.id, {
@@ -510,10 +540,17 @@ export class AccountingService {
           // Devuelto sin cobro posterior: lo pendiente no cambia.
           await tx.accountingReceipt.update({
             where: { id },
-            data: { status: 'Pendiente', returnCode: null, returnReason: null, date: new Date() },
+            data: {
+              status: 'Pendiente',
+              returnCode: null,
+              returnReason: null,
+              date: new Date(),
+            },
           });
         } else {
-          throw new BadRequestException(`No se puede pasar un recibo de ${from} a ${to}.`);
+          throw new BadRequestException(
+            `No se puede pasar un recibo de ${from} a ${to}.`,
+          );
         }
       } else {
         // Sin cambio de estado: solo datos de gestión.
@@ -521,8 +558,12 @@ export class AccountingService {
           where: { id },
           data: {
             ...(dto.method ? { method: dto.method } : {}),
-            ...(dto.returnCode !== undefined ? { returnCode: dto.returnCode } : {}),
-            ...(dto.returnReason !== undefined ? { returnReason: dto.returnReason } : {}),
+            ...(dto.returnCode !== undefined
+              ? { returnCode: dto.returnCode }
+              : {}),
+            ...(dto.returnReason !== undefined
+              ? { returnReason: dto.returnReason }
+              : {}),
           },
         });
       }
@@ -536,7 +577,9 @@ export class AccountingService {
    */
   private async assertSingleReceiptCollection(
     tx: Prisma.TransactionClient,
-    collection: Awaited<ReturnType<CollectionPostingService['activeCollectionsFor']>>[number],
+    collection: Awaited<
+      ReturnType<CollectionPostingService['activeCollectionsFor']>
+    >[number],
     receiptId: string,
     receiptNo: string,
   ): Promise<void> {
@@ -558,7 +601,10 @@ export class AccountingService {
     }
     this.estateAccess.assertAccess(receipt.estateId, user);
     return runPosting(this.prisma, (tx) =>
-      this.receiptPosting.cancel(tx, id, { reason, cancelledByUserId: user.id }),
+      this.receiptPosting.cancel(tx, id, {
+        reason,
+        cancelledByUserId: user.id,
+      }),
     );
   }
 

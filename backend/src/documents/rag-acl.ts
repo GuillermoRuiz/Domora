@@ -5,9 +5,13 @@ import type { DocumentVisibility } from '../prisma/client';
  * Retrieval in the RAG service filters by this ACL, so it must never be wider than the library:
  * only «Todos los propietarios» is community-wide; «Junta» and «Solo gestora» stay staff-only.
  */
-export function ragAclFor(doc: { effectiveVisibility: DocumentVisibility; targetPropertyId: string | null }) {
+export function ragAclFor(doc: {
+  effectiveVisibility: DocumentVisibility;
+  targetPropertyId: string | null;
+}) {
   const forOwners = doc.effectiveVisibility === 'OWNERS';
-  const forProperty = doc.effectiveVisibility === 'PROPERTY' && !!doc.targetPropertyId;
+  const forProperty =
+    doc.effectiveVisibility === 'PROPERTY' && !!doc.targetPropertyId;
   return {
     classification: forOwners ? 'community' : 'restricted',
     acl: {

@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import type { SupportSession } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StaffAuditService } from './staff-audit.service';
@@ -29,7 +34,10 @@ export class SupportSessionsService {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  async start(staffUserId: string, input: StartSupportSession): Promise<SupportSession> {
+  async start(
+    staffUserId: string,
+    input: StartSupportSession,
+  ): Promise<SupportSession> {
     const office = await this.prisma.administrator.findFirst({
       where: { id: input.administratorId, deletedAt: null },
       select: { id: true },
@@ -80,7 +88,8 @@ export class SupportSessionsService {
     const session = await this.prisma.supportSession.findFirst({
       where: { id, staffUserId },
     });
-    if (!session) throw new NotFoundException('La sesión de soporte no existe.');
+    if (!session)
+      throw new NotFoundException('La sesión de soporte no existe.');
     const ended = session.endedAt
       ? session
       : await this.prisma.supportSession.update({

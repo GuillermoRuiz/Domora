@@ -31,7 +31,9 @@ describe('StaffAuditService', () => {
     await service.record(entry);
     expect(prisma.staffAuditLog.create).toHaveBeenCalledWith({ data: entry });
 
-    (prisma.staffAuditLog.create as jest.Mock).mockRejectedValueOnce(new Error('db down'));
+    (prisma.staffAuditLog.create as jest.Mock).mockRejectedValueOnce(
+      new Error('db down'),
+    );
     await expect(service.record(entry)).rejects.toThrow('db down');
   });
 
@@ -59,7 +61,12 @@ describe('StaffAuditService', () => {
       take: 20,
     });
     expect(prisma.staffAuditLog.count).toHaveBeenCalledWith({ where });
-    expect(page).toEqual({ items: [{ id: 'r1' }], total: 41, page: 2, pageSize: 20 });
+    expect(page).toEqual({
+      items: [{ id: 'r1' }],
+      total: 41,
+      page: 2,
+      pageSize: 20,
+    });
   });
 
   it('applies no filter when none is given', async () => {

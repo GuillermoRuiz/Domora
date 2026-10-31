@@ -49,17 +49,41 @@ describe('ConvocatoriaDocxService', () => {
   });
 
   it('no falla con un agenda malformado (no-array)', async () => {
-    const buffer = await service.generate(meeting({ agenda: { not: 'an-array' } as unknown as Meeting['agenda'] }));
+    const buffer = await service.generate(
+      meeting({ agenda: { not: 'an-array' } as unknown as Meeting['agenda'] }),
+    );
     expect(buffer.subarray(0, 2).toString('latin1')).toBe('PK');
   });
 
   it('imprime el texto editado por la gestora cuando la junta lo tiene guardado', async () => {
-    const { default: JSZip } = await import('jszip').catch(() => ({ default: null as never }));
-    const doc = { header: { community: 'Mi comunidad', title: 'Convocatoria Junta General Ordinaria' }, notice: 'Aviso propio', issuedLine: 'en Madrid a 1 de enero de 2027', greeting: 'Sr./a. Propietario/a:', intro: 'Texto de convocatoria personalizado.', agenda: [{ number: '01', text: 'Punto único' }], closing: 'Cierre propio.', signature: ['El administrador'], authorization: { enabled: false, text: '' } };
-    const buffer = await service.generate(meeting({ convocatoriaDoc: doc as never }), { name: 'Otra' });
+    const { default: JSZip } = await import('jszip').catch(() => ({
+      default: null as never,
+    }));
+    const doc = {
+      header: {
+        community: 'Mi comunidad',
+        title: 'Convocatoria Junta General Ordinaria',
+      },
+      notice: 'Aviso propio',
+      issuedLine: 'en Madrid a 1 de enero de 2027',
+      greeting: 'Sr./a. Propietario/a:',
+      intro: 'Texto de convocatoria personalizado.',
+      agenda: [{ number: '01', text: 'Punto único' }],
+      closing: 'Cierre propio.',
+      signature: ['El administrador'],
+      authorization: { enabled: false, text: '' },
+    };
+    const buffer = await service.generate(
+      meeting({ convocatoriaDoc: doc as never }),
+      { name: 'Otra' },
+    );
     expect(buffer.subarray(0, 2).toString('latin1')).toBe('PK');
     if (JSZip) {
-      const xml = await (await JSZip.loadAsync(buffer)).file('word/document.xml')!.async('string');
+      const xml = await (
+        await JSZip.loadAsync(buffer)
+      )
+        .file('word/document.xml')!
+        .async('string');
       expect(xml).toContain('Texto de convocatoria personalizado.');
       expect(xml).toContain('Mi comunidad');
       expect(xml).not.toContain('Aprobación de cuentas');
@@ -67,31 +91,70 @@ describe('ConvocatoriaDocxService', () => {
   });
 
   it('un texto guardado incompleto no tumba la descarga: se redacta el habitual', async () => {
-    const broken = { header: { community: 'X', title: 'Y' }, intro: 'Solo esto' };
-    const resolved = service.resolveDocument(meeting({ convocatoriaDoc: broken as never }), { name: 'CDAD' });
+    const broken = {
+      header: { community: 'X', title: 'Y' },
+      intro: 'Solo esto',
+    };
+    const resolved = service.resolveDocument(
+      meeting({ convocatoriaDoc: broken as never }),
+      { name: 'CDAD' },
+    );
     expect(resolved.header.community).toBe('CDAD');
-    const buffer = await service.generate(meeting({ convocatoriaDoc: broken as never }), { name: 'CDAD' });
+    const buffer = await service.generate(
+      meeting({ convocatoriaDoc: broken as never }),
+      { name: 'CDAD' },
+    );
     expect(buffer.subarray(0, 2).toString('latin1')).toBe('PK');
   });
 
   it('sin texto guardado redacta el habitual con los datos de la junta y de la finca', async () => {
-    const resolved = service.resolveDocument(meeting(), { name: 'CDAD PROP EJEMPLO', location: 'Madrid' });
+    const resolved = service.resolveDocument(meeting(), {
+      name: 'CDAD PROP EJEMPLO',
+      location: 'Madrid',
+    });
     expect(resolved.header.community).toBe('CDAD PROP EJEMPLO');
-    expect(resolved.agenda.map((line) => line.text)).toEqual(['Aprobación de cuentas', 'Renovación de la piscina']);
+    expect(resolved.agenda.map((line) => line.text)).toEqual([
+      'Aprobación de cuentas',
+      'Renovación de la piscina',
+    ]);
     expect(resolved.intro).toContain('Calle Ejemplo 1, Madrid');
   });
 
   describe('autorización para delegar el voto', () => {
-    const base = { header: { community: 'Mi comunidad', title: 'Convocatoria' }, notice: '', issuedLine: '', greeting: '', intro: 'Texto.', agenda: [{ number: '01', text: 'Punto' }], closing: 'Cierre.', signature: ['El administrador'] };
-    const documentXml = async (authorization: { enabled: boolean; text: string }, agendaLines = 1) => {
-      const agenda = Array.from({ length: agendaLines }, (_, i) => ({ number: String(i + 1).padStart(2, '0'), text: `Punto ${i + 1}` }));
-      const buffer = await service.generate(meeting({ convocatoriaDoc: { ...base, agenda, authorization } as never }));
-      return (await JSZip.loadAsync(buffer)).file('word/document.xml')!.async('string');
+    const base = {
+      header: { community: 'Mi comunidad', title: 'Convocatoria' },
+      notice: '',
+      issuedLine: '',
+      greeting: '',
+      intro: 'Texto.',
+      agenda: [{ number: '01', text: 'Punto' }],
+      closing: 'Cierre.',
+      signature: ['El administrador'],
+    };
+    const documentXml = async (
+      authorization: { enabled: boolean; text: string },
+      agendaLines = 1,
+    ) => {
+      const agenda = Array.from({ length: agendaLines }, (_, i) => ({
+        number: String(i + 1).padStart(2, '0'),
+        text: `Punto ${i + 1}`,
+      }));
+      const buffer = await service.generate(
+        meeting({
+          convocatoriaDoc: { ...base, agenda, authorization } as never,
+        }),
+      );
+      return (await JSZip.loadAsync(buffer))
+        .file('word/document.xml')!
+        .async('string');
     };
 
     it('va en un marco anclado al borde inferior de la página, con independencia del contenido', async () => {
       for (const lines of [1, 60]) {
-        const xml = await documentXml({ enabled: true, text: 'Ante la imposibilidad de asistir.' }, lines);
+        const xml = await documentXml(
+          { enabled: true, text: 'Ante la imposibilidad de asistir.' },
+          lines,
+        );
         const frames = xml.match(/<w:framePr [^>]*\/>/g) ?? [];
         // ✂, texto, D/Dª, Atentamente, Firmado, Propietario del
         expect(frames).toHaveLength(6);
@@ -99,13 +162,19 @@ describe('ConvocatoriaDocxService', () => {
         expect(frames[0]).toContain('w:yAlign="bottom"');
         expect(frames[0]).toContain('w:vAnchor="margin"');
         // El marco va al final del documento, tras la firma.
-        expect(xml.indexOf('El administrador')).toBeLessThan(xml.indexOf('w:framePr'));
-        expect(xml.indexOf('Ante la imposibilidad')).toBeGreaterThan(xml.indexOf('w:framePr'));
+        expect(xml.indexOf('El administrador')).toBeLessThan(
+          xml.indexOf('w:framePr'),
+        );
+        expect(xml.indexOf('Ante la imposibilidad')).toBeGreaterThan(
+          xml.indexOf('w:framePr'),
+        );
       }
     });
 
     it('sin autorización no hay marco', async () => {
-      expect(await documentXml({ enabled: false, text: '' })).not.toContain('w:framePr');
+      expect(await documentXml({ enabled: false, text: '' })).not.toContain(
+        'w:framePr',
+      );
     });
   });
 });

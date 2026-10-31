@@ -44,9 +44,7 @@ export const BRANCH_REVIEW_REASONS: Record<RouteBranch, readonly string[]> = {
  * Las tareas «Revisar incidencia nueva» (según por qué se gestiona a mano): su decisión es la vía de gestión. Se
  * sustituyen cuando hay constancia de que la gestión ya avanzó (ver `IssueWorkflowService.settleEntryReview`).
  */
-export const ENTRY_REVIEW_REASONS = [
-  'new_issue',
-] as const;
+export const ENTRY_REVIEW_REASONS = ['new_issue'] as const;
 
 /**
  * Tareas que una vía abre ELLA misma como su siguiente paso humano. Mientras exista una, la revisión de entrada («Revisar
@@ -157,4 +155,3 @@ export function waitObsoleteOnChange(
     return false;
   return change.from !== null && branchesOfRoute(change.from).includes(branch);
 }
-

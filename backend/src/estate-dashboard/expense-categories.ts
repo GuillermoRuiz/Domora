@@ -4,21 +4,17 @@
  * estable porque el frontend le asigna un color fijo a cada una.
  */
 export type ExpenseCategoryKey =
-  | 'maintenance'
-  | 'supplies'
-  | 'staff'
-  | 'insurance'
-  | 'services'
-  | 'other';
+  'maintenance' | 'supplies' | 'staff' | 'insurance' | 'services' | 'other';
 
-export const EXPENSE_CATEGORIES: { key: ExpenseCategoryKey; label: string }[] = [
-  { key: 'maintenance', label: 'Mantenimiento' },
-  { key: 'supplies', label: 'Suministros' },
-  { key: 'staff', label: 'Personal' },
-  { key: 'insurance', label: 'Seguros' },
-  { key: 'services', label: 'Servicios y profesionales' },
-  { key: 'other', label: 'Otros' },
-];
+export const EXPENSE_CATEGORIES: { key: ExpenseCategoryKey; label: string }[] =
+  [
+    { key: 'maintenance', label: 'Mantenimiento' },
+    { key: 'supplies', label: 'Suministros' },
+    { key: 'staff', label: 'Personal' },
+    { key: 'insurance', label: 'Seguros' },
+    { key: 'services', label: 'Servicios y profesionales' },
+    { key: 'other', label: 'Otros' },
+  ];
 
 /** Categoría de una cuenta de gasto por su código; lo no reconocido (incluidas cuentas propias de la finca) cae en "Otros". */
 export function expenseCategoryFor(accountCode: string): ExpenseCategoryKey {

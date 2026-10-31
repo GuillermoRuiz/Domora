@@ -75,28 +75,24 @@ describe('EstateOverviewService', () => {
           .mockResolvedValue([{ estateId: 'b', _count: { _all: 2 } }]),
       },
       issue: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([
-            {
-              id: 'i1',
-              title: 'Ascensor roto',
-              estate: estate('a', 'Zulu'),
-            },
-          ]),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'i1',
+            title: 'Ascensor roto',
+            estate: estate('a', 'Zulu'),
+          },
+        ]),
         groupBy: jest
           .fn()
           .mockResolvedValue([{ estateId: 'a', _count: { _all: 1 } }]),
       },
       accountingReceipt: {
-        groupBy: jest
-          .fn()
-          .mockResolvedValue([
-            {
-              estateId: 'b',
-              _sum: { outstanding: new Prisma.Decimal('15.25') },
-            },
-          ]),
+        groupBy: jest.fn().mockResolvedValue([
+          {
+            estateId: 'b',
+            _sum: { outstanding: new Prisma.Decimal('15.25') },
+          },
+        ]),
       },
     };
     ledger = {

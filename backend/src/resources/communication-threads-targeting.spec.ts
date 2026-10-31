@@ -247,10 +247,19 @@ describe('ResourcesService — destinatario dirigido (targetPropertyId)', () => 
       fx.communicationIds.push(created.id);
 
       // Publicar un comunicado queda en la actividad de quien lo publica.
-      const logged = await prisma.activityLogEntry.findMany({ where: { subjectType: 'communication', subjectId: created.id } });
+      const logged = await prisma.activityLogEntry.findMany({
+        where: { subjectType: 'communication', subjectId: created.id },
+      });
       expect(logged).toHaveLength(1);
-      expect(logged[0]).toMatchObject({ actorUserId: bUser.id, verb: 'published', estateId, summary: 'Comunicado "Aviso para el portal 1" publicado' });
-      await prisma.activityLogEntry.deleteMany({ where: { subjectType: 'communication', subjectId: created.id } });
+      expect(logged[0]).toMatchObject({
+        actorUserId: bUser.id,
+        verb: 'published',
+        estateId,
+        summary: 'Comunicado "Aviso para el portal 1" publicado',
+      });
+      await prisma.activityLogEntry.deleteMany({
+        where: { subjectType: 'communication', subjectId: created.id },
+      });
 
       const pageC1 = await service.listCommunications(estateId, cUser1, {});
       const pageC2 = await service.listCommunications(estateId, cUser2, {});

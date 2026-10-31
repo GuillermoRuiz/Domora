@@ -23,7 +23,12 @@ function fixture() {
         .mockImplementation((args: { select: { property?: unknown } }) =>
           Promise.resolve(
             args.select.property
-              ? [{ propertyId: 'property-a', property: { estateId: 'community-a' } }]
+              ? [
+                  {
+                    propertyId: 'property-a',
+                    property: { estateId: 'community-a' },
+                  },
+                ]
               : [{ propertyId: 'property-a' }],
           ),
         ),
@@ -73,8 +78,14 @@ describe('RAG authoritative scope', () => {
         {
           deletedAt: null,
           OR: [
-            { effectiveVisibility: 'OWNERS', estateId: { in: ['community-a'] } },
-            { effectiveVisibility: 'PROPERTY', targetPropertyId: { in: ['property-a'] } },
+            {
+              effectiveVisibility: 'OWNERS',
+              estateId: { in: ['community-a'] },
+            },
+            {
+              effectiveVisibility: 'PROPERTY',
+              targetPropertyId: { in: ['property-a'] },
+            },
           ],
         },
       ],

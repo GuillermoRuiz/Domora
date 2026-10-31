@@ -1,6 +1,9 @@
 import { Body, Controller, Delete, Get, HttpCode, Post } from '@nestjs/common';
 import { PushService } from './push.service';
-import { CreatePushSubscriptionDto, DeletePushSubscriptionDto } from './dto/push-subscription.dto';
+import {
+  CreatePushSubscriptionDto,
+  DeletePushSubscriptionDto,
+} from './dto/push-subscription.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 

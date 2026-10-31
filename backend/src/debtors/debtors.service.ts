@@ -17,11 +17,17 @@ import { DebtorBalancesExcelService } from './debtor-balances-excel.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import type { CreateDebtorActionDto } from './dto/create-debtor-action.dto';
 import type { CreatePaymentAgreementDto } from './dto/create-payment-agreement.dto';
-import type { MarkInstallmentPaidDto, RemesaLineReturnDto } from './dto/misc.dto';
-
+import type {
+  MarkInstallmentPaidDto,
+  RemesaLineReturnDto,
+} from './dto/misc.dto';
 
 /** Recibos que deben algo: su `outstanding` es lo que queda por cobrar. */
-const OPEN_RECEIPT_STATUSES: ReceiptStatus[] = ['Pendiente', 'Parcial', 'Devuelto'];
+const OPEN_RECEIPT_STATUSES: ReceiptStatus[] = [
+  'Pendiente',
+  'Parcial',
+  'Devuelto',
+];
 
 @Injectable()
 export class DebtorsService {
@@ -72,7 +78,9 @@ export class DebtorsService {
     );
     return debtors.map((d) => ({
       ...d,
-      titular: d.propertyId ? titularByProperty.get(d.propertyId) ?? null : null,
+      titular: d.propertyId
+        ? (titularByProperty.get(d.propertyId) ?? null)
+        : null,
     }));
   }
 
@@ -135,40 +143,49 @@ export class DebtorsService {
       primaryContacts,
       advanceByProperty,
     ] = await Promise.all([
-        this.prisma.property.findMany({
-          where: { estateId, deletedAt: null },
-          select: { id: true, ref: true, staircase: true, floor: true, door: true },
-        }),
-        // Lo pendiente de cada recibo (su partida abierta en la 430), no su
-        // importe: un recibo cobrado en parte solo debe lo que falta.
-        this.prisma.accountingReceipt.groupBy({
-          by: ['propertyId'],
-          where: {
-            property: { estateId, deletedAt: null },
-            status: { in: OPEN_RECEIPT_STATUSES },
-          },
-          _sum: { outstanding: true },
-        }),
-        this.prisma.debtor.findMany({ where: { estateId } }),
-        this.prisma.propertyMembership.findMany({
-          where: {
-            property: { estateId, deletedAt: null },
-            isPrimaryContact: true,
-            revokedAt: null,
-          },
-          select: {
-            propertyId: true,
-            user: { select: { fullName: true, email: true, phone: true } },
-          },
-        }),
-        // Anticipos sin aplicar (430 acreedora sin recibo): no se restan de
-        // `balance` — solo se avisa. Ver doc/contabilidad/adr-partida-doble.md,
-        // decisión sobre anticipos y morosidad.
-        this.collections.availableAdvancesByEstate(this.prisma, estateId),
-      ]);
+      this.prisma.property.findMany({
+        where: { estateId, deletedAt: null },
+        select: {
+          id: true,
+          ref: true,
+          staircase: true,
+          floor: true,
+          door: true,
+        },
+      }),
+      // Lo pendiente de cada recibo (su partida abierta en la 430), no su
+      // importe: un recibo cobrado en parte solo debe lo que falta.
+      this.prisma.accountingReceipt.groupBy({
+        by: ['propertyId'],
+        where: {
+          property: { estateId, deletedAt: null },
+          status: { in: OPEN_RECEIPT_STATUSES },
+        },
+        _sum: { outstanding: true },
+      }),
+      this.prisma.debtor.findMany({ where: { estateId } }),
+      this.prisma.propertyMembership.findMany({
+        where: {
+          property: { estateId, deletedAt: null },
+          isPrimaryContact: true,
+          revokedAt: null,
+        },
+        select: {
+          propertyId: true,
+          user: { select: { fullName: true, email: true, phone: true } },
+        },
+      }),
+      // Anticipos sin aplicar (430 acreedora sin recibo): no se restan de
+      // `balance` — solo se avisa. Ver doc/contabilidad/adr-partida-doble.md,
+      // decisión sobre anticipos y morosidad.
+      this.collections.availableAdvancesByEstate(this.prisma, estateId),
+    ]);
 
     const principalByProperty = new Map(
-      receiptSums.map((r) => [r.propertyId, r._sum.outstanding ?? new Prisma.Decimal(0)]),
+      receiptSums.map((r) => [
+        r.propertyId,
+        r._sum.outstanding ?? new Prisma.Decimal(0),
+      ]),
     );
     const debtorByProperty = new Map(
       debtors
@@ -264,7 +281,13 @@ export class DebtorsService {
     const rows = await this.computeBalances(estateId, user);
     // La exportación es más sensible que un simple listado en pantalla — se
     // audita aparte, con el mismo resource/action que listDebtors/computeBalances.
-    await this.audit.logAccess(user, 'debtors', 'export', estateId, 'balances.xlsx');
+    await this.audit.logAccess(
+      user,
+      'debtors',
+      'export',
+      estateId,
+      'balances.xlsx',
+    );
     return this.balancesExcel.generate(rows, estate.name);
   }
 
@@ -402,7 +425,10 @@ export class DebtorsService {
       });
       if (open.length > 0) {
         await tx.paymentAgreementReceipt.createMany({
-          data: open.map((r) => ({ agreementId: agreement.id, receiptId: r.id })),
+          data: open.map((r) => ({
+            agreementId: agreement.id,
+            receiptId: r.id,
+          })),
         });
       }
 
@@ -478,15 +504,29 @@ export class DebtorsService {
     }
     const { estateId, propertyId } = installment.agreement.debtor;
     if (!propertyId) {
-      throw new ConflictException('El deudor no está vinculado a ninguna propiedad.');
+      throw new ConflictException(
+        'El deudor no está vinculado a ninguna propiedad.',
+      );
     }
-    const covered = installment.agreement.coveredReceipts.map((c) => c.receiptId);
-    const date = dto.date ? new Date(`${dto.date.slice(0, 10)}T00:00:00Z`) : new Date();
+    const covered = installment.agreement.coveredReceipts.map(
+      (c) => c.receiptId,
+    );
+    const date = dto.date
+      ? new Date(`${dto.date.slice(0, 10)}T00:00:00Z`)
+      : new Date();
 
     return runPosting(this.prisma, async (tx) => {
       const open = await tx.accountingReceipt.findMany({
         where: { id: { in: covered }, status: { in: OPEN_RECEIPT_STATUSES } },
-        select: { id: true, no: true, kind: true, outstanding: true, originYear: true, accrualDate: true, dueDate: true },
+        select: {
+          id: true,
+          no: true,
+          kind: true,
+          outstanding: true,
+          originYear: true,
+          accrualDate: true,
+          dueDate: true,
+        },
       });
       const receiptIds = legalImputationOrder(
         open.map((r) => ({ ...r, outstanding: toCents(r.outstanding) })),
@@ -709,7 +749,9 @@ export class DebtorsService {
     // sin dinero de por medio. Ver CollectionPostingService.returnRemesaLine.
     return runPosting(this.prisma, (tx) =>
       this.collections.returnRemesaLine(tx, lineId, {
-        date: dto.date ? new Date(`${dto.date.slice(0, 10)}T00:00:00Z`) : new Date(),
+        date: dto.date
+          ? new Date(`${dto.date.slice(0, 10)}T00:00:00Z`)
+          : new Date(),
         returnCode: dto.returnCode,
         returnReason: dto.returnReason ?? null,
         feeAmount: dto.feeAmount ? toCents(dto.feeAmount) : 0,

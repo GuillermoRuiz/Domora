@@ -148,7 +148,9 @@ describe('presentIssueForResident', () => {
     const mine = presentIssueForResident(withNotice, 'me', true).timeline;
     expect(mine.map((e) => e.id)).toEqual(['n1']);
     expect(mine[0]).not.toHaveProperty('meta');
-    expect(presentIssueForResident(withNotice, 'un-vecino', false).timeline).toEqual([]);
+    expect(
+      presentIssueForResident(withNotice, 'un-vecino', false).timeline,
+    ).toEqual([]);
   });
 
   it('las fotos salen sin su clave de almacenamiento', () => {

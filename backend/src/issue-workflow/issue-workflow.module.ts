@@ -23,11 +23,7 @@ import { IssueWorkflowTaskKinds } from './issue-workflow-task-kinds.service';
  * situación.
  */
 @Module({
-  imports: [
-    AgendaTasksModule,
-    EstateAccessModule,
-    NotificationsModule,
-  ],
+  imports: [AgendaTasksModule, EstateAccessModule, NotificationsModule],
   controllers: [IssueSituationController],
   providers: [
     IssueWorkflowConfig,

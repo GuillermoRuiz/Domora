@@ -24,7 +24,9 @@ import { createPrismaClient } from '../../prisma/create-prisma-client';
 jest.setTimeout(60_000);
 
 // Veinte transacciones a la vez abren conexiones nuevas: en máquinas lentas (Windows) superan el maxWait de 2 s por defecto.
-const prisma = createPrismaClient(undefined, { transactionOptions: { maxWait: 20_000 } });
+const prisma = createPrismaClient(undefined, {
+  transactionOptions: { maxWait: 20_000 },
+});
 let admin: AdministratorFixture;
 
 beforeAll(async () => {

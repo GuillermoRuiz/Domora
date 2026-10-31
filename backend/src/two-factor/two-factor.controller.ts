@@ -21,7 +21,10 @@ export class TwoFactorController {
   }
 
   @Post('verify-enable')
-  verifyEnable(@Body() dto: VerifyEnableTwoFactorDto, @CurrentUser() user: AuthenticatedUser) {
+  verifyEnable(
+    @Body() dto: VerifyEnableTwoFactorDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.twoFactor.verifyAndEnable(user.id, dto.secret, dto.code);
   }
 

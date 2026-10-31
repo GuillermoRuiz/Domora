@@ -30,7 +30,8 @@ export interface PerformanceRanking {
 
 export const RANKING_SIZE = 10;
 
-const startOfUtcDay = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+const startOfUtcDay = (d: Date) =>
+  new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 
 /**
  * «Rendimiento por comunidad». El orden es SIEMPRE el de todas las fincas del gestor por
@@ -44,7 +45,11 @@ export class ManagerPerformanceService {
     private readonly access: EstateAccessService,
   ) {}
 
-  async ranking(user: AuthenticatedUser, selectedEstateId?: string, now: Date = new Date()): Promise<PerformanceRanking> {
+  async ranking(
+    user: AuthenticatedUser,
+    selectedEstateId?: string,
+    now: Date = new Date(),
+  ): Promise<PerformanceRanking> {
     // Validar la finca elegida (403 si es ajena) y trabajar siempre sobre todas las del gestor.
     if (selectedEstateId) resolveScope(this.access, user, selectedEstateId);
     const today = startOfUtcDay(now);
@@ -55,21 +60,43 @@ export class ManagerPerformanceService {
     if (!estates.length) return { items: [], selected: null, total: 0 };
     const ids = estates.map((e) => e.id);
 
-    const [billed, incidents] = await Promise.all([this.billedByEstate(ids, today), this.incidentsByEstate(ids, today)]);
+    const [billed, incidents] = await Promise.all([
+      this.billedByEstate(ids, today),
+      this.incidentsByEstate(ids, today),
+    ]);
     const rows = estates
-      .map((e) => ({ estateId: e.id, name: e.name, color: e.color, billed: billed.get(e.id) ?? 0, incidents: incidents.get(e.id) ?? 0 }))
-      .sort((a, b) => b.billed - a.billed || a.name.localeCompare(b.name, 'es') || a.estateId.localeCompare(b.estateId))
-      .map((r, i): PerformanceRow => ({ ...r, rank: i + 1, status: r.incidents === 0 ? 'al_dia' : 'con_incidencias' }));
+      .map((e) => ({
+        estateId: e.id,
+        name: e.name,
+        color: e.color,
+        billed: billed.get(e.id) ?? 0,
+        incidents: incidents.get(e.id) ?? 0,
+      }))
+      .sort(
+        (a, b) =>
+          b.billed - a.billed ||
+          a.name.localeCompare(b.name, 'es') ||
+          a.estateId.localeCompare(b.estateId),
+      )
+      .map((r, i): PerformanceRow => ({
+        ...r,
+        rank: i + 1,
+        status: r.incidents === 0 ? 'al_dia' : 'con_incidencias',
+      }));
 
     const items = rows.slice(0, RANKING_SIZE);
-    const selected = selectedEstateId && !items.some((r) => r.estateId === selectedEstateId)
-      ? (rows.find((r) => r.estateId === selectedEstateId) ?? null)
-      : null;
+    const selected =
+      selectedEstateId && !items.some((r) => r.estateId === selectedEstateId)
+        ? (rows.find((r) => r.estateId === selectedEstateId) ?? null)
+        : null;
     return { items, selected, total: rows.length };
   }
 
   /** Euros emitidos por finca dentro de su ejercicio vigente. */
-  private async billedByEstate(ids: string[], today: Date): Promise<Map<string, number>> {
+  private async billedByEstate(
+    ids: string[],
+    today: Date,
+  ): Promise<Map<string, number>> {
     const years = await currentFiscalYears(this.prisma, ids, today);
     const groups = new Map<string, { start: Date; end: Date; ids: string[] }>();
     for (const y of years) {
@@ -83,27 +110,43 @@ export class ManagerPerformanceService {
       [...groups.values()].map((g) =>
         this.prisma.accountingReceipt.groupBy({
           by: ['estateId'],
-          where: { estateId: { in: g.ids }, accrualDate: { gte: g.start, lte: g.end }, status: { not: 'Anulado' } },
+          where: {
+            estateId: { in: g.ids },
+            accrualDate: { gte: g.start, lte: g.end },
+            status: { not: 'Anulado' },
+          },
           _sum: { amount: true },
         }),
       ),
     );
-    for (const part of parts) for (const row of part) result.set(row.estateId, Math.round(Number(row._sum.amount ?? 0) * 100) / 100);
+    for (const part of parts)
+      for (const row of part)
+        result.set(
+          row.estateId,
+          Math.round(Number(row._sum.amount ?? 0) * 100) / 100,
+        );
     return result;
   }
 
   /** Propiedades distintas con un recibo devuelto o un impago ya vencido, por finca. */
-  private async incidentsByEstate(ids: string[], today: Date): Promise<Map<string, number>> {
+  private async incidentsByEstate(
+    ids: string[],
+    today: Date,
+  ): Promise<Map<string, number>> {
     const rows = await this.prisma.accountingReceipt.groupBy({
       by: ['estateId', 'propertyId'],
       where: {
         estateId: { in: ids },
         outstanding: { gt: 0 },
-        OR: [{ status: 'Devuelto' }, { status: { in: ['Pendiente', 'Parcial'] }, dueDate: { lt: today } }],
+        OR: [
+          { status: 'Devuelto' },
+          { status: { in: ['Pendiente', 'Parcial'] }, dueDate: { lt: today } },
+        ],
       },
     });
     const result = new Map<string, number>();
-    for (const r of rows) result.set(r.estateId, (result.get(r.estateId) ?? 0) + 1);
+    for (const r of rows)
+      result.set(r.estateId, (result.get(r.estateId) ?? 0) + 1);
     return result;
   }
 }

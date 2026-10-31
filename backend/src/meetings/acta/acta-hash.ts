@@ -23,5 +23,7 @@ export function canonicalJson(value: unknown): string {
  * versionado: NO es una firma. La firma avanzada se conectará después sobre esta huella.
  */
 export function actaContentHash(documentModel: unknown): string {
-  return createHash('sha256').update(canonicalJson(documentModel), 'utf8').digest('hex');
+  return createHash('sha256')
+    .update(canonicalJson(documentModel), 'utf8')
+    .digest('hex');
 }

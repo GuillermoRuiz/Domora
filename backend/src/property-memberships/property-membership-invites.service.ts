@@ -46,7 +46,9 @@ export class PropertyMembershipInvitesService {
     return `${resolveFrontendBaseUrl(this.config)}/membership-invite/${token}`;
   }
 
-  private async propertyLabel(propertyId: string): Promise<{ address: string; estateName: string | null }> {
+  private async propertyLabel(
+    propertyId: string,
+  ): Promise<{ address: string; estateName: string | null }> {
     const property = await this.prisma.property.findUniqueOrThrow({
       where: { id: propertyId },
       include: { estate: { select: { name: true } } },
@@ -86,7 +88,9 @@ export class PropertyMembershipInvitesService {
     user: AuthenticatedUser,
   ): Promise<{ token: string; inviteUrl: string; qrDataUrl: string }> {
     if (user.role !== 'A' && user.role !== 'B') {
-      throw new ForbiddenException('Solo la gestora puede invitar a un propietario.');
+      throw new ForbiddenException(
+        'Solo la gestora puede invitar a un propietario.',
+      );
     }
     await this.memberships.assertCanManageMembers(propertyId, user);
 
@@ -94,16 +98,27 @@ export class PropertyMembershipInvitesService {
       where: { id: externalOwnerId, propertyId, promotedToUserId: null },
     });
     if (!owner) {
-      throw new NotFoundException('Ese titular no existe en esta propiedad o ya tiene cuenta.');
+      throw new NotFoundException(
+        'Ese titular no existe en esta propiedad o ya tiene cuenta.',
+      );
     }
     if (!owner.email) {
-      throw new BadRequestException('El titular no tiene email: añádelo antes de invitarlo.');
+      throw new BadRequestException(
+        'El titular no tiene email: añádelo antes de invitarlo.',
+      );
     }
     const pending = await this.prisma.propertyMembershipInvite.count({
-      where: { externalOwnerId, usedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+      where: {
+        externalOwnerId,
+        usedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
     });
     if (pending > 0) {
-      throw new ConflictException('Este titular ya tiene una invitación pendiente: reenvíala desde la lista de invitaciones.');
+      throw new ConflictException(
+        'Este titular ya tiene una invitación pendiente: reenvíala desde la lista de invitaciones.',
+      );
     }
 
     return this.issueInvite({
@@ -122,7 +137,8 @@ export class PropertyMembershipInvitesService {
     externalOwnerId?: string;
     user: AuthenticatedUser;
   }): Promise<{ token: string; inviteUrl: string; qrDataUrl: string }> {
-    const { propertyId, roleType, inviteeEmail, externalOwnerId, user } = params;
+    const { propertyId, roleType, inviteeEmail, externalOwnerId, user } =
+      params;
     const token = crypto.randomBytes(32).toString('hex');
     const now = new Date();
     await this.prisma.propertyMembershipInvite.create({
@@ -143,9 +159,17 @@ export class PropertyMembershipInvitesService {
 
     const { address, estateName } = await this.propertyLabel(propertyId);
     this.mail
-      .sendMembershipInvite(inviteeEmail, roleType, address, estateName, inviteUrl)
+      .sendMembershipInvite(
+        inviteeEmail,
+        roleType,
+        address,
+        estateName,
+        inviteUrl,
+      )
       .catch((error: unknown) =>
-        this.logger.warn(`No se pudo enviar la invitación a ${inviteeEmail}: ${String(error)}`),
+        this.logger.warn(
+          `No se pudo enviar la invitación a ${inviteeEmail}: ${String(error)}`,
+        ),
       );
 
     return { token, inviteUrl, qrDataUrl };
@@ -159,10 +183,14 @@ export class PropertyMembershipInvitesService {
       throw new UnauthorizedException('El enlace de invitación no es válido.');
     }
     if (invite.revokedAt) {
-      throw new UnauthorizedException('Este enlace de invitación fue revocado.');
+      throw new UnauthorizedException(
+        'Este enlace de invitación fue revocado.',
+      );
     }
     if (invite.usedAt) {
-      throw new ConflictException('Este enlace de invitación ya fue utilizado.');
+      throw new ConflictException(
+        'Este enlace de invitación ya fue utilizado.',
+      );
     }
     if (invite.expiresAt < new Date()) {
       throw new UnauthorizedException('El enlace de invitación caducó.');
@@ -170,9 +198,7 @@ export class PropertyMembershipInvitesService {
     return invite;
   }
 
-  async getInviteInfo(
-    token: string,
-  ): Promise<{
+  async getInviteInfo(token: string): Promise<{
     roleType: MembershipRoleType;
     propertyAddress: string | null;
     estateName: string | null;
@@ -204,7 +230,12 @@ export class PropertyMembershipInvitesService {
 
       const actor = await tx.user.findUniqueOrThrow({
         where: { id: user.id },
-        select: { fullName: true, email: true, taxId: true, taxIdCountry: true },
+        select: {
+          fullName: true,
+          email: true,
+          taxId: true,
+          taxIdCountry: true,
+        },
       });
 
       // Un Propietario vota en juntas, ve deudas y puede invitar: su enlace no
@@ -212,7 +243,11 @@ export class PropertyMembershipInvitesService {
       // dirección equivocada del programa anterior entregaría la titularidad
       // a otra persona). Tiene que canjearlo la cuenta de ese email.
       const isOwnerInvite = !!invite.externalOwnerId;
-      if (isOwnerInvite && actor.email.trim().toLowerCase() !== invite.inviteeEmail.trim().toLowerCase()) {
+      if (
+        isOwnerInvite &&
+        actor.email.trim().toLowerCase() !==
+          invite.inviteeEmail.trim().toLowerCase()
+      ) {
         throw new ForbiddenException(
           `Esta invitación es para ${invite.inviteeEmail}. Inicia sesión con esa cuenta para aceptarla.`,
         );
@@ -221,7 +256,9 @@ export class PropertyMembershipInvitesService {
       const notes: string[] = [];
       let becomesPrimaryContact = false;
       if (isOwnerInvite) {
-        const externalOwner = await tx.externalOwner.findUniqueOrThrow({ where: { id: invite.externalOwnerId! } });
+        const externalOwner = await tx.externalOwner.findUniqueOrThrow({
+          where: { id: invite.externalOwnerId! },
+        });
         // Condicional atómico: si dos canjes llegaran a la vez, solo uno
         // encuentra `promotedToUserId: null`.
         const promoted = await tx.externalOwner.updateMany({
@@ -229,7 +266,9 @@ export class PropertyMembershipInvitesService {
           data: { promotedToUserId: user.id, promotedAt: new Date() },
         });
         if (promoted.count !== 1) {
-          throw new ConflictException('Este titular ya está vinculado a otra cuenta.');
+          throw new ConflictException(
+            'Este titular ya está vinculado a otra cuenta.',
+          );
         }
 
         // El NIF de los recibos sale del usuario una vez promovido: sin
@@ -238,14 +277,28 @@ export class PropertyMembershipInvitesService {
         if (externalOwner.taxId && !actor.taxId) {
           await tx.user.update({
             where: { id: user.id },
-            data: { taxId: externalOwner.taxId, taxIdCountry: externalOwner.taxIdCountry },
+            data: {
+              taxId: externalOwner.taxId,
+              taxIdCountry: externalOwner.taxIdCountry,
+            },
           });
-        } else if (externalOwner.taxId && actor.taxId && externalOwner.taxId !== actor.taxId) {
-          notes.push(`su NIF (${actor.taxId}) no coincide con el importado (${externalOwner.taxId})`);
+        } else if (
+          externalOwner.taxId &&
+          actor.taxId &&
+          externalOwner.taxId !== actor.taxId
+        ) {
+          notes.push(
+            `su NIF (${actor.taxId}) no coincide con el importado (${externalOwner.taxId})`,
+          );
         }
 
         const existingPrimary = await tx.propertyMembership.count({
-          where: { propertyId: invite.propertyId, isPrimaryContact: true, status: 'linked', revokedAt: null },
+          where: {
+            propertyId: invite.propertyId,
+            isPrimaryContact: true,
+            status: 'linked',
+            revokedAt: null,
+          },
         });
         becomesPrimaryContact = existingPrimary === 0;
       }
@@ -322,7 +375,10 @@ export class PropertyMembershipInvitesService {
     if (invite.revokedAt) return 'revoked';
     const now = Date.now();
     if (invite.expiresAt.getTime() < now) return 'expired';
-    if (invite.expiresAt.getTime() - now <= PropertyMembershipInvitesService.EXPIRING_SOON_WINDOW_MS) {
+    if (
+      invite.expiresAt.getTime() - now <=
+      PropertyMembershipInvitesService.EXPIRING_SOON_WINDOW_MS
+    ) {
       return 'expiring_soon';
     }
     return 'pending';
@@ -364,7 +420,11 @@ export class PropertyMembershipInvitesService {
   }
 
   /** Extiende la caducidad y reenvía — mantiene el MISMO token para no romper un enlace que la gestora ya haya reenviado a mano (WhatsApp, etc.). */
-  async resendInvite(propertyId: string, inviteId: string, user: AuthenticatedUser) {
+  async resendInvite(
+    propertyId: string,
+    inviteId: string,
+    user: AuthenticatedUser,
+  ) {
     await this.memberships.assertCanManageMembers(propertyId, user);
     const invite = await this.assertOutstandingInvite(propertyId, inviteId);
 
@@ -388,15 +448,27 @@ export class PropertyMembershipInvitesService {
     const qrDataUrl = await QRCode.toDataURL(inviteUrl);
     const { address, estateName } = await this.propertyLabel(propertyId);
     this.mail
-      .sendMembershipInvite(updated.inviteeEmail, updated.roleType, address, estateName, inviteUrl)
+      .sendMembershipInvite(
+        updated.inviteeEmail,
+        updated.roleType,
+        address,
+        estateName,
+        inviteUrl,
+      )
       .catch((error: unknown) =>
-        this.logger.warn(`No se pudo reenviar la invitación a ${updated.inviteeEmail}: ${String(error)}`),
+        this.logger.warn(
+          `No se pudo reenviar la invitación a ${updated.inviteeEmail}: ${String(error)}`,
+        ),
       );
 
     return { inviteUrl, qrDataUrl };
   }
 
-  async revokeInvite(propertyId: string, inviteId: string, user: AuthenticatedUser) {
+  async revokeInvite(
+    propertyId: string,
+    inviteId: string,
+    user: AuthenticatedUser,
+  ) {
     await this.memberships.assertCanManageMembers(propertyId, user);
     const invite = await this.assertOutstandingInvite(propertyId, inviteId);
     return this.prisma.propertyMembershipInvite.update({

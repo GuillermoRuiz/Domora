@@ -1,10 +1,25 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { LeadsService } from './leads.service';
 import { ClientsService } from './clients.service';
-import { ConvertLeadDto, CreateFollowUpDto, CreateLeadDto, SetNextActionDto, UpdateLeadDto } from './dto/leads.dto';
+import {
+  ConvertLeadDto,
+  CreateFollowUpDto,
+  CreateLeadDto,
+  SetNextActionDto,
+  UpdateLeadDto,
+} from './dto/leads.dto';
 
 /** Potential clients and their «seguimiento comercial» (odd/tasks/role-a-panel.md S13). Role A only. */
 @Controller('leads')
@@ -31,20 +46,32 @@ export class LeadsController {
 
   @Patch(':id')
   @Roles('A')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeadDto, @CurrentUser() user: AuthenticatedUser) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateLeadDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.leads.update(id, dto, user);
   }
 
   @Post(':id/follow-ups')
   @Roles('A')
-  addFollowUp(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateFollowUpDto, @CurrentUser() user: AuthenticatedUser) {
+  addFollowUp(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateFollowUpDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.leads.addFollowUp(id, dto, user);
   }
 
   /** «Convertir en cliente»: creates the despacho and links it to the lead. */
   @Post(':id/convert')
   @Roles('A')
-  convert(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ConvertLeadDto, @CurrentUser() user: AuthenticatedUser) {
+  convert(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ConvertLeadDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.leads.convert(id, dto, user);
   }
 }
@@ -62,7 +89,10 @@ export class ClientsController {
 
   @Put(':administratorId/next-action')
   @Roles('A')
-  setNextAction(@Param('administratorId', ParseUUIDPipe) administratorId: string, @Body() dto: SetNextActionDto) {
+  setNextAction(
+    @Param('administratorId', ParseUUIDPipe) administratorId: string,
+    @Body() dto: SetNextActionDto,
+  ) {
     return this.clients.setNextAction(administratorId, dto);
   }
 

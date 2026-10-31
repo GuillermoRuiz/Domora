@@ -1,8 +1,13 @@
-import { buildActaSnapshot, type ActaSnapshotInput } from '../meetings/acta/acta-snapshot.service';
+import {
+  buildActaSnapshot,
+  type ActaSnapshotInput,
+} from '../meetings/acta/acta-snapshot.service';
 import type { ActaSourceSnapshot } from '../meetings/acta/acta-snapshot.types';
 
 /** Entrada de snapshot de una junta realista: 4 propiedades, 3 presentes (una representada), 4 puntos. */
-export function snapshotInput(overrides: Partial<ActaSnapshotInput> = {}): ActaSnapshotInput {
+export function snapshotInput(
+  overrides: Partial<ActaSnapshotInput> = {},
+): ActaSnapshotInput {
   return {
     now: new Date('2026-10-14T21:30:00Z'),
     meeting: {
@@ -24,20 +29,73 @@ export function snapshotInput(overrides: Partial<ActaSnapshotInput> = {}): ActaS
           description: 'Presupuesto anual',
           hasVote: true,
           comments: 'Se presenta el presupuesto. Intervino la propiedad 1B.',
-          voteTemplate: { questions: [{ title: '¿Aprueba el presupuesto?', type: 'single_choice', options: ['A favor', 'En contra', 'Abstención'], majorityType: 'mayoriaSimple' }] },
+          voteTemplate: {
+            questions: [
+              {
+                title: '¿Aprueba el presupuesto?',
+                type: 'single_choice',
+                options: ['A favor', 'En contra', 'Abstención'],
+                majorityType: 'mayoriaSimple',
+              },
+            ],
+          },
         },
-        { id: 'a2', title: 'Ruegos y preguntas', comments: 'Se pide revisar la iluminación del portal.' },
-        { id: 'a3', title: 'Informe del administrador', treatedAt: '2026-10-14T18:30:00Z' },
-        { id: 'a4', title: 'Cambio de cerradura', hasVote: true, voteTemplate: { questions: [{ title: '¿Se cambia?', type: 'single_choice', options: ['Sí', 'No'] }] } },
+        {
+          id: 'a2',
+          title: 'Ruegos y preguntas',
+          comments: 'Se pide revisar la iluminación del portal.',
+        },
+        {
+          id: 'a3',
+          title: 'Informe del administrador',
+          treatedAt: '2026-10-14T18:30:00Z',
+        },
+        {
+          id: 'a4',
+          title: 'Cambio de cerradura',
+          hasVote: true,
+          voteTemplate: {
+            questions: [
+              {
+                title: '¿Se cambia?',
+                type: 'single_choice',
+                options: ['Sí', 'No'],
+              },
+            ],
+          },
+        },
       ],
       actaGeneralComments: 'La junta se desarrolló con normalidad.',
       actaNextSteps: 'Solicitar 3 presupuestos.\n\nRevisar la iluminación.',
     },
-    estate: { name: 'Comunidad Sol 12', address: 'Calle Mayor', streetNumber: '12', location: 'Madrid' },
+    estate: {
+      name: 'Comunidad Sol 12',
+      address: 'Calle Mayor',
+      streetNumber: '12',
+      location: 'Madrid',
+    },
     properties: [
-      { id: 'p1', ref: '1A', floor: '1', door: 'A', participationQuota: '2.50' },
-      { id: 'p2', ref: '1B', floor: '1', door: 'B', participationQuota: '2.90' },
-      { id: 'p3', ref: '2A', floor: '2', door: 'A', participationQuota: '3.10' },
+      {
+        id: 'p1',
+        ref: '1A',
+        floor: '1',
+        door: 'A',
+        participationQuota: '2.50',
+      },
+      {
+        id: 'p2',
+        ref: '1B',
+        floor: '1',
+        door: 'B',
+        participationQuota: '2.90',
+      },
+      {
+        id: 'p3',
+        ref: '2A',
+        floor: '2',
+        door: 'A',
+        participationQuota: '3.10',
+      },
       { id: 'p4', ref: '2B', floor: '2', door: 'B', participationQuota: null },
     ],
     attendedPropertyIds: new Set(['p1', 'p3']),
@@ -78,6 +136,8 @@ export function snapshotInput(overrides: Partial<ActaSnapshotInput> = {}): ActaS
   };
 }
 
-export function sampleSnapshot(overrides: Partial<ActaSnapshotInput> = {}): ActaSourceSnapshot {
+export function sampleSnapshot(
+  overrides: Partial<ActaSnapshotInput> = {},
+): ActaSourceSnapshot {
   return buildActaSnapshot(snapshotInput(overrides));
 }

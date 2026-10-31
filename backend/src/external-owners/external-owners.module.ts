@@ -9,7 +9,11 @@ import { EstateAccessModule } from '../estate-access/estate-access.module';
 
 @Module({
   imports: [EstateAccessModule],
-  controllers: [EstateExternalOwnersController, PropertyExternalOwnersController, ExternalOwnersController],
+  controllers: [
+    EstateExternalOwnersController,
+    PropertyExternalOwnersController,
+    ExternalOwnersController,
+  ],
   providers: [ExternalOwnersService],
   exports: [ExternalOwnersService],
 })

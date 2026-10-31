@@ -36,7 +36,9 @@ export class MeetingVoteDelegationsService {
   ) {}
 
   private async findMeetingOrThrow(meetingId: string, user: AuthenticatedUser) {
-    const meeting = await this.prisma.meeting.findFirst({ where: { id: meetingId } });
+    const meeting = await this.prisma.meeting.findFirst({
+      where: { id: meetingId },
+    });
     if (!meeting) {
       throw new NotFoundException(`Junta ${meetingId} no encontrada.`);
     }
@@ -45,10 +47,15 @@ export class MeetingVoteDelegationsService {
   }
 
   /** Rol A/B siempre; rol C solo puede actuar por sí mismo. */
-  private assertCanActFor(delegatorUserId: string, user: AuthenticatedUser): void {
+  private assertCanActFor(
+    delegatorUserId: string,
+    user: AuthenticatedUser,
+  ): void {
     if (user.role === 'A' || user.role === 'B') return;
     if (user.id !== delegatorUserId) {
-      throw new ForbiddenException('Solo el titular puede delegar su propio voto.');
+      throw new ForbiddenException(
+        'Solo el titular puede delegar su propio voto.',
+      );
     }
   }
 
@@ -59,7 +66,10 @@ export class MeetingVoteDelegationsService {
         ? { meetingId }
         : {
             meetingId,
-            OR: [{ delegatorUserId: user.id }, { representativeUserId: user.id }],
+            OR: [
+              { delegatorUserId: user.id },
+              { representativeUserId: user.id },
+            ],
           };
     return this.prisma.meetingVoteDelegation.findMany({
       where,
@@ -73,27 +83,46 @@ export class MeetingVoteDelegationsService {
   }
 
   /** Titulares con voto (Propietario/Representante vinculados) de una propiedad — puebla el selector de delegador de la gestora. */
-  async listEligibleDelegators(meetingId: string, propertyId: string, user: AuthenticatedUser) {
+  async listEligibleDelegators(
+    meetingId: string,
+    propertyId: string,
+    user: AuthenticatedUser,
+  ) {
     const meeting = await this.findMeetingOrThrow(meetingId, user);
     const property = await this.prisma.property.findFirst({
       where: { id: propertyId, estateId: meeting.estateId },
     });
     if (!property) {
-      throw new NotFoundException(`Propiedad ${propertyId} no encontrada en esta finca.`);
+      throw new NotFoundException(
+        `Propiedad ${propertyId} no encontrada en esta finca.`,
+      );
     }
     const memberships = await this.prisma.propertyMembership.findMany({
-      where: { propertyId, status: 'linked', roleType: { in: ['Propietario', 'Representante'] } },
+      where: {
+        propertyId,
+        status: 'linked',
+        roleType: { in: ['Propietario', 'Representante'] },
+      },
       include: { user: { select: { id: true, fullName: true } } },
     });
-    return memberships.map((m) => ({ userId: m.user.id, name: m.user.fullName }));
+    return memberships.map((m) => ({
+      userId: m.user.id,
+      name: m.user.fullName,
+    }));
   }
 
-  async create(meetingId: string, dto: CreateVoteDelegationDto, user: AuthenticatedUser) {
+  async create(
+    meetingId: string,
+    dto: CreateVoteDelegationDto,
+    user: AuthenticatedUser,
+  ) {
     const meeting = await this.findMeetingOrThrow(meetingId, user);
     this.assertCanActFor(dto.delegatorUserId, user);
 
     if (meeting.status !== 'convocada') {
-      throw new ConflictException('No se puede delegar el voto de una junta que ya no está convocada.');
+      throw new ConflictException(
+        'No se puede delegar el voto de una junta que ya no está convocada.',
+      );
     }
 
     const representative = await this.resolveRepresentative(dto);
@@ -105,7 +134,9 @@ export class MeetingVoteDelegationsService {
       where: { id: dto.propertyId, estateId: meeting.estateId },
     });
     if (!property) {
-      throw new NotFoundException(`Propiedad ${dto.propertyId} no encontrada en esta finca.`);
+      throw new NotFoundException(
+        `Propiedad ${dto.propertyId} no encontrada en esta finca.`,
+      );
     }
 
     const eligible = await this.prisma.propertyMembership.findFirst({
@@ -117,7 +148,9 @@ export class MeetingVoteDelegationsService {
       },
     });
     if (!eligible) {
-      throw new ForbiddenException('El delegante no es titular con derecho de voto de esta propiedad.');
+      throw new ForbiddenException(
+        'El delegante no es titular con derecho de voto de esta propiedad.',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -160,12 +193,18 @@ export class MeetingVoteDelegationsService {
   }
 
   /** Cuenta existente (por email) o persona externa (nombre + DNI/NIE) — exactamente una de las dos. */
-  private async resolveRepresentative(
-    dto: CreateVoteDelegationDto,
-  ): Promise<{ userId: string | null; name: string | null; dni: string | null }> {
-    const external = dto.representativeName !== undefined || dto.representativeDni !== undefined;
+  private async resolveRepresentative(dto: CreateVoteDelegationDto): Promise<{
+    userId: string | null;
+    name: string | null;
+    dni: string | null;
+  }> {
+    const external =
+      dto.representativeName !== undefined ||
+      dto.representativeDni !== undefined;
     if (dto.representativeEmail !== undefined && external) {
-      throw new BadRequestException('Indica el representante por email o por nombre y DNI, no ambos.');
+      throw new BadRequestException(
+        'Indica el representante por email o por nombre y DNI, no ambos.',
+      );
     }
     if (dto.representativeEmail !== undefined) {
       const user = await this.prisma.user.findUnique({
@@ -181,18 +220,31 @@ export class MeetingVoteDelegationsService {
     }
     const name = dto.representativeName?.trim();
     if (!name || !dto.representativeDni) {
-      throw new BadRequestException('Indica el email del representante, o su nombre completo y su DNI.');
+      throw new BadRequestException(
+        'Indica el email del representante, o su nombre completo y su DNI.',
+      );
     }
     if (!isValidDniOrNie(dto.representativeDni)) {
-      throw new BadRequestException('El DNI/NIE del representante no es válido.');
+      throw new BadRequestException(
+        'El DNI/NIE del representante no es válido.',
+      );
     }
-    return { userId: null, name, dni: normalizeSpanishId(dto.representativeDni) };
+    return {
+      userId: null,
+      name,
+      dni: normalizeSpanishId(dto.representativeDni),
+    };
   }
 
-  private async assertCanRevoke(delegation: { delegatorUserId: string }, user: AuthenticatedUser) {
+  private async assertCanRevoke(
+    delegation: { delegatorUserId: string },
+    user: AuthenticatedUser,
+  ) {
     if (user.role === 'A' || user.role === 'B') return;
     if (user.id !== delegation.delegatorUserId) {
-      throw new ForbiddenException('Solo el titular que delegó puede revocar su delegación.');
+      throw new ForbiddenException(
+        'Solo el titular que delegó puede revocar su delegación.',
+      );
     }
   }
 
@@ -215,7 +267,11 @@ export class MeetingVoteDelegationsService {
     }
     const updated = await this.prisma.meetingVoteDelegation.update({
       where: { id },
-      data: { revokedAt: new Date(), revokedByUserId: user.id, revocationReason: dto.reason },
+      data: {
+        revokedAt: new Date(),
+        revokedByUserId: user.id,
+        revocationReason: dto.reason,
+      },
     });
     await this.prisma.activityLogEntry.create({
       data: {
@@ -232,7 +288,11 @@ export class MeetingVoteDelegationsService {
     return updated;
   }
 
-  private async findDelegationOrThrow(meetingId: string, id: string, user: AuthenticatedUser) {
+  private async findDelegationOrThrow(
+    meetingId: string,
+    id: string,
+    user: AuthenticatedUser,
+  ) {
     await this.findMeetingOrThrow(meetingId, user);
     const delegation = await this.prisma.meetingVoteDelegation.findFirst({
       where: { id, meetingId },
@@ -270,11 +330,17 @@ export class MeetingVoteDelegationsService {
     user: AuthenticatedUser,
   ): Promise<{ content: Buffer }> {
     const delegation = await this.findDelegationOrThrow(meetingId, id, user);
-    if (user.role === 'C' && user.id !== delegation.delegatorUserId && user.id !== delegation.representativeUserId) {
+    if (
+      user.role === 'C' &&
+      user.id !== delegation.delegatorUserId &&
+      user.id !== delegation.representativeUserId
+    ) {
       throw new ForbiddenException('No tienes acceso a este documento.');
     }
     if (!delegation.documentS3Key) {
-      throw new NotFoundException('Esta delegación no tiene ningún escrito adjunto.');
+      throw new NotFoundException(
+        'Esta delegación no tiene ningún escrito adjunto.',
+      );
     }
     const content = await this.storage.get(delegation.documentS3Key);
     return { content };

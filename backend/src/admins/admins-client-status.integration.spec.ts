@@ -4,7 +4,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EstateSetupService } from '../estates/estate-setup.service';
 import { CompletenessService } from '../completeness/completeness.service';
 import { ClientStatusService } from '../client-status/client-status.service';
-import { createAdministrator, purgeAdministrator } from '../testing/db-fixtures';
+import {
+  createAdministrator,
+  purgeAdministrator,
+} from '../testing/db-fixtures';
 import { AdminsService } from './admins.service';
 import { createPrismaClient } from '../prisma/create-prisma-client';
 
@@ -15,8 +18,16 @@ import { createPrismaClient } from '../prisma/create-prisma-client';
  */
 const prisma = createPrismaClient();
 const db = prisma as unknown as PrismaService;
-const clientStatus = new ClientStatusService(db, new CompletenessService(db, new EstateSetupService(db)));
-const admins = new AdminsService(db, undefined as never, undefined as never, clientStatus);
+const clientStatus = new ClientStatusService(
+  db,
+  new CompletenessService(db, new EstateSetupService(db)),
+);
+const admins = new AdminsService(
+  db,
+  undefined as never,
+  undefined as never,
+  clientStatus,
+);
 const created: string[] = [];
 
 afterAll(async () => {
@@ -31,7 +42,12 @@ async function despacho(name: string) {
 }
 
 /** Fiscal year 2001 keeps the test invoices away from the real numbering. */
-async function invoice(administratorId: string, status: AdminInvoiceStatus, total: number, stripeInvoiceId: string | null = null) {
+async function invoice(
+  administratorId: string,
+  status: AdminInvoiceStatus,
+  total: number,
+  stripeInvoiceId: string | null = null,
+) {
   const sequence = Math.floor(Math.random() * 1_000_000_000);
   await prisma.adminInvoice.create({
     data: {
@@ -55,9 +71,17 @@ async function invoice(administratorId: string, status: AdminInvoiceStatus, tota
   });
 }
 
-async function stripe(administratorId: string, status: 'trialing' | 'past_due' | 'canceled') {
+async function stripe(
+  administratorId: string,
+  status: 'trialing' | 'past_due' | 'canceled',
+) {
   await prisma.administratorSubscription.create({
-    data: { administratorId, stripeCustomerId: `cus_${randomUUID()}`, stripeSubscriptionId: `sub_${randomUUID()}`, status },
+    data: {
+      administratorId,
+      stripeCustomerId: `cus_${randomUUID()}`,
+      stripeSubscriptionId: `sub_${randomUUID()}`,
+      status,
+    },
   });
 }
 
@@ -74,7 +98,10 @@ it('the list and the ficha expose client status, payment status and unpaid invoi
   await invoice(failed, 'Vencida', 72.6, `in_${randomUUID()}`);
 
   const suspended = await despacho('Despacho estado vencido');
-  await prisma.administrator.update({ where: { id: suspended }, data: { status: 'Vencida' } });
+  await prisma.administrator.update({
+    where: { id: suspended },
+    data: { status: 'Vencida' },
+  });
   await invoice(suspended, 'Vencida', 60.5);
 
   const list = await admins.list();
@@ -86,21 +113,59 @@ it('the list and the ficha expose client status, payment status and unpaid invoi
     usersActive: 0,
     clientStatus: 'En onboarding',
     paymentStatus: 'Pendiente',
-    pendingInvoices: { count: 1, amount: 60.5, overdueCount: 0, overdueAmount: 0 },
+    pendingInvoices: {
+      count: 1,
+      amount: 60.5,
+      overdueCount: 0,
+      overdueAmount: 0,
+    },
   });
-  expect(byId.get(trial)).toMatchObject({ clientStatus: 'En prueba', paymentStatus: 'Al día', pendingInvoices: { count: 0, amount: 0, overdueCount: 0, overdueAmount: 0 } });
-  expect(byId.get(failed)).toMatchObject({ clientStatus: 'En onboarding', paymentStatus: 'Fallido', pendingInvoices: { count: 1, amount: 72.6, overdueCount: 1, overdueAmount: 72.6 } });
-  expect(byId.get(suspended)).toMatchObject({ status: 'Vencida', clientStatus: 'Suspendido', paymentStatus: 'Vencido', pendingInvoices: { count: 1, amount: 60.5, overdueCount: 1, overdueAmount: 60.5 } });
+  expect(byId.get(trial)).toMatchObject({
+    clientStatus: 'En prueba',
+    paymentStatus: 'Al día',
+    pendingInvoices: { count: 0, amount: 0, overdueCount: 0, overdueAmount: 0 },
+  });
+  expect(byId.get(failed)).toMatchObject({
+    clientStatus: 'En onboarding',
+    paymentStatus: 'Fallido',
+    pendingInvoices: {
+      count: 1,
+      amount: 72.6,
+      overdueCount: 1,
+      overdueAmount: 72.6,
+    },
+  });
+  expect(byId.get(suspended)).toMatchObject({
+    status: 'Vencida',
+    clientStatus: 'Suspendido',
+    paymentStatus: 'Vencido',
+    pendingInvoices: {
+      count: 1,
+      amount: 60.5,
+      overdueCount: 1,
+      overdueAmount: 60.5,
+    },
+  });
 
   const detail = await admins.findById(failed);
-  expect(detail).toMatchObject({ id: failed, name: 'Despacho estado fallido', fincas: [], usersActive: 0, clientStatus: 'En onboarding', paymentStatus: 'Fallido' });
+  expect(detail).toMatchObject({
+    id: failed,
+    name: 'Despacho estado fallido',
+    fincas: [],
+    usersActive: 0,
+    clientStatus: 'En onboarding',
+    paymentStatus: 'Fallido',
+  });
   expect(detail.invoices).toHaveLength(1);
   expect(detail.activity).toEqual([]);
 });
 
 it('a deleted despacho or a canceled Stripe subscription is Cancelado', async () => {
   const deleted = await despacho('Despacho estado borrado');
-  await prisma.administrator.update({ where: { id: deleted }, data: { deletedAt: new Date() } });
+  await prisma.administrator.update({
+    where: { id: deleted },
+    data: { deletedAt: new Date() },
+  });
   const canceled = await despacho('Despacho estado cancelado');
   await stripe(canceled, 'canceled');
 

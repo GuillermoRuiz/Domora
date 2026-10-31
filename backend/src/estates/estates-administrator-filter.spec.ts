@@ -13,11 +13,19 @@ const OFFICE = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
 
 function user(overrides: Partial<AuthenticatedUser>): AuthenticatedUser {
-  return { userId: 'u1', role: 'B', estateIds: [], administratorId: null, ...overrides } as AuthenticatedUser;
+  return {
+    userId: 'u1',
+    role: 'B',
+    estateIds: [],
+    administratorId: null,
+    ...overrides,
+  } as AuthenticatedUser;
 }
 
 function controller() {
-  const summaryForAdministrator = jest.fn().mockResolvedValue([{ estateId: 'e1' }]);
+  const summaryForAdministrator = jest
+    .fn()
+    .mockResolvedValue([{ estateId: 'e1' }]);
   const ctrl = new EstatesController(
     {} as never,
     { summaryForAdministrator } as never,
@@ -30,7 +38,10 @@ function controller() {
 
 describe('EstatesController setup-summary despacho filter', () => {
   it('is open to roles A and B', () => {
-    const roles = new Reflector().get<string[]>(ROLES_KEY, EstatesController.prototype.setupSummary);
+    const roles = new Reflector().get<string[]>(
+      ROLES_KEY,
+      EstatesController.prototype.setupSummary,
+    );
     expect(roles).toEqual(['A', 'B']);
   });
 
@@ -72,7 +83,11 @@ describe('EstatesController setup-summary despacho filter', () => {
     await ctrl.setupSummary(b, undefined, OTHER);
     await ctrl.setupSummary(b, undefined, 'nope');
     await ctrl.setupSummary(b, undefined, undefined);
-    expect(summaryForAdministrator.mock.calls).toEqual([[OFFICE], [OFFICE], [OFFICE]]);
+    expect(summaryForAdministrator.mock.calls).toEqual([
+      [OFFICE],
+      [OFFICE],
+      [OFFICE],
+    ]);
   });
 
   it('role B without a despacho still gets an empty list', async () => {

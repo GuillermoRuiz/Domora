@@ -50,7 +50,10 @@ function receiptPostingFor() {
 }
 function collectionsFor() {
   const journal = new JournalService();
-  return new CollectionPostingService(journal, new ReceiptPostingService(journal));
+  return new CollectionPostingService(
+    journal,
+    new ReceiptPostingService(journal),
+  );
 }
 
 /** Bypassa el scoping por finca — no es lo que se prueba aquí. */

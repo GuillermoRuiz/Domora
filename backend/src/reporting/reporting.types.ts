@@ -3,10 +3,7 @@ import type { ReportSection } from '../common/reports/table-report';
 
 export type ReportFormat = 'pdf' | 'xlsx';
 export type ReportSensitivity =
-  | 'internal'
-  | 'personal_data'
-  | 'financial'
-  | 'tax';
+  'internal' | 'personal_data' | 'financial' | 'tax';
 export interface ReportDefinition {
   key: string;
   category: string;

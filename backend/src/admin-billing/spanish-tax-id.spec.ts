@@ -14,7 +14,10 @@ describe('isValidSpanishTaxId (recipient NIF sent to the AEAT on Domora invoices
   it.each([
     ['B12345678', 'CIF with a wrong control digit'],
     ['B1234567D', 'S.L. whose control must be a digit, not a letter'],
-    ['Q2826000 8'.replace(' ', ''), 'public body whose control must be a letter'],
+    [
+      'Q2826000 8'.replace(' ', ''),
+      'public body whose control must be a letter',
+    ],
     ['12345678A', 'DNI with a wrong letter'],
     ['I1234567A', 'unknown CIF letter'],
     ['', 'empty'],

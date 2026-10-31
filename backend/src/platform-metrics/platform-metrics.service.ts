@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { AdminActivityType, Prisma } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { mrrContribution, mrrMovements, type MrrClient, type MrrMovements } from './mrr';
+import {
+  mrrContribution,
+  mrrMovements,
+  type MrrClient,
+  type MrrMovements,
+} from './mrr';
 
 /** Months the MRR series looks back, the current one included. */
 const SERIES_MONTHS = 12;
@@ -61,7 +66,9 @@ export class PlatformMetricsService {
           create: { month, administratorId, mrr },
         });
       }),
-      this.prisma.clientMrrSnapshot.deleteMany({ where: { month, administratorId: { notIn: [...paying.keys()] } } }),
+      this.prisma.clientMrrSnapshot.deleteMany({
+        where: { month, administratorId: { notIn: [...paying.keys()] } },
+      }),
     ]);
   }
 
@@ -93,7 +100,9 @@ export class PlatformMetricsService {
     }
     byMonth.set(monthKey(current), live);
 
-    const firstData = earliest._min.month ? startOfMonth(earliest._min.month) : current;
+    const firstData = earliest._min.month
+      ? startOfMonth(earliest._min.month)
+      : current;
     const first = firstData > windowStart ? firstData : windowStart;
     const months: MrrMonth[] = [];
     // Everyone who paid before the first shown month: coming back is a reactivation, not new business.
@@ -101,15 +110,26 @@ export class PlatformMetricsService {
     for (let m = baseline; m < first; m = addMonths(m, 1)) {
       for (const id of byMonth.get(monthKey(m))?.keys() ?? []) everPaid.add(id);
     }
-    let prev = byMonth.get(monthKey(addMonths(first, -1))) ?? new Map<string, number>();
+    let prev =
+      byMonth.get(monthKey(addMonths(first, -1))) ?? new Map<string, number>();
     for (let m = first; m <= current; m = addMonths(m, 1)) {
       const curr = byMonth.get(monthKey(m)) ?? new Map<string, number>();
-      months.push({ month: monthKey(m), mrr: sum(curr), payingClients: curr.size, movements: mrrMovements(prev, curr, everPaid) });
+      months.push({
+        month: monthKey(m),
+        mrr: sum(curr),
+        payingClients: curr.size,
+        movements: mrrMovements(prev, curr, everPaid),
+      });
       for (const id of curr.keys()) everPaid.add(id);
       prev = curr;
     }
 
-    return { currentMrr: sum(live), payingClients: live.size, dataSince: monthKey(firstData < current ? firstData : current), months };
+    return {
+      currentMrr: sum(live),
+      payingClients: live.size,
+      dataSince: monthKey(firstData < current ? firstData : current),
+      months,
+    };
   }
 
   /** «Actividad reciente»: the latest business events of every despacho. */
@@ -118,7 +138,13 @@ export class PlatformMetricsService {
       where: { type: { in: BUSINESS_EVENTS } },
       orderBy: { occurredAt: 'desc' },
       take: Math.min(Math.max(limit, 1), MAX_ACTIVITY),
-      select: { id: true, type: true, title: true, occurredAt: true, administrator: { select: { id: true, name: true } } },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        occurredAt: true,
+        administrator: { select: { id: true, name: true } },
+      },
     });
   }
 
@@ -138,7 +164,11 @@ export class PlatformMetricsService {
     });
     const paying = new Map<string, number>();
     for (const admin of admins) {
-      const client: MrrClient = { ...admin, mrr: Number(admin.mrr), discountPct: Number(admin.discountPct) };
+      const client: MrrClient = {
+        ...admin,
+        mrr: Number(admin.mrr),
+        discountPct: Number(admin.discountPct),
+      };
       const value = mrrContribution(client, today);
       if (value > 0) paying.set(admin.id, value);
     }
@@ -151,7 +181,9 @@ function startOfMonth(date: Date): Date {
 }
 
 function addMonths(date: Date, months: number): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1),
+  );
 }
 
 function monthKey(date: Date): string {

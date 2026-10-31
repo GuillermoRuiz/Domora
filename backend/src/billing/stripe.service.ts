@@ -1,4 +1,8 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import type { PlanTier } from '../prisma/client';
@@ -29,8 +33,10 @@ export class StripeService {
     this.client = secretKey ? new Stripe(secretKey) : null;
     this.priceIds = {
       BASE: this.config.get<string>('STRIPE_PRICE_BASE')?.trim() || undefined,
-      STANDARD: this.config.get<string>('STRIPE_PRICE_STANDARD')?.trim() || undefined,
-      PREMIUM: this.config.get<string>('STRIPE_PRICE_PREMIUM')?.trim() || undefined,
+      STANDARD:
+        this.config.get<string>('STRIPE_PRICE_STANDARD')?.trim() || undefined,
+      PREMIUM:
+        this.config.get<string>('STRIPE_PRICE_PREMIUM')?.trim() || undefined,
     };
     if (!secretKey) {
       this.logger.warn(
@@ -60,9 +66,9 @@ export class StripeService {
 
   /** Plan cuyo Price coincide con el recibido en un evento del webhook — null si no coincide con ninguno de los 3 configurados. */
   planForPriceId(priceId: string): PlanTier | null {
-    const entry = (Object.entries(this.priceIds) as [PlanTier, string | undefined][]).find(
-      ([, id]) => id === priceId,
-    );
+    const entry = (
+      Object.entries(this.priceIds) as [PlanTier, string | undefined][]
+    ).find(([, id]) => id === priceId);
     return entry?.[0] ?? null;
   }
 
@@ -101,7 +107,9 @@ export class StripeService {
       // AdminsService.createFiscalInvoice (21% fijo, RD 1619/2012) — si
       // Stripe calculara también su propio impuesto, tendríamos dos
       // fuentes de verdad fiscal potencialmente distintas.
-      subscription_data: { metadata: { administrator_id: params.administratorId } },
+      subscription_data: {
+        metadata: { administrator_id: params.administratorId },
+      },
       metadata: { administrator_id: params.administratorId },
       success_url: params.successUrl,
       cancel_url: params.cancelUrl,
@@ -164,12 +172,18 @@ export class StripeService {
     });
   }
 
-  async cancelAtPeriodEnd(subscriptionId: string): Promise<Stripe.Subscription> {
+  async cancelAtPeriodEnd(
+    subscriptionId: string,
+  ): Promise<Stripe.Subscription> {
     const stripe = this.requireClient();
-    return stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+    return stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    });
   }
 
-  async retrieveSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+  async retrieveSubscription(
+    subscriptionId: string,
+  ): Promise<Stripe.Subscription> {
     return this.requireClient().subscriptions.retrieve(subscriptionId);
   }
 
@@ -193,16 +207,22 @@ export class StripeService {
   /** Verifica la firma HMAC del payload — nunca se procesa un evento sin pasar por aquí. */
   constructWebhookEvent(payload: Buffer, signature: string): Stripe.Event {
     const stripe = this.requireClient();
-    const webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET')?.trim();
+    const webhookSecret = this.config
+      .get<string>('STRIPE_WEBHOOK_SECRET')
+      ?.trim();
     if (!webhookSecret) {
-      throw new ServiceUnavailableException('STRIPE_WEBHOOK_SECRET no configurado.');
+      throw new ServiceUnavailableException(
+        'STRIPE_WEBHOOK_SECRET no configurado.',
+      );
     }
     return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
   }
 
   private requireUrl(session: Stripe.Checkout.Session): string {
     if (!session.url) {
-      throw new ServiceUnavailableException('Stripe no devolvió una URL de checkout.');
+      throw new ServiceUnavailableException(
+        'Stripe no devolvió una URL de checkout.',
+      );
     }
     return session.url;
   }

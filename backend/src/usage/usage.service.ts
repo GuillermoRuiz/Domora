@@ -40,8 +40,10 @@ export interface UsageSummary {
 }
 
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
-const byUseThenName = (a: { module: string; userDays: number }, b: { module: string; userDays: number }) =>
-  b.userDays - a.userDays || a.module.localeCompare(b.module);
+const byUseThenName = (
+  a: { module: string; userDays: number },
+  b: { module: string; userDays: number },
+) => b.userDays - a.userDays || a.module.localeCompare(b.module);
 
 /**
  * Reads the daily usage aggregation (S15) for the role A panel: active users
@@ -58,7 +60,9 @@ export class UsageService {
    * short history (capture started with T4) is not read as inactivity.
    */
   async firstCapturedDay(): Promise<Date | null> {
-    const { _min } = await this.prisma.userDailyActivity.aggregate({ _min: { day: true } });
+    const { _min } = await this.prisma.userDailyActivity.aggregate({
+      _min: { day: true },
+    });
     return _min.day ?? null;
   }
 
@@ -66,7 +70,9 @@ export class UsageService {
    * Last UTC day (YYYY-MM-DD) any user of each despacho was active, over the
    * whole history. Despachos without usage are absent from the map.
    */
-  async lastActiveDays(administratorIds: string[]): Promise<Map<string, string>> {
+  async lastActiveDays(
+    administratorIds: string[],
+  ): Promise<Map<string, string>> {
     if (administratorIds.length === 0) return new Map();
     const rows = await this.prisma.userDailyActivity.groupBy({
       by: ['administratorId'],
@@ -75,7 +81,8 @@ export class UsageService {
     });
     const result = new Map<string, string>();
     for (const row of rows) {
-      if (row.administratorId && row._max.day) result.set(row.administratorId, dayKey(row._max.day));
+      if (row.administratorId && row._max.day)
+        result.set(row.administratorId, dayKey(row._max.day));
     }
     return result;
   }
@@ -86,23 +93,43 @@ export class UsageService {
     const end = new Date(dayKey(to));
     const length = Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1;
     if (Number.isNaN(length) || length < 1 || length > USAGE_MAX_RANGE_DAYS) {
-      throw new BadRequestException(`El rango de uso debe ir de 1 a ${USAGE_MAX_RANGE_DAYS} días`);
+      throw new BadRequestException(
+        `El rango de uso debe ir de 1 a ${USAGE_MAX_RANGE_DAYS} días`,
+      );
     }
 
     const rows = await this.prisma.userDailyActivity.findMany({
       where: { day: { gte: start, lte: end } },
-      select: { day: true, userId: true, role: true, administratorId: true, modules: true, requests: true },
+      select: {
+        day: true,
+        userId: true,
+        role: true,
+        administratorId: true,
+        modules: true,
+        requests: true,
+      },
     });
 
     const days = new Map<string, UsageDay>();
     for (let i = 0; i < length; i++) {
       const day = dayKey(new Date(start.getTime() + i * DAY_MS));
-      days.set(day, { day, activeUsers: 0, activeB: 0, activeC: 0, requests: 0 });
+      days.set(day, {
+        day,
+        activeUsers: 0,
+        activeB: 0,
+        activeC: 0,
+        requests: 0,
+      });
     }
     const modules = new Map<string, { users: Set<string>; userDays: number }>();
     const despachos = new Map<
       string,
-      { users: Set<string>; days: Set<string>; requests: number; modules: Map<string, number> }
+      {
+        users: Set<string>;
+        days: Set<string>;
+        requests: number;
+        modules: Map<string, number>;
+      }
     >();
 
     for (const row of rows) {
@@ -115,7 +142,10 @@ export class UsageService {
         totals.requests += row.requests;
       }
       for (const module of row.modules) {
-        const m = modules.get(module) ?? { users: new Set<string>(), userDays: 0 };
+        const m = modules.get(module) ?? {
+          users: new Set<string>(),
+          userDays: 0,
+        };
         m.users.add(row.userId);
         m.userDays += 1;
         modules.set(module, m);
@@ -130,7 +160,8 @@ export class UsageService {
         d.users.add(row.userId);
         d.days.add(day);
         d.requests += row.requests;
-        for (const module of row.modules) d.modules.set(module, (d.modules.get(module) ?? 0) + 1);
+        for (const module of row.modules)
+          d.modules.set(module, (d.modules.get(module) ?? 0) + 1);
         despachos.set(row.administratorId, d);
       }
     }
@@ -146,11 +177,17 @@ export class UsageService {
           activeDays: d.days.size,
           requests: d.requests,
           lastActiveDay: [...d.days].sort().at(-1)!,
-          modules: [...d.modules.entries()].map(([module, userDays]) => ({ module, userDays })).sort(byUseThenName),
+          modules: [...d.modules.entries()]
+            .map(([module, userDays]) => ({ module, userDays }))
+            .sort(byUseThenName),
         }))
         .sort((a, b) => a.administratorId.localeCompare(b.administratorId)),
       modules: [...modules.entries()]
-        .map(([module, m]) => ({ module, users: m.users.size, userDays: m.userDays }))
+        .map(([module, m]) => ({
+          module,
+          users: m.users.size,
+          userDays: m.userDays,
+        }))
         .sort(byUseThenName),
     };
   }

@@ -15,11 +15,7 @@ import { EstateType } from '../../prisma/client';
 
 export type OverviewFilter = 'all' | 'issues' | 'pending' | 'requests';
 export type OverviewSort =
-  | 'name'
-  | 'ownersCount'
-  | 'balance'
-  | 'activeIssues'
-  | 'pendingAmount';
+  'name' | 'ownersCount' | 'balance' | 'activeIssues' | 'pendingAmount';
 
 export class EstateOverviewFilterDto {
   @IsOptional() @IsString() @MaxLength(100) search = '';

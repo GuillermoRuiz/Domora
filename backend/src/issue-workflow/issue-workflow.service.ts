@@ -40,10 +40,7 @@ import {
   type RequesterTemplate,
   type RequesterTemplateParams,
 } from './requester-messages';
-import {
-  ACTIVE_CLAIM_STATUSES,
-  CLAIM_WAIT_REF_TYPE,
-} from './insurance-claims';
+import { ACTIVE_CLAIM_STATUSES, CLAIM_WAIT_REF_TYPE } from './insurance-claims';
 import {
   ROUTE_LABELS,
   isResolutionRoute,
@@ -295,10 +292,7 @@ export class IssueWorkflowService {
    * Quienes pueden recibir avisos de la incidencia: TODOS los que la reportaron con cuenta (también los que avisaron en un duplicado
    * fusionado con ella), sin repetir y por orden de aviso; el resto de la comunidad la ve en el portal, sin avisos automáticos.
    */
-  private async requestersOf(
-    db: Db,
-    issue: { id: string },
-  ): Promise<string[]> {
+  private async requestersOf(db: Db, issue: { id: string }): Promise<string[]> {
     const reports = await db.issueReport.findMany({
       where: { issueId: issue.id, reporterUserId: { not: null } },
       orderBy: [{ receivedAt: 'asc' }, { id: 'asc' }],
@@ -341,21 +335,21 @@ export class IssueWorkflowService {
     const event =
       previous ??
       (await this.events.record(db, {
-      issueId: issue.id,
-      kind: 'requester_informed',
-      actorKind: actor.kind,
-      authorUserId: actor.userId,
-      text: message.body,
-      meta: {
-        template,
-        params: { ...params },
-        recipientUserId: recipients[0],
-        recipientUserIds: recipients,
-        channel: 'in_app',
-        ...(idempotencyKey ? { idempotencyKey } : {}),
-        ...extra,
-      },
-    }));
+        issueId: issue.id,
+        kind: 'requester_informed',
+        actorKind: actor.kind,
+        authorUserId: actor.userId,
+        text: message.body,
+        meta: {
+          template,
+          params: { ...params },
+          recipientUserId: recipients[0],
+          recipientUserIds: recipients,
+          channel: 'in_app',
+          ...(idempotencyKey ? { idempotencyKey } : {}),
+          ...extra,
+        },
+      }));
     return {
       issueId: issue.id,
       userIds: recipients,
@@ -829,10 +823,18 @@ export class IssueWorkflowService {
    * Con la vía del proveedor y nadie que lo contacte (Domora sin IA o sin poder hacerlo), una persona tiene que hacerlo: se abre
    * `contact_provider`. Si ya hay un siguiente paso (el contacto de Domora en cola, una espera, una visita, otra tarea), no hace falta.
    */
-  private async ensureProviderNextStep(db: Db, issue: IssueScope): Promise<void> {
+  private async ensureProviderNextStep(
+    db: Db,
+    issue: IssueScope,
+  ): Promise<void> {
     if (!ACTIVE_ISSUE_STATUSES.includes(issue.status)) return;
     const open = await db.agendaTask.findMany({
-      where: { issueId: issue.id, status: { in: OPEN_STATUSES }, kind: { not: null }, archivedAt: null },
+      where: {
+        issueId: issue.id,
+        status: { in: OPEN_STATUSES },
+        kind: { not: null },
+        archivedAt: null,
+      },
       select: { kind: true, payload: true },
     });
     const entry = (t: { kind: string | null; payload: unknown }) =>
@@ -840,7 +842,14 @@ export class IssueWorkflowService {
       (ENTRY_REVIEW_REASONS as readonly string[]).includes(
         (t.payload as { reason?: string } | null)?.reason ?? '',
       );
-    if (await this.hasNextStep(db, issue.id, open.filter((t) => !entry(t)))) return;
+    if (
+      await this.hasNextStep(
+        db,
+        issue.id,
+        open.filter((t) => !entry(t)),
+      )
+    )
+      return;
     await this.openTask(db, {
       issueId: issue.id,
       kind: 'review_issue',
@@ -861,7 +870,12 @@ export class IssueWorkflowService {
   ): Promise<void> {
     if (actor.kind !== 'person' || !actor.userId) return;
     const open = await db.agendaTask.findMany({
-      where: { issueId, status: { in: OPEN_STATUSES }, kind: 'review_issue', archivedAt: null },
+      where: {
+        issueId,
+        status: { in: OPEN_STATUSES },
+        kind: 'review_issue',
+        archivedAt: null,
+      },
       select: { payload: true },
     });
     const owned = open.some((t) =>
@@ -895,7 +909,12 @@ export class IssueWorkflowService {
     const issue = await this.scope(db, issueId);
     if (!ACTIVE_ISSUE_STATUSES.includes(issue.status)) return 0;
     const open = await db.agendaTask.findMany({
-      where: { issueId, status: { in: OPEN_STATUSES }, kind: { not: null }, archivedAt: null },
+      where: {
+        issueId,
+        status: { in: OPEN_STATUSES },
+        kind: { not: null },
+        archivedAt: null,
+      },
       select: { kind: true, payload: true },
     });
     const settleable: readonly string[] = [
@@ -904,7 +923,9 @@ export class IssueWorkflowService {
     ];
     const isEntry = (t: { kind: string | null; payload: unknown }) =>
       t.kind === 'review_issue' &&
-      settleable.includes((t.payload as { reason?: string } | null)?.reason ?? '');
+      settleable.includes(
+        (t.payload as { reason?: string } | null)?.reason ?? '',
+      );
     if (!open.some(isEntry)) return 0;
     if (
       !(await this.hasNextStep(
@@ -945,7 +966,12 @@ export class IssueWorkflowService {
    * A quién se espera cuando se elige una entidad real: solo un proveedor o una aseguradora del directorio de ESTA comunidad
    * (`activeSupplier`). Regla única de «Registrar actividad» y de la revisión.
    */
-  async waitSupplier(db: Db, estateId: string, party: WaitParty, supplierId: string) {
+  async waitSupplier(
+    db: Db,
+    estateId: string,
+    party: WaitParty,
+    supplierId: string,
+  ) {
     if (!['provider', 'insurer'].includes(party))
       throw new BadRequestException(
         'Solo se espera a un proveedor o aseguradora del directorio por su identificador.',
@@ -967,10 +993,16 @@ export class IssueWorkflowService {
       useAssigned?: boolean;
       visitorLabel?: string;
     },
-  ): Promise<{ supplierId?: string; assignmentId?: string; visitorLabel?: string }> {
+  ): Promise<{
+    supplierId?: string;
+    assignmentId?: string;
+    visitorLabel?: string;
+  }> {
     if (input.supplierId)
       return {
-        supplierId: (await this.activeSupplier(db, input.estateId, input.supplierId)).id,
+        supplierId: (
+          await this.activeSupplier(db, input.estateId, input.supplierId)
+        ).id,
       };
     if (input.useAssigned) {
       const assigned = await db.issueProviderAssignment.findFirst({
@@ -982,13 +1014,14 @@ export class IssueWorkflowService {
         );
       return assigned.supplierId
         ? {
-            supplierId: (await this.activeSupplier(db, input.estateId, assigned.supplierId)).id,
+            supplierId: (
+              await this.activeSupplier(db, input.estateId, assigned.supplierId)
+            ).id,
           }
         : { assignmentId: assigned.id };
     }
     const visitorLabel = input.visitorLabel?.trim();
-    if (!visitorLabel)
-      throw new BadRequestException('Indica quién visita.');
+    if (!visitorLabel) throw new BadRequestException('Indica quién visita.');
     return { visitorLabel };
   }
 
@@ -1214,7 +1247,10 @@ export class IssueWorkflowService {
         text: `Se abrió una tarea para el administrador: ${task.title}${input.milestoneLabel ? ` (hito: ${input.milestoneLabel})` : ''}`,
         refType: 'agenda_task',
         refId: task.id,
-        meta: { taskKind: input.kind, ...(input.milestoneLabel ? { milestone: input.milestoneLabel } : {}) },
+        meta: {
+          taskKind: input.kind,
+          ...(input.milestoneLabel ? { milestone: input.milestoneLabel } : {}),
+        },
       });
     }
     return {

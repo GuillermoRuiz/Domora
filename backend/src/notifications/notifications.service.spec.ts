@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../prisma/client';
-import { NotificationsService, type NotifyInput } from './notifications.service';
+import {
+  NotificationsService,
+  type NotifyInput,
+} from './notifications.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 const USER: AuthenticatedUser = {
@@ -44,13 +47,17 @@ describe('NotificationsService', () => {
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     prisma = {
       user: {
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'staff-1', email: 'gestor@x.test', role: 'B' },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { id: 'staff-1', email: 'gestor@x.test', role: 'B' },
+          ]),
       },
       userNotificationPreference: {
         findMany: jest.fn().mockResolvedValue([]),
-        upsert: jest.fn().mockImplementation(({ create }: any) => Promise.resolve(create)),
+        upsert: jest
+          .fn()
+          .mockImplementation(({ create }: any) => Promise.resolve(create)),
       },
       propertyMembership: { findMany: jest.fn().mockResolvedValue([]) },
       notification: {
@@ -68,7 +75,9 @@ describe('NotificationsService', () => {
       $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
     };
     mail = { sendNotificationEmail: jest.fn().mockResolvedValue(undefined) };
-    config = { get: jest.fn().mockReturnValue('http://app.test,http://otra.test') };
+    config = {
+      get: jest.fn().mockReturnValue('http://app.test,http://otra.test'),
+    };
     tasks = { countPending: jest.fn().mockResolvedValue(0) };
     push = { sendToUser: jest.fn().mockResolvedValue(undefined) };
     service = new NotificationsService(prisma, mail, config, tasks, push);
@@ -110,14 +119,24 @@ describe('NotificationsService', () => {
       ]);
 
       await service.notify(
-        input({ userIds: ['staff-1', 'own-1'], link: { B: '/b/estates/e1?tab=juntas', C: '/c/alerts' } }),
+        input({
+          userIds: ['staff-1', 'own-1'],
+          link: { B: '/b/estates/e1?tab=juntas', C: '/c/alerts' },
+        }),
       );
 
-      expect(prisma.notification.create.mock.calls.map((c: any) => [c[0].data.userId, c[0].data.link])).toEqual([
+      expect(
+        prisma.notification.create.mock.calls.map((c: any) => [
+          c[0].data.userId,
+          c[0].data.link,
+        ]),
+      ).toEqual([
         ['staff-1', '/b/estates/e1?tab=juntas'],
         ['own-1', '/c/alerts'],
       ]);
-      expect(mail.sendNotificationEmail.mock.calls.map((c: any) => c[3])).toEqual([
+      expect(
+        mail.sendNotificationEmail.mock.calls.map((c: any) => c[3]),
+      ).toEqual([
         'http://app.test/b/estates/e1?tab=juntas',
         'http://app.test/c/alerts',
       ]);
@@ -126,7 +145,9 @@ describe('NotificationsService', () => {
     it('si el rol del destinatario no está en el mapa de enlaces, usa el primero disponible', async () => {
       await service.notify(input({ link: { C: '/c/alerts' } }));
 
-      expect(prisma.notification.create.mock.calls[0][0].data.link).toBe('/c/alerts');
+      expect(prisma.notification.create.mock.calls[0][0].data.link).toBe(
+        '/c/alerts',
+      );
     });
 
     it('con el email desactivado en sus preferencias: crea el aviso pero no envía nada', async () => {
@@ -156,19 +177,28 @@ describe('NotificationsService', () => {
 
       expect(prisma.notification.update).toHaveBeenCalledWith({
         where: { id: 'n1' },
-        data: { emailStatus: 'failed', emailError: expect.stringContaining('SMTP caído') },
+        data: {
+          emailStatus: 'failed',
+          emailError: expect.stringContaining('SMTP caído'),
+        },
       });
     });
   });
 
   describe('notify — propietarios (preferencia por vivienda)', () => {
     beforeEach(() => {
-      prisma.user.findMany.mockResolvedValue([{ id: 'own-1', email: 'ana@x.test', role: 'C' }]);
+      prisma.user.findMany.mockResolvedValue([
+        { id: 'own-1', email: 'ana@x.test', role: 'C' },
+      ]);
     });
 
     function withSetting(notifyIssues: string | undefined) {
       prisma.propertyMembership.findMany.mockResolvedValue([
-        { userId: 'own-1', propertyId: 'p1', settings: notifyIssues ? { notifyIssues } : null },
+        {
+          userId: 'own-1',
+          propertyId: 'p1',
+          settings: notifyIssues ? { notifyIssues } : null,
+        },
       ]);
     }
 
@@ -177,14 +207,17 @@ describe('NotificationsService', () => {
       ['push_only', true, false],
       ['email_only', false, true],
       ['email_push', true, true],
-    ])('notifyIssues = %s → bandeja: %s, email: %s', async (setting, inApp, email) => {
-      withSetting(setting);
+    ])(
+      'notifyIssues = %s → bandeja: %s, email: %s',
+      async (setting, inApp, email) => {
+        withSetting(setting);
 
-      await service.notify(input({ userIds: ['own-1'], category: 'issue' }));
+        await service.notify(input({ userIds: ['own-1'], category: 'issue' }));
 
-      expect(prisma.notification.create).toHaveBeenCalledTimes(inApp ? 1 : 0);
-      expect(mail.sendNotificationEmail).toHaveBeenCalledTimes(email ? 1 : 0);
-    });
+        expect(prisma.notification.create).toHaveBeenCalledTimes(inApp ? 1 : 0);
+        expect(mail.sendNotificationEmail).toHaveBeenCalledTimes(email ? 1 : 0);
+      },
+    );
 
     it('sin ajustes guardados usa el valor por defecto (bandeja + email)', async () => {
       withSetting(undefined);
@@ -197,8 +230,16 @@ describe('NotificationsService', () => {
 
     it('con varias viviendas basta con que UNA permita el canal (email)', async () => {
       prisma.propertyMembership.findMany.mockResolvedValue([
-        { userId: 'own-1', propertyId: 'p1', settings: { notifyIssues: 'none' } },
-        { userId: 'own-1', propertyId: 'p2', settings: { notifyIssues: 'email_only' } },
+        {
+          userId: 'own-1',
+          propertyId: 'p1',
+          settings: { notifyIssues: 'none' },
+        },
+        {
+          userId: 'own-1',
+          propertyId: 'p2',
+          settings: { notifyIssues: 'email_only' },
+        },
       ]);
 
       await service.notify(input({ userIds: ['own-1'], category: 'issue' }));
@@ -209,8 +250,16 @@ describe('NotificationsService', () => {
 
     it('con varias viviendas basta con que UNA permita el canal (bandeja) — no hace falta que TODAS lo permitan', async () => {
       prisma.propertyMembership.findMany.mockResolvedValue([
-        { userId: 'own-1', propertyId: 'p1', settings: { notifyIssues: 'none' } },
-        { userId: 'own-1', propertyId: 'p2', settings: { notifyIssues: 'push_only' } },
+        {
+          userId: 'own-1',
+          propertyId: 'p1',
+          settings: { notifyIssues: 'none' },
+        },
+        {
+          userId: 'own-1',
+          propertyId: 'p2',
+          settings: { notifyIssues: 'push_only' },
+        },
       ]);
 
       await service.notify(input({ userIds: ['own-1'], category: 'issue' }));
@@ -222,11 +271,16 @@ describe('NotificationsService', () => {
     it('si el aviso es de una vivienda concreta, solo cuenta la preferencia de ESA vivienda', async () => {
       withSetting('none');
 
-      await service.notify(input({ userIds: ['own-1'], category: 'issue', propertyId: 'p9' }));
+      await service.notify(
+        input({ userIds: ['own-1'], category: 'issue', propertyId: 'p9' }),
+      );
 
       expect(prisma.propertyMembership.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ propertyId: 'p9', userId: { in: ['own-1'] } }),
+          where: expect.objectContaining({
+            propertyId: 'p9',
+            userId: { in: ['own-1'] },
+          }),
         }),
       );
     });
@@ -241,10 +295,19 @@ describe('NotificationsService', () => {
 
     it('mensajes directos: usa notifyDirectMessages', async () => {
       prisma.propertyMembership.findMany.mockResolvedValue([
-        { userId: 'own-1', propertyId: 'p1', settings: { notifyDirectMessages: 'none', notifyIssues: 'email_push' } },
+        {
+          userId: 'own-1',
+          propertyId: 'p1',
+          settings: {
+            notifyDirectMessages: 'none',
+            notifyIssues: 'email_push',
+          },
+        },
       ]);
 
-      await service.notify(input({ userIds: ['own-1'], category: 'direct_message' }));
+      await service.notify(
+        input({ userIds: ['own-1'], category: 'direct_message' }),
+      );
 
       expect(prisma.notification.create).not.toHaveBeenCalled();
       expect(mail.sendNotificationEmail).not.toHaveBeenCalled();
@@ -270,7 +333,10 @@ describe('NotificationsService', () => {
 
       expect(prisma.notification.updateMany).toHaveBeenCalledWith({
         where: { userId: 'staff-1', dedupeKey: 'dm:c1', readAt: null },
-        data: expect.objectContaining({ title: 'Nueva solicitud de adhesión', createdAt: expect.any(Date) }),
+        data: expect.objectContaining({
+          title: 'Nueva solicitud de adhesión',
+          createdAt: expect.any(Date),
+        }),
       });
       expect(prisma.notification.create).not.toHaveBeenCalled();
       expect(mail.sendNotificationEmail).not.toHaveBeenCalled();
@@ -281,7 +347,9 @@ describe('NotificationsService', () => {
     it('si no hay ninguno lo crea con la clave y sí envía el email y el push real', async () => {
       await service.notify(input({ dedupeKey: 'dm:c1' }));
 
-      expect(prisma.notification.create.mock.calls[0][0].data.dedupeKey).toBe('dm:c1');
+      expect(prisma.notification.create.mock.calls[0][0].data.dedupeKey).toBe(
+        'dm:c1',
+      );
       expect(mail.sendNotificationEmail).toHaveBeenCalledTimes(1);
       expect(push.sendToUser).toHaveBeenCalledWith('staff-1', {
         title: 'Nueva solicitud de adhesión',
@@ -352,7 +420,10 @@ describe('NotificationsService', () => {
       prisma.estate.findFirst.mockResolvedValue({ administratorId: 'a1' });
       prisma.user.findMany.mockResolvedValue([{ id: 'b1' }, { id: 'b2' }]);
 
-      await expect(service.managerIdsOfEstate('e1')).resolves.toEqual(['b1', 'b2']);
+      await expect(service.managerIdsOfEstate('e1')).resolves.toEqual([
+        'b1',
+        'b2',
+      ]);
       expect(prisma.user.findMany).toHaveBeenCalledWith({
         where: { administratorId: 'a1', role: 'B', deletedAt: null },
         select: { id: true },
@@ -368,7 +439,9 @@ describe('NotificationsService', () => {
     it('residentIds: propietarios e inquilinos vinculados, sin repetir usuario', async () => {
       prisma.propertyMembership.findMany.mockResolvedValue([{ userId: 'c1' }]);
 
-      await expect(service.residentIds({ estateId: 'e1' })).resolves.toEqual(['c1']);
+      await expect(service.residentIds({ estateId: 'e1' })).resolves.toEqual([
+        'c1',
+      ]);
       expect(prisma.propertyMembership.findMany).toHaveBeenCalledWith({
         where: {
           status: 'linked',
@@ -384,7 +457,9 @@ describe('NotificationsService', () => {
     it('residentIds acota a una vivienda concreta', async () => {
       await service.residentIds({ propertyId: 'p1' });
 
-      expect(prisma.propertyMembership.findMany.mock.calls[0][0].where.property).toEqual({
+      expect(
+        prisma.propertyMembership.findMany.mock.calls[0][0].where.property,
+      ).toEqual({
         deletedAt: null,
         id: 'p1',
       });
@@ -405,8 +480,28 @@ describe('NotificationsService', () => {
     it('list: solo los del usuario, más recientes primero, con "read" como booleano', async () => {
       const readAt = new Date('2026-09-20T10:00:00Z');
       prisma.notification.findMany.mockResolvedValue([
-        { id: 'n1', category: 'adhesion', title: 't', body: null, link: '/l', estateId: 'e1', propertyId: null, readAt: null, createdAt: new Date('2026-09-21T10:00:00Z') },
-        { id: 'n2', category: 'issue', title: 't2', body: 'b', link: '/l2', estateId: null, propertyId: 'p1', readAt, createdAt: new Date('2026-09-20T09:00:00Z') },
+        {
+          id: 'n1',
+          category: 'adhesion',
+          title: 't',
+          body: null,
+          link: '/l',
+          estateId: 'e1',
+          propertyId: null,
+          readAt: null,
+          createdAt: new Date('2026-09-21T10:00:00Z'),
+        },
+        {
+          id: 'n2',
+          category: 'issue',
+          title: 't2',
+          body: 'b',
+          link: '/l2',
+          estateId: null,
+          propertyId: 'p1',
+          readAt,
+          createdAt: new Date('2026-09-20T09:00:00Z'),
+        },
       ]);
 
       const items = await service.list(USER, {});
@@ -416,16 +511,27 @@ describe('NotificationsService', () => {
         orderBy: { createdAt: 'desc' },
         take: 30,
       });
-      expect(items.map((i) => [i.id, i.read])).toEqual([['n1', false], ['n2', true]]);
+      expect(items.map((i) => [i.id, i.read])).toEqual([
+        ['n1', false],
+        ['n2', true],
+      ]);
       expect(items[0].createdAt).toBe('2026-09-21T10:00:00.000Z');
       expect(items[0]).not.toHaveProperty('emailStatus');
     });
 
     it('list: filtro de no leídos, cursor por fecha y tope de página', async () => {
-      await service.list(USER, { unread: true, before: '2026-09-20T00:00:00.000Z', limit: 999 });
+      await service.list(USER, {
+        unread: true,
+        before: '2026-09-20T00:00:00.000Z',
+        limit: 999,
+      });
 
       expect(prisma.notification.findMany).toHaveBeenCalledWith({
-        where: { userId: 'u1', readAt: null, createdAt: { lt: new Date('2026-09-20T00:00:00.000Z') } },
+        where: {
+          userId: 'u1',
+          readAt: null,
+          createdAt: { lt: new Date('2026-09-20T00:00:00.000Z') },
+        },
         orderBy: { createdAt: 'desc' },
         take: 50,
       });
@@ -449,7 +555,9 @@ describe('NotificationsService', () => {
     it('markRead: el aviso de OTRO usuario es un 404 (no se filtra que existe)', async () => {
       prisma.notification.findFirst.mockResolvedValue(null);
 
-      await expect(service.markRead(USER, 'ajeno')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.markRead(USER, 'ajeno')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
       expect(prisma.notification.update).not.toHaveBeenCalled();
     });
 
@@ -486,7 +594,9 @@ describe('NotificationsService', () => {
         unreadMessages: 3,
         pendingTasks: 7,
       });
-      expect(prisma.notification.count).toHaveBeenCalledWith({ where: { userId: 'u1', readAt: null } });
+      expect(prisma.notification.count).toHaveBeenCalledWith({
+        where: { userId: 'u1', readAt: null },
+      });
     });
 
     it('los mensajes sin leer se cuentan en UNA consulta para todas las conversaciones', async () => {
@@ -525,10 +635,23 @@ describe('NotificationsService', () => {
 
       const prefs = await service.getPreferences(USER);
 
-      expect(prefs.find((p) => p.category === 'inspection')?.emailEnabled).toBe(false);
-      expect(prefs.filter((p) => p.category !== 'inspection').every((p) => p.emailEnabled)).toBe(true);
+      expect(prefs.find((p) => p.category === 'inspection')?.emailEnabled).toBe(
+        false,
+      );
+      expect(
+        prefs
+          .filter((p) => p.category !== 'inspection')
+          .every((p) => p.emailEnabled),
+      ).toBe(true);
       expect(prefs.map((p) => p.category)).toEqual(
-        expect.arrayContaining(['adhesion', 'onboarding', 'issue', 'direct_message', 'inspection', 'meeting']),
+        expect.arrayContaining([
+          'adhesion',
+          'onboarding',
+          'issue',
+          'direct_message',
+          'inspection',
+          'meeting',
+        ]),
       );
     });
 

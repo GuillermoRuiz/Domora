@@ -15,8 +15,17 @@ import { IssueWorkflowModule } from '../issue-workflow/issue-workflow.module';
 
 @Module({
   imports: [EstateAccessModule, FilesModule, LedgerModule, IssueWorkflowModule],
-  controllers: [SuppliersController, EstateSupplierPaymentsController, SupplierPaymentsController],
-  providers: [SuppliersService, SupplierInvoicesService, SupplierVisitsService, SupplierOverviewService],
+  controllers: [
+    SuppliersController,
+    EstateSupplierPaymentsController,
+    SupplierPaymentsController,
+  ],
+  providers: [
+    SuppliersService,
+    SupplierInvoicesService,
+    SupplierVisitsService,
+    SupplierOverviewService,
+  ],
   exports: [SuppliersService],
 })
 export class SuppliersModule {}

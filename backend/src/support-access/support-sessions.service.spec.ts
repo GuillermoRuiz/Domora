@@ -1,5 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
-import { SupportSessionsService, SUPPORT_SESSION_TTL_MS } from './support-sessions.service';
+import {
+  SupportSessionsService,
+  SUPPORT_SESSION_TTL_MS,
+} from './support-sessions.service';
 import type { StaffAuditService } from './staff-audit.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
@@ -102,7 +105,9 @@ describe('SupportSessionsService', () => {
 
   it('answers 404 for a foreign or unknown session', async () => {
     const { audit, service } = build();
-    await expect(service.end(STAFF, SESSION)).rejects.toThrow(NotFoundException);
+    await expect(service.end(STAFF, SESSION)).rejects.toThrow(
+      NotFoundException,
+    );
     expect(audit.record).not.toHaveBeenCalled();
   });
 

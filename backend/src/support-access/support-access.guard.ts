@@ -9,7 +9,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import type { AppRole, AuthenticatedUser } from '../auth/auth.types';
-import { DespachoResolverService, isUuid, type DespachoTarget } from './despacho-resolver.service';
+import {
+  DespachoResolverService,
+  isUuid,
+  type DespachoTarget,
+} from './despacho-resolver.service';
 import { StaffAuditService, type StaffAuditEntry } from './staff-audit.service';
 import { SupportSessionsService } from './support-sessions.service';
 import { classifyRoute, isReadOnlyRequest, routeTemplate } from './route-scope';
@@ -70,10 +74,10 @@ export class SupportAccessGuard implements CanActivate {
     const user = req.user;
     if (!user || user.role !== 'A') return true;
 
-    const roles = this.reflector.getAllAndOverride<AppRole[] | undefined>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const roles = this.reflector.getAllAndOverride<AppRole[] | undefined>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     const route = routeTemplate(context.getClass(), context.getHandler());
     if (classifyRoute(roles, route) !== 'tenant') return true;
 
@@ -88,9 +92,13 @@ export class SupportAccessGuard implements CanActivate {
 
     const header = req.headers[SUPPORT_SESSION_HEADER];
     const sessionId = Array.isArray(header) ? header[0] : header;
-    if (!sessionId) return this.deny(base, target, null, SUPPORT_MESSAGES.noSession);
-    const session = isUuid(sessionId) ? await this.sessions.findValid(sessionId, user.id) : null;
-    if (!session) return this.deny(base, target, null, SUPPORT_MESSAGES.invalidSession);
+    if (!sessionId)
+      return this.deny(base, target, null, SUPPORT_MESSAGES.noSession);
+    const session = isUuid(sessionId)
+      ? await this.sessions.findValid(sessionId, user.id)
+      : null;
+    if (!session)
+      return this.deny(base, target, null, SUPPORT_MESSAGES.invalidSession);
     if (!readOnly && !target) {
       return this.deny(base, target, session.id, SUPPORT_MESSAGES.unresolved);
     }
@@ -110,7 +118,10 @@ export class SupportAccessGuard implements CanActivate {
       action: readOnly ? 'read' : 'write',
     });
     // Listings and searches that span despachos for role A scope to this one (`@SupportDespacho()`).
-    req.supportSession = { id: session.id, administratorId: session.administratorId };
+    req.supportSession = {
+      id: session.id,
+      administratorId: session.administratorId,
+    };
     return true;
   }
 

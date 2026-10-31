@@ -16,7 +16,10 @@ import { ACTIVE_ISSUE_STATUSES } from '../issues/issue-status.constants';
 import { CatastroFacadeService } from '../catastro/catastro-facade.service';
 import { EstateGeoService } from '../catastro/estate-geo.service';
 import { StorageService } from '../files/storage.service';
-import { ESTATE_PRIVATE_OMIT, withoutManagerOnlyFields } from '../common/secret-omit';
+import {
+  ESTATE_PRIVATE_OMIT,
+  withoutManagerOnlyFields,
+} from '../common/secret-omit';
 
 /** Tamaño máximo de la foto de una finca. */
 export const ESTATE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
@@ -26,21 +29,44 @@ export const ESTATE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
  * el navegador se puede falsificar, así que no se confía en él. Solo JPG,
  * PNG y WebP (nada de SVG: puede llevar scripts).
  */
-export function detectImageType(buffer: Buffer): { contentType: string; extension: string } | null {
-  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+export function detectImageType(
+  buffer: Buffer,
+): { contentType: string; extension: string } | null {
+  if (
+    buffer.length >= 3 &&
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  ) {
     return { contentType: 'image/jpeg', extension: 'jpg' };
   }
-  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+  if (
+    buffer.length >= 8 &&
+    buffer
+      .subarray(0, 8)
+      .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
     return { contentType: 'image/png', extension: 'png' };
   }
-  if (buffer.length >= 12 && buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') {
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+  ) {
     return { contentType: 'image/webp', extension: 'webp' };
   }
   return null;
 }
 
 /** Fields that move the estate on the map: changing any of them locates it again. */
-const LOCATION_FIELDS = ['address', 'streetNumber', 'postalCode', 'location', 'province', 'cadastralReference'] as const;
+const LOCATION_FIELDS = [
+  'address',
+  'streetNumber',
+  'postalCode',
+  'location',
+  'province',
+  'cadastralReference',
+] as const;
 
 @Injectable()
 export class EstatesService {
@@ -276,7 +302,8 @@ export class EstatesService {
       await bootstrapEstateLedger(tx, estate.id);
       return estate;
     });
-    if (estate.cadastralReference) await this.facade.refreshEstate(estate.id, estate.cadastralReference);
+    if (estate.cadastralReference)
+      await this.facade.refreshEstate(estate.id, estate.cadastralReference);
     // In the background: the map location never delays saving the estate.
     void this.geo.refreshEstate(estate.id);
     return estate;
@@ -302,30 +329,57 @@ export class EstatesService {
     let facadeStale = false;
     let updated;
     if (dto.cadastralReference === undefined) {
-      updated = await this.prisma.estate.update({ where: { id }, data, omit: ESTATE_PRIVATE_OMIT });
+      updated = await this.prisma.estate.update({
+        where: { id },
+        data,
+        omit: ESTATE_PRIVATE_OMIT,
+      });
     } else {
       // Compare with the row locked, not with the snapshot above: two crossed saves must never leave
       // one reference with the facade of another. An unchanged, already resolved reference keeps its photo.
       const next = dto.cadastralReference ?? null;
       ({ updated, facadeStale } = await this.prisma.$transaction(async (tx) => {
-        const [row] = await tx.$queryRaw<{ cadastral_reference: string | null; catastro_facade_resolved_at: Date | null }[]>`
+        const [row] = await tx.$queryRaw<
+          {
+            cadastral_reference: string | null;
+            catastro_facade_resolved_at: Date | null;
+          }[]
+        >`
           SELECT cadastral_reference, catastro_facade_resolved_at FROM estates WHERE id = ${id}::uuid FOR UPDATE`;
-        const stale = (row?.cadastral_reference ?? null) !== next || (next !== null && !row?.catastro_facade_resolved_at);
+        const stale =
+          (row?.cadastral_reference ?? null) !== next ||
+          (next !== null && !row?.catastro_facade_resolved_at);
         const saved = await tx.estate.update({
           where: { id },
-          data: { ...data, ...(stale ? { catastroFacadeUrl: null, catastroFacadeResolvedAt: null } : {}) },
+          data: {
+            ...data,
+            ...(stale
+              ? { catastroFacadeUrl: null, catastroFacadeResolvedAt: null }
+              : {}),
+          },
           omit: ESTATE_PRIVATE_OMIT,
         });
         return { updated: saved, facadeStale: stale };
       }));
     }
     // The edit form always sends the whole address: only a real change locates the estate again.
-    const moved = LOCATION_FIELDS.some((field) => dto[field] !== undefined && (dto[field] || null) !== (estate[field] || null));
+    const moved = LOCATION_FIELDS.some(
+      (field) =>
+        dto[field] !== undefined &&
+        (dto[field] || null) !== (estate[field] || null),
+    );
     if (moved) void this.geo.refreshEstate(id);
     if (facadeStale) {
       // `updated` was read with the facade cleared: return the one just resolved, or the client shows no photo until reload.
-      const facadeUrl = await this.facade.refreshEstate(id, dto.cadastralReference ?? null);
-      return { ...updated, catastroFacadeUrl: facadeUrl, catastroFacadeResolvedAt: dto.cadastralReference ? new Date() : null };
+      const facadeUrl = await this.facade.refreshEstate(
+        id,
+        dto.cadastralReference ?? null,
+      );
+      return {
+        ...updated,
+        catastroFacadeUrl: facadeUrl,
+        catastroFacadeResolvedAt: dto.cadastralReference ? new Date() : null,
+      };
     }
     return updated;
   }
@@ -349,21 +403,33 @@ export class EstatesService {
     });
     if (!estate) throw new NotFoundException(`Finca ${id} no encontrada.`);
     this.assertGestoraOrAdmin(estate, user);
-    if (!file || file.size === 0) throw new BadRequestException('Falta la foto.');
+    if (!file || file.size === 0)
+      throw new BadRequestException('Falta la foto.');
     if (file.size > ESTATE_PHOTO_MAX_BYTES) {
       throw new BadRequestException(
         `La foto supera el máximo de ${ESTATE_PHOTO_MAX_BYTES / (1024 * 1024)} MB.`,
       );
     }
     const type = detectImageType(file.buffer);
-    if (!type) throw new BadRequestException('La foto debe ser una imagen JPG, PNG o WebP.');
+    if (!type)
+      throw new BadRequestException(
+        'La foto debe ser una imagen JPG, PNG o WebP.',
+      );
 
-    const key = await this.storage.put(`estates/${id}/photo`, `photo.${type.extension}`, file.buffer);
+    const key = await this.storage.put(
+      `estates/${id}/photo`,
+      `photo.${type.extension}`,
+      file.buffer,
+    );
     let updated;
     try {
       updated = await this.prisma.estate.update({
         where: { id },
-        data: { photoKey: key, photoContentType: type.contentType, photoUpdatedAt: new Date() },
+        data: {
+          photoKey: key,
+          photoContentType: type.contentType,
+          photoUpdatedAt: new Date(),
+        },
         omit: ESTATE_PRIVATE_OMIT,
       });
     } catch (error) {
@@ -392,7 +458,10 @@ export class EstatesService {
   }
 
   /** La foto de la finca, para quien tenga acceso a ella (gestión o propietarios). */
-  async getPhoto(id: string, user: AuthenticatedUser): Promise<{ content: Buffer; contentType: string }> {
+  async getPhoto(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<{ content: Buffer; contentType: string }> {
     this.estateAccess.assertAccess(id, user);
     const estate = await this.prisma.estate.findFirst({
       where: { id, deletedAt: null },
@@ -401,6 +470,9 @@ export class EstatesService {
     if (!estate?.photoKey || !estate.photoContentType) {
       throw new NotFoundException('Esta finca no tiene foto subida.');
     }
-    return { content: await this.storage.get(estate.photoKey), contentType: estate.photoContentType };
+    return {
+      content: await this.storage.get(estate.photoKey),
+      contentType: estate.photoContentType,
+    };
   }
 }

@@ -26,7 +26,9 @@ describe('SEPA creditor identifier (AT-02)', () => {
   });
 
   it('normalises to upper case without spaces', () => {
-    expect(normalizeSepaCreditorId(' es11 zzz b12345674 ')).toBe('ES11ZZZB12345674');
+    expect(normalizeSepaCreditorId(' es11 zzz b12345674 ')).toBe(
+      'ES11ZZZB12345674',
+    );
   });
 });
 
@@ -43,8 +45,12 @@ describe('mandate reference (UMR)', () => {
   it('only belongs to the despacho whose id it carries', () => {
     const ref = generateMandateReference(ADMIN_ID, new Date());
     expect(isMandateReferenceFor(ADMIN_ID, ref)).toBe(true);
-    expect(isMandateReferenceFor('99999999-0000-4000-8000-000000000001', ref)).toBe(false);
-    expect(isMandateReferenceFor(ADMIN_ID, 'DOM-1A2B3C4D-2026-XYZ')).toBe(false);
+    expect(
+      isMandateReferenceFor('99999999-0000-4000-8000-000000000001', ref),
+    ).toBe(false);
+    expect(isMandateReferenceFor(ADMIN_ID, 'DOM-1A2B3C4D-2026-XYZ')).toBe(
+      false,
+    );
   });
 });
 
@@ -57,11 +63,15 @@ describe('sepaMandateText', () => {
       creditorAddress: 'Calle Mayor 1, 28001 Madrid',
     });
     expect(text).toContain('Orden de domiciliación de adeudo directo SEPA');
-    expect(text).toContain('Referencia de la orden de domiciliación: DOM-1A2B3C4D-20261027-ABCDEF');
+    expect(text).toContain(
+      'Referencia de la orden de domiciliación: DOM-1A2B3C4D-20261027-ABCDEF',
+    );
     expect(text).toContain('Identificador del acreedor: ES11ZZZB12345674');
     expect(text).toContain('Nombre del acreedor: Domora S.L.');
     expect(text).toContain('Dirección: Calle Mayor 1, 28001 Madrid');
-    expect(text).toContain('el deudor autoriza (A) al acreedor a enviar instrucciones a la entidad del deudor para adeudar su cuenta');
+    expect(text).toContain(
+      'el deudor autoriza (A) al acreedor a enviar instrucciones a la entidad del deudor para adeudar su cuenta',
+    );
     expect(text).toContain('dentro de las ocho semanas');
     expect(text).toContain('Tipo de pago: pago recurrente');
     expect(SEPA_MANDATE_TEXT_VERSION).toBe('sepa-core-es-v1');

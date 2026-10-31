@@ -1,4 +1,8 @@
-import type { ActaConvocation, ActaMajorityType, ActaMeetingType } from './acta-snapshot.types';
+import type {
+  ActaConvocation,
+  ActaMajorityType,
+  ActaMeetingType,
+} from './acta-snapshot.types';
 
 /**
  * Modelo del DOCUMENTO del acta: lo que se muestra y se renderiza, ya preparado. No es un
@@ -40,7 +44,11 @@ export interface ActaVoteBlock {
   totalResponses: number;
   majority: { type: ActaMajorityType; label: string };
   /** Porcentajes de la mayoría, ya formateados («66,67 %»), o null si no constan. */
-  favorable: { owners: string | null; quota: string | null; basis: 'censo' | 'presentes' | null };
+  favorable: {
+    owners: string | null;
+    quota: string | null;
+    basis: 'censo' | 'presentes' | null;
+  };
   /** `approved`/`rejected` solo cuando `passed` es booleano. */
   outcome: 'approved' | 'rejected' | null;
   outcomeText: string | null;
@@ -126,7 +134,13 @@ export interface ActaDocumentModel {
     /** Propiedad, asistente, DNI, coeficiente y asistencia (en actas anteriores faltan las columnas del asistente y del DNI). */
     attendanceColumns: string[];
   };
-  agenda: { order: number; label: string; title: string; /** «1º  Título». */ line: string; source: ActaSource }[];
+  agenda: {
+    order: number;
+    label: string;
+    title: string;
+    /** «1º  Título». */ line: string;
+    source: ActaSource;
+  }[];
   attendance: {
     summary: {
       presentCount: number;
@@ -157,8 +171,13 @@ export interface ActaDocumentModel {
  * Tabla de asistencia tal y como se imprime: el DNI nunca sale en el acta, ni en las versiones que
  * lo guardaron en el documento. Devuelve los rótulos y las celdas sin esa columna.
  */
-export function printableAttendance(labels: string[], rows: ActaAttendanceRow[]): { labels: string[]; rows: string[][] } {
-  const keep = labels.map((_, index) => index).filter((index) => !/^dni$/i.test(labels[index].trim()));
+export function printableAttendance(
+  labels: string[],
+  rows: ActaAttendanceRow[],
+): { labels: string[]; rows: string[][] } {
+  const keep = labels
+    .map((_, index) => index)
+    .filter((index) => !/^dni$/i.test(labels[index].trim()));
   return {
     labels: keep.map((index) => labels[index]),
     rows: rows.map((row) => {
@@ -172,8 +191,19 @@ export function printableAttendance(labels: string[], rows: ActaAttendanceRow[])
  * Celdas de una fila de la tabla de asistencia según las columnas del acta: las actas anteriores
  * llevan menos columnas (sin asistente ni DNI) y se siguen pintando como se generaron.
  */
-export function attendanceCells(columnCount: number, row: ActaAttendanceRow): string[] {
-  if (columnCount >= 5) return [row.ref, row.attendee ?? '—', row.attendeeDni ?? '—', row.quota, row.status];
-  if (columnCount === 4) return [row.ref, row.attendee ?? '—', row.quota, row.status];
+export function attendanceCells(
+  columnCount: number,
+  row: ActaAttendanceRow,
+): string[] {
+  if (columnCount >= 5)
+    return [
+      row.ref,
+      row.attendee ?? '—',
+      row.attendeeDni ?? '—',
+      row.quota,
+      row.status,
+    ];
+  if (columnCount === 4)
+    return [row.ref, row.attendee ?? '—', row.quota, row.status];
   return [row.ref, row.quota, row.status];
 }

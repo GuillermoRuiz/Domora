@@ -71,7 +71,10 @@ export class GdprService {
       this.prisma.debtorAction.findMany({ where: { authorUserId: user.id } }),
       this.prisma.resourceRead.findMany({ where: { userId: user.id } }),
       // Days the user used the platform and in which modules (usage metrics of the role A panel).
-      this.prisma.userDailyActivity.findMany({ where: { userId: user.id }, orderBy: { day: 'asc' } }),
+      this.prisma.userDailyActivity.findMany({
+        where: { userId: user.id },
+        orderBy: { day: 'asc' },
+      }),
     ]);
 
     await this.audit.logAccess(user, 'gdpr_export', 'export', user.id);

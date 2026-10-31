@@ -127,7 +127,12 @@ export class RagAuthorizationService {
     // Downloads, uploads and the assistant all trust this list: it MUST follow the document visibility rule.
     const documents = estate
       ? await this.prisma.document.findMany({
-          where: { AND: [{ estateId: estate.id }, await documentVisibleWhere(this.prisma, user)] },
+          where: {
+            AND: [
+              { estateId: estate.id },
+              await documentVisibleWhere(this.prisma, user),
+            ],
+          },
           select: { id: true },
         })
       : [];

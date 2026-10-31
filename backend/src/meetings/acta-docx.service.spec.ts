@@ -38,12 +38,16 @@ const data = {
 
 describe('ActaDocxService — comentarios generales y próximos pasos', () => {
   const service = new ActaDocxService();
-  const withNotes = (notes: Record<string, unknown>) => ({ ...meeting([]), ...notes }) as unknown as Meeting;
+  const withNotes = (notes: Record<string, unknown>) =>
+    ({ ...meeting([]), ...notes }) as unknown as Meeting;
 
   it('incluye los comentarios generales y los próximos pasos que anotó la gestora', async () => {
     const xml = await documentXml(
       await service.generate(
-        withNotes({ actaGeneralComments: 'Sin incidencias.', actaNextSteps: 'Pedir 3 presupuestos.\nRevisar la iluminación.' }),
+        withNotes({
+          actaGeneralComments: 'Sin incidencias.',
+          actaNextSteps: 'Pedir 3 presupuestos.\nRevisar la iluminación.',
+        }),
         data,
       ),
     );
@@ -55,7 +59,12 @@ describe('ActaDocxService — comentarios generales y próximos pasos', () => {
   });
 
   it('no añade secciones vacías cuando no hay texto', async () => {
-    const xml = await documentXml(await service.generate(withNotes({ actaGeneralComments: '  ', actaNextSteps: null }), data));
+    const xml = await documentXml(
+      await service.generate(
+        withNotes({ actaGeneralComments: '  ', actaNextSteps: null }),
+        data,
+      ),
+    );
     expect(xml).not.toContain('Comentarios generales');
     expect(xml).not.toContain('próximos pasos');
   });
@@ -68,7 +77,11 @@ describe('ActaDocxService — orden del día con comentarios', () => {
     const xml = await documentXml(
       await service.generate(
         meeting([
-          { id: 'a1', title: 'Aprobación del presupuesto', comments: 'Se aprueba con una reserva.\nVoto en contra de 2B.' },
+          {
+            id: 'a1',
+            title: 'Aprobación del presupuesto',
+            comments: 'Se aprueba con una reserva.\nVoto en contra de 2B.',
+          },
           { id: 'a2', title: 'Ruegos y preguntas' },
         ]),
         data,
@@ -84,7 +97,12 @@ describe('ActaDocxService — orden del día con comentarios', () => {
   it('sin puntos lo indica, y un punto sin comentarios no añade líneas vacías de comentario', async () => {
     const empty = await documentXml(await service.generate(meeting([]), data));
     expect(empty).toContain('Sin puntos en el orden del día.');
-    const plain = await documentXml(await service.generate(meeting([{ id: 'a1', title: 'Informe', comments: '   ' }]), data));
+    const plain = await documentXml(
+      await service.generate(
+        meeting([{ id: 'a1', title: 'Informe', comments: '   ' }]),
+        data,
+      ),
+    );
     expect(plain).toContain('1. Informe');
   });
 });
@@ -92,8 +110,13 @@ describe('ActaDocxService — orden del día con comentarios', () => {
 describe('ActaDocxService.generateFromModel — el .docx consume el modelo canónico', () => {
   const service = new ActaDocxService();
   const model = buildActaDocument(sampleSnapshot(), {
-    items: { a1: { text: 'Se presenta el presupuesto anual.', origin: 'notes' } },
-    observations: { text: 'La junta se desarrolló con normalidad.', origin: 'notes' },
+    items: {
+      a1: { text: 'Se presenta el presupuesto anual.', origin: 'notes' },
+    },
+    observations: {
+      text: 'La junta se desarrolló con normalidad.',
+      origin: 'notes',
+    },
   });
 
   it('contiene el acta formal completa tal y como la describe el modelo', async () => {
@@ -121,8 +144,16 @@ describe('ActaDocxService.generateFromModel — el .docx consume el modelo canó
 
   it('la tabla de asistencia nunca lleva el DNI (igual que el PDF), tampoco el de versiones que lo guardaron', async () => {
     const withDni = JSON.parse(JSON.stringify(model));
-    withDni.labels.attendanceColumns = ['PROPIEDAD', 'ASISTENTE', 'DNI', 'COEFICIENTE', 'ASISTENCIA'];
-    withDni.attendance.rows = withDni.attendance.rows.map((row: Record<string, unknown>) => ({ ...row, attendeeDni: '12345678Z' }));
+    withDni.labels.attendanceColumns = [
+      'PROPIEDAD',
+      'ASISTENTE',
+      'DNI',
+      'COEFICIENTE',
+      'ASISTENCIA',
+    ];
+    withDni.attendance.rows = withDni.attendance.rows.map(
+      (row: Record<string, unknown>) => ({ ...row, attendeeDni: '12345678Z' }),
+    );
     const xml = await documentXml(await service.generateFromModel(withDni));
     expect(xml).toContain('ASISTENTE');
     expect(xml).not.toContain('DNI');

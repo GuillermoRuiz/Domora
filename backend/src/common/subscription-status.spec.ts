@@ -1,26 +1,44 @@
-import { deriveAdminStatusFromStripe, isActiveStripeSubscription, resolvesPastDueGrace } from './subscription-status';
+import {
+  deriveAdminStatusFromStripe,
+  isActiveStripeSubscription,
+  resolvesPastDueGrace,
+} from './subscription-status';
 
 describe('isActiveStripeSubscription', () => {
   it.each(['active', 'trialing', 'past_due', 'paused'])(
     'considera activa una suscripción con stripeSubscriptionId y status "%s"',
     (status) => {
-      expect(isActiveStripeSubscription({ stripeSubscriptionId: 'sub_1', status })).toBe(true);
+      expect(
+        isActiveStripeSubscription({ stripeSubscriptionId: 'sub_1', status }),
+      ).toBe(true);
     },
   );
 
   it.each(['canceled', 'incomplete', 'incomplete_expired', 'unpaid'])(
     'NO considera activa una suscripción con status "%s"',
     (status) => {
-      expect(isActiveStripeSubscription({ stripeSubscriptionId: 'sub_1', status })).toBe(false);
+      expect(
+        isActiveStripeSubscription({ stripeSubscriptionId: 'sub_1', status }),
+      ).toBe(false);
     },
   );
 
   it('sin stripeSubscriptionId nunca es activa, aunque el status lo sea', () => {
-    expect(isActiveStripeSubscription({ stripeSubscriptionId: null, status: 'active' })).toBe(false);
+    expect(
+      isActiveStripeSubscription({
+        stripeSubscriptionId: null,
+        status: 'active',
+      }),
+    ).toBe(false);
   });
 
   it('sin status no es activa', () => {
-    expect(isActiveStripeSubscription({ stripeSubscriptionId: 'sub_1', status: null })).toBe(false);
+    expect(
+      isActiveStripeSubscription({
+        stripeSubscriptionId: 'sub_1',
+        status: null,
+      }),
+    ).toBe(false);
   });
 
   it('null/undefined no son activas', () => {
@@ -34,7 +52,9 @@ describe('deriveAdminStatusFromStripe', () => {
     it.each(['unpaid', 'canceled', 'incomplete_expired'])(
       'un estado terminal de Stripe ("%s") cierra el lazo: pasa a Vencida',
       (stripeStatus) => {
-        expect(deriveAdminStatusFromStripe('Activa', stripeStatus)).toBe('Vencida');
+        expect(deriveAdminStatusFromStripe('Activa', stripeStatus)).toBe(
+          'Vencida',
+        );
       },
     );
 
@@ -47,23 +67,37 @@ describe('deriveAdminStatusFromStripe', () => {
       expect(deriveAdminStatusFromStripe('Activa', 'past_due')).toBeNull();
     });
 
-    it.each(['active', 'trialing'])('si ya está Activa y Stripe confirma "%s", no hay nada que cambiar', (s) => {
-      expect(deriveAdminStatusFromStripe('Activa', s)).toBeNull();
-    });
+    it.each(['active', 'trialing'])(
+      'si ya está Activa y Stripe confirma "%s", no hay nada que cambiar',
+      (s) => {
+        expect(deriveAdminStatusFromStripe('Activa', s)).toBeNull();
+      },
+    );
 
-    it.each(['incomplete', 'paused'])('estados transitorios de Stripe ("%s") no mueven nada', (s) => {
-      expect(deriveAdminStatusFromStripe('Activa', s)).toBeNull();
-    });
+    it.each(['incomplete', 'paused'])(
+      'estados transitorios de Stripe ("%s") no mueven nada',
+      (s) => {
+        expect(deriveAdminStatusFromStripe('Activa', s)).toBeNull();
+      },
+    );
   });
 
   describe('desde Vencida', () => {
-    it.each(['active', 'trialing'])('el pago se recupera ("%s") → vuelve a Activa', (stripeStatus) => {
-      expect(deriveAdminStatusFromStripe('Vencida', stripeStatus)).toBe('Activa');
-    });
+    it.each(['active', 'trialing'])(
+      'el pago se recupera ("%s") → vuelve a Activa',
+      (stripeStatus) => {
+        expect(deriveAdminStatusFromStripe('Vencida', stripeStatus)).toBe(
+          'Activa',
+        );
+      },
+    );
 
-    it.each(['past_due', 'unpaid', 'canceled'])('sigue fallando ("%s") → se queda en Vencida (null, no reescribe)', (s) => {
-      expect(deriveAdminStatusFromStripe('Vencida', s)).toBeNull();
-    });
+    it.each(['past_due', 'unpaid', 'canceled'])(
+      'sigue fallando ("%s") → se queda en Vencida (null, no reescribe)',
+      (s) => {
+        expect(deriveAdminStatusFromStripe('Vencida', s)).toBeNull();
+      },
+    );
   });
 
   describe('Periodo de gracia y Bloqueada — solo las cambia una persona, nunca un webhook', () => {

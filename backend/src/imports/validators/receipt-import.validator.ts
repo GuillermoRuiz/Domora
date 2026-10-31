@@ -1,5 +1,14 @@
-import type { PayMethod, ReceiptStatus, TaxIdCountry } from '../../prisma/client';
-import { matchEnumAlias, parseSpanishDate, parseSpanishDecimal, type ValidatedRow } from './parsing.util';
+import type {
+  PayMethod,
+  ReceiptStatus,
+  TaxIdCountry,
+} from '../../prisma/client';
+import {
+  matchEnumAlias,
+  parseSpanishDate,
+  parseSpanishDecimal,
+  type ValidatedRow,
+} from './parsing.util';
 
 export interface ReceiptImportRow {
   /** Número de recibo TAL CUAL en el origen — se preserva (no se regenera) para que un import de remesas posterior pueda vincularlo por periodo+número. */
@@ -62,7 +71,10 @@ export function validateReceiptRow(
 
   const periodKey = mappedRow['periodKey']?.trim();
   if (!periodKey) errors.push('Falta el periodo (formato AAAA-MM).');
-  else if (!PERIOD_KEY_RE.test(periodKey)) errors.push(`Periodo con formato inválido: "${periodKey}" (se espera AAAA-MM).`);
+  else if (!PERIOD_KEY_RE.test(periodKey))
+    errors.push(
+      `Periodo con formato inválido: "${periodKey}" (se espera AAAA-MM).`,
+    );
   else data.periodKey = periodKey;
 
   const propertyRef = mappedRow['propertyRef']?.trim();
@@ -71,7 +83,10 @@ export function validateReceiptRow(
 
   const ownerName = mappedRow['ownerName']?.trim();
   if (ownerName) data.ownerName = ownerName;
-  else warnings.push('Sin nombre de propietario en el origen — el recibo se importará sin snapshot de titular.');
+  else
+    warnings.push(
+      'Sin nombre de propietario en el origen — el recibo se importará sin snapshot de titular.',
+    );
 
   const ownerTaxId = mappedRow['ownerTaxId']?.trim();
   if (ownerTaxId) {
@@ -97,7 +112,8 @@ export function validateReceiptRow(
   const dueDateRaw = mappedRow['dueDate']?.trim();
   if (dueDateRaw) {
     const dueDate = parseSpanishDate(dueDateRaw);
-    if (!dueDate) errors.push(`Fecha de vencimiento inválida: "${dueDateRaw}".`);
+    if (!dueDate)
+      errors.push(`Fecha de vencimiento inválida: "${dueDateRaw}".`);
     else data.dueDate = dueDate;
   }
 
@@ -120,7 +136,9 @@ export function validateReceiptRow(
   else data.method = method;
 
   if (data.method === 'Domiciliacion' && !data.iban) {
-    warnings.push('Recibo domiciliado sin IBAN en el origen — se importa igual, sin ese dato.');
+    warnings.push(
+      'Recibo domiciliado sin IBAN en el origen — se importa igual, sin ese dato.',
+    );
   }
 
   const returnCode = mappedRow['returnCode']?.trim();

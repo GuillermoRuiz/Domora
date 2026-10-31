@@ -319,10 +319,14 @@ function completedSteps(
   for (const t of f.tasks) {
     if (t.status !== 'COMPLETADA' || !t.completedAt) continue;
     push(1, t.completedAt, {
-      key: t.reason === 'open_insurance_claim' ? 'community_insurance:contact' : `task:${short(t.id)}`,
-      label: t.reason === 'open_insurance_claim'
-        ? 'Contactar con el seguro de la comunidad'
-        : (t.reason && DONE_TASK_LABEL[t.reason]) || `Hecho: ${t.label}`,
+      key:
+        t.reason === 'open_insurance_claim'
+          ? 'community_insurance:contact'
+          : `task:${short(t.id)}`,
+      label:
+        t.reason === 'open_insurance_claim'
+          ? 'Contactar con el seguro de la comunidad'
+          : (t.reason && DONE_TASK_LABEL[t.reason]) || `Hecho: ${t.label}`,
       ...(t.reason === 'open_insurance_claim' ? { milestone: true } : {}),
       ...(t.reason === 'open_insurance_claim' ? { position: 0 } : {}),
       source: { type: 'task', id: t.id },
@@ -357,7 +361,10 @@ function completedSteps(
   if (f.resolvedAt)
     push(2, f.resolvedAt, {
       key: 'resolved',
-      label: f.route === 'community_insurance' ? 'Incidencia cerrada' : 'Incidencia resuelta',
+      label:
+        f.route === 'community_insurance'
+          ? 'Incidencia cerrada'
+          : 'Incidencia resuelta',
       ...(f.route === 'community_insurance' ? { milestone: true } : {}),
       ...(f.route === 'community_insurance' ? { position: 1_000_000 } : {}),
       source: { type: 'system' },
@@ -548,18 +555,26 @@ export function projectJourney(
       ...s,
       label: o?.label?.trim() || s.label,
       // «Incidencia cerrada» siempre va con el estado Cerrada.
-      linkedStatus: s.key === 'resolved' && s.milestone ? 'Cerrada' : o?.linkedStatus,
+      linkedStatus:
+        s.key === 'resolved' && s.milestone ? 'Cerrada' : o?.linkedStatus,
     });
   }
   for (const o of custom) {
     const statusEvent = o.linkedStatus
-      ? facts.events.find((event) => event.kind === 'status_changed' && event.toStatus === o.linkedStatus)
+      ? facts.events.find(
+          (event) =>
+            event.kind === 'status_changed' &&
+            event.toStatus === o.linkedStatus,
+        )
       : null;
-    const doneAt = o.doneAt ?? statusEvent?.date ?? (
-      o.linkedStatus === facts.issueStatus
-        ? (o.linkedStatus === 'Abierta' ? facts.createdAt : facts.now)
-        : null
-    );
+    const doneAt =
+      o.doneAt ??
+      statusEvent?.date ??
+      (o.linkedStatus === facts.issueStatus
+        ? o.linkedStatus === 'Abierta'
+          ? facts.createdAt
+          : facts.now
+        : null);
     if (!doneAt) continue;
     completed.push({
       id: o.id,
@@ -578,11 +593,16 @@ export function projectJourney(
   }
   // «Contactar con el seguro» no deja huella en Domora: la gestión lo da por hecho a mano.
   const contactDone = byKey.get('community_insurance:contact');
-  if (contactDone?.doneAt && facts.route === 'community_insurance' && !completed.some((s) => s.key === 'community_insurance:contact'))
+  if (
+    contactDone?.doneAt &&
+    facts.route === 'community_insurance' &&
+    !completed.some((s) => s.key === 'community_insurance:contact')
+  )
     completed.push({
       id: null,
       key: 'community_insurance:contact',
-      label: contactDone.label?.trim() || 'Contactar con el seguro de la comunidad',
+      label:
+        contactDone.label?.trim() || 'Contactar con el seguro de la comunidad',
       status: 'completed',
       custom: false,
       completedAt: contactDone.doneAt.toISOString(),
@@ -642,7 +662,8 @@ export function projectJourney(
     steps.push({
       id: null,
       key: 'community_insurance:contact',
-      label: override?.label?.trim() || 'Contactar con el seguro de la comunidad',
+      label:
+        override?.label?.trim() || 'Contactar con el seguro de la comunidad',
       status: 'upcoming',
       custom: false,
       milestone: true,
@@ -652,10 +673,15 @@ export function projectJourney(
     });
   }
   for (const o of custom
-    .filter((x) =>
-      !x.doneAt &&
-      x.linkedStatus !== facts.issueStatus &&
-      !facts.events.some((event) => event.kind === 'status_changed' && event.toStatus === x.linkedStatus),
+    .filter(
+      (x) =>
+        !x.doneAt &&
+        x.linkedStatus !== facts.issueStatus &&
+        !facts.events.some(
+          (event) =>
+            event.kind === 'status_changed' &&
+            event.toStatus === x.linkedStatus,
+        ),
     )
     .sort((a, b) => a.position - b.position))
     steps.push({

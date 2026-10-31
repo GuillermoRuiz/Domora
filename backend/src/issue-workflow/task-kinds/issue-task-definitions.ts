@@ -218,9 +218,14 @@ export const reviewIssue: TaskKindDefinition<
       ],
     };
     const [title, detail] = texts[ctx.payload.reason];
-    const text = taskText(ctx, title, `${detail}${ctx.payload.note ? `\n${ctx.payload.note}` : ''}`);
+    const text = taskText(
+      ctx,
+      title,
+      `${detail}${ctx.payload.note ? `\n${ctx.payload.note}` : ''}`,
+    );
     // La vía del seguro de la comunidad titula la tarea con su acción, no con el título de la incidencia.
-    if (ctx.payload.reason === 'open_insurance_claim') text.title = `${ctx.issue.ref} · ${title}`;
+    if (ctx.payload.reason === 'open_insurance_claim')
+      text.title = `${ctx.issue.ref} · ${title}`;
     return Promise.resolve(text);
   },
 };

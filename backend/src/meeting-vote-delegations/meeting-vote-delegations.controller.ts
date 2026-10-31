@@ -32,10 +32,15 @@ interface UploadedMulterFile {
 // CommunicationsController para respuestas de comunicados.
 @Controller('meetings/:meetingId/delegations')
 export class MeetingVoteDelegationsController {
-  constructor(private readonly delegationsService: MeetingVoteDelegationsService) {}
+  constructor(
+    private readonly delegationsService: MeetingVoteDelegationsService,
+  ) {}
 
   @Get()
-  list(@Param('meetingId') meetingId: string, @CurrentUser() user: AuthenticatedUser) {
+  list(
+    @Param('meetingId') meetingId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.delegationsService.list(meetingId, user);
   }
 
@@ -45,7 +50,11 @@ export class MeetingVoteDelegationsController {
     @Query('propertyId') propertyId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.delegationsService.listEligibleDelegators(meetingId, propertyId, user);
+    return this.delegationsService.listEligibleDelegators(
+      meetingId,
+      propertyId,
+      user,
+    );
   }
 
   @Post()
@@ -76,7 +85,9 @@ export class MeetingVoteDelegationsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     if (!file) {
-      throw new NotFoundException('No se recibió ningún fichero (campo "file").');
+      throw new NotFoundException(
+        'No se recibió ningún fichero (campo "file").',
+      );
     }
     return this.delegationsService.uploadDocument(meetingId, id, file, user);
   }
@@ -88,8 +99,15 @@ export class MeetingVoteDelegationsController {
     @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    const { content } = await this.delegationsService.downloadDocument(meetingId, id, user);
-    res.setHeader('Content-Disposition', 'attachment; filename="delegacion.pdf"');
+    const { content } = await this.delegationsService.downloadDocument(
+      meetingId,
+      id,
+      user,
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="delegacion.pdf"',
+    );
     res.setHeader('Content-Type', 'application/octet-stream');
     res.send(content);
   }

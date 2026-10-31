@@ -4,7 +4,14 @@ import { UsageService } from './usage.service';
 
 const d = (day: string) => new Date(`${day}T00:00:00Z`);
 
-function row(day: string, userId: string, role: 'B' | 'C', administratorId: string | null, modules: string[], requests: number) {
+function row(
+  day: string,
+  userId: string,
+  role: 'B' | 'C',
+  administratorId: string | null,
+  modules: string[],
+  requests: number,
+) {
   return { day: d(day), userId, role, administratorId, modules, requests };
 }
 
@@ -13,20 +20,26 @@ describe('UsageService.summary', () => {
   let service: UsageService;
 
   beforeEach(() => {
-    findMany = jest.fn().mockResolvedValue([
-      row('2026-10-01', 'b1', 'B', 'adm1', ['estates', 'receipts'], 10),
-      row('2026-10-01', 'b2', 'B', 'adm1', ['estates'], 2),
-      row('2026-10-01', 'c1', 'C', null, ['documents'], 4),
-      row('2026-10-03', 'b1', 'B', 'adm1', ['meetings', 'estates'], 5),
-      row('2026-10-03', 'b3', 'B', 'adm2', ['accounting'], 1),
-    ]);
-    service = new UsageService({ userDailyActivity: { findMany } } as unknown as PrismaService);
+    findMany = jest
+      .fn()
+      .mockResolvedValue([
+        row('2026-10-01', 'b1', 'B', 'adm1', ['estates', 'receipts'], 10),
+        row('2026-10-01', 'b2', 'B', 'adm1', ['estates'], 2),
+        row('2026-10-01', 'c1', 'C', null, ['documents'], 4),
+        row('2026-10-03', 'b1', 'B', 'adm1', ['meetings', 'estates'], 5),
+        row('2026-10-03', 'b3', 'B', 'adm2', ['accounting'], 1),
+      ]);
+    service = new UsageService({
+      userDailyActivity: { findMany },
+    } as unknown as PrismaService);
   });
 
   it('queries only the requested days', async () => {
     await service.summary(d('2026-10-01'), d('2026-10-03'));
     expect(findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { day: { gte: d('2026-10-01'), lte: d('2026-10-03') } } }),
+      expect.objectContaining({
+        where: { day: { gte: d('2026-10-01'), lte: d('2026-10-03') } },
+      }),
     );
   });
 
@@ -35,9 +48,27 @@ describe('UsageService.summary', () => {
     expect(summary.from).toBe('2026-10-01');
     expect(summary.to).toBe('2026-10-03');
     expect(summary.days).toEqual([
-      { day: '2026-10-01', activeUsers: 3, activeB: 2, activeC: 1, requests: 16 },
-      { day: '2026-10-02', activeUsers: 0, activeB: 0, activeC: 0, requests: 0 },
-      { day: '2026-10-03', activeUsers: 2, activeB: 2, activeC: 0, requests: 6 },
+      {
+        day: '2026-10-01',
+        activeUsers: 3,
+        activeB: 2,
+        activeC: 1,
+        requests: 16,
+      },
+      {
+        day: '2026-10-02',
+        activeUsers: 0,
+        activeB: 0,
+        activeC: 0,
+        requests: 0,
+      },
+      {
+        day: '2026-10-03',
+        activeUsers: 2,
+        activeB: 2,
+        activeC: 0,
+        requests: 6,
+      },
     ]);
   });
 
@@ -79,16 +110,24 @@ describe('UsageService.summary', () => {
   });
 
   it('rejects an inverted range or one longer than 366 days without querying', async () => {
-    await expect(service.summary(d('2026-10-03'), d('2026-10-01'))).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.summary(d('2025-01-01'), d('2026-10-01'))).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.summary(d('2026-10-03'), d('2026-10-01')),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.summary(d('2025-01-01'), d('2026-10-01')),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(findMany).not.toHaveBeenCalled();
   });
 });
 
 describe('UsageService.firstCapturedDay', () => {
   it('returns the earliest captured day with one aggregate query', async () => {
-    const aggregate = jest.fn().mockResolvedValue({ _min: { day: d('2026-10-20') } });
-    const service = new UsageService({ userDailyActivity: { aggregate } } as unknown as PrismaService);
+    const aggregate = jest
+      .fn()
+      .mockResolvedValue({ _min: { day: d('2026-10-20') } });
+    const service = new UsageService({
+      userDailyActivity: { aggregate },
+    } as unknown as PrismaService);
     await expect(service.firstCapturedDay()).resolves.toEqual(d('2026-10-20'));
     expect(aggregate).toHaveBeenCalledTimes(1);
     expect(aggregate).toHaveBeenCalledWith({ _min: { day: true } });
@@ -96,7 +135,9 @@ describe('UsageService.firstCapturedDay', () => {
 
   it('is null before anything was captured', async () => {
     const aggregate = jest.fn().mockResolvedValue({ _min: { day: null } });
-    const service = new UsageService({ userDailyActivity: { aggregate } } as unknown as PrismaService);
+    const service = new UsageService({
+      userDailyActivity: { aggregate },
+    } as unknown as PrismaService);
     await expect(service.firstCapturedDay()).resolves.toBeNull();
   });
 });

@@ -31,8 +31,13 @@ export class ClientStatusService {
     private readonly completeness: CompletenessService,
   ) {}
 
-  async forAdministrator(administratorId: string): Promise<AdministratorClientStatus | null> {
-    return (await this.forAdministrators([administratorId])).get(administratorId) ?? null;
+  async forAdministrator(
+    administratorId: string,
+  ): Promise<AdministratorClientStatus | null> {
+    return (
+      (await this.forAdministrators([administratorId])).get(administratorId) ??
+      null
+    );
   }
 
   /**
@@ -50,34 +55,59 @@ export class ClientStatusService {
     const [admins, invoices] = await Promise.all([
       this.prisma.administrator.findMany({
         where: { id: { in: administratorIds } },
-        select: { id: true, status: true, deletedAt: true, subscription: { select: { stripeSubscriptionId: true, status: true } } },
+        select: {
+          id: true,
+          status: true,
+          deletedAt: true,
+          subscription: {
+            select: { stripeSubscriptionId: true, status: true },
+          },
+        },
       }),
       this.prisma.adminInvoice.findMany({
-        where: { administratorId: { in: administratorIds }, status: { in: ['Pendiente', 'Vencida'] } },
-        select: { administratorId: true, status: true, total: true, stripeInvoiceId: true },
+        where: {
+          administratorId: { in: administratorIds },
+          status: { in: ['Pendiente', 'Vencida'] },
+        },
+        select: {
+          administratorId: true,
+          status: true,
+          total: true,
+          stripeInvoiceId: true,
+        },
       }),
     ]);
 
     const invoicesByOffice = new Map<string, InvoiceForStatus[]>();
     for (const invoice of invoices) {
       const list = invoicesByOffice.get(invoice.administratorId) ?? [];
-      list.push({ status: invoice.status, total: Number(invoice.total), stripe: invoice.stripeInvoiceId !== null });
+      list.push({
+        status: invoice.status,
+        total: Number(invoice.total),
+        stripe: invoice.stripeInvoiceId !== null,
+      });
       invoicesByOffice.set(invoice.administratorId, list);
     }
 
     const rows = admins.map((admin) => ({
       ...admin,
       // Same reading as the MRR: a status without a subscription id is not a Stripe client.
-      stripeStatus: admin.subscription?.stripeSubscriptionId ? admin.subscription.status : null,
+      stripeStatus: admin.subscription?.stripeSubscriptionId
+        ? admin.subscription.status
+        : null,
     }));
 
     // Completitud only matters for the despachos that end up Activo / En onboarding.
     const needOnboarding = rows
-      .filter((r) => clientStatus({ ...r, onboardingComplete: true }) === 'Activo')
+      .filter(
+        (r) => clientStatus({ ...r, onboardingComplete: true }) === 'Activo',
+      )
       .map((r) => r.id);
     const onboarding =
       onboardingComplete ??
-      (needOnboarding.length > 0 ? await this.completeness.onboardingCompleteByOffice(needOnboarding) : new Map<string, boolean>());
+      (needOnboarding.length > 0
+        ? await this.completeness.onboardingCompleteByOffice(needOnboarding)
+        : new Map<string, boolean>());
 
     for (const row of rows) {
       const officeInvoices = invoicesByOffice.get(row.id) ?? [];
@@ -88,7 +118,11 @@ export class ClientStatusService {
           stripeStatus: row.stripeStatus as SubscriptionStatus | null,
           onboardingComplete: onboarding.get(row.id) ?? false,
         }),
-        paymentStatus: paymentStatus({ status: row.status as AdminStatus, stripeStatus: row.stripeStatus as SubscriptionStatus | null, invoices: officeInvoices }),
+        paymentStatus: paymentStatus({
+          status: row.status as AdminStatus,
+          stripeStatus: row.stripeStatus as SubscriptionStatus | null,
+          invoices: officeInvoices,
+        }),
         pendingInvoices: pendingInvoicesSummary(officeInvoices),
       });
     }

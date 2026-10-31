@@ -13,7 +13,9 @@ export function normalizeSepaCreditorId(value: string): string {
 
 /** Letters become 10..35, digits stay (ISO 7064 MOD 97-10, same as the IBAN). */
 function toDigits(value: string): string {
-  return [...value].map((c) => (/[A-Z]/.test(c) ? String(c.charCodeAt(0) - 55) : c)).join('');
+  return [...value]
+    .map((c) => (/[A-Z]/.test(c) ? String(c.charCodeAt(0) - 55) : c))
+    .join('');
 }
 
 function mod97(digits: string): number {
@@ -45,15 +47,23 @@ function despachoCode(administratorId: string): string {
  * `DOM-<first 8 hex of the despacho>-<YYYYMMDD>-<6 random hex>`. Uniqueness is
  * also enforced by the database.
  */
-export function generateMandateReference(administratorId: string, at: Date): string {
+export function generateMandateReference(
+  administratorId: string,
+  at: Date,
+): string {
   const day = at.toISOString().slice(0, 10).replace(/-/g, '');
   const random = randomBytes(3).toString('hex').toUpperCase();
   return `DOM-${despachoCode(administratorId)}-${day}-${random}`;
 }
 
 /** Whether a reference has the expected shape and carries this despacho's code. */
-export function isMandateReferenceFor(administratorId: string, reference: string): boolean {
-  return new RegExp(`^DOM-${despachoCode(administratorId)}-[0-9]{8}-[0-9A-F]{6}$`).test(reference);
+export function isMandateReferenceFor(
+  administratorId: string,
+  reference: string,
+): boolean {
+  return new RegExp(
+    `^DOM-${despachoCode(administratorId)}-[0-9]{8}-[0-9A-F]{6}$`,
+  ).test(reference);
 }
 
 export interface SepaMandateTextInput {

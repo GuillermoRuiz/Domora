@@ -34,23 +34,26 @@ describe('crear y actualizar una incidencia es manual', () => {
     const row = await h.prisma.issue.findUniqueOrThrow({ where: { id } });
     expect(row.status).toBe('Abierta');
     expect(row.resolutionRoute).toBeNull();
-    expect(await h.prisma.aiJob.count({ where: { estateId: A.estateId } })).toBe(
-      jobsBefore,
-    );
+    expect(
+      await h.prisma.aiJob.count({ where: { estateId: A.estateId } }),
+    ).toBe(jobsBefore);
     expect(await h.automationArtifacts(A.estateId)).toEqual([]);
   });
 
   it('el propietario avisa: la incidencia se crea sin vía, sin trabajo de IA y la gestión ve que falta decidir', async () => {
     const id = await h.ownerIssue(ownerA, A);
-    expect(await h.prisma.aiJob.count({ where: { estateId: A.estateId } })).toBe(
-      0,
-    );
+    expect(
+      await h.prisma.aiJob.count({ where: { estateId: A.estateId } }),
+    ).toBe(0);
     expect(await h.automationArtifacts(A.estateId)).toEqual([]);
     const journey = await h
       .http()
       .get(`${h.api}/issues/${id}/journey`)
       .set(h.auth(A.token));
-    expect(journey.body).toMatchObject({ route: null, status: 'needs_attention' });
+    expect(journey.body).toMatchObject({
+      route: null,
+      status: 'needs_attention',
+    });
     expect(journey.body.steps.map((x: any) => x.key)).toEqual([
       'created',
       'define_next_step',
@@ -70,15 +73,18 @@ describe('crear y actualizar una incidencia es manual', () => {
       legacyNoNextStep: true,
     });
     expect([200, 201]).toContain(note.status);
-    expect(await h.prisma.aiJob.count({ where: { estateId: A.estateId } })).toBe(
-      0,
-    );
+    expect(
+      await h.prisma.aiJob.count({ where: { estateId: A.estateId } }),
+    ).toBe(0);
     expect(await h.automationArtifacts(A.estateId)).toEqual([]);
   });
 
   it('el detalle y el listado se leen con normalidad', async () => {
     const id = await h.issue(A);
-    const detail = await h.http().get(`${h.api}/issues/${id}`).set(h.auth(A.token));
+    const detail = await h
+      .http()
+      .get(`${h.api}/issues/${id}`)
+      .set(h.auth(A.token));
     expect(detail.status).toBe(200);
     expect(detail.body.id).toBe(id);
     const list = await h

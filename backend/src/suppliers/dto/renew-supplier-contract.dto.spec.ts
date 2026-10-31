@@ -3,7 +3,8 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { RenewSupplierContractDto } from './renew-supplier-contract.dto';
 
-const errorsFor = (newEndDate: string) => validate(plainToInstance(RenewSupplierContractDto, { newEndDate }));
+const errorsFor = (newEndDate: string) =>
+  validate(plainToInstance(RenewSupplierContractDto, { newEndDate }));
 
 describe('RenewSupplierContractDto', () => {
   it('acepta una fecha de calendario válida', async () => {

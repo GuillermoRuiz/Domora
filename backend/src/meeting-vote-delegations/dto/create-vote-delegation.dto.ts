@@ -1,4 +1,12 @@
-import { IsEmail, IsOptional, IsString, IsUUID, MaxLength, MinLength, ValidateIf } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 
 /**
  * El representante se indica de UNA de estas formas (el servicio lo exige):
@@ -16,11 +24,15 @@ export class CreateVoteDelegationDto {
   @IsUUID()
   delegatorUserId!: string;
 
-  @ValidateIf((o: CreateVoteDelegationDto) => o.representativeEmail !== undefined)
+  @ValidateIf(
+    (o: CreateVoteDelegationDto) => o.representativeEmail !== undefined,
+  )
   @IsEmail()
   representativeEmail?: string;
 
-  @ValidateIf((o: CreateVoteDelegationDto) => o.representativeName !== undefined)
+  @ValidateIf(
+    (o: CreateVoteDelegationDto) => o.representativeName !== undefined,
+  )
   @IsString()
   @MinLength(3)
   @MaxLength(200)

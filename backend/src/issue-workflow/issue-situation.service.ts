@@ -105,7 +105,10 @@ export class IssueSituationService {
   }
 
   /** La situación de unos hechos ya cargados. */
-  async situationOf(facts: IssueFacts, now: Date = new Date()): Promise<IssueSituation> {
+  async situationOf(
+    facts: IssueFacts,
+    now: Date = new Date(),
+  ): Promise<IssueSituation> {
     return computeSituation(facts, now, await this.options(now));
   }
 
@@ -265,11 +268,7 @@ export class IssueSituationService {
     const facts = (await this.loadFacts([issueId], now)).get(issueId);
     if (!facts)
       throw new NotFoundException(`Incidencia ${issueId} no encontrada.`);
-    return this.view(
-      facts,
-      now,
-      await this.options(now),
-    );
+    return this.view(facts, now, await this.options(now));
   }
 
   /** Situación de varias incidencias de UNA finca (la lista de Incidencias pide las de su página). */
@@ -463,7 +462,10 @@ export class IssueSituationService {
       const facts = await this.loadFacts(ids, now);
       for (const id of ids) {
         const f = facts.get(id);
-        if (f && inSituationFilter(filter, computeSituation(f, now, options), f.status))
+        if (
+          f &&
+          inSituationFilter(filter, computeSituation(f, now, options), f.status)
+        )
           matching.push(id);
       }
     }

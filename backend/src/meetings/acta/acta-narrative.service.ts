@@ -46,7 +46,12 @@ export function formalizeNotes(notes: string): string {
     .split('\n')
     .map((line) => {
       const first = line.search(/\p{L}/u);
-      const capitalized = first >= 0 ? line.slice(0, first) + line.charAt(first).toLocaleUpperCase('es') + line.slice(first + 1) : line;
+      const capitalized =
+        first >= 0
+          ? line.slice(0, first) +
+            line.charAt(first).toLocaleUpperCase('es') +
+            line.slice(first + 1)
+          : line;
       return /[.!?…:;)»"]$/.test(capitalized) ? capitalized : `${capitalized}.`;
     })
     .join('\n');
@@ -60,7 +65,10 @@ function numbersIn(text: string): Set<string> {
  * Defensa adicional contra invenciones: el texto redactado no puede traer cifras que no estén
  * en las notas ni en el título, ni ser desproporcionadamente más largo que las notas.
  */
-export function isFaithfulDraft(input: NarrativeSectionInput, text: string): boolean {
+export function isFaithfulDraft(
+  input: NarrativeSectionInput,
+  text: string,
+): boolean {
   const trimmed = text.trim();
   if (!trimmed || trimmed.length > MEETING_MINUTES_MAX_TEXT) return false;
   if (trimmed.length > Math.max(400, input.notes.length * 4)) return false;
@@ -95,37 +103,58 @@ export class ActaNarrativeService {
       mode: 'fallback',
       model: null,
       reason,
-      sections: Object.fromEntries(withNotes.map((section) => [section.id, { text: formalizeNotes(section.notes), mode: 'notes' as const }])),
+      sections: Object.fromEntries(
+        withNotes.map((section) => [
+          section.id,
+          { text: formalizeNotes(section.notes), mode: 'notes' as const },
+        ]),
+      ),
     });
 
     if (withNotes.length === 0) return fallback('Sin notas que redactar.');
-    if (!this.ai || !this.config?.enabled) return fallback('Redacción automática desactivada.');
+    if (!this.ai || !this.config?.enabled)
+      return fallback('Redacción automática desactivada.');
 
     try {
       const response = await this.ai.run(draftMeetingMinutes, {
-        sections: withNotes.map(({ id, title, notes }) => ({ id, title, notes })),
+        sections: withNotes.map(({ id, title, notes }) => ({
+          id,
+          title,
+          notes,
+        })),
       });
       const sectionsOut: Record<string, NarrativeSectionResult> = {};
       const rejected: string[] = [];
       for (const section of withNotes) {
-        const drafted = response.value.sections.find((entry) => entry.id === section.id);
+        const drafted = response.value.sections.find(
+          (entry) => entry.id === section.id,
+        );
         if (drafted && isFaithfulDraft(section, drafted.text)) {
           sectionsOut[section.id] = { text: drafted.text.trim(), mode: 'llm' };
         } else {
-          sectionsOut[section.id] = { text: formalizeNotes(section.notes), mode: 'notes' };
+          sectionsOut[section.id] = {
+            text: formalizeNotes(section.notes),
+            mode: 'notes',
+          };
           rejected.push(section.id);
         }
       }
-      const usedModel = Object.values(sectionsOut).some((section) => section.mode === 'llm');
+      const usedModel = Object.values(sectionsOut).some(
+        (section) => section.mode === 'llm',
+      );
       return {
         mode: usedModel ? 'llm' : 'fallback',
         model: usedModel ? response.model : null,
-        reason: rejected.length ? `Se usaron tus notas originales en ${rejected.length} sección(es) porque la redacción automática no superó la validación.` : null,
+        reason: rejected.length
+          ? `Se usaron tus notas originales en ${rejected.length} sección(es) porque la redacción automática no superó la validación.`
+          : null,
         sections: sectionsOut,
       };
     } catch (error) {
       const code = error instanceof Error ? error.message : 'error desconocido';
-      this.logger.warn(`No se pudo redactar el acta con IA, se usan las notas originales: ${code}`);
+      this.logger.warn(
+        `No se pudo redactar el acta con IA, se usan las notas originales: ${code}`,
+      );
       // El código técnico solo va al log: la gestora no tiene que verlo.
       return fallback('Redacción automática no disponible.');
     }

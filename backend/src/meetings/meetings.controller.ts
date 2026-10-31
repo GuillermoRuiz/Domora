@@ -17,7 +17,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { MeetingsService } from './meetings.service';
-import { ConvocatoriaPreviewDto, CreateMeetingDto } from './dto/create-meeting.dto';
+import {
+  ConvocatoriaPreviewDto,
+  CreateMeetingDto,
+} from './dto/create-meeting.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
 import { UpdateMeetingStateDto } from './dto/update-meeting-state.dto';
 import { UpdateMeetingStatusDto } from './dto/update-meeting-status.dto';
@@ -147,13 +150,21 @@ export class MeetingsController {
     @Body() dto: UpdateAgendaItemCommentsDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.meetingsService.setAgendaItemComments(id, itemId, dto.comments, user);
+    return this.meetingsService.setAgendaItemComments(
+      id,
+      itemId,
+      dto.comments,
+      user,
+    );
   }
 
   /** Histórico de versiones del texto del acta (de la más reciente a la más antigua). */
   @Get(':id/acta-versions')
   @Roles('A', 'B')
-  listActaVersions(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  listActaVersions(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.meetingsService.listActaVersions(id, user);
   }
 
@@ -199,7 +210,10 @@ export class MeetingsController {
 
   @Post(':id/heartbeat')
   @Roles('A', 'B')
-  heartbeatAdmin(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  heartbeatAdmin(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.meetingsService.heartbeatAdmin(id, user);
   }
 
@@ -213,13 +227,19 @@ export class MeetingsController {
   }
 
   @Get(':id/attendance')
-  listAttendance(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  listAttendance(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.meetingsService.listAttendance(id, user);
   }
 
   /** Propiedades propias + delegaciones del usuario para esta junta — puebla el selector de la sala de espera. */
   @Get(':id/attendance/options')
-  myAttendanceOptions(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  myAttendanceOptions(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.meetingsService.listMyAttendanceOptions(id, user);
   }
 
@@ -241,7 +261,10 @@ export class MeetingsController {
 
   @Get(':id/roll-call/holders')
   @Roles('A', 'B')
-  rollCallHolders(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  rollCallHolders(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.meetingsService.listRollCallHolders(id, user);
   }
 
@@ -280,7 +303,10 @@ export class MeetingsController {
   }
 
   @Get(':id/presence')
-  listPresence(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  listPresence(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.meetingsService.listPresence(id, user);
   }
 
@@ -300,8 +326,12 @@ export class MeetingsController {
     @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    const { fileName, content } = await this.meetingsService.generateConvocatoriaDocx(id, user);
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    const { fileName, content } =
+      await this.meetingsService.generateConvocatoriaDocx(id, user);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(fileName)}"`,
+    );
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -342,8 +372,12 @@ export class MeetingsController {
     @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    const { content, fileName, mimeType } = await this.meetingsService.downloadActa(id, user);
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    const { content, fileName, mimeType } =
+      await this.meetingsService.downloadActa(id, user);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    );
     res.setHeader('Content-Type', mimeType);
     res.send(content);
   }
@@ -351,7 +385,10 @@ export class MeetingsController {
   /** Distribuye el acta ya firmada a todos los propietarios vinculados de la finca (art. 19 LPH). */
   @Post(':id/acta/send')
   @Roles('A', 'B')
-  sendActaNotice(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  sendActaNotice(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.meetingsService.sendActaNotice(id, user);
   }
 
@@ -372,7 +409,10 @@ export class MeetingAttachmentsController {
   constructor(private readonly meetingsService: MeetingsService) {}
 
   @Get()
-  list(@Param('meetingId') meetingId: string, @CurrentUser() user: AuthenticatedUser) {
+  list(
+    @Param('meetingId') meetingId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.meetingsService.listAttachments(meetingId, user);
   }
 
@@ -386,9 +426,16 @@ export class MeetingAttachmentsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     if (!file) {
-      throw new NotFoundException('No se recibió ningún fichero (campo "file").');
+      throw new NotFoundException(
+        'No se recibió ningún fichero (campo "file").',
+      );
     }
-    return this.meetingsService.uploadAttachment(meetingId, file, dto.title, user);
+    return this.meetingsService.uploadAttachment(
+      meetingId,
+      file,
+      dto.title,
+      user,
+    );
   }
 
   @Delete(':attachmentId')
@@ -414,7 +461,10 @@ export class MeetingAttachmentsController {
       attachmentId,
       user,
     );
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(title)}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(title)}"`,
+    );
     res.setHeader('Content-Type', 'application/octet-stream');
     res.send(content);
   }

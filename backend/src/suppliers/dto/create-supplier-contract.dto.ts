@@ -48,7 +48,14 @@ export class CreateSupplierContractDto {
 
   @IsOptional()
   @IsIn(['MONTHLY', 'QUARTERLY', 'SEMIANNUAL', 'ANNUAL', 'ONE_OFF', 'OTHER'])
-  costFrequency?: 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUAL' | 'ANNUAL' | 'ONE_OFF' | 'OTHER' | null;
+  costFrequency?:
+    | 'MONTHLY'
+    | 'QUARTERLY'
+    | 'SEMIANNUAL'
+    | 'ANNUAL'
+    | 'ONE_OFF'
+    | 'OTHER'
+    | null;
 
   @ValidateIf((_object, value) => value !== undefined)
   @IsISO4217CurrencyCode()

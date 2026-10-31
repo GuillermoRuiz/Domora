@@ -296,8 +296,12 @@ export class CatastroService {
       // de Prisma (5 s) es justo si la BD va cargada.
       { timeout: 30_000 },
     );
-    const estate = await this.prisma.estate.findFirst({ where: { id: estateId, deletedAt: null }, select: { cadastralReference: true } });
-    if (estate?.cadastralReference) await this.facade.refreshEstate(estateId, estate.cadastralReference);
+    const estate = await this.prisma.estate.findFirst({
+      where: { id: estateId, deletedAt: null },
+      select: { cadastralReference: true },
+    });
+    if (estate?.cadastralReference)
+      await this.facade.refreshEstate(estateId, estate.cadastralReference);
     return result;
   }
 

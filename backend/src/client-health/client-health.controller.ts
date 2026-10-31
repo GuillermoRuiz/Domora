@@ -1,6 +1,11 @@
 import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { ClientHealthService, type AttentionItem, type ClientHealthOverview, type OfficeHealth } from './client-health.service';
+import {
+  ClientHealthService,
+  type AttentionItem,
+  type ClientHealthOverview,
+  type OfficeHealth,
+} from './client-health.service';
 
 /** Salud, «En riesgo» and «Requieren atención» of the despachos (odd/tasks/role-a-panel.md S14, S7). */
 @Controller('client-health')
@@ -17,7 +22,9 @@ export class ClientHealthController {
   /** Role A: one despacho (ficha). */
   @Get('offices/:administratorId')
   @Roles('A')
-  office(@Param('administratorId', ParseUUIDPipe) administratorId: string): Promise<OfficeHealth> {
+  office(
+    @Param('administratorId', ParseUUIDPipe) administratorId: string,
+  ): Promise<OfficeHealth> {
     return this.health.office(administratorId);
   }
 

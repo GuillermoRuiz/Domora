@@ -30,7 +30,11 @@ let ownerUser: AuthenticatedUser;
 let tenantUser: AuthenticatedUser;
 
 function storageStub() {
-  return { assertAllowed: jest.fn(), put: jest.fn().mockResolvedValue('s3-key'), get: jest.fn() };
+  return {
+    assertAllowed: jest.fn(),
+    put: jest.fn().mockResolvedValue('s3-key'),
+    get: jest.fn(),
+  };
 }
 
 function makeService() {
@@ -49,9 +53,15 @@ function emptyFixture(): Fixture {
 }
 async function cleanup(fixture: Fixture): Promise<void> {
   if (fixture.meetingIds.length) {
-    await prisma.meetingVoteDelegation.deleteMany({ where: { meetingId: { in: fixture.meetingIds } } });
-    await prisma.meetingState.deleteMany({ where: { meetingId: { in: fixture.meetingIds } } });
-    await prisma.meeting.deleteMany({ where: { id: { in: fixture.meetingIds } } });
+    await prisma.meetingVoteDelegation.deleteMany({
+      where: { meetingId: { in: fixture.meetingIds } },
+    });
+    await prisma.meetingState.deleteMany({
+      where: { meetingId: { in: fixture.meetingIds } },
+    });
+    await prisma.meeting.deleteMany({
+      where: { id: { in: fixture.meetingIds } },
+    });
   }
 }
 
@@ -75,60 +85,151 @@ async function createMeeting() {
 
 beforeAll(async () => {
   const admin = await prisma.administrator.create({
-    data: { name: 'Gestora de prueba (delegaciones)', cif: CIF, plan: 'BASE', tier: 'basic', usersMax: 5, status: 'Activa' },
+    data: {
+      name: 'Gestora de prueba (delegaciones)',
+      cif: CIF,
+      plan: 'BASE',
+      tier: 'basic',
+      usersMax: 5,
+      status: 'Activa',
+    },
   });
   administratorId = admin.id;
 
   const estate = await prisma.estate.create({
-    data: { administratorId, name: 'Finca de prueba — delegaciones', type: 'Edificio', address: 'Calle Falsa 2020', location: 'Madrid' },
+    data: {
+      administratorId,
+      name: 'Finca de prueba — delegaciones',
+      type: 'Edificio',
+      address: 'Calle Falsa 2020',
+      location: 'Madrid',
+    },
   });
   estateId = estate.id;
 
   const b = await prisma.user.create({
-    data: { email: `admin-deleg-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Gestora Admin', role: 'B', administratorId },
+    data: {
+      email: `admin-deleg-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Gestora Admin',
+      role: 'B',
+      administratorId,
+    },
   });
   bUserId = b.id;
-  bUser = { id: bUserId, role: 'B' as AppRole, estateIds: [estateId], administratorId };
+  bUser = {
+    id: bUserId,
+    role: 'B' as AppRole,
+    estateIds: [estateId],
+    administratorId,
+  };
 
   const owner = await prisma.user.create({
-    data: { email: `titular-deleg-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Vecina Titular', role: 'C' },
+    data: {
+      email: `titular-deleg-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Vecina Titular',
+      role: 'C',
+    },
   });
   ownerUserId = owner.id;
-  ownerUser = { id: ownerUserId, role: 'C' as AppRole, estateIds: [estateId], administratorId: null };
+  ownerUser = {
+    id: ownerUserId,
+    role: 'C' as AppRole,
+    estateIds: [estateId],
+    administratorId: null,
+  };
 
   const tenant = await prisma.user.create({
-    data: { email: `inquilino-deleg-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Inquilino', role: 'C' },
+    data: {
+      email: `inquilino-deleg-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Inquilino',
+      role: 'C',
+    },
   });
   tenantUserId = tenant.id;
-  tenantUser = { id: tenantUserId, role: 'C' as AppRole, estateIds: [estateId], administratorId: null };
+  tenantUser = {
+    id: tenantUserId,
+    role: 'C' as AppRole,
+    estateIds: [estateId],
+    administratorId: null,
+  };
 
   const rep = await prisma.user.create({
-    data: { email: `representante-deleg-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Representante', role: 'C' },
+    data: {
+      email: `representante-deleg-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Representante',
+      role: 'C',
+    },
   });
   representativeUserId = rep.id;
 
   const other = await prisma.user.create({
-    data: { email: `ajeno-deleg-${Date.now()}@test.local`, passwordHash: 'x', fullName: 'Ajeno', role: 'C' },
+    data: {
+      email: `ajeno-deleg-${Date.now()}@test.local`,
+      passwordHash: 'x',
+      fullName: 'Ajeno',
+      role: 'C',
+    },
   });
   otherEstateUserId = other.id;
 
   const p1 = await prisma.property.create({
-    data: { estateId, type: 'Piso', status: 'Ocupado', staircase: '1', floor: '1', door: 'A', quotaMonthly: '50.00', participationQuota: '25.00' },
+    data: {
+      estateId,
+      type: 'Piso',
+      status: 'Ocupado',
+      staircase: '1',
+      floor: '1',
+      door: 'A',
+      quotaMonthly: '50.00',
+      participationQuota: '25.00',
+    },
   });
   propertyId1 = p1.id;
 
   await prisma.propertyMembership.create({
-    data: { propertyId: propertyId1, userId: ownerUserId, roleType: 'Propietario', status: 'linked', isPrimaryContact: true, linkedAt: new Date() },
+    data: {
+      propertyId: propertyId1,
+      userId: ownerUserId,
+      roleType: 'Propietario',
+      status: 'linked',
+      isPrimaryContact: true,
+      linkedAt: new Date(),
+    },
   });
   await prisma.propertyMembership.create({
-    data: { propertyId: propertyId1, userId: tenantUserId, roleType: 'Inquilino', status: 'linked', isPrimaryContact: false, linkedAt: new Date() },
+    data: {
+      propertyId: propertyId1,
+      userId: tenantUserId,
+      roleType: 'Inquilino',
+      status: 'linked',
+      isPrimaryContact: false,
+      linkedAt: new Date(),
+    },
   });
 });
 
 afterAll(async () => {
-  await prisma.propertyMembership.deleteMany({ where: { propertyId: propertyId1 } });
+  await prisma.propertyMembership.deleteMany({
+    where: { propertyId: propertyId1 },
+  });
   await prisma.property.deleteMany({ where: { id: propertyId1 } });
-  await prisma.user.deleteMany({ where: { id: { in: [bUserId, ownerUserId, tenantUserId, representativeUserId, otherEstateUserId] } } });
+  await prisma.user.deleteMany({
+    where: {
+      id: {
+        in: [
+          bUserId,
+          ownerUserId,
+          tenantUserId,
+          representativeUserId,
+          otherEstateUserId,
+        ],
+      },
+    },
+  });
   await prisma.estate.delete({ where: { id: estateId } });
   await prisma.administrator.delete({ where: { id: administratorId } });
   await prisma.$disconnect();
@@ -145,7 +246,16 @@ describe('MeetingVoteDelegationsService', () => {
 
         const created = await service.create(
           meeting.id,
-          { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: (await prisma.user.findUniqueOrThrow({ where: { id: representativeUserId } })).email, notes: 'Nota' },
+          {
+            propertyId: propertyId1,
+            delegatorUserId: ownerUserId,
+            representativeEmail: (
+              await prisma.user.findUniqueOrThrow({
+                where: { id: representativeUserId },
+              })
+            ).email,
+            notes: 'Nota',
+          },
           ownerUser,
         );
 
@@ -166,7 +276,12 @@ describe('MeetingVoteDelegationsService', () => {
 
         const created = await service.create(
           meeting.id,
-          { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeName: ' Marta Gil Soto ', representativeDni: '12.345.678-z' },
+          {
+            propertyId: propertyId1,
+            delegatorUserId: ownerUserId,
+            representativeName: ' Marta Gil Soto ',
+            representativeDni: '12.345.678-z',
+          },
           ownerUser,
         );
 
@@ -184,16 +299,39 @@ describe('MeetingVoteDelegationsService', () => {
         const meeting = await createMeeting();
         fx.meetingIds.push(meeting.id);
         const service = makeService();
-        const repEmail = (await prisma.user.findUniqueOrThrow({ where: { id: representativeUserId } })).email;
+        const repEmail = (
+          await prisma.user.findUniqueOrThrow({
+            where: { id: representativeUserId },
+          })
+        ).email;
         const base = { propertyId: propertyId1, delegatorUserId: ownerUserId };
 
         await expect(
-          service.create(meeting.id, { ...base, representativeName: 'Marta Gil Soto', representativeDni: '12345678A' }, ownerUser),
+          service.create(
+            meeting.id,
+            {
+              ...base,
+              representativeName: 'Marta Gil Soto',
+              representativeDni: '12345678A',
+            },
+            ownerUser,
+          ),
         ).rejects.toThrow('DNI/NIE');
         await expect(
-          service.create(meeting.id, { ...base, representativeEmail: repEmail, representativeName: 'Marta Gil Soto', representativeDni: '12345678Z' }, ownerUser),
+          service.create(
+            meeting.id,
+            {
+              ...base,
+              representativeEmail: repEmail,
+              representativeName: 'Marta Gil Soto',
+              representativeDni: '12345678Z',
+            },
+            ownerUser,
+          ),
         ).rejects.toThrow('no ambos');
-        await expect(service.create(meeting.id, base, ownerUser)).rejects.toThrow();
+        await expect(
+          service.create(meeting.id, base, ownerUser),
+        ).rejects.toThrow();
       } finally {
         await cleanup(fx);
       }
@@ -205,13 +343,40 @@ describe('MeetingVoteDelegationsService', () => {
         const meeting = await createMeeting();
         fx.meetingIds.push(meeting.id);
         const service = makeService();
-        const repEmail = (await prisma.user.findUniqueOrThrow({ where: { id: representativeUserId } })).email;
-        const otherEmail = (await prisma.user.findUniqueOrThrow({ where: { id: otherEstateUserId } })).email;
+        const repEmail = (
+          await prisma.user.findUniqueOrThrow({
+            where: { id: representativeUserId },
+          })
+        ).email;
+        const otherEmail = (
+          await prisma.user.findUniqueOrThrow({
+            where: { id: otherEstateUserId },
+          })
+        ).email;
 
-        const first = await service.create(meeting.id, { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: repEmail }, ownerUser);
-        const second = await service.create(meeting.id, { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: otherEmail }, ownerUser);
+        const first = await service.create(
+          meeting.id,
+          {
+            propertyId: propertyId1,
+            delegatorUserId: ownerUserId,
+            representativeEmail: repEmail,
+          },
+          ownerUser,
+        );
+        const second = await service.create(
+          meeting.id,
+          {
+            propertyId: propertyId1,
+            delegatorUserId: ownerUserId,
+            representativeEmail: otherEmail,
+          },
+          ownerUser,
+        );
 
-        const firstReloaded = await prisma.meetingVoteDelegation.findUniqueOrThrow({ where: { id: first.id } });
+        const firstReloaded =
+          await prisma.meetingVoteDelegation.findUniqueOrThrow({
+            where: { id: first.id },
+          });
         expect(firstReloaded.revokedAt).not.toBeNull();
         expect(second.revokedAt).toBeNull();
       } finally {
@@ -225,10 +390,20 @@ describe('MeetingVoteDelegationsService', () => {
         const meeting = await createMeeting();
         fx.meetingIds.push(meeting.id);
         const service = makeService();
-        const ownerEmail = (await prisma.user.findUniqueOrThrow({ where: { id: ownerUserId } })).email;
+        const ownerEmail = (
+          await prisma.user.findUniqueOrThrow({ where: { id: ownerUserId } })
+        ).email;
 
         await expect(
-          service.create(meeting.id, { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: ownerEmail }, ownerUser),
+          service.create(
+            meeting.id,
+            {
+              propertyId: propertyId1,
+              delegatorUserId: ownerUserId,
+              representativeEmail: ownerEmail,
+            },
+            ownerUser,
+          ),
         ).rejects.toThrow();
       } finally {
         await cleanup(fx);
@@ -241,10 +416,22 @@ describe('MeetingVoteDelegationsService', () => {
         const meeting = await createMeeting();
         fx.meetingIds.push(meeting.id);
         const service = makeService();
-        const repEmail = (await prisma.user.findUniqueOrThrow({ where: { id: representativeUserId } })).email;
+        const repEmail = (
+          await prisma.user.findUniqueOrThrow({
+            where: { id: representativeUserId },
+          })
+        ).email;
 
         await expect(
-          service.create(meeting.id, { propertyId: propertyId1, delegatorUserId: tenantUserId, representativeEmail: repEmail }, tenantUser),
+          service.create(
+            meeting.id,
+            {
+              propertyId: propertyId1,
+              delegatorUserId: tenantUserId,
+              representativeEmail: repEmail,
+            },
+            tenantUser,
+          ),
         ).rejects.toThrow();
       } finally {
         await cleanup(fx);
@@ -259,7 +446,15 @@ describe('MeetingVoteDelegationsService', () => {
         const service = makeService();
 
         await expect(
-          service.create(meeting.id, { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: 'nadie@no-existe.test' }, ownerUser),
+          service.create(
+            meeting.id,
+            {
+              propertyId: propertyId1,
+              delegatorUserId: ownerUserId,
+              representativeEmail: 'nadie@no-existe.test',
+            },
+            ownerUser,
+          ),
         ).rejects.toThrow();
       } finally {
         await cleanup(fx);
@@ -272,10 +467,22 @@ describe('MeetingVoteDelegationsService', () => {
         const meeting = await createMeeting();
         fx.meetingIds.push(meeting.id);
         const service = makeService();
-        const repEmail = (await prisma.user.findUniqueOrThrow({ where: { id: representativeUserId } })).email;
+        const repEmail = (
+          await prisma.user.findUniqueOrThrow({
+            where: { id: representativeUserId },
+          })
+        ).email;
 
         await expect(
-          service.create(meeting.id, { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: repEmail }, tenantUser),
+          service.create(
+            meeting.id,
+            {
+              propertyId: propertyId1,
+              delegatorUserId: ownerUserId,
+              representativeEmail: repEmail,
+            },
+            tenantUser,
+          ),
         ).rejects.toThrow();
       } finally {
         await cleanup(fx);
@@ -288,11 +495,19 @@ describe('MeetingVoteDelegationsService', () => {
         const meeting = await createMeeting();
         fx.meetingIds.push(meeting.id);
         const service = makeService();
-        const repEmail = (await prisma.user.findUniqueOrThrow({ where: { id: representativeUserId } })).email;
+        const repEmail = (
+          await prisma.user.findUniqueOrThrow({
+            where: { id: representativeUserId },
+          })
+        ).email;
 
         const created = await service.create(
           meeting.id,
-          { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: repEmail },
+          {
+            propertyId: propertyId1,
+            delegatorUserId: ownerUserId,
+            representativeEmail: repEmail,
+          },
           bUser,
         );
         expect(created.createdByUserId).toBe(bUserId);
@@ -309,8 +524,20 @@ describe('MeetingVoteDelegationsService', () => {
         const meeting = await createMeeting();
         fx.meetingIds.push(meeting.id);
         const service = makeService();
-        const repEmail = (await prisma.user.findUniqueOrThrow({ where: { id: representativeUserId } })).email;
-        await service.create(meeting.id, { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: repEmail }, ownerUser);
+        const repEmail = (
+          await prisma.user.findUniqueOrThrow({
+            where: { id: representativeUserId },
+          })
+        ).email;
+        await service.create(
+          meeting.id,
+          {
+            propertyId: propertyId1,
+            delegatorUserId: ownerUserId,
+            representativeEmail: repEmail,
+          },
+          ownerUser,
+        );
 
         const asOwner = await service.list(meeting.id, ownerUser);
         const asTenant = await service.list(meeting.id, tenantUser);
@@ -332,10 +559,27 @@ describe('MeetingVoteDelegationsService', () => {
         const meeting = await createMeeting();
         fx.meetingIds.push(meeting.id);
         const service = makeService();
-        const repEmail = (await prisma.user.findUniqueOrThrow({ where: { id: representativeUserId } })).email;
-        const created = await service.create(meeting.id, { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: repEmail }, ownerUser);
+        const repEmail = (
+          await prisma.user.findUniqueOrThrow({
+            where: { id: representativeUserId },
+          })
+        ).email;
+        const created = await service.create(
+          meeting.id,
+          {
+            propertyId: propertyId1,
+            delegatorUserId: ownerUserId,
+            representativeEmail: repEmail,
+          },
+          ownerUser,
+        );
 
-        const revoked = await service.revoke(meeting.id, created.id, { reason: 'Ya no hace falta' }, ownerUser);
+        const revoked = await service.revoke(
+          meeting.id,
+          created.id,
+          { reason: 'Ya no hace falta' },
+          ownerUser,
+        );
 
         expect(revoked.revokedAt).not.toBeNull();
         expect(revoked.revokedByUserId).toBe(ownerUserId);
@@ -351,10 +595,24 @@ describe('MeetingVoteDelegationsService', () => {
         const meeting = await createMeeting();
         fx.meetingIds.push(meeting.id);
         const service = makeService();
-        const repEmail = (await prisma.user.findUniqueOrThrow({ where: { id: representativeUserId } })).email;
-        const created = await service.create(meeting.id, { propertyId: propertyId1, delegatorUserId: ownerUserId, representativeEmail: repEmail }, ownerUser);
+        const repEmail = (
+          await prisma.user.findUniqueOrThrow({
+            where: { id: representativeUserId },
+          })
+        ).email;
+        const created = await service.create(
+          meeting.id,
+          {
+            propertyId: propertyId1,
+            delegatorUserId: ownerUserId,
+            representativeEmail: repEmail,
+          },
+          ownerUser,
+        );
 
-        await expect(service.revoke(meeting.id, created.id, {}, tenantUser)).rejects.toThrow();
+        await expect(
+          service.revoke(meeting.id, created.id, {}, tenantUser),
+        ).rejects.toThrow();
       } finally {
         await cleanup(fx);
       }

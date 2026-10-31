@@ -147,7 +147,10 @@ export class OwnerIssuesService {
       },
     });
     // Quien no es miembro activo recibe lo mismo que si no existiera.
-    if (!issue || !(await this.propertyAccess.isActiveMember(issue.estateId, user)))
+    if (
+      !issue ||
+      !(await this.propertyAccess.isActiveMember(issue.estateId, user))
+    )
       throw new NotFoundException(`Incidencia ${id} no encontrada.`);
     const mine = issue.reports.some((r) => r.reporterUserId === user.id);
     const othersInterested =
@@ -365,7 +368,10 @@ export class OwnerIssuesService {
         tx.issueReport.count({
           where: {
             issueId: id,
-            OR: [{ reporterUserId: null }, { reporterUserId: { not: user.id } }],
+            OR: [
+              { reporterUserId: null },
+              { reporterUserId: { not: user.id } },
+            ],
           },
         }),
         tx.issueAffectedUser.count({ where: { issueId: id } }),
@@ -378,7 +384,11 @@ export class OwnerIssuesService {
         });
       await this.issues.applyStatusInTx(tx, current, 'Retirada', user);
     });
-    await this.notifyManagers(issue, `Incidencia retirada: ${issue.title}`, null);
+    await this.notifyManagers(
+      issue,
+      `Incidencia retirada: ${issue.title}`,
+      null,
+    );
     return this.detail(id, user);
   }
 
@@ -389,14 +399,19 @@ export class OwnerIssuesService {
       const current = await tx.issue.findUniqueOrThrow({ where: { id } });
       const recent =
         !!current.resolvedAt &&
-        current.resolvedAt.getTime() >= Date.now() - REOPEN_WINDOW_DAYS * DAY_MS;
+        current.resolvedAt.getTime() >=
+          Date.now() - REOPEN_WINDOW_DAYS * DAY_MS;
       if (current.status !== 'Resuelta' || !recent)
         throw new BadRequestException(
           `Solo se puede reabrir durante los ${REOPEN_WINDOW_DAYS} días siguientes a su resolución.`,
         );
       await this.issues.applyStatusInTx(tx, current, 'Abierta', user);
     });
-    await this.notifyManagers(issue, `Incidencia reabierta: ${issue.title}`, null);
+    await this.notifyManagers(
+      issue,
+      `Incidencia reabierta: ${issue.title}`,
+      null,
+    );
     return this.detail(id, user);
   }
 
@@ -460,7 +475,9 @@ export class OwnerIssuesService {
     title: string,
     body: string | null,
   ) {
-    const managers = await this.notifications.managerIdsOfEstate(issue.estateId);
+    const managers = await this.notifications.managerIdsOfEstate(
+      issue.estateId,
+    );
     await this.notifications.notify({
       userIds: managers,
       category: 'issue',

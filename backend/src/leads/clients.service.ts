@@ -4,7 +4,12 @@ import { ClientHealthService } from '../client-health/client-health.service';
 import { UsageService } from '../usage/usage.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { mrrContribution } from '../platform-metrics/mrr';
-import { nextRenewal, upcomingRenewals, type Renewal, type UpcomingRenewals } from './renewals';
+import {
+  nextRenewal,
+  upcomingRenewals,
+  type Renewal,
+  type UpcomingRenewals,
+} from './renewals';
 import type { CreateFollowUpDto, SetNextActionDto } from './dto/leads.dto';
 
 export interface ClientCommercialRow {
@@ -65,12 +70,22 @@ export class ClientsService {
         deletedAt: true,
         billingInterval: true,
         endDate: true,
-        subscription: { select: { stripeSubscriptionId: true, status: true, currentPeriodEnd: true, cancelAtPeriodEnd: true } },
+        subscription: {
+          select: {
+            stripeSubscriptionId: true,
+            status: true,
+            currentPeriodEnd: true,
+            cancelAtPeriodEnd: true,
+          },
+        },
         nextAction: { select: { nextAction: true, nextActionAt: true } },
       },
     });
     const ids = admins.map((a) => a.id);
-    const [health, lastActive] = await Promise.all([this.health.overview(now), this.usage.lastActiveDays(ids)]);
+    const [health, lastActive] = await Promise.all([
+      this.health.overview(now),
+      this.usage.lastActiveDays(ids),
+    ]);
 
     let activeClients = 0;
     const clients: ClientCommercialRow[] = admins.map((a) => {
@@ -82,15 +97,21 @@ export class ClientsService {
         nextRenewal: nextRenewal(client, now),
         lastActiveDay: lastActive.get(a.id) ?? null,
         nextAction: a.nextAction?.nextAction ?? null,
-        nextActionAt: a.nextAction?.nextActionAt ? dayKey(a.nextAction.nextActionAt) : null,
+        nextActionAt: a.nextAction?.nextActionAt
+          ? dayKey(a.nextAction.nextActionAt)
+          : null,
       };
     });
 
     return {
       kpis: {
         activeClients,
-        inTrial: health.offices.filter((o) => o.clientStatus === 'En prueba').length,
-        renewals: upcomingRenewals(clients.map((c) => c.nextRenewal), now),
+        inTrial: health.offices.filter((o) => o.clientStatus === 'En prueba')
+          .length,
+        renewals: upcomingRenewals(
+          clients.map((c) => c.nextRenewal),
+          now,
+        ),
         churnRisk: health.churnRisk,
       },
       clients,
@@ -100,7 +121,9 @@ export class ClientsService {
   async setNextAction(administratorId: string, dto: SetNextActionDto) {
     await this.assertDespacho(administratorId);
     const nextAction = dto.nextAction?.trim() ? dto.nextAction.trim() : null;
-    const nextActionAt = dto.nextActionAt ? new Date(dto.nextActionAt.slice(0, 10)) : null;
+    const nextActionAt = dto.nextActionAt
+      ? new Date(dto.nextActionAt.slice(0, 10))
+      : null;
     const row = await this.prisma.clientNextAction.upsert({
       where: { administratorId },
       create: { administratorId, nextAction, nextActionAt },
@@ -120,10 +143,19 @@ export class ClientsService {
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
       include: { authorUser: { select: { fullName: true } } },
     });
-    return rows.map((f) => ({ id: f.id, occurredAt: f.occurredAt, text: f.text, author: f.authorUser?.fullName ?? 'Sistema' }));
+    return rows.map((f) => ({
+      id: f.id,
+      occurredAt: f.occurredAt,
+      text: f.text,
+      author: f.authorUser?.fullName ?? 'Sistema',
+    }));
   }
 
-  async addFollowUp(administratorId: string, dto: CreateFollowUpDto, user: AuthenticatedUser) {
+  async addFollowUp(
+    administratorId: string,
+    dto: CreateFollowUpDto,
+    user: AuthenticatedUser,
+  ) {
     await this.assertDespacho(administratorId);
     const row = await this.prisma.commercialFollowUp.create({
       data: {
@@ -134,11 +166,19 @@ export class ClientsService {
       },
       include: { authorUser: { select: { fullName: true } } },
     });
-    return { id: row.id, occurredAt: row.occurredAt, text: row.text, author: row.authorUser?.fullName ?? 'Sistema' };
+    return {
+      id: row.id,
+      occurredAt: row.occurredAt,
+      text: row.text,
+      author: row.authorUser?.fullName ?? 'Sistema',
+    };
   }
 
   private async assertDespacho(administratorId: string): Promise<void> {
-    const admin = await this.prisma.administrator.findFirst({ where: { id: administratorId, deletedAt: null }, select: { id: true } });
+    const admin = await this.prisma.administrator.findFirst({
+      where: { id: administratorId, deletedAt: null },
+      select: { id: true },
+    });
     if (!admin) throw new NotFoundException('Despacho no encontrado.');
   }
 }

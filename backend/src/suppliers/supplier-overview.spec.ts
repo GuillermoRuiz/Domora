@@ -25,7 +25,11 @@ const access = new EstateAccessService();
 const service = new SupplierOverviewService(
   prisma as unknown as PrismaService,
   access,
-  new SuppliersService(prisma as unknown as PrismaService, access, undefined as never),
+  new SuppliersService(
+    prisma as unknown as PrismaService,
+    access,
+    undefined as never,
+  ),
 );
 
 const DAY = 86_400_000;
@@ -40,14 +44,29 @@ let userId: string;
 let property: string;
 const ids: Record<string, string> = {};
 
-const create = async (key: string, data: Record<string, unknown>, estateId = estate) => {
+const create = async (
+  key: string,
+  data: Record<string, unknown>,
+  estateId = estate,
+) => {
   ids[key] = (
     await prisma.supplier.create({
-      data: { administratorId: admin.administratorId, estateId, category: 'Ascensores', name: key, ...data } as never,
+      data: {
+        administratorId: admin.administratorId,
+        estateId,
+        category: 'Ascensores',
+        name: key,
+        ...data,
+      } as never,
     })
   ).id;
 };
-const contract = (supplierId: string, endInDays: number | null, extra: Record<string, unknown> = {}, estateId = estate) =>
+const contract = (
+  supplierId: string,
+  endInDays: number | null,
+  extra: Record<string, unknown> = {},
+  estateId = estate,
+) =>
   prisma.supplierContract.create({
     data: {
       supplierId,
@@ -59,7 +78,13 @@ const contract = (supplierId: string, endInDays: number | null, extra: Record<st
       ...extra,
     },
   });
-const visit = (supplierId: string, scheduledAt: Date, status: 'planificada' | 'realizada' | 'cancelada', extra: Record<string, unknown> = {}, estateId = estate) =>
+const visit = (
+  supplierId: string,
+  scheduledAt: Date,
+  status: 'planificada' | 'realizada' | 'cancelada',
+  extra: Record<string, unknown> = {},
+  estateId = estate,
+) =>
   prisma.supplierVisit.create({
     data: {
       supplierId,
@@ -72,7 +97,10 @@ const visit = (supplierId: string, scheduledAt: Date, status: 'planificada' | 'r
     },
   });
 let refSeq = 0;
-const issue = async (status: 'Abierta' | 'Resuelta', deletedAt: Date | null = null) =>
+const issue = async (
+  status: 'Abierta' | 'Resuelta',
+  deletedAt: Date | null = null,
+) =>
   (
     await prisma.issue.create({
       data: {
@@ -89,21 +117,46 @@ const issue = async (status: 'Abierta' | 'Resuelta', deletedAt: Date | null = nu
       },
     })
   ).id;
-const assign = (issueId: string, supplierId: string, unassignedAt: Date | null = null) =>
+const assign = (
+  issueId: string,
+  supplierId: string,
+  unassignedAt: Date | null = null,
+) =>
   prisma.issueProviderAssignment.create({
-    data: { issueId, supplierId, providerNameSnapshot: 'x', assignedAt: new Date(), assignedByUserId: userId, unassignedAt },
+    data: {
+      issueId,
+      supplierId,
+      providerNameSnapshot: 'x',
+      assignedAt: new Date(),
+      assignedByUserId: userId,
+      unassignedAt,
+    },
   });
 
 beforeAll(async () => {
-  admin = await createAdministrator(prisma, { name: 'Gestora de prueba (panel proveedores)' });
-  otherAdmin = await createAdministrator(prisma, { name: 'Otra gestora (panel proveedores)' });
-  estate = await createLedgerEstate(prisma, admin.administratorId, { estate: { name: 'Finca de prueba — proveedores' } });
-  otherEstate = await createLedgerEstate(prisma, admin.administratorId, { estate: { name: 'Otra finca — proveedores' } });
+  admin = await createAdministrator(prisma, {
+    name: 'Gestora de prueba (panel proveedores)',
+  });
+  otherAdmin = await createAdministrator(prisma, {
+    name: 'Otra gestora (panel proveedores)',
+  });
+  estate = await createLedgerEstate(prisma, admin.administratorId, {
+    estate: { name: 'Finca de prueba — proveedores' },
+  });
+  otherEstate = await createLedgerEstate(prisma, admin.administratorId, {
+    estate: { name: 'Otra finca — proveedores' },
+  });
   manager = roleB(admin, [estate]);
-  userId = await createOwnerUser(prisma, { fullName: 'Quien asigna (panel proveedores)' });
+  userId = await createOwnerUser(prisma, {
+    fullName: 'Quien asigna (panel proveedores)',
+  });
   property = await createProperty(prisma, estate, { ref: 'P1' });
 
-  await create('vigente', { contactName: 'Marta Ruiz', phone: '600111222', email: 'marta@vigente.test' });
+  await create('vigente', {
+    contactName: 'Marta Ruiz',
+    phone: '600111222',
+    email: 'marta@vigente.test',
+  });
   await create('por-vencer', {});
   await create('vencido', {});
   await create('de-baja', { status: 'Baja' });
@@ -119,11 +172,23 @@ beforeAll(async () => {
 
   await visit(ids['vigente'], inDays(30), 'planificada', { purpose: 'Lejana' });
   await visit(ids['vigente'], inDays(7), 'planificada', { purpose: 'Cercana' });
-  await visit(ids['vigente'], inDays(-3), 'planificada', { purpose: 'Se pasó la fecha' });
+  await visit(ids['vigente'], inDays(-3), 'planificada', {
+    purpose: 'Se pasó la fecha',
+  });
   await visit(ids['vigente'], inDays(2), 'cancelada', { purpose: 'Cancelada' });
-  await visit(ids['por-vencer'], inDays(-5), 'realizada', { purpose: 'Hecha hace 5 días' });
-  await visit(ids['vigente'], inDays(-40), 'realizada', { purpose: 'Hecha hace 40 días' });
-  await visit(ids['ajeno'], inDays(-1), 'realizada', { purpose: 'De otra finca' }, otherEstate);
+  await visit(ids['por-vencer'], inDays(-5), 'realizada', {
+    purpose: 'Hecha hace 5 días',
+  });
+  await visit(ids['vigente'], inDays(-40), 'realizada', {
+    purpose: 'Hecha hace 40 días',
+  });
+  await visit(
+    ids['ajeno'],
+    inDays(-1),
+    'realizada',
+    { purpose: 'De otra finca' },
+    otherEstate,
+  );
 
   await assign(await issue('Abierta'), ids['vigente']);
   await assign(await issue('Abierta'), ids['vigente']);
@@ -134,11 +199,21 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await prisma.issueProviderAssignment.deleteMany({ where: { supplier: { estateId: { in: [estate, otherEstate] } } } });
-  await prisma.issue.deleteMany({ where: { estateId: { in: [estate, otherEstate] } } });
-  await prisma.supplierVisit.deleteMany({ where: { estateId: { in: [estate, otherEstate] } } });
-  await prisma.supplierContract.deleteMany({ where: { estateId: { in: [estate, otherEstate] } } });
-  await prisma.supplier.deleteMany({ where: { estateId: { in: [estate, otherEstate] } } });
+  await prisma.issueProviderAssignment.deleteMany({
+    where: { supplier: { estateId: { in: [estate, otherEstate] } } },
+  });
+  await prisma.issue.deleteMany({
+    where: { estateId: { in: [estate, otherEstate] } },
+  });
+  await prisma.supplierVisit.deleteMany({
+    where: { estateId: { in: [estate, otherEstate] } },
+  });
+  await prisma.supplierContract.deleteMany({
+    where: { estateId: { in: [estate, otherEstate] } },
+  });
+  await prisma.supplier.deleteMany({
+    where: { estateId: { in: [estate, otherEstate] } },
+  });
   await prisma.user.deleteMany({ where: { id: userId } });
   await purgeAdministrator(prisma, admin.administratorId);
   await purgeAdministrator(prisma, otherAdmin.administratorId);
@@ -158,9 +233,20 @@ describe('SupplierOverviewService.getOverview', () => {
 
   it('devuelve una fila por proveedor, por nombre, con contacto y estado derivado', async () => {
     const { items } = await service.getOverview(estate, manager);
-    expect(items.map((i) => i.name)).toEqual(['de-baja', 'por-vencer', 'sin-contrato', 'vencido', 'vigente']);
+    expect(items.map((i) => i.name)).toEqual([
+      'de-baja',
+      'por-vencer',
+      'sin-contrato',
+      'vencido',
+      'vigente',
+    ]);
     const by = Object.fromEntries(items.map((i) => [i.name, i]));
-    expect(by['vigente']).toMatchObject({ contactName: 'Marta Ruiz', phone: '600111222', email: 'marta@vigente.test', displayStatus: 'activo' });
+    expect(by['vigente']).toMatchObject({
+      contactName: 'Marta Ruiz',
+      phone: '600111222',
+      email: 'marta@vigente.test',
+      displayStatus: 'activo',
+    });
     expect(by['por-vencer'].displayStatus).toBe('renovar');
     expect(by['vencido'].displayStatus).toBe('vencido');
     expect(by['de-baja'].displayStatus).toBe('baja');
@@ -170,8 +256,14 @@ describe('SupplierOverviewService.getOverview', () => {
   it('resume cada proveedor con su contrato más urgente; un contrato cancelado no lo representa', async () => {
     const { items } = await service.getOverview(estate, manager);
     const by = Object.fromEntries(items.map((i) => [i.name, i]));
-    expect(by['vigente'].contract).toMatchObject({ status: 'Activo', daysLeft: 90 });
-    expect(by['por-vencer'].contract).toMatchObject({ status: 'PorVencer', daysLeft: 10 });
+    expect(by['vigente'].contract).toMatchObject({
+      status: 'Activo',
+      daysLeft: 90,
+    });
+    expect(by['por-vencer'].contract).toMatchObject({
+      status: 'PorVencer',
+      daysLeft: 10,
+    });
     expect(by['vencido'].contract).toMatchObject({ status: 'Vencido' });
     expect(by['sin-contrato'].contract).toBeNull();
   });
@@ -193,17 +285,36 @@ describe('SupplierOverviewService.getOverview', () => {
 
   it('las últimas intervenciones son las visitas realizadas de esta finca, la más reciente primero', async () => {
     const { recentInterventions } = await service.getOverview(estate, manager);
-    expect(recentInterventions.map((v) => v.purpose)).toEqual(['Hecha hace 5 días', 'Hecha hace 40 días']);
-    expect(recentInterventions[0]).toMatchObject({ supplierName: 'por-vencer', supplierCategory: 'Ascensores' });
+    expect(recentInterventions.map((v) => v.purpose)).toEqual([
+      'Hecha hace 5 días',
+      'Hecha hace 40 días',
+    ]);
+    expect(recentInterventions[0]).toMatchObject({
+      supplierName: 'por-vencer',
+      supplierCategory: 'Ascensores',
+    });
   });
 
   it('una finca sin proveedores devuelve todo a cero y no falla', async () => {
-    const empty = await createLedgerEstate(prisma, admin.administratorId, { estate: { name: 'Finca vacía — proveedores' } });
+    const empty = await createLedgerEstate(prisma, admin.administratorId, {
+      estate: { name: 'Finca vacía — proveedores' },
+    });
     const out = await service.getOverview(empty, roleB(admin, [empty]));
-    expect(out).toEqual({ kpis: { totalSuppliers: 0, activeContracts: 0, expiringContracts: 0, openIssues: 0 }, items: [], recentInterventions: [] });
+    expect(out).toEqual({
+      kpis: {
+        totalSuppliers: 0,
+        activeContracts: 0,
+        expiringContracts: 0,
+        openIssues: 0,
+      },
+      items: [],
+      recentInterventions: [],
+    });
   });
 
   it('rechaza a quien no gestiona la finca', async () => {
-    await expect(service.getOverview(estate, roleB(otherAdmin, []))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.getOverview(estate, roleB(otherAdmin, [])),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

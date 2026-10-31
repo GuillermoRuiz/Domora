@@ -1,6 +1,9 @@
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { createAdministrator, purgeAdministrator } from '../testing/db-fixtures';
+import {
+  createAdministrator,
+  purgeAdministrator,
+} from '../testing/db-fixtures';
 import { UsageRecorder } from './usage-recorder.service';
 import { UsageService } from './usage.service';
 import { createPrismaClient } from '../prisma/create-prisma-client';
@@ -30,13 +33,43 @@ afterAll(async () => {
 
 it('two flushes for the same user and day merge modules and add requests', async () => {
   const recorder = new UsageRecorder(db);
-  recorder.record({ userId, role: 'B', administratorId, module: 'receipts', at: DAY });
-  recorder.record({ userId, role: 'B', administratorId, module: 'estates', at: DAY });
+  recorder.record({
+    userId,
+    role: 'B',
+    administratorId,
+    module: 'receipts',
+    at: DAY,
+  });
+  recorder.record({
+    userId,
+    role: 'B',
+    administratorId,
+    module: 'estates',
+    at: DAY,
+  });
   await expect(recorder.flush()).resolves.toEqual({ written: 1, failed: 0 });
 
-  recorder.record({ userId, role: 'B', administratorId, module: 'estates', at: DAY });
-  recorder.record({ userId, role: 'B', administratorId, module: 'meetings', at: DAY });
-  recorder.record({ userId, role: 'B', administratorId, module: 'meetings', at: DAY });
+  recorder.record({
+    userId,
+    role: 'B',
+    administratorId,
+    module: 'estates',
+    at: DAY,
+  });
+  recorder.record({
+    userId,
+    role: 'B',
+    administratorId,
+    module: 'meetings',
+    at: DAY,
+  });
+  recorder.record({
+    userId,
+    role: 'B',
+    administratorId,
+    module: 'meetings',
+    at: DAY,
+  });
   await expect(recorder.flush()).resolves.toEqual({ written: 1, failed: 0 });
 
   const rows = await prisma.userDailyActivity.findMany({ where: { userId } });
@@ -49,12 +82,17 @@ it('two flushes for the same user and day merge modules and add requests', async
     requests: 5,
   });
 
-  const summary = await new UsageService(db).summary(new Date('2001-05-09'), new Date('2001-05-10'));
+  const summary = await new UsageService(db).summary(
+    new Date('2001-05-09'),
+    new Date('2001-05-10'),
+  );
   expect(summary.days).toEqual([
     { day: '2001-05-09', activeUsers: 0, activeB: 0, activeC: 0, requests: 0 },
     { day: '2001-05-10', activeUsers: 1, activeB: 1, activeC: 0, requests: 5 },
   ]);
-  expect(summary.despachos.find((d) => d.administratorId === administratorId)).toMatchObject({
+  expect(
+    summary.despachos.find((d) => d.administratorId === administratorId),
+  ).toMatchObject({
     activeUsers: 1,
     activeDays: 1,
     requests: 5,
@@ -63,12 +101,22 @@ it('two flushes for the same user and day merge modules and add requests', async
 });
 
 it('usage of a user that no longer exists is skipped without an error', async () => {
-  const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+  const error = jest
+    .spyOn(Logger.prototype, 'error')
+    .mockImplementation(() => undefined);
   const recorder = new UsageRecorder(db);
   const ghost = '00000000-0000-4000-8000-000000000000';
-  recorder.record({ userId: ghost, role: 'C', administratorId: null, module: 'documents', at: DAY });
+  recorder.record({
+    userId: ghost,
+    role: 'C',
+    administratorId: null,
+    module: 'documents',
+    at: DAY,
+  });
   await expect(recorder.flush()).resolves.toEqual({ written: 0, failed: 0 });
   expect(error).not.toHaveBeenCalled();
-  expect(await prisma.userDailyActivity.count({ where: { userId: ghost } })).toBe(0);
+  expect(
+    await prisma.userDailyActivity.count({ where: { userId: ghost } }),
+  ).toBe(0);
   error.mockRestore();
 });

@@ -3,7 +3,10 @@ import { presetsFor, suggestMapping } from './gesfincas-net.presets';
 describe('presetsFor', () => {
   it('el perfil GESFINCAS_NET trae cabeceras-guess', () => {
     const fields = presetsFor('GESFINCAS_NET', 'property');
-    expect(fields.find((f) => f.targetField === 'participationQuota')?.headerGuesses.length).toBeGreaterThan(0);
+    expect(
+      fields.find((f) => f.targetField === 'participationQuota')?.headerGuesses
+        .length,
+    ).toBeGreaterThan(0);
   });
 
   it('el perfil GENERIC tiene los mismos campos pero SIN cabeceras-guess (mapeo 100% manual)', () => {
@@ -18,7 +21,13 @@ describe('presetsFor', () => {
 describe('suggestMapping', () => {
   it('empareja cabeceras reales contra los guesses, sin distinguir mayúsculas ni acentos', () => {
     const fields = presetsFor('GESFINCAS_NET', 'property');
-    const headers = ['Nº Finca', 'COEFICIENTE', 'planta', 'Puerta', 'Otra columna sin relación'];
+    const headers = [
+      'Nº Finca',
+      'COEFICIENTE',
+      'planta',
+      'Puerta',
+      'Otra columna sin relación',
+    ];
     const mapping = suggestMapping(headers, fields);
 
     expect(mapping['ref']).toBe('Nº Finca');

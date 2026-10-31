@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Put,
+} from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -11,12 +18,19 @@ export class EstateGeneralController {
   constructor(private readonly general: EstateGeneralService) {}
 
   @Get('general-overview')
-  overview(@Param('estateId', ParseUUIDPipe) estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  overview(
+    @Param('estateId', ParseUUIDPipe) estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.general.overview(estateId, user);
   }
 
   @Put('key-contacts')
-  setKeyContact(@Param('estateId', ParseUUIDPipe) estateId: string, @Body() dto: SetKeyContactDto, @CurrentUser() user: AuthenticatedUser) {
+  setKeyContact(
+    @Param('estateId', ParseUUIDPipe) estateId: string,
+    @Body() dto: SetKeyContactDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.general.setKeyContact(estateId, dto, user);
   }
 }

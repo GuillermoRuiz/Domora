@@ -8,7 +8,11 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { AlertSourceType, CommunicationCategory, MeetingSignerRole } from '../../prisma/client';
+import {
+  AlertSourceType,
+  CommunicationCategory,
+  MeetingSignerRole,
+} from '../../prisma/client';
 
 const COMMUNICATION_CATEGORIES: CommunicationCategory[] = [
   'General',

@@ -29,12 +29,17 @@ export class SubscriptionGraceCronService {
     try {
       await this.sweep();
     } catch (error) {
-      this.logger.error('Error agotando períodos de gracia de suscripción', error);
+      this.logger.error(
+        'Error agotando períodos de gracia de suscripción',
+        error,
+      );
     }
   }
 
   private async sweep(): Promise<void> {
-    const cutoff = new Date(Date.now() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+    const cutoff = new Date(
+      Date.now() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000,
+    );
     const candidates = await this.prisma.administratorSubscription.findMany({
       where: {
         status: 'past_due',

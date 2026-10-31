@@ -1,4 +1,9 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstateAccessService } from '../estate-access/estate-access.service';
@@ -49,7 +54,11 @@ export class CostCentresService {
     }));
   }
 
-  async createCostCentre(estateId: string, dto: CreateCostCentreDto, user: AuthenticatedUser) {
+  async createCostCentre(
+    estateId: string,
+    dto: CreateCostCentreDto,
+    user: AuthenticatedUser,
+  ) {
     this.estateAccess.assertAccess(estateId, user);
     if (!user.administratorId) {
       throw new ForbiddenException('Usuario sin gestora asociada.');
@@ -58,20 +67,27 @@ export class CostCentresService {
       where: { estateId, name: dto.name },
     });
     if (existing) {
-      throw new ConflictException(`Ya existe un centro de coste "${dto.name}" en esta finca.`);
+      throw new ConflictException(
+        `Ya existe un centro de coste "${dto.name}" en esta finca.`,
+      );
     }
     return this.prisma.costCentre.create({
       data: { ...dto, estateId, administratorId: user.administratorId },
     });
   }
 
-  private async assertCostCentreInEstate(estateId: string, costCentreId: string): Promise<void> {
+  private async assertCostCentreInEstate(
+    estateId: string,
+    costCentreId: string,
+  ): Promise<void> {
     const centre = await this.prisma.costCentre.findUnique({
       where: { id: costCentreId },
       select: { estateId: true },
     });
     if (!centre || centre.estateId !== estateId) {
-      throw new NotFoundException('Centro de coste no encontrado en esta finca.');
+      throw new NotFoundException(
+        'Centro de coste no encontrado en esta finca.',
+      );
     }
   }
 

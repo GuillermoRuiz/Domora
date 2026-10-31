@@ -379,8 +379,12 @@ export class LedgerReportsService {
       estate,
       fiscalYear,
       rows,
-      totalBudgeted: items.reduce((s, i) => s.plus(i.budgeted), new Prisma.Decimal(0)).toNumber(),
-      totalExecuted: items.reduce((s, i) => s.plus(i.executed), new Prisma.Decimal(0)).toNumber(),
+      totalBudgeted: items
+        .reduce((s, i) => s.plus(i.budgeted), new Prisma.Decimal(0))
+        .toNumber(),
+      totalExecuted: items
+        .reduce((s, i) => s.plus(i.executed), new Prisma.Decimal(0))
+        .toNumber(),
     };
   }
 
@@ -738,7 +742,9 @@ export class LedgerReportsService {
             name: 'Totales',
             budgeted: data.totalBudgeted,
             executed: data.totalExecuted,
-            deviation: new Prisma.Decimal(data.totalExecuted).minus(data.totalBudgeted).toNumber(),
+            deviation: new Prisma.Decimal(data.totalExecuted)
+              .minus(data.totalBudgeted)
+              .toNumber(),
           },
           empty: 'Sin presupuesto para este ejercicio.',
         },

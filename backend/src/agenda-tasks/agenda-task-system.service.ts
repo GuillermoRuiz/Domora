@@ -86,7 +86,11 @@ export class AgendaTaskSystemService {
   ): Promise<OpenedSystemTask> {
     const payload = this.registry.validatePayload(input.kind, input.payload);
     if (input.assignedToUserId)
-      await assertTeamAssignee(db, input.administratorId, input.assignedToUserId);
+      await assertTeamAssignee(
+        db,
+        input.administratorId,
+        input.assignedToUserId,
+      );
     const now = input.now ?? new Date();
     const base = this.sourceRefFor(input);
 
@@ -106,7 +110,9 @@ export class AgendaTaskSystemService {
       if (existing) continue;
       const startAt =
         input.dueAt ??
-        new Date(now.getTime() + TASK_DEADLINE_HOURS[input.priority] * 3_600_000);
+        new Date(
+          now.getTime() + TASK_DEADLINE_HOURS[input.priority] * 3_600_000,
+        );
       const task = await db.agendaTask.create({
         data: {
           administratorId: input.administratorId,

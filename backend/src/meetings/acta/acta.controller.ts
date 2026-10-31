@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -6,7 +17,11 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../auth/auth.types';
 import { StorageService } from '../../files/storage.service';
 import { ActaService, type UploadedActaFile } from './acta.service';
-import { GenerateActaDto, SaveActaEditsDto, UploadActaDto } from './dto/acta.dto';
+import {
+  GenerateActaDto,
+  SaveActaEditsDto,
+  UploadActaDto,
+} from './dto/acta.dto';
 
 /**
  * Acta canónica de una junta (borrador reproducible, versionado y con PDF). Las rutas viven bajo
@@ -42,7 +57,11 @@ export class ActaController {
 
   @Get(':id/acta/versions/:versionId')
   @Roles('A', 'B')
-  version(@Param('id') id: string, @Param('versionId') versionId: string, @CurrentUser() user: AuthenticatedUser) {
+  version(
+    @Param('id') id: string,
+    @Param('versionId') versionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.acta.getVersion(id, versionId, user);
   }
 
@@ -54,19 +73,30 @@ export class ActaController {
 
   @Post(':id/acta/generate')
   @Roles('A', 'B')
-  generate(@Param('id') id: string, @Body() dto: GenerateActaDto, @CurrentUser() user: AuthenticatedUser) {
+  generate(
+    @Param('id') id: string,
+    @Body() dto: GenerateActaDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.acta.generate(id, dto, user);
   }
 
   @Patch(':id/acta')
   @Roles('A', 'B')
-  saveEdits(@Param('id') id: string, @Body() dto: SaveActaEditsDto, @CurrentUser() user: AuthenticatedUser) {
+  saveEdits(
+    @Param('id') id: string,
+    @Body() dto: SaveActaEditsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.acta.saveEdits(id, dto, user);
   }
 
   @Post(':id/acta/regenerate-narrative')
   @Roles('A', 'B')
-  regenerateNarrative(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  regenerateNarrative(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.acta.regenerateNarrative(id, user);
   }
 
@@ -78,23 +108,51 @@ export class ActaController {
 
   @Post(':id/acta/upload')
   @Roles('A', 'B')
-  @UseInterceptors(FileInterceptor('file', { defParamCharset: 'utf8', limits: { fileSize: StorageService.MAX_SIZE_BYTES, files: 1 } }))
-  upload(@Param('id') id: string, @UploadedFile() file: UploadedActaFile, @Body() dto: UploadActaDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.acta.uploadExisting(id, file, dto.alreadySigned === 'true', user);
+  @UseInterceptors(
+    FileInterceptor('file', {
+      defParamCharset: 'utf8',
+      limits: { fileSize: StorageService.MAX_SIZE_BYTES, files: 1 },
+    }),
+  )
+  upload(
+    @Param('id') id: string,
+    @UploadedFile() file: UploadedActaFile,
+    @Body() dto: UploadActaDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.acta.uploadExisting(
+      id,
+      file,
+      dto.alreadySigned === 'true',
+      user,
+    );
   }
 
   @Get(':id/acta/file')
   @Roles('A', 'B')
-  async uploadedFile(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser, @Res() res: Response) {
-    const { content, fileName, mimeType } = await this.acta.downloadUpload(id, user);
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+  async uploadedFile(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    const { content, fileName, mimeType } = await this.acta.downloadUpload(
+      id,
+      user,
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    );
     res.setHeader('Content-Type', mimeType);
     res.send(content);
   }
 
   @Post(':id/acta/prepare-for-signature')
   @Roles('A', 'B')
-  prepareForSignature(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  prepareForSignature(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.acta.prepareForSignature(id, user);
   }
 

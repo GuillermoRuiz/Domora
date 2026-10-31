@@ -44,47 +44,84 @@ let tokenOtherA: string;
 let tokenB: string;
 let tokenC: string;
 
-function sign(role: AppRole, userId: string, administratorId: string | null, estateIds: string[]): string {
+function sign(
+  role: AppRole,
+  userId: string,
+  administratorId: string | null,
+  estateIds: string[],
+): string {
   return jwt.sign({ sub: userId, role, estateIds, administratorId });
 }
 const auth = (t: string) => ({ Authorization: `Bearer ${t}` });
 const communication = { title: 'Corte de agua', body: 'Mañana de 9 a 11.' };
 
 function auditRows(staffUserId: string) {
-  return prisma.staffAuditLog.findMany({ where: { staffUserId }, orderBy: { occurredAt: 'asc' } });
+  return prisma.staffAuditLog.findMany({
+    where: { staffUserId },
+    orderBy: { occurredAt: 'asc' },
+  });
 }
 
 async function readRows(staffUserId: string) {
   return (await auditRows(staffUserId)).filter((r) => r.action === 'read');
 }
 
-async function startSession(token: string, administratorId: string): Promise<string> {
+async function startSession(
+  token: string,
+  administratorId: string,
+): Promise<string> {
   const res = await request(app.getHttpServer())
     .post(`${API}/support-sessions`)
     .set(auth(token))
-    .send({ administratorId, reason: 'Ayuda con un comunicado', ticketRef: 'SOP-1' })
+    .send({
+      administratorId,
+      reason: 'Ayuda con un comunicado',
+      ticketRef: 'SOP-1',
+    })
     .expect(201);
   return res.body.id as string;
 }
 
 beforeAll(async () => {
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile();
   app = moduleRef.createNestApplication();
   app.setGlobalPrefix('api/v1');
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
   await app.init();
   await app.listen(0);
   jwt = moduleRef.get(JwtService);
 
   X = await createAdministrator(prisma, { name: 'Soporte HTTP · Despacho X' });
   Y = await createAdministrator(prisma, { name: 'Soporte HTTP · Despacho Y' });
-  estateX = await createEstate(prisma, X.administratorId, { name: 'Soporte X · finca' });
-  estateY = await createEstate(prisma, Y.administratorId, { name: 'Soporte Y · finca' });
+  estateX = await createEstate(prisma, X.administratorId, {
+    name: 'Soporte X · finca',
+  });
+  estateY = await createEstate(prisma, Y.administratorId, {
+    name: 'Soporte Y · finca',
+  });
   const staff = await prisma.user.create({
-    data: { email: uniqueEmail('staff'), passwordHash: 'x', fullName: 'Staff Domora', role: 'A' },
+    data: {
+      email: uniqueEmail('staff'),
+      passwordHash: 'x',
+      fullName: 'Staff Domora',
+      role: 'A',
+    },
   });
   const otherStaff = await prisma.user.create({
-    data: { email: uniqueEmail('staff2'), passwordHash: 'x', fullName: 'Otro staff', role: 'A' },
+    data: {
+      email: uniqueEmail('staff2'),
+      passwordHash: 'x',
+      fullName: 'Otro staff',
+      role: 'A',
+    },
   });
   staffId = staff.id;
   otherStaffId = otherStaff.id;
@@ -96,8 +133,12 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await prisma.staffAuditLog.deleteMany({ where: { staffUserId: { in: [staffId, otherStaffId, X.userId, ownerId] } } });
-  await prisma.supportSession.deleteMany({ where: { staffUserId: { in: [staffId, otherStaffId] } } });
+  await prisma.staffAuditLog.deleteMany({
+    where: { staffUserId: { in: [staffId, otherStaffId, X.userId, ownerId] } },
+  });
+  await prisma.supportSession.deleteMany({
+    where: { staffUserId: { in: [staffId, otherStaffId] } },
+  });
 });
 
 afterAll(async () => {
@@ -107,21 +148,44 @@ afterAll(async () => {
     where: { userId: { in: people } },
     select: { conversationId: true },
   });
-  const conversationIds = [...new Set(conversations.map((c) => c.conversationId))];
-  await prisma.directMessage.deleteMany({ where: { conversationId: { in: conversationIds } } });
-  await prisma.conversation.deleteMany({ where: { id: { in: conversationIds } } });
+  const conversationIds = [
+    ...new Set(conversations.map((c) => c.conversationId)),
+  ];
+  await prisma.directMessage.deleteMany({
+    where: { conversationId: { in: conversationIds } },
+  });
+  await prisma.conversation.deleteMany({
+    where: { id: { in: conversationIds } },
+  });
   // Each sign-up request now also creates a lead (T10); the lead survives the request (SetNull), so delete it first.
-  const requests = await prisma.estateOnboardingRequest.findMany({ where: { requestedByUserId: { in: people } }, select: { id: true } });
-  await prisma.lead.deleteMany({ where: { onboardingRequestId: { in: requests.map((r) => r.id) } } });
-  await prisma.estateOnboardingRequest.deleteMany({ where: { requestedByUserId: { in: people } } });
+  const requests = await prisma.estateOnboardingRequest.findMany({
+    where: { requestedByUserId: { in: people } },
+    select: { id: true },
+  });
+  await prisma.lead.deleteMany({
+    where: { onboardingRequestId: { in: requests.map((r) => r.id) } },
+  });
+  await prisma.estateOnboardingRequest.deleteMany({
+    where: { requestedByUserId: { in: people } },
+  });
   await prisma.notification.deleteMany({ where: { userId: { in: people } } });
-  await prisma.activityLogEntry.deleteMany({ where: { actorUserId: { in: people } } });
-  await prisma.activityLogEntry.deleteMany({ where: { estateId: { in: estateIds } } });
-  await prisma.communication.deleteMany({ where: { estateId: { in: estateIds } } });
+  await prisma.activityLogEntry.deleteMany({
+    where: { actorUserId: { in: people } },
+  });
+  await prisma.activityLogEntry.deleteMany({
+    where: { estateId: { in: estateIds } },
+  });
+  await prisma.communication.deleteMany({
+    where: { estateId: { in: estateIds } },
+  });
   await purgeAdministrator(prisma, X.administratorId);
   await purgeAdministrator(prisma, Y.administratorId);
-  await prisma.refreshToken.deleteMany({ where: { userId: { in: [staffId, otherStaffId, ownerId] } } });
-  await prisma.user.deleteMany({ where: { id: { in: [staffId, otherStaffId, ownerId] } } });
+  await prisma.refreshToken.deleteMany({
+    where: { userId: { in: [staffId, otherStaffId, ownerId] } },
+  });
+  await prisma.user.deleteMany({
+    where: { id: { in: [staffId, otherStaffId, ownerId] } },
+  });
   await app.close();
   await prisma.$disconnect();
 });
@@ -179,7 +243,11 @@ describe('role A on tenant routes', () => {
       .send(communication)
       .expect(403);
     expect(res.body.message).toBe(SUPPORT_MESSAGES.noSession);
-    expect(await prisma.communication.count({ where: { estateId: estateX, authorUserId: staffId } })).toBe(0);
+    expect(
+      await prisma.communication.count({
+        where: { estateId: estateX, authorUserId: staffId },
+      }),
+    ).toBe(0);
     const rows = await auditRows(staffId);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -192,14 +260,18 @@ describe('role A on tenant routes', () => {
   });
 
   it('cannot write through a route without @Roles either (PATCH estates/:estateId)', async () => {
-    const before = await prisma.estate.findUniqueOrThrow({ where: { id: estateX } });
+    const before = await prisma.estate.findUniqueOrThrow({
+      where: { id: estateX },
+    });
     const res = await request(app.getHttpServer())
       .patch(`${API}/estates/${estateX}`)
       .set(auth(tokenA))
       .send({ name: 'Renombrada por staff' })
       .expect(403);
     expect(res.body.message).toBe(SUPPORT_MESSAGES.noSession);
-    expect((await prisma.estate.findUniqueOrThrow({ where: { id: estateX } })).name).toBe(before.name);
+    expect(
+      (await prisma.estate.findUniqueOrThrow({ where: { id: estateX } })).name,
+    ).toBe(before.name);
   });
 
   it('writes with a valid support session of the despacho, audited as write', async () => {
@@ -213,7 +285,11 @@ describe('role A on tenant routes', () => {
     expect(res.body.title).toBe(communication.title);
     const rows = await auditRows(staffId);
     expect(rows.map((r) => r.action)).toEqual(['support_start', 'write']);
-    expect(rows[0]).toMatchObject({ route: 'support-sessions', administratorId: X.administratorId, supportSessionId: sessionId });
+    expect(rows[0]).toMatchObject({
+      route: 'support-sessions',
+      administratorId: X.administratorId,
+      supportSessionId: sessionId,
+    });
     expect(rows[1]).toMatchObject({
       method: 'POST',
       route: 'estates/:estateId/communications',
@@ -239,14 +315,23 @@ describe('role A on tenant routes', () => {
       sessionId = await startSession(tokenOtherA, X.administratorId);
     } else if (kind === 'ended') {
       sessionId = await startSession(tokenA, X.administratorId);
-      await request(app.getHttpServer()).post(`${API}/support-sessions/${sessionId}/end`).set(auth(tokenA)).expect(201);
+      await request(app.getHttpServer())
+        .post(`${API}/support-sessions/${sessionId}/end`)
+        .set(auth(tokenA))
+        .expect(201);
     } else if (kind === 'expired') {
       sessionId = await startSession(tokenA, X.administratorId);
-      await prisma.supportSession.update({ where: { id: sessionId }, data: { expiresAt: new Date(Date.now() - 1000) } });
+      await prisma.supportSession.update({
+        where: { id: sessionId },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      });
     } else {
       sessionId = '00000000-0000-4000-8000-000000000000';
     }
-    const authored = () => prisma.communication.count({ where: { estateId: estateX, authorUserId: staffId } });
+    const authored = () =>
+      prisma.communication.count({
+        where: { estateId: estateX, authorUserId: staffId },
+      });
     const before = await authored();
     const res = await request(app.getHttpServer())
       .post(`${API}/estates/${estateX}/communications`)
@@ -256,13 +341,21 @@ describe('role A on tenant routes', () => {
       .expect(403);
     expect(res.body.message).toBe(message);
     expect(await authored()).toBe(before);
-    const denied = (await auditRows(staffId)).filter((r) => r.action === 'denied');
+    const denied = (await auditRows(staffId)).filter(
+      (r) => r.action === 'denied',
+    );
     expect(denied).toHaveLength(1);
-    expect(denied[0]).toMatchObject({ route: 'estates/:estateId/communications', administratorId: X.administratorId });
+    expect(denied[0]).toMatchObject({
+      route: 'estates/:estateId/communications',
+      administratorId: X.administratorId,
+    });
   });
 
   it('is unaffected on platform routes (no audit row)', async () => {
-    await request(app.getHttpServer()).get(`${API}/platform-metrics/activity?limit=1`).set(auth(tokenA)).expect(200);
+    await request(app.getHttpServer())
+      .get(`${API}/platform-metrics/activity?limit=1`)
+      .set(auth(tokenA))
+      .expect(200);
     expect(await auditRows(staffId)).toHaveLength(0);
   });
 });
@@ -285,22 +378,33 @@ describe('Domora relation with its clients (self routes, no support session)', (
       .set(auth(tokenA))
       .send({ status: 'contacted' })
       .expect(200);
-    const row = await prisma.estateOnboardingRequest.findUniqueOrThrow({ where: { id } });
+    const row = await prisma.estateOnboardingRequest.findUniqueOrThrow({
+      where: { id },
+    });
     expect(row.status).toBe('contacted');
     expect(row.resolvedByUserId).toBe(staffId);
     expect(await auditRows(staffId)).toHaveLength(0);
-    expect(await prisma.staffAuditLog.count({ where: { staffUserId: { in: [ownerId, X.userId] } } })).toBe(0);
+    expect(
+      await prisma.staffAuditLog.count({
+        where: { staffUserId: { in: [ownerId, X.userId] } },
+      }),
+    ).toBe(0);
   });
 
   it('role A sends a direct message without a session and nothing is audited; B replies unchanged', async () => {
     const conversation = await prisma.conversation.create({
-      data: { participants: { create: [{ userId: staffId }, { userId: X.userId }] } },
+      data: {
+        participants: { create: [{ userId: staffId }, { userId: X.userId }] },
+      },
       select: { id: true },
     });
     const sent = await request(app.getHttpServer())
       .post(`${API}/direct-messages/messages`)
       .set(auth(tokenA))
-      .send({ conversationId: conversation.id, text: 'Hola, soy soporte de Domora.' })
+      .send({
+        conversationId: conversation.id,
+        text: 'Hola, soy soporte de Domora.',
+      })
       .expect(201);
     expect(sent.body.senderId).toBe(staffId);
     await request(app.getHttpServer())
@@ -308,9 +412,15 @@ describe('Domora relation with its clients (self routes, no support session)', (
       .set(auth(tokenB))
       .send({ conversationId: conversation.id, text: 'Gracias.' })
       .expect(201);
-    expect(await prisma.directMessage.count({ where: { conversationId: conversation.id } })).toBe(2);
+    expect(
+      await prisma.directMessage.count({
+        where: { conversationId: conversation.id },
+      }),
+    ).toBe(2);
     expect(await auditRows(staffId)).toHaveLength(0);
-    expect(await prisma.staffAuditLog.count({ where: { staffUserId: X.userId } })).toBe(0);
+    expect(
+      await prisma.staffAuditLog.count({ where: { staffUserId: X.userId } }),
+    ).toBe(0);
   });
 });
 
@@ -361,22 +471,46 @@ describe('support sessions and audit endpoints', () => {
     });
     await startSession(tokenA, X.administratorId);
 
-    await request(app.getHttpServer()).post(`${API}/auth/logout`).send({ refreshToken }).expect(204);
+    await request(app.getHttpServer())
+      .post(`${API}/auth/logout`)
+      .send({ refreshToken })
+      .expect(204);
 
-    expect(await prisma.supportSession.count({ where: { staffUserId: staffId, endedAt: null } })).toBe(0);
-    expect((await auditRows(staffId)).map((r) => r.action)).toEqual(['support_start', 'support_end']);
+    expect(
+      await prisma.supportSession.count({
+        where: { staffUserId: staffId, endedAt: null },
+      }),
+    ).toBe(0);
+    expect((await auditRows(staffId)).map((r) => r.action)).toEqual([
+      'support_start',
+      'support_end',
+    ]);
   });
 
   it('starts, lists, ends a session and audits start and end', async () => {
     const sessionId = await startSession(tokenA, X.administratorId);
-    const active = await request(app.getHttpServer()).get(`${API}/support-sessions/active`).set(auth(tokenA)).expect(200);
+    const active = await request(app.getHttpServer())
+      .get(`${API}/support-sessions/active`)
+      .set(auth(tokenA))
+      .expect(200);
     expect(active.body.map((s: { id: string }) => s.id)).toEqual([sessionId]);
-    const expires = new Date(active.body[0].expiresAt).getTime() - new Date(active.body[0].startedAt).getTime();
+    const expires =
+      new Date(active.body[0].expiresAt).getTime() -
+      new Date(active.body[0].startedAt).getTime();
     expect(expires).toBe(2 * 60 * 60 * 1000);
-    await request(app.getHttpServer()).post(`${API}/support-sessions/${sessionId}/end`).set(auth(tokenA)).expect(201);
-    const after = await request(app.getHttpServer()).get(`${API}/support-sessions/active`).set(auth(tokenA)).expect(200);
+    await request(app.getHttpServer())
+      .post(`${API}/support-sessions/${sessionId}/end`)
+      .set(auth(tokenA))
+      .expect(201);
+    const after = await request(app.getHttpServer())
+      .get(`${API}/support-sessions/active`)
+      .set(auth(tokenA))
+      .expect(200);
     expect(after.body).toEqual([]);
-    expect((await auditRows(staffId)).map((r) => r.action)).toEqual(['support_start', 'support_end']);
+    expect((await auditRows(staffId)).map((r) => r.action)).toEqual([
+      'support_start',
+      'support_end',
+    ]);
   });
 
   it('requires a reason and an existing despacho', async () => {
@@ -388,7 +522,10 @@ describe('support sessions and audit endpoints', () => {
     await request(app.getHttpServer())
       .post(`${API}/support-sessions`)
       .set(auth(tokenA))
-      .send({ administratorId: '00000000-0000-4000-8000-000000000000', reason: 'x' })
+      .send({
+        administratorId: '00000000-0000-4000-8000-000000000000',
+        reason: 'x',
+      })
       .expect(404);
     expect(await auditRows(staffId)).toHaveLength(0);
   });
@@ -399,7 +536,10 @@ describe('support sessions and audit endpoints', () => {
       .set(auth(tokenB))
       .send({ administratorId: X.administratorId, reason: 'x' })
       .expect(403);
-    await request(app.getHttpServer()).get(`${API}/staff-audit`).set(auth(tokenB)).expect(403);
+    await request(app.getHttpServer())
+      .get(`${API}/staff-audit`)
+      .set(auth(tokenB))
+      .expect(403);
   });
 
   it('pages and filters the audit log by despacho and staff', async () => {
@@ -416,13 +556,22 @@ describe('support sessions and audit endpoints', () => {
       .set('X-Support-Session', sessionY)
       .expect(200);
     const res = await request(app.getHttpServer())
-      .get(`${API}/staff-audit?administratorId=${X.administratorId}&staffUserId=${staffId}&pageSize=10`)
+      .get(
+        `${API}/staff-audit?administratorId=${X.administratorId}&staffUserId=${staffId}&pageSize=10`,
+      )
       .set(auth(tokenA))
       .expect(200);
     // The start of the session of X and the read of X.
     expect(res.body.total).toBe(2);
-    expect(res.body.items).toEqual(expect.arrayContaining([expect.objectContaining({ estateId: estateX, action: 'read' })]));
-    await request(app.getHttpServer()).get(`${API}/staff-audit?administratorId=nope`).set(auth(tokenA)).expect(400);
+    expect(res.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ estateId: estateX, action: 'read' }),
+      ]),
+    );
+    await request(app.getHttpServer())
+      .get(`${API}/staff-audit?administratorId=nope`)
+      .set(auth(tokenA))
+      .expect(400);
   });
 });
 
@@ -438,7 +587,9 @@ describe('roles B and C are unaffected', () => {
       .set(auth(tokenB))
       .send(communication)
       .expect(201);
-    expect(await prisma.staffAuditLog.count({ where: { staffUserId: X.userId } })).toBe(0);
+    expect(
+      await prisma.staffAuditLog.count({ where: { staffUserId: X.userId } }),
+    ).toBe(0);
   });
 
   it('C writes on a tenant route without any session and nothing is audited', async () => {
@@ -447,11 +598,16 @@ describe('roles B and C are unaffected', () => {
       .set(auth(tokenC))
       .send(communication)
       .expect(201);
-    expect(await prisma.staffAuditLog.count({ where: { staffUserId: ownerId } })).toBe(0);
+    expect(
+      await prisma.staffAuditLog.count({ where: { staffUserId: ownerId } }),
+    ).toBe(0);
   });
 
   it('B is still scoped to its own estates', async () => {
-    await request(app.getHttpServer()).get(`${API}/estates/${estateY}/cost-centres`).set(auth(tokenB)).expect(403);
+    await request(app.getHttpServer())
+      .get(`${API}/estates/${estateY}/cost-centres`)
+      .set(auth(tokenB))
+      .expect(403);
   });
 });
 
@@ -472,7 +628,9 @@ describe('despacho filter on estate listings', () => {
       .set(auth(tokenA))
       .set('X-Support-Session', sessionY)
       .expect(200);
-    expect(overview.body.items.map((e: { id: string }) => e.id)).toEqual([estateY]);
+    expect(overview.body.items.map((e: { id: string }) => e.id)).toEqual([
+      estateY,
+    ]);
     const reads = await readRows(staffId);
     expect(reads.map((r) => [r.route, r.administratorId])).toEqual([
       ['estates', X.administratorId],
@@ -536,11 +694,22 @@ describe('despacho filter on estate listings', () => {
   });
 
   it('keeps ignoring a malformed filter for role B, as before the despacho filter existed', async () => {
-    const res = await request(app.getHttpServer()).get(`${API}/estates?administratorId=nope`).set(auth(tokenB)).expect(200);
+    const res = await request(app.getHttpServer())
+      .get(`${API}/estates?administratorId=nope`)
+      .set(auth(tokenB))
+      .expect(200);
     expect(res.body.map((e: { id: string }) => e.id)).toEqual([estateX]);
-    const overview = await request(app.getHttpServer()).get(`${API}/estates/overview?administratorId=nope`).set(auth(tokenB)).expect(200);
-    expect(overview.body.items.map((e: { id: string }) => e.id)).toEqual([estateX]);
-    await request(app.getHttpServer()).get(`${API}/estates/overview/export.xlsx?administratorId=nope`).set(auth(tokenB)).expect(200);
+    const overview = await request(app.getHttpServer())
+      .get(`${API}/estates/overview?administratorId=nope`)
+      .set(auth(tokenB))
+      .expect(200);
+    expect(overview.body.items.map((e: { id: string }) => e.id)).toEqual([
+      estateX,
+    ]);
+    await request(app.getHttpServer())
+      .get(`${API}/estates/overview/export.xlsx?administratorId=nope`)
+      .set(auth(tokenB))
+      .expect(200);
   });
 
   it('setup summary: role A gets the selected despacho (audited as read), the session one without it, 400 when malformed', async () => {
@@ -577,9 +746,18 @@ describe('despacho filter on estate listings', () => {
   });
 
   it('setup summary: role B keeps its own despacho and ignores the parameter, even malformed', async () => {
-    for (const query of [`?administratorId=${Y.administratorId}`, '?administratorId=nope', '']) {
-      const res = await request(app.getHttpServer()).get(`${API}/estates/setup-summary${query}`).set(auth(tokenB)).expect(200);
-      expect(res.body.map((s: { estateId: string }) => s.estateId)).toEqual([estateX]);
+    for (const query of [
+      `?administratorId=${Y.administratorId}`,
+      '?administratorId=nope',
+      '',
+    ]) {
+      const res = await request(app.getHttpServer())
+        .get(`${API}/estates/setup-summary${query}`)
+        .set(auth(tokenB))
+        .expect(200);
+      expect(res.body.map((s: { estateId: string }) => s.estateId)).toEqual([
+        estateX,
+      ]);
     }
   });
 
@@ -593,6 +771,8 @@ describe('despacho filter on estate listings', () => {
       .get(`${API}/estates/overview?administratorId=${Y.administratorId}`)
       .set(auth(tokenB))
       .expect(200);
-    expect(overview.body.items.map((e: { id: string }) => e.id)).toEqual([estateX]);
+    expect(overview.body.items.map((e: { id: string }) => e.id)).toEqual([
+      estateX,
+    ]);
   });
 });

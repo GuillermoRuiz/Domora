@@ -12,6 +12,13 @@ import { ManagerOverviewController } from './manager-overview.controller';
 @Module({
   imports: [EstateAccessModule, LedgerModule],
   controllers: [ManagerOverviewController],
-  providers: [ManagerKpisService, ManagerPendingService, ManagerMilestonesService, ManagerEconomicService, ManagerActivityService, ManagerPerformanceService],
+  providers: [
+    ManagerKpisService,
+    ManagerPendingService,
+    ManagerMilestonesService,
+    ManagerEconomicService,
+    ManagerActivityService,
+    ManagerPerformanceService,
+  ],
 })
 export class ManagerOverviewModule {}

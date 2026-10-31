@@ -605,9 +605,13 @@ export class AuthService {
     // shows how long they really lasted (odd/tasks/role-a-panel.md L44). Best
     // effort: a failure here never blocks the logout.
     if (stored) {
-      await this.supportSessions.endAllForStaff(stored.userId).catch((error: unknown) => {
-        this.logger.warn(`No se pudieron cerrar las sesiones de soporte al salir: ${error instanceof Error ? error.message : String(error)}`);
-      });
+      await this.supportSessions
+        .endAllForStaff(stored.userId)
+        .catch((error: unknown) => {
+          this.logger.warn(
+            `No se pudieron cerrar las sesiones de soporte al salir: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        });
     }
   }
 

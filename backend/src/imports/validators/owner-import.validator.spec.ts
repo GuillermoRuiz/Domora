@@ -34,7 +34,9 @@ describe('validateOwnerRow', () => {
   it('sin referencia de unidad: bloquea con error (no hay a qué vincular el propietario)', () => {
     const result = validateOwnerRow({ fullName: 'María García' }, 2);
     expect(result.ok).toBe(false);
-    expect(result.errors.some((e) => e.includes('referencia de la unidad'))).toBe(true);
+    expect(
+      result.errors.some((e) => e.includes('referencia de la unidad')),
+    ).toBe(true);
   });
 
   it('reporta AMBOS errores a la vez si faltan nombre y referencia', () => {
@@ -44,15 +46,24 @@ describe('validateOwnerRow', () => {
 
   it('email con formato dudoso: avisa pero no bloquea', () => {
     const result = validateOwnerRow(
-      { fullName: 'María García', propertyRef: 'A-101', email: 'no-es-un-email' },
+      {
+        fullName: 'María García',
+        propertyRef: 'A-101',
+        email: 'no-es-un-email',
+      },
       2,
     );
     expect(result.ok).toBe(true);
-    expect(result.warnings.some((w) => w.includes('Email con formato dudoso'))).toBe(true);
+    expect(
+      result.warnings.some((w) => w.includes('Email con formato dudoso')),
+    ).toBe(true);
   });
 
   it('campos opcionales ausentes quedan undefined, no cadena vacía', () => {
-    const result = validateOwnerRow({ fullName: 'María García', propertyRef: 'A-101' }, 2);
+    const result = validateOwnerRow(
+      { fullName: 'María García', propertyRef: 'A-101' },
+      2,
+    );
     expect(result.data?.taxId).toBeUndefined();
     expect(result.data?.email).toBeUndefined();
     expect(result.data?.phone).toBeUndefined();

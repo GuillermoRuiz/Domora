@@ -18,7 +18,11 @@ import type {
 import { PLAN_PRICE, PLAN_TIERS, netMrr } from './plans.catalog';
 import { VerifactuService } from '../verifactu/verifactu.service';
 import { InvoicePdfService } from '../invoicing/invoice-pdf.service';
-import { detachedSubscriptionRef, isActiveStripeSubscription, isDetachableStripeSubscription } from '../common/subscription-status';
+import {
+  detachedSubscriptionRef,
+  isActiveStripeSubscription,
+  isDetachableStripeSubscription,
+} from '../common/subscription-status';
 import { isUniqueViolationOn } from '../prisma/prisma-errors';
 import { ClientStatusService } from '../client-status/client-status.service';
 
@@ -29,7 +33,10 @@ import { ClientStatusService } from '../client-status/client-status.service';
  */
 export interface CreateAdministratorOptions {
   signupNote?: string;
-  afterCreate?: (tx: Prisma.TransactionClient, admin: Administrator) => Promise<void>;
+  afterCreate?: (
+    tx: Prisma.TransactionClient,
+    admin: Administrator,
+  ) => Promise<void>;
 }
 
 /** Serie de facturación de Domora a las gestoras. */
@@ -74,7 +81,9 @@ export class AdminsService {
       orderBy: { name: 'asc' },
     });
     // Client vs payment status (S6), derived on read in one batch for the whole list.
-    const statuses = await this.clientStatus.forAdministrators(admins.map((a) => a.id));
+    const statuses = await this.clientStatus.forAdministrators(
+      admins.map((a) => a.id),
+    );
     return Promise.all(
       admins.map(async (a) => ({
         ...a,
@@ -101,13 +110,18 @@ export class AdminsService {
    * aparecen en comunicaciones y documentos.
    */
   async findOwn(user: AuthenticatedUser) {
-    if (!user.administratorId) throw new NotFoundException('Tu cuenta no pertenece a ninguna gestora.');
+    if (!user.administratorId)
+      throw new NotFoundException('Tu cuenta no pertenece a ninguna gestora.');
     const admin = await this.prisma.administrator.findFirst({
       where: { id: user.administratorId, deletedAt: null },
       select: AdminsService.OWN_ADMINISTRATOR_SELECT,
     });
     if (!admin) throw new NotFoundException('Gestora no encontrada.');
-    return { ...admin, fiscalAddress: admin.billing?.address ?? null, billing: undefined };
+    return {
+      ...admin,
+      fiscalAddress: admin.billing?.address ?? null,
+      billing: undefined,
+    };
   }
 
   async updateOwn(dto: UpdateOwnAdministratorDto, user: AuthenticatedUser) {
@@ -117,7 +131,11 @@ export class AdminsService {
       data: dto,
       select: AdminsService.OWN_ADMINISTRATOR_SELECT,
     });
-    return { ...admin, fiscalAddress: admin.billing?.address ?? null, billing: undefined };
+    return {
+      ...admin,
+      fiscalAddress: admin.billing?.address ?? null,
+      billing: undefined,
+    };
   }
 
   async findById(id: string) {
@@ -134,7 +152,14 @@ export class AdminsService {
           where: { deletedAt: null },
           include: { _count: { select: { properties: true } } },
         },
-        subscription: { select: { stripeSubscriptionId: true, status: true, currentPeriodEnd: true, cancelAtPeriodEnd: true } },
+        subscription: {
+          select: {
+            stripeSubscriptionId: true,
+            status: true,
+            currentPeriodEnd: true,
+            cancelAtPeriodEnd: true,
+          },
+        },
       },
     });
     if (!admin) {
@@ -177,7 +202,11 @@ export class AdminsService {
   }
 
   /** Alta de gestora — defaults del primer tramo del plan (dashboard-a). */
-  async create(dto: CreateAdministratorDto, user: AuthenticatedUser, options: CreateAdministratorOptions = {}) {
+  async create(
+    dto: CreateAdministratorDto,
+    user: AuthenticatedUser,
+    options: CreateAdministratorOptions = {},
+  ) {
     const firstTier = PLAN_TIERS[dto.plan][0];
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -221,9 +250,7 @@ export class AdminsService {
       // diferencia de otros campos, acá SÍ tiene sentido de negocio
       // rechazar un duplicado con un mensaje claro en vez de dejar
       // escapar el error crudo de Prisma.
-      if (
-        isUniqueViolationOn(error, 'cif')
-      ) {
+      if (isUniqueViolationOn(error, 'cif')) {
         throw new ConflictException(
           `Ya existe una gestora registrada con el CIF ${dto.cif}.`,
         );
@@ -250,7 +277,9 @@ export class AdminsService {
    * precio completo. Mejor bloquearlo con un mensaje claro que dejar un
    * "descuento aplicado" que en realidad no descuenta nada.
    */
-  private async assertNoActiveStripeSubscription(administratorId: string): Promise<void> {
+  private async assertNoActiveStripeSubscription(
+    administratorId: string,
+  ): Promise<void> {
     const sub = await this.prisma.administratorSubscription.findUnique({
       where: { administratorId },
     });
@@ -278,7 +307,12 @@ export class AdminsService {
       throw new NotFoundException(`Gestora ${id} no encontrada.`);
     }
 
-    if (dto.plan !== undefined || dto.usersMax !== undefined || dto.discountPct !== undefined || dto.billingInterval !== undefined) {
+    if (
+      dto.plan !== undefined ||
+      dto.usersMax !== undefined ||
+      dto.discountPct !== undefined ||
+      dto.billingInterval !== undefined
+    ) {
       await this.assertNoActiveStripeSubscription(id);
     }
 
@@ -392,12 +426,22 @@ export class AdminsService {
    *   (the stored value was Stripe's amount); `activate` and
    *   `billingInterval` are applied in the same transaction (see the DTO).
    */
-  async switchToManualBilling(id: string, dto: SwitchToManualBillingDto, user: AuthenticatedUser) {
-    const admin = await this.prisma.administrator.findFirst({ where: { id, deletedAt: null } });
+  async switchToManualBilling(
+    id: string,
+    dto: SwitchToManualBillingDto,
+    user: AuthenticatedUser,
+  ) {
+    const admin = await this.prisma.administrator.findFirst({
+      where: { id, deletedAt: null },
+    });
     if (!admin) throw new NotFoundException(`Gestora ${id} no encontrada.`);
-    const sub = await this.prisma.administratorSubscription.findUnique({ where: { administratorId: id } });
+    const sub = await this.prisma.administratorSubscription.findUnique({
+      where: { administratorId: id },
+    });
     if (!sub?.stripeSubscriptionId) {
-      throw new ConflictException('Este despacho no tiene ninguna suscripción de Stripe que desvincular: ya se factura manualmente.');
+      throw new ConflictException(
+        'Este despacho no tiene ninguna suscripción de Stripe que desvincular: ya se factura manualmente.',
+      );
     }
     if (!isDetachableStripeSubscription(sub)) {
       throw new ConflictException(
@@ -405,12 +449,19 @@ export class AdminsService {
       );
     }
     if (dto.activate && admin.status === 'Bloqueada') {
-      throw new ConflictException('La cuenta está bloqueada: desbloquéala antes de reactivarla.');
+      throw new ConflictException(
+        'La cuenta está bloqueada: desbloquéala antes de reactivarla.',
+      );
     }
 
     const tier = PLAN_TIERS[admin.plan].find((t) => t.max === admin.usersMax);
     const data: Prisma.AdministratorUpdateInput = {
-      mrr: new Prisma.Decimal(netMrr(tier?.price ?? PLAN_PRICE[admin.plan], Number(admin.discountPct))),
+      mrr: new Prisma.Decimal(
+        netMrr(
+          tier?.price ?? PLAN_PRICE[admin.plan],
+          Number(admin.discountPct),
+        ),
+      ),
     };
     const notes: string[] = [];
     if (dto.activate && admin.status === 'Vencida') {
@@ -419,18 +470,38 @@ export class AdminsService {
     }
     if (dto.billingInterval) {
       data.billingInterval = dto.billingInterval;
-      notes.push(dto.billingInterval === 'year' ? 'facturación anual' : 'facturación mensual');
+      notes.push(
+        dto.billingInterval === 'year'
+          ? 'facturación anual'
+          : 'facturación mensual',
+      );
     }
     const label = sub.status === 'canceled' ? 'cancelada' : 'caducada';
-    const title = [`Pasada a facturación manual: se desvincula la suscripción de Stripe ${sub.stripeSubscriptionId} (${label})`, ...notes].join(' · ');
+    const title = [
+      `Pasada a facturación manual: se desvincula la suscripción de Stripe ${sub.stripeSubscriptionId} (${label})`,
+      ...notes,
+    ].join(' · ');
 
     await this.prisma.$transaction(async (tx) => {
       const detached = await tx.administratorSubscription.updateMany({
-        where: { administratorId: id, stripeSubscriptionId: sub.stripeSubscriptionId, status: sub.status },
-        data: { stripeSubscriptionId: null, stripePriceId: null, status: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, pastDueSince: null },
+        where: {
+          administratorId: id,
+          stripeSubscriptionId: sub.stripeSubscriptionId,
+          status: sub.status,
+        },
+        data: {
+          stripeSubscriptionId: null,
+          stripePriceId: null,
+          status: null,
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+          pastDueSince: null,
+        },
       });
       if (detached.count === 0) {
-        throw new ConflictException('La suscripción de Stripe acaba de cambiar. Recarga la ficha y vuelve a intentarlo.');
+        throw new ConflictException(
+          'La suscripción de Stripe acaba de cambiar. Recarga la ficha y vuelve a intentarlo.',
+        );
       }
       await tx.administrator.update({ where: { id }, data });
       await tx.adminActivityItem.create({

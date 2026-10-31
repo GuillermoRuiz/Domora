@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { FiscalYearsService } from './fiscal-years.service';
 import { ApproveFiscalYearDto } from './dto/approve-fiscal-year.dto';
 import { UpdateFiscalYearReserveDto } from './dto/update-fiscal-year-reserve.dto';
@@ -14,7 +23,10 @@ export class FiscalYearsController {
   constructor(private readonly fiscalYearsService: FiscalYearsService) {}
 
   @Get()
-  list(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  list(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.fiscalYearsService.listFiscalYears(estateId, user);
   }
 
@@ -34,7 +46,12 @@ export class FiscalYearsController {
     @Body() dto: ApproveFiscalYearDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.fiscalYearsService.approveFiscalYear(estateId, Number(year), dto, user);
+    return this.fiscalYearsService.approveFiscalYear(
+      estateId,
+      Number(year),
+      dto,
+      user,
+    );
   }
 
   /** Fondo de reserva del ejercicio: modo y porcentaje de cada recibo. */
@@ -45,6 +62,11 @@ export class FiscalYearsController {
     @Body() dto: UpdateFiscalYearReserveDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.fiscalYearsService.updateReserve(estateId, Number(year), dto, user);
+    return this.fiscalYearsService.updateReserve(
+      estateId,
+      Number(year),
+      dto,
+      user,
+    );
   }
 }

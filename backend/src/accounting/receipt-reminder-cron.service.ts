@@ -15,7 +15,9 @@ function startOfDay(d: Date): Date {
 }
 
 function daysBetween(from: Date, to: Date): number {
-  return Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
+  return Math.round(
+    (startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000,
+  );
 }
 
 /**
@@ -40,7 +42,10 @@ export class ReceiptReminderCronService {
     try {
       await this.remindPendingReceipts();
     } catch (error) {
-      this.logger.error('Error enviando recordatorios de recibo pendiente', error);
+      this.logger.error(
+        'Error enviando recordatorios de recibo pendiente',
+        error,
+      );
     }
   }
 
@@ -65,7 +70,10 @@ export class ReceiptReminderCronService {
 
     const due = candidates.filter((receipt) => {
       // Ya se avisó hoy — evita reenviar si el cron corre más de una vez o hay varias réplicas.
-      if (receipt.reminderSentAt && startOfDay(receipt.reminderSentAt).getTime() === today.getTime()) {
+      if (
+        receipt.reminderSentAt &&
+        startOfDay(receipt.reminderSentAt).getTime() === today.getTime()
+      ) {
         return false;
       }
       const daysUntilDue = daysBetween(today, receipt.dueDate!);

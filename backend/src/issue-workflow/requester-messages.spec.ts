@@ -45,12 +45,20 @@ describe('renderRequesterMessage', () => {
   });
 
   it('el mensaje escrito por la gestión se envía tal cual, recortado y sin espacios de más', () => {
-    const message = renderRequesterMessage('custom', { text: '  Mañana pasa el técnico.\nAvísanos si no estás.  ' });
+    const message = renderRequesterMessage('custom', {
+      text: '  Mañana pasa el técnico.\nAvísanos si no estás.  ',
+    });
     expect(message.title).toBe('Mensaje sobre tu incidencia');
     expect(message.body).toBe('Mañana pasa el técnico.\nAvísanos si no estás.');
-    expect(renderRequesterMessage('custom', { text: 'x'.repeat(900) }).body).toHaveLength(500);
-    expect(() => renderRequesterMessage('custom', { text: '   ' })).toThrow('REQUESTER_TEMPLATE_PARAMS_MISSING');
-    expect(() => renderRequesterMessage('custom', {})).toThrow('REQUESTER_TEMPLATE_PARAMS_MISSING');
+    expect(
+      renderRequesterMessage('custom', { text: 'x'.repeat(900) }).body,
+    ).toHaveLength(500);
+    expect(() => renderRequesterMessage('custom', { text: '   ' })).toThrow(
+      'REQUESTER_TEMPLATE_PARAMS_MISSING',
+    );
+    expect(() => renderRequesterMessage('custom', {})).toThrow(
+      'REQUESTER_TEMPLATE_PARAMS_MISSING',
+    );
   });
 
   it('el texto libre solo lo puede enviar una persona: no está entre las plantillas de Domora', () => {

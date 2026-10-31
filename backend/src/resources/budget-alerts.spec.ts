@@ -50,15 +50,27 @@ let cUser: AuthenticatedUser;
 
 async function makeBudgetItem(budgeted: string, fiscalYear = CURRENT_YEAR) {
   return prisma.budgetItem.create({
-    data: { estateId, accountId, category: 'Reparaciones', fiscalYear, budgeted },
+    data: {
+      estateId,
+      accountId,
+      category: 'Reparaciones',
+      fiscalYear,
+      budgeted,
+    },
   });
 }
 
 async function makeCostCentre(name: string) {
-  return prisma.costCentre.create({ data: { estateId, administratorId: admin.administratorId, name } });
+  return prisma.costCentre.create({
+    data: { estateId, administratorId: admin.administratorId, name },
+  });
 }
 
-async function makeCostCentreBudget(costCentreId: string, budgeted: string, fiscalYear = CURRENT_YEAR) {
+async function makeCostCentreBudget(
+  costCentreId: string,
+  budgeted: string,
+  fiscalYear = CURRENT_YEAR,
+) {
   return prisma.costCentreBudget.create({
     data: { estateId, costCentreId, fiscalYear, budgeted },
   });
@@ -81,9 +93,16 @@ async function spend(euros: number, date: string, costCentreId?: string) {
 }
 
 beforeAll(async () => {
-  admin = await createAdministrator(prisma, { name: 'Gestora de prueba (alertas presupuesto)' });
+  admin = await createAdministrator(prisma, {
+    name: 'Gestora de prueba (alertas presupuesto)',
+  });
   const c = await prisma.user.create({
-    data: { email: uniqueEmail('vecino-alertas'), passwordHash: 'x', fullName: 'Vecino de prueba', role: 'C' },
+    data: {
+      email: uniqueEmail('vecino-alertas'),
+      passwordHash: 'x',
+      fullName: 'Vecino de prueba',
+      role: 'C',
+    },
   });
   cUserId = c.id;
 });
@@ -92,9 +111,18 @@ beforeEach(async () => {
   estateId = await createLedgerEstate(prisma, admin.administratorId, {
     cutoverDate: new Date(`${CURRENT_YEAR - 1}-01-01T00:00:00Z`),
   });
-  accountId = (await prisma.chartAccount.findFirstOrThrow({ where: { estateId, code: '622' } })).id;
+  accountId = (
+    await prisma.chartAccount.findFirstOrThrow({
+      where: { estateId, code: '622' },
+    })
+  ).id;
   bUser = roleB(admin, [estateId]);
-  cUser = { id: cUserId, role: 'C', estateIds: [estateId], administratorId: null };
+  cUser = {
+    id: cUserId,
+    role: 'C',
+    estateIds: [estateId],
+    administratorId: null,
+  };
 });
 
 afterAll(async () => {
@@ -108,7 +136,9 @@ describe('ResourcesService.listAlerts — partidas de presupuesto al 90%+ (rol B
     await spend(900, `${CURRENT_YEAR}-03-01`);
 
     const alerts = await service.listAlerts(bUser);
-    const alert = alerts.find((a) => a.sourceType === 'budget_item' && a.description.includes('900.00'));
+    const alert = alerts.find(
+      (a) => a.sourceType === 'budget_item' && a.description.includes('900.00'),
+    );
     expect(alert).toBeDefined();
     expect(alert!.type).toBe('presupuesto');
     expect(alert!.urgent).toBe(false);
@@ -119,7 +149,10 @@ describe('ResourcesService.listAlerts — partidas de presupuesto al 90%+ (rol B
     await spend(1200, `${CURRENT_YEAR}-03-01`);
 
     const alerts = await service.listAlerts(bUser);
-    const alert = alerts.find((a) => a.sourceType === 'budget_item' && a.description.includes('1200.00'));
+    const alert = alerts.find(
+      (a) =>
+        a.sourceType === 'budget_item' && a.description.includes('1200.00'),
+    );
     expect(alert).toBeDefined();
     expect(alert!.urgent).toBe(true);
   });
@@ -129,7 +162,12 @@ describe('ResourcesService.listAlerts — partidas de presupuesto al 90%+ (rol B
     await spend(500, `${CURRENT_YEAR}-03-01`);
 
     const alerts = await service.listAlerts(bUser);
-    expect(alerts.find((a) => a.sourceType === 'budget_item' && a.description.includes('500.00'))).toBeUndefined();
+    expect(
+      alerts.find(
+        (a) =>
+          a.sourceType === 'budget_item' && a.description.includes('500.00'),
+      ),
+    ).toBeUndefined();
   });
 
   it('un centro de coste al 90%+ también genera alerta, con su nombre en el título', async () => {
@@ -138,7 +176,11 @@ describe('ResourcesService.listAlerts — partidas de presupuesto al 90%+ (rol B
     await spend(480, `${CURRENT_YEAR}-05-01`, centre.id);
 
     const alerts = await service.listAlerts(bUser);
-    const alert = alerts.find((a) => a.sourceType === 'budget_item' && a.title.includes('Piscina comunitaria'));
+    const alert = alerts.find(
+      (a) =>
+        a.sourceType === 'budget_item' &&
+        a.title.includes('Piscina comunitaria'),
+    );
     expect(alert).toBeDefined();
     expect(alert!.urgent).toBe(false);
   });
@@ -147,7 +189,9 @@ describe('ResourcesService.listAlerts — partidas de presupuesto al 90%+ (rol B
     await makeBudgetItem('100.00', CURRENT_YEAR - 1);
     // Sin gasto — igual, ni debería consultarse: la query ya filtra por fiscalYear actual.
     const alerts = await service.listAlerts(bUser);
-    expect(alerts.filter((a) => a.sourceType === 'budget_item')).toHaveLength(0);
+    expect(alerts.filter((a) => a.sourceType === 'budget_item')).toHaveLength(
+      0,
+    );
   });
 
   it('un ejercicio cerrado explícitamente no genera alertas aunque esté sobregastado', async () => {
@@ -167,7 +211,9 @@ describe('ResourcesService.listAlerts — partidas de presupuesto al 90%+ (rol B
     });
 
     const alerts = await service.listAlerts(bUser);
-    expect(alerts.filter((a) => a.sourceType === 'budget_item')).toHaveLength(0);
+    expect(alerts.filter((a) => a.sourceType === 'budget_item')).toHaveLength(
+      0,
+    );
   });
 
   it('un rol C jamás ve alertas de presupuesto — no gestiona presupuestos', async () => {

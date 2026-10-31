@@ -6,9 +6,16 @@ import { PrismaService } from '../prisma/prisma.service';
  * por una delegación vigente (art. 15.1 LPH — el representante ejerce la
  * presencia y el voto del titular, aunque no tenga cuenta en Domora).
  */
-export async function listPresentPropertyIds(prisma: PrismaService, meetingId: string): Promise<Set<string>> {
+export async function listPresentPropertyIds(
+  prisma: PrismaService,
+  meetingId: string,
+): Promise<Set<string>> {
   const [attendance, delegations] = await Promise.all([
-    prisma.meetingAttendance.findMany({ where: { meetingId }, distinct: ['propertyId'], select: { propertyId: true } }),
+    prisma.meetingAttendance.findMany({
+      where: { meetingId },
+      distinct: ['propertyId'],
+      select: { propertyId: true },
+    }),
     prisma.meetingVoteDelegation.findMany({
       where: { meetingId, revokedAt: null },
       distinct: ['propertyId'],
@@ -26,7 +33,8 @@ function round2(n: number): number {
 export type ConvocationCall = 'primera' | 'segunda';
 
 /** De dónde sale la convocatoria usada: lo confirmado por la gestora o una deducción. */
-export type ConvocationSource = 'explicit' | 'confirmed' | 'at' | 'now' | 'celebratedAt' | 'scheduledAt2';
+export type ConvocationSource =
+  'explicit' | 'confirmed' | 'at' | 'now' | 'celebratedAt' | 'scheduledAt2';
 
 export interface QuorumResult {
   convocatoria: ConvocationCall;
@@ -66,11 +74,15 @@ export function resolveConvocation(
   options: { at?: Date; override?: ConvocationCall; now?: Date } = {},
 ): { call: ConvocationCall; source: ConvocationSource } {
   if (options.override) return { call: options.override, source: 'explicit' };
-  if (meeting.effectiveConvocation) return { call: meeting.effectiveConvocation, source: 'confirmed' };
-  const byTime = (at: Date): ConvocationCall => (at.getTime() < meeting.scheduledAt2.getTime() ? 'primera' : 'segunda');
+  if (meeting.effectiveConvocation)
+    return { call: meeting.effectiveConvocation, source: 'confirmed' };
+  const byTime = (at: Date): ConvocationCall =>
+    at.getTime() < meeting.scheduledAt2.getTime() ? 'primera' : 'segunda';
   if (options.at) return { call: byTime(options.at), source: 'at' };
-  if (meeting.status === 'convocada') return { call: byTime(options.now ?? new Date()), source: 'now' };
-  if (meeting.celebratedAt) return { call: byTime(meeting.celebratedAt), source: 'celebratedAt' };
+  if (meeting.status === 'convocada')
+    return { call: byTime(options.now ?? new Date()), source: 'now' };
+  if (meeting.celebratedAt)
+    return { call: byTime(meeting.celebratedAt), source: 'celebratedAt' };
   return { call: 'segunda', source: 'scheduledAt2' };
 }
 
@@ -94,11 +106,17 @@ export function buildQuorum(input: {
   attendeeNamesByProperty?: Map<string, string[]>;
 }): QuorumResult {
   const { properties, presentIds } = input;
-  const quotaOf = (p: QuorumCensusProperty) => Number(p.participationQuota ?? 0);
+  const quotaOf = (p: QuorumCensusProperty) =>
+    Number(p.participationQuota ?? 0);
   const attendingProperties = properties.filter((p) => presentIds.has(p.id));
   const censusQuota = properties.reduce((s, p) => s + quotaOf(p), 0);
-  const attendingQuota = attendingProperties.reduce((s, p) => s + quotaOf(p), 0);
-  const ownersPct = properties.length ? (attendingProperties.length / properties.length) * 100 : 0;
+  const attendingQuota = attendingProperties.reduce(
+    (s, p) => s + quotaOf(p),
+    0,
+  );
+  const ownersPct = properties.length
+    ? (attendingProperties.length / properties.length) * 100
+    : 0;
   const quotaPct = censusQuota > 0 ? (attendingQuota / censusQuota) * 100 : 0;
   const quorumRequired = input.call === 'primera';
   // Doble mayoría simultánea (art. 16 LPH): propietarios Y cuotas, ambas
@@ -110,13 +128,24 @@ export function buildQuorum(input: {
     convocatoriaSource: input.source,
     quorumRequired,
     quorumMet,
-    owners: { present: attendingProperties.length, total: properties.length, percent: round2(ownersPct) },
-    quota: { present: round2(attendingQuota), total: round2(censusQuota), percent: round2(quotaPct) },
-    missingParticipationQuotaCount: properties.filter((p) => p.participationQuota == null).length,
+    owners: {
+      present: attendingProperties.length,
+      total: properties.length,
+      percent: round2(ownersPct),
+    },
+    quota: {
+      present: round2(attendingQuota),
+      total: round2(censusQuota),
+      percent: round2(quotaPct),
+    },
+    missingParticipationQuotaCount: properties.filter(
+      (p) => p.participationQuota == null,
+    ).length,
     attendingProperties: attendingProperties.map((p) => ({
       propertyId: p.id,
       ref: p.ref,
-      participationQuota: p.participationQuota == null ? null : p.participationQuota.toString(),
+      participationQuota:
+        p.participationQuota == null ? null : p.participationQuota.toString(),
       attendeeNames: input.attendeeNamesByProperty?.get(p.id) ?? [],
     })),
   };
@@ -137,12 +166,25 @@ export class MeetingQuorumService {
    * convocatoria se resuelve con `resolveConvocation`: una junta ya celebrada no depende de la
    * hora actual. Para reproducir el pasado se usa el snapshot del acta, no este método.
    */
-  async computeQuorum(meetingId: string, at?: Date, convocatoria?: ConvocationCall): Promise<QuorumResult> {
+  async computeQuorum(
+    meetingId: string,
+    at?: Date,
+    convocatoria?: ConvocationCall,
+  ): Promise<QuorumResult> {
     const meeting = await this.prisma.meeting.findUniqueOrThrow({
       where: { id: meetingId },
-      select: { estateId: true, scheduledAt2: true, status: true, effectiveConvocation: true, celebratedAt: true },
+      select: {
+        estateId: true,
+        scheduledAt2: true,
+        status: true,
+        effectiveConvocation: true,
+        celebratedAt: true,
+      },
     });
-    const resolved = resolveConvocation(meeting, { at, override: convocatoria });
+    const resolved = resolveConvocation(meeting, {
+      at,
+      override: convocatoria,
+    });
 
     const properties = await this.prisma.property.findMany({
       where: { estateId: meeting.estateId, deletedAt: null },
@@ -164,7 +206,11 @@ export class MeetingQuorumService {
     });
 
     const names = new Map<string, string[]>();
-    for (const row of allAttendanceRows) names.set(row.propertyId, [...(names.get(row.propertyId) ?? []), row.displayName]);
+    for (const row of allAttendanceRows)
+      names.set(row.propertyId, [
+        ...(names.get(row.propertyId) ?? []),
+        row.displayName,
+      ]);
     for (const row of delegationRows) {
       names.set(row.propertyId, [
         ...(names.get(row.propertyId) ?? []),

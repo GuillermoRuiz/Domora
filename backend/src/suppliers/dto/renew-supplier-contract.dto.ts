@@ -1,4 +1,13 @@
-import { IsIn, IsISO8601, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsIn,
+  IsISO8601,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 /**
  * Renovar un contrato: nuevo vencimiento (obligatorio) y, si cambia con la renovación, el importe y su
@@ -17,7 +26,14 @@ export class RenewSupplierContractDto {
 
   @IsOptional()
   @IsIn(['MONTHLY', 'QUARTERLY', 'SEMIANNUAL', 'ANNUAL', 'ONE_OFF', 'OTHER'])
-  costFrequency?: 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUAL' | 'ANNUAL' | 'ONE_OFF' | 'OTHER' | null;
+  costFrequency?:
+    | 'MONTHLY'
+    | 'QUARTERLY'
+    | 'SEMIANNUAL'
+    | 'ANNUAL'
+    | 'ONE_OFF'
+    | 'OTHER'
+    | null;
 
   @IsOptional()
   @IsString()

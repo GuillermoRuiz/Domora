@@ -51,7 +51,14 @@ export interface AlertItem {
   id: string;
   sourceType: AlertSourceType;
   sourceId: string;
-  type: 'pago' | 'incidencia' | 'junta' | 'documento' | 'comunidad' | 'proveedor' | 'presupuesto';
+  type:
+    | 'pago'
+    | 'incidencia'
+    | 'junta'
+    | 'documento'
+    | 'comunidad'
+    | 'proveedor'
+    | 'presupuesto';
   title: string;
   description: string;
   date: string;
@@ -76,7 +83,8 @@ export class ResourcesService {
   ) {}
 
   private frontendBaseUrl(): string {
-    const raw = this.config.get<string>('CORS_ORIGIN') ?? 'http://localhost:4200';
+    const raw =
+      this.config.get<string>('CORS_ORIGIN') ?? 'http://localhost:4200';
     return raw.split(',')[0].trim();
   }
 
@@ -133,8 +141,8 @@ export class ResourcesService {
       });
       if (
         m.property.estateId &&
-        (m.settings?.notifyIssues ?? MEMBERSHIP_SETTINGS_DEFAULTS.notifyIssues) !==
-          'none'
+        (m.settings?.notifyIssues ??
+          MEMBERSHIP_SETTINGS_DEFAULTS.notifyIssues) !== 'none'
       ) {
         estatesAllowingIssues.add(m.property.estateId);
       }
@@ -163,11 +171,15 @@ export class ResourcesService {
   // manual de la gestora) es un estado real en base de datos — ver el
   // comentario en el modelo `Communication` (schema.prisma).
 
-  private communicationArchivedWhere(now: Date): Prisma.CommunicationWhereInput {
+  private communicationArchivedWhere(
+    now: Date,
+  ): Prisma.CommunicationWhereInput {
     return { OR: [{ archivedByAdmin: true }, { activeUntil: { lte: now } }] };
   }
 
-  private communicationNotArchivedWhere(now: Date): Prisma.CommunicationWhereInput {
+  private communicationNotArchivedWhere(
+    now: Date,
+  ): Prisma.CommunicationWhereInput {
     return {
       archivedByAdmin: false,
       OR: [{ activeUntil: null }, { activeUntil: { gt: now } }],
@@ -245,9 +257,10 @@ export class ResourcesService {
       return {
         ...c,
         archived:
-          c.archivedByAdmin ||
-          (c.activeUntil !== null && c.activeUntil <= now),
-        authorName: c.authorUserId ? (nameById.get(c.authorUserId) ?? null) : null,
+          c.archivedByAdmin || (c.activeUntil !== null && c.activeUntil <= now),
+        authorName: c.authorUserId
+          ? (nameById.get(c.authorUserId) ?? null)
+          : null,
         lastEditedByName: c.lastEditedByUserId
           ? (nameById.get(c.lastEditedByUserId) ?? null)
           : null,
@@ -257,7 +270,9 @@ export class ResourcesService {
           : false,
         replies: c.replies?.map((r) => ({
           ...r,
-          authorName: r.authorUserId ? (nameById.get(r.authorUserId) ?? 'Sistema') : 'Sistema',
+          authorName: r.authorUserId
+            ? (nameById.get(r.authorUserId) ?? 'Sistema')
+            : 'Sistema',
         })),
       };
     });
@@ -280,7 +295,9 @@ export class ResourcesService {
     action: string,
   ) {
     if (user.role === 'C' && comm.authorUserId !== user.id) {
-      throw new ForbiddenException(`Solo puedes ${action} tus propios comunicados.`);
+      throw new ForbiddenException(
+        `Solo puedes ${action} tus propios comunicados.`,
+      );
     }
   }
 
@@ -299,7 +316,9 @@ export class ResourcesService {
   ) {
     if (user.role !== 'C') return;
     if (dto.category === 'Urgente') {
-      throw new ForbiddenException('Solo la gestora puede publicar como Urgente.');
+      throw new ForbiddenException(
+        'Solo la gestora puede publicar como Urgente.',
+      );
     }
     if (dto.targetPropertyId || dto.isLegalNotice) {
       throw new ForbiddenException(
@@ -317,7 +336,9 @@ export class ResourcesService {
       select: { id: true },
     });
     if (!property) {
-      throw new NotFoundException(`Propiedad ${targetPropertyId} no encontrada en esta finca.`);
+      throw new NotFoundException(
+        `Propiedad ${targetPropertyId} no encontrada en esta finca.`,
+      );
     }
   }
 
@@ -335,7 +356,10 @@ export class ResourcesService {
   async listCommunications(
     estateId: string,
     user: AuthenticatedUser,
-    params: PageParams & { filter?: 'active' | 'archived' | 'all'; category?: string } = {},
+    params: PageParams & {
+      filter?: 'active' | 'archived' | 'all';
+      category?: string;
+    } = {},
   ) {
     this.estateAccess.assertAccess(estateId, user);
     const resolved = resolvePage(params);
@@ -349,7 +373,11 @@ export class ResourcesService {
               {
                 OR: [
                   { targetPropertyId: null },
-                  { targetPropertyId: { in: await this.linkedPropertyIds(user.id) } },
+                  {
+                    targetPropertyId: {
+                      in: await this.linkedPropertyIds(user.id),
+                    },
+                  },
                 ],
               },
             ],
@@ -360,15 +388,23 @@ export class ResourcesService {
       deletedAt: null,
       ...this.communicationFilterWhere(user, params.filter ?? 'active', now),
       ...visibilityWhere,
-      ...(params.category ? { category: params.category as CommunicationCategory } : {}),
+      ...(params.category
+        ? { category: params.category as CommunicationCategory }
+        : {}),
     };
     const [total, communications, reads] = await Promise.all([
       this.prisma.communication.count({ where }),
       this.prisma.communication.findMany({
         where,
-        orderBy: [{ pinnedAt: { sort: 'desc', nulls: 'last' } }, { date: 'desc' }],
+        orderBy: [
+          { pinnedAt: { sort: 'desc', nulls: 'last' } },
+          { date: 'desc' },
+        ],
         include: {
-          replies: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' } },
+          replies: {
+            where: { deletedAt: null },
+            orderBy: { createdAt: 'asc' },
+          },
           attachments: { orderBy: { uploadedAt: 'desc' } },
         },
         skip: resolved.skip,
@@ -421,7 +457,8 @@ export class ResourcesService {
           legalNoticeSignerRole: dto.legalNoticeSignerRole,
           legalNoticeSignerName: dto.legalNoticeSignerName,
           legalNoticeReason: dto.legalNoticeReason,
-          legalNoticeCountersignedByPresident: dto.legalNoticeCountersignedByPresident ?? false,
+          legalNoticeCountersignedByPresident:
+            dto.legalNoticeCountersignedByPresident ?? false,
         },
       });
       await tx.activityLogEntry.create({
@@ -472,23 +509,29 @@ export class ResourcesService {
     if (dto.category !== undefined) data.category = dto.category;
     if (dto.targetPropertyId !== undefined) {
       if (dto.targetPropertyId && comm.estateId) {
-        await this.assertTargetPropertyInEstate(comm.estateId, dto.targetPropertyId);
+        await this.assertTargetPropertyInEstate(
+          comm.estateId,
+          dto.targetPropertyId,
+        );
       }
       data.targetPropertyId = dto.targetPropertyId;
     }
     if (dto.isLegalNotice !== undefined) data.isLegalNotice = dto.isLegalNotice;
-    if (dto.legalNoticeSignerRole !== undefined) data.legalNoticeSignerRole = dto.legalNoticeSignerRole;
-    if (dto.legalNoticeSignerName !== undefined) data.legalNoticeSignerName = dto.legalNoticeSignerName;
-    if (dto.legalNoticeReason !== undefined) data.legalNoticeReason = dto.legalNoticeReason;
+    if (dto.legalNoticeSignerRole !== undefined)
+      data.legalNoticeSignerRole = dto.legalNoticeSignerRole;
+    if (dto.legalNoticeSignerName !== undefined)
+      data.legalNoticeSignerName = dto.legalNoticeSignerName;
+    if (dto.legalNoticeReason !== undefined)
+      data.legalNoticeReason = dto.legalNoticeReason;
     if (dto.legalNoticeCountersignedByPresident !== undefined) {
-      data.legalNoticeCountersignedByPresident = dto.legalNoticeCountersignedByPresident;
+      data.legalNoticeCountersignedByPresident =
+        dto.legalNoticeCountersignedByPresident;
     }
 
     // Traza de admin: solo cuando A/B edita un comunicado que NO es suyo —
     // que cada quien edite lo propio no necesita marcarse como "admin editó".
     const isAdminEditingOthers =
-      (user.role === 'A' || user.role === 'B') &&
-      comm.authorUserId !== user.id;
+      (user.role === 'A' || user.role === 'B') && comm.authorUserId !== user.id;
     if (isAdminEditingOthers) {
       data.lastEditedByUserId = user.id;
       data.lastEditedAt = new Date();
@@ -520,13 +563,15 @@ export class ResourcesService {
     return withDisplay;
   }
 
-  async deleteCommunication(id: string, user: AuthenticatedUser): Promise<void> {
+  async deleteCommunication(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<void> {
     const comm = await this.assertCommunicationAccess(id, user);
     this.assertCommunicationOwnership(comm, user, 'eliminar');
 
     const isAdminDeletingOthers =
-      (user.role === 'A' || user.role === 'B') &&
-      comm.authorUserId !== user.id;
+      (user.role === 'A' || user.role === 'B') && comm.authorUserId !== user.id;
 
     if (isAdminDeletingOthers) {
       await this.prisma.$transaction(async (tx) => {
@@ -591,7 +636,11 @@ export class ResourcesService {
   }
 
   /** Solo A/B — mismo criterio de "sin excepción de propiedad" que el archivado. `pinnedAt` es la fecha, no un booleano, para que un post refijado más tarde vuelva a subir en el orden. */
-  async setCommunicationPinned(id: string, pinned: boolean, user: AuthenticatedUser) {
+  async setCommunicationPinned(
+    id: string,
+    pinned: boolean,
+    user: AuthenticatedUser,
+  ) {
     await this.assertCommunicationAccess(id, user);
     const updated = await this.prisma.communication.update({
       where: { id },
@@ -649,7 +698,9 @@ export class ResourcesService {
       throw new NotFoundException(`Respuesta ${replyId} no encontrada.`);
     }
     if (user.role === 'C' && reply.authorUserId !== user.id) {
-      throw new ForbiddenException('Solo puedes eliminar tus propias respuestas.');
+      throw new ForbiddenException(
+        'Solo puedes eliminar tus propias respuestas.',
+      );
     }
     await this.prisma.communicationReply.update({
       where: { id: replyId },
@@ -678,9 +729,17 @@ export class ResourcesService {
     const comm = await this.assertCommunicationAccess(id, user);
     this.assertCommunicationOwnership(comm, user, 'adjuntar archivos a');
     this.storage.assertAllowed(file.mimetype, file.size);
-    const s3Key = await this.storage.put(`communications/${id}`, file.originalname, file.buffer);
+    const s3Key = await this.storage.put(
+      `communications/${id}`,
+      file.originalname,
+      file.buffer,
+    );
     return this.prisma.communicationAttachment.create({
-      data: { communicationId: id, title: title?.trim() || file.originalname, s3Key },
+      data: {
+        communicationId: id,
+        title: title?.trim() || file.originalname,
+        s3Key,
+      },
     });
   }
 
@@ -780,7 +839,9 @@ export class ResourcesService {
     this.estateAccess.assertAccess(estateId, user);
     // Visibilidad de documentos: la regla única de la biblioteca (gestora, junta, propietarios, una propiedad).
     const resolved = resolvePage(params);
-    const where = { AND: [{ estateId }, await documentVisibleWhere(this.prisma, user)] };
+    const where = {
+      AND: [{ estateId }, await documentVisibleWhere(this.prisma, user)],
+    };
     const [total, documents, reads] = await Promise.all([
       this.prisma.document.count({ where }),
       this.prisma.document.findMany({
@@ -865,10 +926,19 @@ export class ResourcesService {
    * (same rule as every document read); anything else is ignored silently and answers null.
    * Other resource types are marked as before.
    */
-  async markReadAs(user: AuthenticatedUser, sourceType: AlertSourceType, sourceId: string) {
+  async markReadAs(
+    user: AuthenticatedUser,
+    sourceType: AlertSourceType,
+    sourceId: string,
+  ) {
     if (sourceType === 'document') {
       const visible = await this.prisma.document.findFirst({
-        where: { AND: [{ id: sourceId }, await documentVisibleWhere(this.prisma, user)] },
+        where: {
+          AND: [
+            { id: sourceId },
+            await documentVisibleWhere(this.prisma, user),
+          ],
+        },
         select: { id: true },
       });
       if (!visible) return null;
@@ -937,100 +1007,117 @@ export class ResourcesService {
       costCentreBudgets,
       closedFiscalYears,
     ] = await Promise.all([
-        estateIds.length
-          ? this.prisma.accountingReceipt.findMany({
-              where: {
-                property: { estateId: { in: estateIds } },
-                status: 'Pendiente',
-              },
-              include: { property: { select: { estateId: true } } },
-            })
-          : [],
-        estateIds.length
-          ? this.prisma.issue.findMany({
-              where: {
-                ...issuesOfEstate(estateIds),
-                deletedAt: null,
-              },
-            })
-          : [],
-        estateIds.length
-          ? this.prisma.communication.findMany({
-              where: {
-                estateId: { in: estateIds },
-                deletedAt: null,
-                ...this.communicationNotArchivedWhere(now),
-              },
-            })
-          : [],
-        estateIds.length
-          ? this.prisma.document.findMany({
-              where: { AND: [{ estateId: { in: estateIds } }, await documentVisibleWhere(this.prisma, user)] },
-            })
-          : [],
-        estateIds.length
-          ? this.prisma.propertyEvent.findMany({
-              where: { estateId: { in: estateIds }, date: { gte: new Date() } },
-            })
-          : [],
-        estateIds.length
-          ? this.prisma.meeting.findMany({
-              where: {
-                estateId: { in: estateIds },
-                includeJitsi: true,
-                // Solo `convocada`: una junta cancelada (o cerrada) ya no
-                // debe avisar como pendiente a nadie.
-                status: 'convocada',
-                scheduledAt1: { gte: new Date() },
-              },
-            })
-          : [],
-        // Tarea 20 — sin cota inferior a propósito: un contrato ya vencido
-        // sigue en el feed hasta renovarlo/cancelarlo, mismo criterio que
-        // los recibos Pendiente (que también se muestran aunque ya venzan).
-        // Rol B/A únicamente — nunca en listAlertsForOwner, un propietario
-        // no gestiona proveedores.
-        estateIds.length
-          ? this.prisma.supplierContract.findMany({
-              where: {
-                estateId: { in: estateIds },
-                cancelledAt: null,
-                endDate: { not: null, lte: expiryThreshold },
-              },
-              include: { supplier: { select: { name: true, estateId: true } } },
-            })
-          : [],
-        estateIds.length
-          ? this.prisma.supplierDocument.findMany({
-              where: {
-                supplier: { estateId: { in: estateIds } },
-                expiresAt: { not: null, lte: expiryThreshold },
-              },
-              include: { supplier: { select: { name: true, estateId: true } } },
-            })
-          : [],
-        // Tarea 43 — solo el ejercicio abierto actual (año natural); un
-        // ejercicio cerrado explícitamente se excluye más abajo. Nunca en
-        // listAlertsForOwner: un propietario no gestiona presupuestos.
-        estateIds.length
-          ? this.prisma.budgetItem.findMany({
-              where: { estateId: { in: estateIds }, fiscalYear: currentFiscalYear },
-              include: { account: { select: { code: true, name: true, shortName: true } } },
-            })
-          : [],
-        estateIds.length
-          ? this.prisma.costCentreBudget.findMany({
-              where: { estateId: { in: estateIds }, fiscalYear: currentFiscalYear },
-              include: { costCentre: { select: { name: true } } },
-            })
-          : [],
-        estateIds.length
-          ? this.prisma.fiscalYear.findMany({
-              where: { estateId: { in: estateIds }, year: currentFiscalYear, status: 'Cerrado' },
-              select: { estateId: true },
-            })
-          : [],
-      ]);
+      estateIds.length
+        ? this.prisma.accountingReceipt.findMany({
+            where: {
+              property: { estateId: { in: estateIds } },
+              status: 'Pendiente',
+            },
+            include: { property: { select: { estateId: true } } },
+          })
+        : [],
+      estateIds.length
+        ? this.prisma.issue.findMany({
+            where: {
+              ...issuesOfEstate(estateIds),
+              deletedAt: null,
+            },
+          })
+        : [],
+      estateIds.length
+        ? this.prisma.communication.findMany({
+            where: {
+              estateId: { in: estateIds },
+              deletedAt: null,
+              ...this.communicationNotArchivedWhere(now),
+            },
+          })
+        : [],
+      estateIds.length
+        ? this.prisma.document.findMany({
+            where: {
+              AND: [
+                { estateId: { in: estateIds } },
+                await documentVisibleWhere(this.prisma, user),
+              ],
+            },
+          })
+        : [],
+      estateIds.length
+        ? this.prisma.propertyEvent.findMany({
+            where: { estateId: { in: estateIds }, date: { gte: new Date() } },
+          })
+        : [],
+      estateIds.length
+        ? this.prisma.meeting.findMany({
+            where: {
+              estateId: { in: estateIds },
+              includeJitsi: true,
+              // Solo `convocada`: una junta cancelada (o cerrada) ya no
+              // debe avisar como pendiente a nadie.
+              status: 'convocada',
+              scheduledAt1: { gte: new Date() },
+            },
+          })
+        : [],
+      // Tarea 20 — sin cota inferior a propósito: un contrato ya vencido
+      // sigue en el feed hasta renovarlo/cancelarlo, mismo criterio que
+      // los recibos Pendiente (que también se muestran aunque ya venzan).
+      // Rol B/A únicamente — nunca en listAlertsForOwner, un propietario
+      // no gestiona proveedores.
+      estateIds.length
+        ? this.prisma.supplierContract.findMany({
+            where: {
+              estateId: { in: estateIds },
+              cancelledAt: null,
+              endDate: { not: null, lte: expiryThreshold },
+            },
+            include: { supplier: { select: { name: true, estateId: true } } },
+          })
+        : [],
+      estateIds.length
+        ? this.prisma.supplierDocument.findMany({
+            where: {
+              supplier: { estateId: { in: estateIds } },
+              expiresAt: { not: null, lte: expiryThreshold },
+            },
+            include: { supplier: { select: { name: true, estateId: true } } },
+          })
+        : [],
+      // Tarea 43 — solo el ejercicio abierto actual (año natural); un
+      // ejercicio cerrado explícitamente se excluye más abajo. Nunca en
+      // listAlertsForOwner: un propietario no gestiona presupuestos.
+      estateIds.length
+        ? this.prisma.budgetItem.findMany({
+            where: {
+              estateId: { in: estateIds },
+              fiscalYear: currentFiscalYear,
+            },
+            include: {
+              account: { select: { code: true, name: true, shortName: true } },
+            },
+          })
+        : [],
+      estateIds.length
+        ? this.prisma.costCentreBudget.findMany({
+            where: {
+              estateId: { in: estateIds },
+              fiscalYear: currentFiscalYear,
+            },
+            include: { costCentre: { select: { name: true } } },
+          })
+        : [],
+      estateIds.length
+        ? this.prisma.fiscalYear.findMany({
+            where: {
+              estateId: { in: estateIds },
+              year: currentFiscalYear,
+              status: 'Cerrado',
+            },
+            select: { estateId: true },
+          })
+        : [],
+    ]);
 
     const alerts: AlertItem[] = [];
 
@@ -1124,7 +1211,9 @@ export class ResourcesService {
         sourceId: m.id,
         type: 'junta',
         title: m.title,
-        description: m.location ? `Videollamada · ${m.location}` : 'Videollamada',
+        description: m.location
+          ? `Videollamada · ${m.location}`
+          : 'Videollamada',
         date: m.scheduledAt1.toISOString(),
         urgent: false,
         estateId: m.estateId,
@@ -1177,8 +1266,12 @@ export class ResourcesService {
     // la convención ya usada arriba para supplier_contract: las alertas
     // consultan Prisma directo, no el servicio dueño del dominio.
     const closedEstateIds = new Set(closedFiscalYears.map((f) => f.estateId));
-    const activeBudgetItems = budgetItems.filter((b) => !closedEstateIds.has(b.estateId));
-    const activeCostCentreBudgets = costCentreBudgets.filter((c) => !closedEstateIds.has(c.estateId));
+    const activeBudgetItems = budgetItems.filter(
+      (b) => !closedEstateIds.has(b.estateId),
+    );
+    const activeCostCentreBudgets = costCentreBudgets.filter(
+      (c) => !closedEstateIds.has(c.estateId),
+    );
 
     if (activeBudgetItems.length > 0 || activeCostCentreBudgets.length > 0) {
       const yearStart = new Date(Date.UTC(currentFiscalYear, 0, 1));
@@ -1188,16 +1281,27 @@ export class ResourcesService {
       // presupuesto (ledger/executed.ts).
       const [executedByAccountMap, executedByCentreMap] = await Promise.all([
         activeBudgetItems.length
-          ? executedByAccount(this.prisma, estateIds, currentFiscalYear, activeBudgetItems.map((b) => b.accountId))
+          ? executedByAccount(
+              this.prisma,
+              estateIds,
+              currentFiscalYear,
+              activeBudgetItems.map((b) => b.accountId),
+            )
           : new Map<string, Prisma.Decimal>(),
         activeCostCentreBudgets.length
-          ? executedByCostCentre(this.prisma, estateIds, currentFiscalYear, activeCostCentreBudgets.map((c) => c.costCentreId))
+          ? executedByCostCentre(
+              this.prisma,
+              estateIds,
+              currentFiscalYear,
+              activeCostCentreBudgets.map((c) => c.costCentreId),
+            )
           : new Map<string, Prisma.Decimal>(),
       ]);
 
       for (const b of activeBudgetItems) {
         if (b.budgeted.isZero()) continue;
-        const executed = executedByAccountMap.get(b.accountId) ?? new Prisma.Decimal(0);
+        const executed =
+          executedByAccountMap.get(b.accountId) ?? new Prisma.Decimal(0);
         const ratio = executed.dividedBy(b.budgeted).toNumber();
         if (ratio < 0.9) continue;
         alerts.push({
@@ -1216,7 +1320,8 @@ export class ResourcesService {
 
       for (const c of activeCostCentreBudgets) {
         if (c.budgeted.isZero()) continue;
-        const executed = executedByCentreMap.get(c.costCentreId) ?? new Prisma.Decimal(0);
+        const executed =
+          executedByCentreMap.get(c.costCentreId) ?? new Prisma.Decimal(0);
         const ratio = executed.dividedBy(c.budgeted).toNumber();
         if (ratio < 0.9) continue;
         alerts.push({
@@ -1294,7 +1399,12 @@ export class ResourcesService {
           : [],
         estateIds.length
           ? this.prisma.document.findMany({
-              where: { AND: [{ estateId: { in: estateIds } }, await documentVisibleWhere(this.prisma, user)] },
+              where: {
+                AND: [
+                  { estateId: { in: estateIds } },
+                  await documentVisibleWhere(this.prisma, user),
+                ],
+              },
             })
           : [],
         estateIds.length
@@ -1422,7 +1532,9 @@ export class ResourcesService {
         sourceId: m.id,
         type: 'junta',
         title: m.title,
-        description: m.location ? `Videollamada · ${m.location}` : 'Videollamada',
+        description: m.location
+          ? `Videollamada · ${m.location}`
+          : 'Videollamada',
         date: m.scheduledAt1.toISOString(),
         urgent: false,
         read: isRead('meeting', m.id),
@@ -1478,7 +1590,12 @@ export class ResourcesService {
           : [],
         estateIds.length
           ? this.prisma.document.findMany({
-              where: { AND: [{ estateId: { in: estateIds } }, await documentVisibleWhere(this.prisma, user)] },
+              where: {
+                AND: [
+                  { estateId: { in: estateIds } },
+                  await documentVisibleWhere(this.prisma, user),
+                ],
+              },
             })
           : [],
         propertyIds.length

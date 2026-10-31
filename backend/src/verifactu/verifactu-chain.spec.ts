@@ -10,7 +10,9 @@ import { createPrismaClient } from '../prisma/create-prisma-client';
  * comportamiento de Postgres. Con mocks no se probaría nada.
  */
 // Veinte transacciones a la vez abren conexiones nuevas: en máquinas lentas (Windows) superan el maxWait de 2 s por defecto.
-const prisma = createPrismaClient(undefined, { transactionOptions: { maxWait: 20_000 } });
+const prisma = createPrismaClient(undefined, {
+  transactionOptions: { maxWait: 20_000 },
+});
 
 const ISSUER = 'TESTNIF01';
 const OTHER_ISSUER = 'TESTNIF02';

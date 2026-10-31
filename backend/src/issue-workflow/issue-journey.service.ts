@@ -35,7 +35,13 @@ export class IssueJourneyService {
   ) {}
 
   /** Cada cambio del recorrido deja su rastro en el historial de la incidencia. */
-  private trace(issueId: string, user: AuthenticatedUser, kind: IssueEventKind, text: string, milestone: string) {
+  private trace(
+    issueId: string,
+    user: AuthenticatedUser,
+    kind: IssueEventKind,
+    text: string,
+    milestone: string,
+  ) {
     return this.events.record(this.prisma, {
       issueId,
       kind,
@@ -119,10 +125,25 @@ export class IssueJourneyService {
       this.prisma.issueTimelineEntry.findMany({
         where: {
           issueId: issue.id,
-          kind: { in: ['route_decided', 'communication', 'claim_updated', 'status_changed'] },
+          kind: {
+            in: [
+              'route_decided',
+              'communication',
+              'claim_updated',
+              'status_changed',
+            ],
+          },
         },
         orderBy: { date: 'asc' },
-        select: { id: true, kind: true, date: true, refId: true, meta: true, fromStatus: true, toStatus: true },
+        select: {
+          id: true,
+          kind: true,
+          date: true,
+          refId: true,
+          meta: true,
+          fromStatus: true,
+          toStatus: true,
+        },
       }),
     ]);
     const solved = RESOLVED_ISSUE_STATUSES.includes(issue.status);
@@ -203,9 +224,10 @@ export class IssueJourneyService {
     });
     const nextPosition = (last._max.position ?? 0) + 10;
     // Los hitos propios de la vía de seguro siempre quedan dentro de sus dos anclajes fijos.
-    const position = issue.resolutionRoute === 'community_insurance'
-      ? Math.max(1, Math.min(999_999, nextPosition))
-      : nextPosition;
+    const position =
+      issue.resolutionRoute === 'community_insurance'
+        ? Math.max(1, Math.min(999_999, nextPosition))
+        : nextPosition;
     const created = await this.prisma.issueJourneyMilestone.create({
       data: {
         issueId,
@@ -215,7 +237,13 @@ export class IssueJourneyService {
         createdByUserId: user.id,
       },
     });
-    await this.trace(issueId, user, 'milestone_added', `Hito añadido: «${created.label}»`, created.id);
+    await this.trace(
+      issueId,
+      user,
+      'milestone_added',
+      `Hito añadido: «${created.label}»`,
+      created.id,
+    );
     return this.forIssue(issueId, user);
   }
 
@@ -239,20 +267,39 @@ export class IssueJourneyService {
     issueId: string,
     ref: string,
     user: AuthenticatedUser,
-    input: { label?: string; done?: boolean; position?: number; linkedStatus?: string | null },
+    input: {
+      label?: string;
+      done?: boolean;
+      position?: number;
+      linkedStatus?: string | null;
+    },
   ): Promise<JourneyView> {
     const issue = await this.scoped(issueId, user);
-    const data: { label?: string | null; doneAt?: Date | null; position?: number; linkedStatus?: IssueStatus | null } = {};
+    const data: {
+      label?: string | null;
+      doneAt?: Date | null;
+      position?: number;
+      linkedStatus?: IssueStatus | null;
+    } = {};
     if (input.label !== undefined) {
       const label = input.label.trim();
       if (!label) throw new BadRequestException('El hito necesita un nombre.');
       data.label = label.slice(0, 120);
     }
     if (input.position !== undefined) data.position = input.position;
-    if (input.linkedStatus !== undefined && ref !== 'resolved') data.linkedStatus = input.linkedStatus as IssueStatus | null;
+    if (input.linkedStatus !== undefined && ref !== 'resolved')
+      data.linkedStatus = input.linkedStatus as IssueStatus | null;
     let name = ref;
-    let before: { label: string | null; doneAt: Date | null; linkedStatus: IssueStatus | null; position: number | null } = {
-      label: null, doneAt: null, linkedStatus: null, position: null,
+    let before: {
+      label: string | null;
+      doneAt: Date | null;
+      linkedStatus: IssueStatus | null;
+      position: number | null;
+    } = {
+      label: null,
+      doneAt: null,
+      linkedStatus: null,
+      position: null,
     };
     if (isUUID(ref)) {
       const found = await this.prisma.issueJourneyMilestone.findFirst({
@@ -261,7 +308,10 @@ export class IssueJourneyService {
       if (!found) throw new NotFoundException('Hito no encontrado.');
       name = found.label ?? 'Hito';
       before = found;
-      if (data.position !== undefined && issue.resolutionRoute === 'community_insurance')
+      if (
+        data.position !== undefined &&
+        issue.resolutionRoute === 'community_insurance'
+      )
         data.position = Math.max(1, Math.min(999_999, data.position));
       if (input.done !== undefined)
         data.doneAt = input.done ? new Date() : null;
@@ -277,13 +327,21 @@ export class IssueJourneyService {
         );
       if (!(await this.systemKeys(issue)).has(ref))
         throw new NotFoundException('Hito no encontrado.');
-      if (input.done !== undefined) data.doneAt = input.done ? new Date() : null;
-      const current = (await this.forIssue(issueId, user)).steps.find((s) => s.key === ref);
+      if (input.done !== undefined)
+        data.doneAt = input.done ? new Date() : null;
+      const current = (await this.forIssue(issueId, user)).steps.find(
+        (s) => s.key === ref,
+      );
       name = current?.label ?? ref;
       const override = await this.prisma.issueJourneyMilestone.findUnique({
         where: { issueId_templateKey: { issueId, templateKey: ref } },
       });
-      before = { label: override?.label ?? null, doneAt: override?.doneAt ?? null, linkedStatus: override?.linkedStatus ?? null, position: override?.position ?? null };
+      before = {
+        label: override?.label ?? null,
+        doneAt: override?.doneAt ?? null,
+        linkedStatus: override?.linkedStatus ?? null,
+        position: override?.position ?? null,
+      };
       await this.prisma.issueJourneyMilestone.upsert({
         where: { issueId_templateKey: { issueId, templateKey: ref } },
         create: {
@@ -296,22 +354,45 @@ export class IssueJourneyService {
       });
     }
     if (data.label !== undefined && data.label !== (before.label ?? name))
-      await this.trace(issueId, user, 'milestone_renamed', `Hito renombrado: «${name}» → «${data.label}»`, ref);
-    const shown = data.label ?? name;
-    if (data.linkedStatus !== undefined && data.linkedStatus !== before.linkedStatus)
       await this.trace(
-        issueId, user, 'milestone_linked',
-        data.linkedStatus ? `Hito «${shown}» asociado al estado «${data.linkedStatus}»` : `Hito «${shown}» sin estado asociado`,
+        issueId,
+        user,
+        'milestone_renamed',
+        `Hito renombrado: «${name}» → «${data.label}»`,
+        ref,
+      );
+    const shown = data.label ?? name;
+    if (
+      data.linkedStatus !== undefined &&
+      data.linkedStatus !== before.linkedStatus
+    )
+      await this.trace(
+        issueId,
+        user,
+        'milestone_linked',
+        data.linkedStatus
+          ? `Hito «${shown}» asociado al estado «${data.linkedStatus}»`
+          : `Hito «${shown}» sin estado asociado`,
         ref,
       );
     if (data.doneAt !== undefined && !!data.doneAt !== !!before.doneAt)
       await this.trace(
-        issueId, user, data.doneAt ? 'milestone_done' : 'milestone_reopened',
-        data.doneAt ? `Hito completado: «${shown}»` : `Hito reabierto: «${shown}»`,
+        issueId,
+        user,
+        data.doneAt ? 'milestone_done' : 'milestone_reopened',
+        data.doneAt
+          ? `Hito completado: «${shown}»`
+          : `Hito reabierto: «${shown}»`,
         ref,
       );
     if (data.position !== undefined && data.position !== before.position)
-      await this.trace(issueId, user, 'milestone_moved', `Hito reordenado: «${shown}»`, ref);
+      await this.trace(
+        issueId,
+        user,
+        'milestone_moved',
+        `Hito reordenado: «${shown}»`,
+        ref,
+      );
     return this.forIssue(issueId, user);
   }
 
@@ -328,13 +409,21 @@ export class IssueJourneyService {
       });
       if (!found) throw new NotFoundException('Hito no encontrado.');
       await this.prisma.issueJourneyMilestone.delete({ where: { id: ref } });
-      await this.trace(issueId, user, 'milestone_removed', `Hito quitado: «${found.label ?? 'Hito'}»`, ref);
+      await this.trace(
+        issueId,
+        user,
+        'milestone_removed',
+        `Hito quitado: «${found.label ?? 'Hito'}»`,
+        ref,
+      );
     } else {
       if (ref === 'created' || ref === 'resolved')
         throw new BadRequestException('Ese hito no se puede quitar.');
       if (!(await this.systemKeys(issue)).has(ref))
         throw new NotFoundException('Hito no encontrado.');
-      const shownLabel = (await this.forIssue(issueId, user)).steps.find((s) => s.key === ref)?.label ?? ref;
+      const shownLabel =
+        (await this.forIssue(issueId, user)).steps.find((s) => s.key === ref)
+          ?.label ?? ref;
       await this.prisma.issueJourneyMilestone.upsert({
         where: { issueId_templateKey: { issueId, templateKey: ref } },
         create: {
@@ -345,7 +434,13 @@ export class IssueJourneyService {
         },
         update: { hidden: true },
       });
-      await this.trace(issueId, user, 'milestone_removed', `Hito quitado: «${shownLabel}»`, ref);
+      await this.trace(
+        issueId,
+        user,
+        'milestone_removed',
+        `Hito quitado: «${shownLabel}»`,
+        ref,
+      );
     }
     return this.forIssue(issueId, user);
   }

@@ -10,7 +10,11 @@ import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
   imports: [NotificationsModule, FilesModule],
   controllers: [DirectMessagesController, DirectMessageAttachmentsController],
-  providers: [DirectMessagesService, DirectMessageAttachmentsService, DirectMessageEditsService],
+  providers: [
+    DirectMessagesService,
+    DirectMessageAttachmentsService,
+    DirectMessageEditsService,
+  ],
   exports: [DirectMessagesService],
 })
 export class DirectMessagesModule {}

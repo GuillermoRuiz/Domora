@@ -13,7 +13,9 @@ function startOfDay(d: Date): Date {
 }
 
 function daysBetween(from: Date, to: Date): number {
-  return Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
+  return Math.round(
+    (startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000,
+  );
 }
 
 /**
@@ -25,7 +27,9 @@ function daysBetween(from: Date, to: Date): number {
  */
 @Injectable()
 export class PropertyMembershipInvitesCronService {
-  private readonly logger = new Logger(PropertyMembershipInvitesCronService.name);
+  private readonly logger = new Logger(
+    PropertyMembershipInvitesCronService.name,
+  );
 
   constructor(
     private readonly prisma: PrismaService,
@@ -37,7 +41,10 @@ export class PropertyMembershipInvitesCronService {
     try {
       await this.remindExpiringInvites();
     } catch (error) {
-      this.logger.error('Error enviando recordatorios de invitación pendiente', error);
+      this.logger.error(
+        'Error enviando recordatorios de invitación pendiente',
+        error,
+      );
     }
   }
 
@@ -61,9 +68,13 @@ export class PropertyMembershipInvitesCronService {
 
     const dueSoon = candidates.filter((invite) => {
       const daysRemaining = daysBetween(today, invite.expiresAt);
-      if (daysRemaining > REMINDER_WINDOW_DAYS || daysRemaining < 0) return false;
+      if (daysRemaining > REMINDER_WINDOW_DAYS || daysRemaining < 0)
+        return false;
       // Ya se avisó hoy — evita reenviar si el cron corre más de una vez o hay varias réplicas.
-      if (invite.reminderSentAt && startOfDay(invite.reminderSentAt).getTime() === today.getTime()) {
+      if (
+        invite.reminderSentAt &&
+        startOfDay(invite.reminderSentAt).getTime() === today.getTime()
+      ) {
         return false;
       }
       return true;
@@ -82,9 +93,17 @@ export class PropertyMembershipInvitesCronService {
         .filter(Boolean)
         .join(' ');
       try {
-        await this.mail.sendMembershipInviteReminder(invite.inviteeEmail, invite.roleType, address, daysRemaining);
+        await this.mail.sendMembershipInviteReminder(
+          invite.inviteeEmail,
+          invite.roleType,
+          address,
+          daysRemaining,
+        );
       } catch (error) {
-        this.logger.error(`No se pudo enviar el recordatorio de invitación a ${invite.inviteeEmail} (${invite.id})`, error);
+        this.logger.error(
+          `No se pudo enviar el recordatorio de invitación a ${invite.inviteeEmail} (${invite.id})`,
+          error,
+        );
       }
       await this.prisma.propertyMembershipInvite.update({
         where: { id: invite.id },

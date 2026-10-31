@@ -118,7 +118,8 @@ export class PropertyMembershipsService {
     }
     if (
       user.role === 'A' ||
-      (user.role === 'B' && this.estateAccess.canAccess(property.estateId, user))
+      (user.role === 'B' &&
+        this.estateAccess.canAccess(property.estateId, user))
     ) {
       return property;
     }
@@ -206,7 +207,11 @@ export class PropertyMembershipsService {
       }
       const revoked = await tx.propertyMembership.update({
         where: { id: membershipId },
-        data: { status: 'revoked', revokedAt: new Date(), isPrimaryContact: false },
+        data: {
+          status: 'revoked',
+          revokedAt: new Date(),
+          isPrimaryContact: false,
+        },
       });
       await tx.activityLogEntry.create({
         data: {

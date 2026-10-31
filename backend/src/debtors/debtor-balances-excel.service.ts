@@ -64,11 +64,22 @@ export class DebtorBalancesExcelService {
 
     const headerRow = sheet.getRow(3);
     headerRow.values = [
-      'Propiedad', 'Titular', 'Email', 'Teléfono', 'Saldo', 'Meses de retraso', 'Estado de gestión', 'Último contacto',
+      'Propiedad',
+      'Titular',
+      'Email',
+      'Teléfono',
+      'Saldo',
+      'Meses de retraso',
+      'Estado de gestión',
+      'Último contacto',
     ];
     headerRow.font = { bold: true };
     headerRow.eachCell((cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8E8E8' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE8E8E8' },
+      };
     });
 
     for (const r of rows) {

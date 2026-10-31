@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstateAccessService } from '../estate-access/estate-access.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { CreateExternalOwnerDto, UpdateExternalOwnerDto } from './dto/external-owner.dto';
+import {
+  CreateExternalOwnerDto,
+  UpdateExternalOwnerDto,
+} from './dto/external-owner.dto';
 
 @Injectable()
 export class ExternalOwnersService {
@@ -41,7 +44,11 @@ export class ExternalOwnersService {
     return owner;
   }
 
-  async create(propertyId: string, dto: CreateExternalOwnerDto, user: AuthenticatedUser) {
+  async create(
+    propertyId: string,
+    dto: CreateExternalOwnerDto,
+    user: AuthenticatedUser,
+  ) {
     const property = await this.prisma.property.findFirst({
       where: { id: propertyId, deletedAt: null },
       select: { estateId: true },
@@ -51,7 +58,12 @@ export class ExternalOwnersService {
     }
     this.estateAccess.assertAccess(property.estateId, user);
     return this.prisma.externalOwner.create({
-      data: { ...dto, propertyId, roleType: 'Propietario', createdByUserId: user.id },
+      data: {
+        ...dto,
+        propertyId,
+        roleType: 'Propietario',
+        createdByUserId: user.id,
+      },
     });
   }
 
@@ -59,7 +71,11 @@ export class ExternalOwnersService {
    * Solo titulares aún sin promover: uno promovido ya es un usuario real
    * con sus propios datos, y sus recibos pasados conservan el snapshot.
    */
-  async update(id: string, dto: UpdateExternalOwnerDto, user: AuthenticatedUser) {
+  async update(
+    id: string,
+    dto: UpdateExternalOwnerDto,
+    user: AuthenticatedUser,
+  ) {
     await this.findById(id, user);
     return this.prisma.externalOwner.update({ where: { id }, data: dto });
   }
@@ -73,7 +89,9 @@ export class ExternalOwnersService {
   async remove(id: string, user: AuthenticatedUser) {
     await this.findById(id, user);
     await this.prisma.$transaction([
-      this.prisma.propertyMembershipInvite.deleteMany({ where: { externalOwnerId: id, usedAt: null } }),
+      this.prisma.propertyMembershipInvite.deleteMany({
+        where: { externalOwnerId: id, usedAt: null },
+      }),
       this.prisma.externalOwner.delete({ where: { id } }),
     ]);
   }

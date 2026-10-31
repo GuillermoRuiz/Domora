@@ -1,6 +1,10 @@
 import { DocumentsModule } from '../documents/documents.module';
 import { Module } from '@nestjs/common';
-import { EstateMeetingsController, MeetingAttachmentsController, MeetingsController } from './meetings.controller';
+import {
+  EstateMeetingsController,
+  MeetingAttachmentsController,
+  MeetingsController,
+} from './meetings.controller';
 import { MeetingsService } from './meetings.service';
 import { MeetingQuorumService } from './meeting-quorum.service';
 import { MeetingEligibilityService } from './meeting-eligibility.service';
@@ -19,9 +23,32 @@ import { MailModule } from '../mail/mail.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [EstateAccessModule, FilesModule, MailModule, NotificationsModule, AiCoreModule, DocumentsModule],
-  controllers: [EstateMeetingsController, MeetingsController, MeetingAttachmentsController, ActaController],
-  providers: [MeetingsService, MeetingQuorumService, ConvocatoriaDocxService, ActaDocxService, MeetingEligibilityService, MeetingsNotificationsCronService, ActaService, ActaSnapshotService, ActaNarrativeService, ActaPdfService],
+  imports: [
+    EstateAccessModule,
+    FilesModule,
+    MailModule,
+    NotificationsModule,
+    AiCoreModule,
+    DocumentsModule,
+  ],
+  controllers: [
+    EstateMeetingsController,
+    MeetingsController,
+    MeetingAttachmentsController,
+    ActaController,
+  ],
+  providers: [
+    MeetingsService,
+    MeetingQuorumService,
+    ConvocatoriaDocxService,
+    ActaDocxService,
+    MeetingEligibilityService,
+    MeetingsNotificationsCronService,
+    ActaService,
+    ActaSnapshotService,
+    ActaNarrativeService,
+    ActaPdfService,
+  ],
   exports: [MeetingsService, MeetingEligibilityService, ActaPdfService],
 })
 export class MeetingsModule {}
