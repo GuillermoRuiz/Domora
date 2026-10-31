@@ -1,0 +1,14 @@
+// Cabecera común de los módulos del propietario (Incidencias, Juntas, Recibos):
+// selector en la barra superior, título, subtítulo y chip del ámbito.
+@mixin header($block) {
+  .#{$block}__topbar-scope { display: flex; align-items: center; min-width: 0; max-width: 340px; }
+  .#{$block}__title { margin: 0; font-size: 32px; font-weight: 700; line-height: 1.15; color: var(--color-text); }
+  .#{$block}__sub { margin: 0; font-size: 16px; color: var(--color-muted); }
+  @media (max-width: 520px) { .#{$block}__title { font-size: 25px; } }
+  .#{$block}__chip {
+    display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin-top: 8px; padding: 6px 12px;
+    font-size: 13px; color: var(--color-muted); background: var(--color-surface);
+    border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  }
+  .#{$block}__chip strong { color: var(--color-text); }
+}

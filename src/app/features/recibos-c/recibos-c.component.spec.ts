@@ -1,11 +1,13 @@
-import { signal } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
+import { TestBed } from '@angular/core/testing';
+import { StateService } from '../../core/state.service';
 import localeEs from '@angular/common/locales/es';
 import { ActivatedRoute, Router, convertToParamMap, type ParamMap } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { API, makeUser, setupComponent, settle, type ComponentHarness } from '../../core/testing/component-harness';
-import { OwnerScopeService, type ScopeGroup, type ScopeProperty } from '../../core/owner-scope.service';
+import { OwnerScopeService, type ScopeProperty } from '../../core/owner-scope.service';
 import { RecibosCComponent, receiptPending } from './recibos-c.component';
+import { fakeOwnerScope } from '../../core/testing/fake-owner-scope';
 
 registerLocaleData(localeEs);
 
@@ -22,30 +24,12 @@ function apiReceipt(overrides: Record<string, unknown> = {}) {
   };
 }
 
-/** A scope service the test controls (the real one has its own tests). */
-function fakeScope(items: ScopeProperty[], opts: { selectedId?: string | null } = {}) {
-  const selectedId = signal<string | null>(opts.selectedId !== undefined ? opts.selectedId : items[0]?.id ?? null);
-  const showAll = () => items.length > 1;
-  const isAll = () => showAll() && !items.some((p) => p.id === selectedId());
-  const groups = (): ScopeGroup[] => items.map((p) => ({ estateId: p.estateId, estateName: p.estateName ?? 'Sin comunidad vinculada', properties: [p] }));
-  return {
-    items: signal(items),
-    loaded: signal(true),
-    failed: signal(false),
-    showAll,
-    isAll,
-    selected: () => (isAll() ? null : items.find((p) => p.id === selectedId()) ?? null),
-    groups,
-    load: vi.fn(async () => undefined),
-    select: vi.fn((id: string | null) => selectedId.set(id)),
-  };
-}
 
 describe('RecibosCComponent', () => {
   let h: ComponentHarness<RecibosCComponent>;
   let navigate: ReturnType<typeof vi.spyOn>;
 
-  async function mount(scope = fakeScope([P1, P2], { selectedId: 'p1' }), query: Record<string, string> = {}, receipts = [apiReceipt()]) {
+  async function mount(scope = fakeOwnerScope([P1, P2], { selectedId: 'p1' }), query: Record<string, string> = {}, receipts = [apiReceipt()]) {
     const params = new BehaviorSubject<ParamMap>(convertToParamMap(query));
     // The query params are read as the component is created: spy before mounting.
     navigate = vi.spyOn(Router.prototype, 'navigate').mockResolvedValue(true);
@@ -83,7 +67,7 @@ describe('RecibosCComponent', () => {
   });
 
   it('«Todas mis propiedades» lists every receipt with its property and hides the property reports', async () => {
-    await mount(fakeScope([P1, P2], { selectedId: null }), {}, [apiReceipt({ id: 'r1' }), apiReceipt({ id: 'r3', propertyId: 'p2' })]);
+    await mount(fakeOwnerScope([P1, P2], { selectedId: null }), {}, [apiReceipt({ id: 'r1' }), apiReceipt({ id: 'r3', propertyId: 'p2' })]);
 
     expect(h.el.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(text(h.el.querySelector('thead'))).toContain('Propiedad');
@@ -92,7 +76,7 @@ describe('RecibosCComponent', () => {
   });
 
   it('?propertyId= selects that property and drops the param; ?receipt= highlights the receipt', async () => {
-    const scope = await mount(fakeScope([P1, P2], { selectedId: 'p1' }), { propertyId: 'p2', receipt: 'r3' }, [apiReceipt({ id: 'r3', propertyId: 'p2' })]);
+    const scope = await mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }), { propertyId: 'p2', receipt: 'r3' }, [apiReceipt({ id: 'r3', propertyId: 'p2' })]);
 
     expect(scope.select).toHaveBeenCalledWith('p2');
     expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { propertyId: null }, replaceUrl: true }));
@@ -101,7 +85,7 @@ describe('RecibosCComponent', () => {
   });
 
   it('«Pagar» opens the transfer instructions with the IBAN of the receipt community', async () => {
-    await mount(fakeScope([P1, P2], { selectedId: null }), {}, [apiReceipt({ id: 'r3', propertyId: 'p2', amount: '30', outstanding: '20', status: 'Parcial' })]);
+    await mount(fakeOwnerScope([P1, P2], { selectedId: null }), {}, [apiReceipt({ id: 'r3', propertyId: 'p2', amount: '30', outstanding: '20', status: 'Parcial' })]);
 
     (Array.from(h.el.querySelectorAll('.receipt-actions button')).find((b) => text(b) === 'Pagar') as HTMLElement).click();
     h.fixture.detectChanges();
@@ -111,6 +95,25 @@ describe('RecibosCComponent', () => {
     h.component.closePay();
     h.fixture.detectChanges();
     expect(h.el.querySelector('app-transfer-instructions-modal')).toBeNull();
+  });
+
+  it('a receipt without a property (legacy data) is never lost: it shows on the selected property and counts as pending', async () => {
+    await mount(fakeOwnerScope([P1], { selectedId: 'p1' }), {}, [
+      apiReceipt({ id: 'r1', amount: '45' }),
+      apiReceipt({ id: 'r-sin', propertyId: null, amount: '10' }),
+    ]);
+    expect(Array.from(h.el.querySelectorAll('tbody tr')).map((r) => r.getAttribute('data-receipt')).sort()).toEqual(['r-sin', 'r1']);
+    expect(text(h.el.querySelector('[data-pending-total]'))).toContain('55,00');
+  });
+
+  it('adding or removing a property reloads the receipts', async () => {
+    await mount();
+    TestBed.inject(StateService).propertiesVersion.update((v) => v + 1);
+    TestBed.tick();
+    h.http.expectOne(`${API}/users/u1/receipts`).flush([apiReceipt(), apiReceipt({ id: 'r-nuevo', propertyId: 'p1' })]);
+    await settle();
+    h.fixture.detectChanges();
+    expect(h.el.querySelectorAll('tbody tr')).toHaveLength(2);
   });
 
   it('a cancelled receipt has no payment actions', async () => {
@@ -170,7 +173,7 @@ describe('RecibosCComponent', () => {
   });
 
   it('without properties it invites to add one', async () => {
-    await mount(fakeScope([]), {}, []);
+    await mount(fakeOwnerScope([]), {}, []);
     expect(text(h.el.querySelector('app-empty-state'))).toContain('Aún no tienes propiedades');
   });
 

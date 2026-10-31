@@ -1,4 +1,3 @@
-import { signal } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es';
 import { TestBed } from '@angular/core/testing';
@@ -6,10 +5,11 @@ import { ActivatedRoute, Router, convertToParamMap, type ParamMap } from '@angul
 import { BehaviorSubject } from 'rxjs';
 import type { TestRequest } from '@angular/common/http/testing';
 import { API, makeUser, setupComponent, settle, type ComponentHarness } from '../../core/testing/component-harness';
-import { OwnerScopeService, type ScopeGroup, type ScopeProperty } from '../../core/owner-scope.service';
+import { OwnerScopeService, type ScopeProperty } from '../../core/owner-scope.service';
 import { StateService } from '../../core/state.service';
 import { IncidenciasCComponent } from './incidencias-c.component';
 import { issueDetail, issueItem, issueList } from './testing/owner-issue-fixtures';
+import { fakeOwnerScope } from '../../core/testing/fake-owner-scope';
 
 registerLocaleData(localeEs);
 
@@ -18,31 +18,13 @@ const P2: ScopeProperty = { id: 'p2', nickname: '1A', addressFull: 'Calle Cuba 1
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
-/** A scope service the test controls (the real one has its own tests). */
-function fakeScope(items: ScopeProperty[], opts: { selectedId?: string | null; loaded?: boolean } = {}) {
-  const selectedId = signal<string | null>(opts.selectedId !== undefined ? opts.selectedId : items[0]?.id ?? null);
-  const showAll = () => items.length > 1;
-  const isAll = () => showAll() && !items.some((p) => p.id === selectedId());
-  const groups = (): ScopeGroup[] => items.map((p) => ({ estateId: p.estateId, estateName: p.estateName ?? 'Sin comunidad vinculada', properties: [p] }));
-  return {
-    items: signal(items),
-    loaded: signal(opts.loaded ?? true),
-    failed: signal(false),
-    showAll,
-    isAll,
-    selected: () => (isAll() ? null : items.find((p) => p.id === selectedId()) ?? null),
-    groups,
-    load: vi.fn(async () => undefined),
-    select: vi.fn((id: string | null) => selectedId.set(id)),
-  };
-}
 
 describe('IncidenciasCComponent', () => {
   let h: ComponentHarness<IncidenciasCComponent>;
   let params: BehaviorSubject<ParamMap>;
   let navigate: ReturnType<typeof vi.spyOn>;
 
-  async function mount(scope = fakeScope([P1, P2], { selectedId: 'p1' }), query: Record<string, string> = {}) {
+  async function mount(scope = fakeOwnerScope([P1, P2], { selectedId: 'p1' }), query: Record<string, string> = {}) {
     params = new BehaviorSubject(convertToParamMap(query));
     h = setupComponent(IncidenciasCComponent, {
       user: makeUser({ id: 'u1' }),
@@ -109,7 +91,7 @@ describe('IncidenciasCComponent', () => {
   it('?estateId= chooses that community once the properties are known and drops the param', async () => {
     // El parámetro se lee al crear la página, antes de que mount() espíe el router.
     const early = vi.spyOn(Router.prototype, 'navigate').mockResolvedValue(true);
-    const scope = await mount(fakeScope([P1, P2], { selectedId: 'p1' }), { estateId: 'e2' });
+    const scope = await mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }), { estateId: 'e2' });
     await render();
     expect(scope.select).toHaveBeenCalledWith('p2');
     expect(early).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { estateId: null }, queryParamsHandling: 'merge', replaceUrl: true }));
@@ -340,7 +322,7 @@ describe('IncidenciasCComponent', () => {
   });
 
   it('with «Todas» the creation modal asks for the community, never for a home', async () => {
-    await mount(fakeScope([P1, P2], { selectedId: null }));
+    await mount(fakeOwnerScope([P1, P2], { selectedId: null }));
     await flushList();
     h.el.querySelector<HTMLButtonElement>('[data-action="new-issue"]')!.click();
     h.fixture.detectChanges();
@@ -352,7 +334,7 @@ describe('IncidenciasCComponent', () => {
   });
 
   it('without properties invites to add one', async () => {
-    await mount(fakeScope([]));
+    await mount(fakeOwnerScope([]));
     h.fixture.detectChanges();
     expect(text(h.el.querySelector('[data-empty]'))).toContain('Todavía no tienes ninguna propiedad vinculada');
     h.el.querySelector<HTMLButtonElement>('[data-empty] button')!.click();

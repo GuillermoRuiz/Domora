@@ -11,6 +11,13 @@ import type { Role } from './models';
 
 /** Query param that asks the despacho ficha to open the support session dialog. */
 export const SUPPORT_REQUIRED_PARAM = 'support';
+/** Query param with the role B screen that was asked for, to open once the session starts. */
+export const SUPPORT_RETURN_PARAM = 'returnUrl';
+
+/** The role B screen to return to after starting a support session; anything else is ignored. */
+export function supportReturnUrl(value: string | null | undefined): string | null {
+  return value && value.startsWith('/b/') && !value.startsWith('//') ? value : null;
+}
 
 /** Area of a URL (`/a/…`, `/b/…`, `/c/…`), or null for routes outside the role areas. */
 function areaOf(url: string): 'a' | 'b' | 'c' | null {
@@ -22,7 +29,8 @@ function areaOf(url: string): 'a' | 'b' | 'c' | null {
  * Protege las rutas de la app: sin sesión, a `/login`; con sesión, cada rol solo navega por su área
  * (la app es de rol único por usuario). El rol A entra en las pantallas del rol B únicamente dentro de
  * una sesión de soporte del despacho que está viendo (odd/tasks/role-a-panel.md S5); sin ella vuelve a
- * la ficha del despacho, que abre el diálogo del modo soporte. El servidor lo exige igualmente
+ * la ficha del despacho, que abre el diálogo del modo soporte y, al iniciarla, vuelve a la pantalla pedida
+ * (`?returnUrl=`). El servidor lo exige igualmente
  * (`SupportAccessGuard`): esto es navegación.
  */
 export const roleGuard: CanActivateFn = async (_route, state) => {
@@ -43,7 +51,7 @@ export const roleGuard: CanActivateFn = async (_route, state) => {
     await support.ensureRestored();
     if (support.active()) return true;
     return router.createUrlTree(despacho ? ['/a/admins', despacho.id] : ['/a/admins'], {
-      queryParams: despacho ? { [SUPPORT_REQUIRED_PARAM]: 'required' } : {},
+      queryParams: despacho ? { [SUPPORT_REQUIRED_PARAM]: 'required', [SUPPORT_RETURN_PARAM]: state.url } : {},
     });
   }
 

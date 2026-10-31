@@ -1,12 +1,12 @@
-import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, type ParamMap } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import type { TestRequest } from '@angular/common/http/testing';
 import { API, makeUser, setupComponent, settle, type ComponentHarness } from '../../core/testing/component-harness';
-import { OwnerScopeService, type ScopeGroup, type ScopeProperty } from '../../core/owner-scope.service';
+import { OwnerScopeService, type ScopeProperty } from '../../core/owner-scope.service';
 import { DocumentacionCComponent } from './documentacion-c.component';
 import { COUNTS, documentList, ownerDocument } from './testing/owner-document-fixtures';
+import { fakeOwnerScope } from '../../core/testing/fake-owner-scope';
 
 const P1: ScopeProperty = { id: 'p1', nickname: '3A', addressFull: 'Calle Colón 24', estateId: 'e1', estateName: 'Colón 24', isLinked: true };
 const P2: ScopeProperty = { id: 'p2', nickname: '1A', addressFull: 'Calle Cuba 18', estateId: 'e2', estateName: 'Cuba 18', isLinked: true };
@@ -15,31 +15,13 @@ const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g
 /** «label value» of a detail meta row. */
 const meta = (root: Element, key: string) => ['dt', 'dd'].map((tag) => text(root.querySelector(`[data-meta="${key}"] ${tag}`))).join(' ');
 
-/** A scope service the test controls (the real one has its own tests). */
-function fakeScope(items: ScopeProperty[], opts: { selectedId?: string | null } = {}) {
-  const selectedId = signal<string | null>(opts.selectedId !== undefined ? opts.selectedId : items[0]?.id ?? null);
-  const showAll = () => items.length > 1;
-  const isAll = () => showAll() && !items.some((p) => p.id === selectedId());
-  const groups = (): ScopeGroup[] => items.map((p) => ({ estateId: p.estateId, estateName: p.estateName ?? 'Sin comunidad vinculada', properties: [p] }));
-  return {
-    items: signal(items),
-    loaded: signal(true),
-    failed: signal(false),
-    showAll,
-    isAll,
-    selected: () => (isAll() ? null : items.find((p) => p.id === selectedId()) ?? null),
-    groups,
-    load: vi.fn(async () => undefined),
-    select: vi.fn((id: string | null) => selectedId.set(id)),
-  };
-}
 
 describe('DocumentacionCComponent', () => {
   let h: ComponentHarness<DocumentacionCComponent>;
   let params: BehaviorSubject<ParamMap>;
   let navigate: ReturnType<typeof vi.spyOn>;
 
-  async function mount(scope = fakeScope([P1, P2], { selectedId: 'p1' }), query: Record<string, string> = {}) {
+  async function mount(scope = fakeOwnerScope([P1, P2], { selectedId: 'p1' }), query: Record<string, string> = {}) {
     params = new BehaviorSubject(convertToParamMap(query));
     h = setupComponent(DocumentacionCComponent, {
       user: makeUser({ id: 'u1' }),
@@ -181,7 +163,7 @@ describe('DocumentacionCComponent', () => {
   });
 
   it('?onlyNew=1 (the «Documentos nuevos» KPI) starts with the only-new filter on', async () => {
-    await mount(fakeScope([P1, P2], { selectedId: 'p1' }), { onlyNew: '1' });
+    await mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }), { onlyNew: '1' });
     const req = await flushList();
     expect(req.request.params.get('onlyNew')).toBe('true');
     expect(text(h.el.querySelector('[data-filter-count]'))).toBe('1');
@@ -195,7 +177,7 @@ describe('DocumentacionCComponent', () => {
   });
 
   it('in «Todas» the popover offers the property, which is sent as propertyId', async () => {
-    await mount(fakeScope([P1, P2], { selectedId: null }));
+    await mount(fakeOwnerScope([P1, P2], { selectedId: null }));
     await flushList();
     click('[data-action="filters"]');
     const select = h.el.querySelector<HTMLSelectElement>('[data-filter-popover] [data-filter="property"]')!;
@@ -338,7 +320,7 @@ describe('DocumentacionCComponent', () => {
   });
 
   it('a deep link opens the detail and closing it removes ?doc', async () => {
-    await mount(fakeScope([P1, P2], { selectedId: 'p1' }), { doc: 'd2' });
+    await mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }), { doc: 'd2' });
     await flushList(documentList([ownerDocument(), ownerDocument({ id: 'd2', title: 'Póliza', previewable: false, fileType: 'document', mimeType: 'application/msword' })]));
     expect(text(h.el.querySelector('[data-detail-title]'))).toBe('Póliza');
     click('[data-action="close-detail"]');
@@ -346,7 +328,7 @@ describe('DocumentacionCComponent', () => {
   });
 
   it('a non-previewable document says so, offers the download and fetches nothing', async () => {
-    await mount(fakeScope([P1, P2], { selectedId: 'p1' }), { doc: 'd2' });
+    await mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }), { doc: 'd2' });
     await flushList(documentList([ownerDocument({ id: 'd2', title: 'Inventario', previewable: false, fileType: 'spreadsheet', mimeType: 'application/vnd.ms-excel' })]));
     const note = h.el.querySelector('[data-no-preview]')!;
     expect(text(note)).toContain('Vista previa no disponible para este formato');
@@ -361,7 +343,7 @@ describe('DocumentacionCComponent', () => {
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       savedAs = this.download;
     });
-    await mount(fakeScope([P1, P2], { selectedId: 'p1' }), { doc: 'd2' });
+    await mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }), { doc: 'd2' });
     await flushList(documentList([ownerDocument({ id: 'd2', title: 'Inventario', previewable: false, fileType: 'spreadsheet', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })]));
     click('[data-detail] [data-action="download"]');
     h.http.expectOne(`${API}/documents/d2/file?purpose=download`).flush(new Blob(['PK']));
@@ -373,7 +355,7 @@ describe('DocumentacionCComponent', () => {
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/open');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
-    await mount(fakeScope([P1, P2], { selectedId: 'p1' }), { doc: 'd1' });
+    await mount(fakeOwnerScope([P1, P2], { selectedId: 'p1' }), { doc: 'd1' });
     await flushList();
     h.http.expectOne(`${API}/documents/d1/file?purpose=view`).flush(new Blob(['%PDF-']));
     await render();

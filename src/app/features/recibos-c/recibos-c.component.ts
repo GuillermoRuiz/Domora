@@ -1,12 +1,11 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrencyPipe } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { DebtorsService } from '../../core/debtors.service';
 import { saveBlob } from '../../core/file-download';
 import type { AccountingReceipt } from '../../core/models';
 import { OwnerScopeService, type ScopeProperty } from '../../core/owner-scope.service';
+import { bindOwnerScopeToRoute } from '../../core/owner-scope-route';
 import { ReceiptsService } from '../../core/receipts.service';
 import { ReportsService } from '../../core/reports.service';
 import { StateService } from '../../core/state.service';
@@ -27,7 +26,8 @@ export function receiptPending(receipt: AccountingReceipt): number {
 /**
  * «Recibos y pagos» del propietario (rol C): los recibos de la propiedad elegida en la cabecera (o de todas),
  * con el pago por transferencia, el justificante y los informes contables de la propiedad. Un recibo es de una
- * PROPIEDAD: `?propertyId=` elige la propiedad y `?receipt=<id>` resalta ese recibo (enlaces de los avisos).
+ * PROPIEDAD: `?propertyId=` elige la propiedad y `?receipt=<id>` resalta ese recibo (enlaces de los avisos). Un recibo
+ * antiguo sin propiedad se ve en cualquier ámbito.
  */
 @Component({
   selector: 'app-recibos-c',
@@ -43,22 +43,20 @@ export class RecibosCComponent {
   private receiptsSvc = inject(ReceiptsService);
   private reports = inject(ReportsService);
   private debtors = inject(DebtorsService);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
 
   private readonly receipts = signal<AccountingReceipt[]>([]);
   readonly loading = signal(true);
   readonly failed = signal(false);
   readonly highlightedId = signal<string | null>(null);
   readonly toastMessage = signal<string | null>(null);
-  /** Propiedad pedida por la URL (`?propertyId=`): se aplica en cuanto se conocen las propiedades. */
-  private readonly requestedPropertyId = signal<string | null>(null);
 
   /** Los recibos del ámbito, del más reciente al más antiguo. */
   readonly rows = computed<AccountingReceipt[]>(() => {
     const selected = this.scope.isAll() ? null : this.scope.selected()?.id ?? null;
+    // A receipt without a property (legacy data) belongs to no property in particular: it shows everywhere, as it did
+    // in the old receipts tab of the property, so it is never lost nor left out of the pending total.
     return this.receipts()
-      .filter((r) => !selected || r.propertyId === selected)
+      .filter((r) => !selected || !r.propertyId || r.propertyId === selected)
       .sort((a, b) => (b.dueDate ?? b.date).localeCompare(a.dueDate ?? a.date));
   });
   readonly pendingTotal = computed(() => this.rows().reduce((sum, r) => sum + receiptPending(r), 0));
@@ -66,29 +64,12 @@ export class RecibosCComponent {
   readonly scopeName = computed(() => (this.scope.isAll() ? 'Todas mis propiedades' : this.scope.selected()?.nickname ?? ''));
 
   constructor() {
-    effect(() => {
-      this.state.propertiesVersion();
-      void this.scope.load();
-    });
+    bindOwnerScopeToRoute(['propertyId'], (params) => this.highlightedId.set(params.get('receipt')));
+    // Again whenever a property is added or removed, like the scope: its receipts come with it.
     effect(() => {
       const userId = this.auth.currentUser()?.id;
+      this.state.propertiesVersion();
       if (userId) untracked(() => void this.load(userId));
-    });
-    effect(() => {
-      const wanted = this.requestedPropertyId();
-      if (!wanted || !this.scope.loaded()) return;
-      untracked(() => {
-        this.requestedPropertyId.set(null);
-        if (this.scope.items().some((p) => p.id === wanted)) this.scope.select(wanted);
-      });
-    });
-    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      this.highlightedId.set(params.get('receipt'));
-      const propertyId = params.get('propertyId');
-      if (propertyId) {
-        this.requestedPropertyId.set(propertyId);
-        void this.router.navigate([], { relativeTo: this.route, queryParams: { propertyId: null }, queryParamsHandling: 'merge', replaceUrl: true });
-      }
     });
   }
 

@@ -10,7 +10,7 @@ import type { AdminActivityType, EstateSetupStepKey, AdminPayMethod, AdminStatus
 import { AdminsService, type AdministratorDetail } from '../../core/admins.service';
 import { AdminInsightsService } from '../../core/admin-insights.service';
 import { DespachoContextService } from '../../core/despacho-context.service';
-import { SUPPORT_REQUIRED_PARAM } from '../../core/role.guard';
+import { SUPPORT_REQUIRED_PARAM, SUPPORT_RETURN_PARAM, supportReturnUrl } from '../../core/role.guard';
 import { SupportSessionService } from '../../core/support-session.service';
 import { SupportSessionDialogComponent } from '../../layout/support-session-dialog/support-session-dialog.component';
 import type { OfficeCompletenessDetail } from '../../core/office-setup.service';
@@ -138,10 +138,13 @@ export class AdminDetailAComponent implements OnInit {
       this.plansCatalog.set(catalog);
       this.state.set(admin ? 'ready' : 'error');
       this.notesDraft.set(admin?.notes ?? '');
-      // Sent back by the route guard: a role B screen of this despacho needs a support session.
-      if (admin && this.route.snapshot.queryParamMap?.get(SUPPORT_REQUIRED_PARAM)) {
-        void this.router.navigate([], { relativeTo: this.route, queryParams: { [SUPPORT_REQUIRED_PARAM]: null }, queryParamsHandling: 'merge', replaceUrl: true });
-        void this.viewCommunities();
+      // Sent back by the route guard: a role B screen of this despacho needs a support session. Once there is one
+      // (already restored, or started in the dialog) the user goes on to the screen they asked for.
+      const query = this.route.snapshot.queryParamMap;
+      if (admin && query?.get(SUPPORT_REQUIRED_PARAM)) {
+        const returnUrl = supportReturnUrl(query.get(SUPPORT_RETURN_PARAM)) ?? undefined;
+        void this.router.navigate([], { relativeTo: this.route, queryParams: { [SUPPORT_REQUIRED_PARAM]: null, [SUPPORT_RETURN_PARAM]: null }, queryParamsHandling: 'merge', replaceUrl: true });
+        void this.viewCommunities(returnUrl);
       }
     } catch (error) {
       console.error('Error cargando el administrador', error);

@@ -26,6 +26,22 @@
   } @else if (scope.loaded() && blocks().length === 0) {
     <app-empty-state icon="users" title="Sin comunidad vinculada" description="Esta propiedad no está vinculada a ninguna comunidad, así que no tiene juntas de propietarios."></app-empty-state>
   } @else {
+    @if (highlightedMeeting(); as meeting) {
+      <section class="card juntas__featured" data-featured-meeting [attr.data-meeting]="meeting.id">
+        <div class="juntas__featured-info">
+          <span class="juntas__featured-status" [attr.data-status]="meeting.status">{{ statusLabel[meeting.status] }}</span>
+          <strong>{{ meeting.title }}</strong>
+          <span class="juntas__featured-date">{{ dateLabel(meeting.scheduledAt1) }}</span>
+        </div>
+        @if (meeting.status === 'firmada' && meeting.actaS3Key) {
+          <button type="button" class="juntas__featured-action" data-action="download-acta" (click)="downloadActa(meeting)">
+            <app-icon name="download" [size]="14"></app-icon>
+            Descargar acta
+          </button>
+        }
+      </section>
+      @if (actaError(); as message) { <p class="juntas__error" role="alert">{{ message }}</p> }
+    }
     @for (block of blocks(); track block.property.id) {
       <section class="card juntas__block" [attr.data-property]="block.property.id">
         @if (scope.isAll()) {

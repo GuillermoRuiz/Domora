@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter, Router, UrlTree } from '@angular/router';
 import type { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import { roleGuard } from './role.guard';
+import { roleGuard, supportReturnUrl } from './role.guard';
 import { AuthService } from './auth.service';
 import { DespachoContextService } from './despacho-context.service';
 import { SupportSessionService } from './support-session.service';
@@ -85,11 +85,19 @@ describe('roleGuard', () => {
 
   it('el rol A sin sesión de soporte vuelve a la ficha del despacho, que pide el modo soporte', async () => {
     setup({ role: 'A', despachoId: 'd1' });
-    expect(await run('/b/estates')).toBe('/a/admins/d1?support=required');
+    expect(await run('/b/estates/e1?tab=juntas')).toBe('/a/admins/d1?support=required&returnUrl=%2Fb%2Festates%2Fe1%3Ftab%3Djuntas');
   });
 
   it('el rol A sin despacho elegido vuelve a la lista de despachos', async () => {
     setup({ role: 'A' });
     expect(await run('/b/estates')).toBe('/a/admins');
+  });
+
+  it('supportReturnUrl solo acepta pantallas del rol B', () => {
+    expect(supportReturnUrl('/b/estates/e1')).toBe('/b/estates/e1');
+    expect(supportReturnUrl('/a/admins')).toBeNull();
+    expect(supportReturnUrl('https://evil.example/b/')).toBeNull();
+    expect(supportReturnUrl('//evil.example')).toBeNull();
+    expect(supportReturnUrl(null)).toBeNull();
   });
 });

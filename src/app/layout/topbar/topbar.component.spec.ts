@@ -233,7 +233,8 @@ describe('TopbarComponent', () => {
       state.notificationsCount.set(3);
       fixture.detectChanges();
       const bell = el.querySelector('.topbar__bell') as HTMLButtonElement;
-      expect(bell.getAttribute('aria-label')).toBe('Notificaciones, 3 sin leer');
+      // Before the alert list is loaded only the notices are known, and the label says so.
+      expect(bell.getAttribute('aria-label')).toBe('Notificaciones, 3 avisos sin leer');
       expect(el.querySelector('.topbar__bell-dot')).not.toBeNull();
       const router = TestBed.inject(Router);
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
@@ -244,6 +245,20 @@ describe('TopbarComponent', () => {
       expect(avisos.textContent?.replace(/\s+/g, ' ').trim()).toBe('Ver avisos (3)');
       avisos.click();
       expect(navigateSpy).toHaveBeenCalledWith(['/c/notifications']);
+    });
+
+    it('con la lista de alertas cargada, la etiqueta suma alertas y avisos sin leer', () => {
+      const { fixture, el } = setupComponent(TopbarComponent, { user: makeUser({ role: 'C' }) });
+      const state = TestBed.inject(StateService);
+      state.notificationsCount.set(1);
+      state.recentAlerts.set([
+        { id: 'a1', read: false } as never,
+        { id: 'a2', read: true } as never,
+        { id: 'a3', read: false } as never,
+      ]);
+      state.recentAlertsLoaded.set(true);
+      fixture.detectChanges();
+      expect(el.querySelector('.topbar__bell')?.getAttribute('aria-label')).toBe('Notificaciones, 3 sin leer');
     });
 
     it('el rol A conserva un único "Ver todas" hacia su bandeja', () => {

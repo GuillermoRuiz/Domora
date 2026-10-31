@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { API, makeUser, setupComponent, settle, type ComponentHarness } from '../../core/testing/component-harness';
 import { DespachoContextService } from '../../core/despacho-context.service';
 import type { Administrator, OfficeHealth, PlansCatalog } from '../../core/models';
@@ -183,6 +184,32 @@ describe('AdminDetailAComponent (ficha 360°)', () => {
 
       expect(TestBed.inject(DespachoContextService).selected()).toEqual({ id: 'ad1', name: 'Fincas García' });
       expect(h.el.querySelector('app-support-session-dialog')).not.toBeNull();
+    });
+
+    it('sent back with ?returnUrl=, once the session exists it opens the screen that was asked for', async () => {
+      const navigateByUrl = vi.spyOn(Router.prototype, 'navigateByUrl').mockResolvedValue(true);
+      try {
+        await mount({ query: { support: 'required', returnUrl: '/b/estates/e1?tab=juntas' } });
+        // A slow restore that finally finds the session: straight to the screen, no dialog.
+        const req = TestBed.inject(HttpTestingController).expectOne(`${API}/support-sessions/active`);
+        req.flush([openSession()]);
+        await settle();
+        expect(navigateByUrl).toHaveBeenCalledWith('/b/estates/e1?tab=juntas');
+      } finally {
+        navigateByUrl.mockRestore();
+      }
+    });
+
+    it('a ?returnUrl= outside the role B screens is ignored', async () => {
+      const navigateByUrl = vi.spyOn(Router.prototype, 'navigateByUrl').mockResolvedValue(true);
+      try {
+        await mount({ query: { support: 'required', returnUrl: 'https://evil.example' } });
+        TestBed.inject(HttpTestingController).expectOne(`${API}/support-sessions/active`).flush([openSession()]);
+        await settle();
+        expect(navigateByUrl).toHaveBeenCalledWith('/b/estates');
+      } finally {
+        navigateByUrl.mockRestore();
+      }
     });
 
     it('an unknown despacho shows a not-found message with a way back', async () => {
